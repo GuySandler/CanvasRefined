@@ -684,10 +684,15 @@ function applyCustomBackground() {
         style.textContent = `
         #wrapper {
             background-image: url('${options.customBackgroundLink}') !important;
-            background-size: ${backgroundScale}% auto !important;
             background-repeat: no-repeat !important;
             background-position: center center !important;
             background-attachment: fixed !important;
+        }
+        @media (orientation: landscape) {
+            #wrapper { background-size: ${backgroundScale}% auto !important; }
+        }
+        @media (orientation: portrait) {
+            #wrapper { background-size: cover !important; }
         }
         .ic-Dashboard-header__layout {
             background: none !important;
@@ -3956,6 +3961,7 @@ function applyAestheticChanges() {
         if (options.cardHeight !== undefined && options.cardHeight !== 250) style.textContent += `.ic-DashboardCard {height: ${options.cardHeight}px!important;}`;
     }
 
+    style.textContent += ".ic-app-nav-toggle-and-crumbs{display:none!important}";
     if (options.custom_styles !== "") style.textContent += options.custom_styles;
     document.documentElement.appendChild(style);
 }
