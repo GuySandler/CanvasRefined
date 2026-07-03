@@ -177,7 +177,9 @@ function getSidebarStateKey(mode = getSidebarLayoutMode()) {
 }
 
 async function getSidebarExpandedState(mode = getSidebarLayoutMode()) {
-    return false;
+    const key = getSidebarStateKey(mode);
+    const result = await chrome.storage.local.get(key);
+    return result[key] ?? false;
 }
 
 function setSidebarExpandedState(mode, expanded) {
@@ -667,14 +669,7 @@ function resetBetterSidebarLayout() {
 
 function ensureBetterSidebar() {
     if (!options.better_sidebar) return;
-    const existingSidebar = document.querySelector("#better-sidebar-container");
-    if (existingSidebar) {
-        const expander = existingSidebar.querySelector(".better-sidebar-expander");
-        existingSidebar.dataset.expanded = "false";
-        setSidebarExpandedState(getSidebarLayoutMode(), false);
-        updateSidebar(false, existingSidebar, expander);
-        return;
-    }
+    if (document.querySelector("#better-sidebar-container")) return;
     if (!document.querySelector("#wrapper") || !document.querySelector(".ic-Layout-contentWrapper")) return;
     setupBetterSidebar(getSidebarLayoutMode());
 }
@@ -2421,6 +2416,7 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
     betterSidebarLoading = true;
     try {
         const layoutMode = mode === "course" || mode === "dash" ? mode : getSidebarLayoutMode();
+        let expanded = await getSidebarExpandedState(layoutMode);
         const outerWrapper = document.getElementById("main");
         outerWrapper?.style.setProperty("display", "flex", "important");
         // document.getElementById("not_right_side").style.setProperty("display", "none", "important");
@@ -2508,16 +2504,14 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
                 </g>
             </svg>
         `
-        sidebarList.dataset.expanded = "false";
-        updateSidebar(false, sidebarList, expander);
-        requestAnimationFrame(() => populateSidebarFromNav(sidebarContent));
-
-        let expanded = false;
         sidebarList.dataset.expanded = expanded ? "true" : "false";
         updateSidebar(expanded, sidebarList, expander);
         setSidebarExpandedState(layoutMode, expanded);
-        // const labels = document.querySelectorAll(".better-sidebar-label");
-        // labels.forEach(label => label.style.display = "none");
+        requestAnimationFrame(() => {
+            populateSidebarFromNav(sidebarContent);
+            updateSidebar(expanded, sidebarList, expander);
+        });
+
         expander.addEventListener("click", () => {
             expanded = !expanded;
             sidebarList.dataset.expanded = expanded ? "true" : "false";
@@ -3875,18 +3869,25 @@ function delayDashboardNotesStorage(text) {
 
 function loadDashboardNotes() {
     if (options.dashboard_notes === true) {
-        let notes = document.querySelector('.canvasrefined-dashboard-notes') || document.createElement("textarea");
-        notes.classList.add("canvasrefined-dashboard-notes");
-        notes.value = options.dashboard_notes_text;
-        notes.placeholder = "Enter notes here";
-        notes.style.display = "block";
-        if (notes.parentElement === null) document.querySelector("#DashboardCard_Container").prepend(notes);
-        notes.style.height = notes.scrollHeight + 5 + "px";
-        notes.addEventListener('input', function () {
-            delayDashboardNotesStorage(this.value);
-            this.style.height = "1px";
-            this.style.height = this.scrollHeight + 5 + "px";
-        });
+        let notes = document.querySelector('.canvasrefined-dashboard-notes');
+        if (!notes) {
+            notes = document.createElement("textarea");
+            notes.classList.add("canvasrefined-dashboard-notes");
+            notes.placeholder = "Enter notes here";
+            document.querySelector("#DashboardCard_Container").prepend(notes);
+            notes.value = options.dashboard_notes_text;
+            notes.style.display = "block";
+            notes.style.height = "auto";
+            notes.style.height = notes.scrollHeight + 5 + "px";
+            notes.addEventListener('input', function () {
+                delayDashboardNotesStorage(this.value);
+                this.style.height = "auto";
+                this.style.height = this.scrollHeight + 5 + "px";
+            });
+        } else {
+            notes.value = options.dashboard_notes_text;
+            notes.style.display = "block";
+        }
     } else {
         let notes = document.querySelector('.canvasrefined-dashboard-notes');
         if (notes) notes.style.display = "none";
