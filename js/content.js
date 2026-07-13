@@ -501,6 +501,9 @@ function applyOptionsChanges(changes) {
 			case "gradient_cards":
 				changeGradientCards();
 				break;
+			case "widget_clock":
+				loadWidgets();
+				break;
 			case "dashboard_notes":
 				loadDashboardNotes();
 				break;
@@ -884,12 +887,19 @@ function checkDashboardReady() {
             if (mutation.type !== "childList") continue;
             if (current_page == "/" || current_page == "" || current_page.match(/^\/courses\/(\d+)(?:\/|$)/)) {
                 if (dashboardReadyTimer) continue;
+
+                const dashboardCards = document.querySelector("#DashboardCard_Container");
+                if (dashboardCards) {
+                    loadWidgets();
+                }
+
                 dashboardReadyTimer = setTimeout(() => {
                     dashboardReadyTimer = null;
 
-                    const dashboardCards = document.querySelector("#DashboardCard_Container");
-                    if (dashboardCards) {
+                    const c = document.querySelector("#DashboardCard_Container");
+                    if (c) {
                         let cards = document.querySelectorAll(".ic-DashboardCard");
+                        loadWidgets();
                         changeGradientCards();
                         setupCardAssignments();
                         loadCardAssignments();
@@ -3059,6 +3069,7 @@ async function changeColorPreset(colors) {
     let cards = document.querySelectorAll(".ic-DashboardCard__header");
     let sortedCards = [];
     cards.forEach(card => {
+        if (card.closest('.canvasrefined-widget-clock')) return;
         sortedCards.push({ "href": card.querySelector(".ic-DashboardCard__link").href, "el": card });
     });
     sortedCards.sort((a, b) => a.href > b.href ? 1 : -1);
@@ -3283,6 +3294,7 @@ function insertGrades() {
                 let cards = document.querySelectorAll('.ic-DashboardCard');
                 if (cards.length === 0 || cards[0].querySelectorAll(".ic-DashboardCard__link").length === 0) return;
                 for (let i = 0; i < cards.length; i++) {
+                    if (cards[i].classList.contains('canvasrefined-widget-clock')) continue;
                     let course_id = parseInt(cards[i].querySelector(".ic-DashboardCard__link").href.split("courses/")[1]);
                     data.forEach(grade => {
                         if (course_id === grade.id) {
@@ -3394,6 +3406,7 @@ function loadCardAssignments() {
             const now = new Date();
 
             cards.forEach(card => {
+                if (card.classList.contains('canvasrefined-widget-clock')) return;
                 let count = 0;
                 let link = card.querySelector(".ic-DashboardCard__link");
                 if (!link) return;
@@ -3486,9 +3499,12 @@ function loadCardAssignments2(c = null) {
 function setupCardAssignments() {
     if (options.assignments_due !== true) return;
     try {
-        if (document.querySelectorAll('.ic-DashboardCard').length > 0 && document.querySelectorAll('.canvasrefined-card-container').length > 0) return;
+        let widgetsCount = document.querySelectorAll('.canvasrefined-widget-clock .canvasrefined-card-container').length;
+        let containersCount = document.querySelectorAll('.canvasrefined-card-container').length - widgetsCount;
+        if (document.querySelectorAll('.ic-DashboardCard').length > 0 && containersCount > 0) return;
         let cards = document.querySelectorAll('.ic-DashboardCard');
         cards.forEach(card => {
+            if (card.classList.contains('canvasrefined-widget-clock')) return;
             let assignmentContainer = card.querySelector(".canvasrefined-card-assignment") || makeElement("div", card, { "className": "canvasrefined-card-assignment" });
             let assignmentsDueHeader = card.querySelector(".canvasrefined-card-header-container") || makeElement("div", assignmentContainer, { "className": "canvasrefined-card-header-container" });
             let assignmentsDueLabel = card.querySelector(".canvasrefined-card-header") || makeElement("h3", assignmentsDueHeader, { "className": "canvasrefined-card-header", "textContent": chrome.i18n.getMessage("due") });
@@ -3505,7 +3521,12 @@ Card customization
 */
 
 function getCardId(card) {
-    let id = card.querySelector(".ic-DashboardCard__link").href.split("courses/")[1];
+    let link = card.querySelector(".ic-DashboardCard__link");
+    if (!link) return -1;
+    let href = link.href;
+    if (!href || !href.includes("courses/")) return -1;
+    let id = href.split("courses/")[1];
+    if (!id) return -1;
     // no ~
     if (!id.includes("~")) return id;
 
@@ -3778,7 +3799,8 @@ function setupGPACalc() {
     try {
         grades?.then(result => {
 
-            const dashboardContainer = document.querySelector(".ic-DashboardCard__box__container");
+            const sortableContainer = document.querySelector(".ic-DashboardCard__box__container");
+            const dashboardContainer = document.querySelector("#DashboardCard_Container");
             if (!dashboardContainer) return;
 
             let container2 = document.querySelector(".canvasrefined-gpa-card");
@@ -3853,6 +3875,12 @@ function setupGPACalc() {
                 }
             }
 
+            try {
+                if (sortableContainer && window.jQuery && window.jQuery.fn && window.jQuery.fn.sortable) {
+                    window.jQuery(sortableContainer).sortable('refresh');
+                }
+            } catch (e) {}
+
             calculateGPA2();
         });
     } catch (e) {
@@ -3896,6 +3924,114 @@ function loadDashboardNotes() {
     } else {
         let notes = document.querySelector('.canvasrefined-dashboard-notes');
         if (notes) notes.style.display = "none";
+    }
+}
+
+/*
+Widgets
+*/
+
+let clockInterval;
+
+function loadWidgets() {
+    if (options.widget_clock === true) {
+        let card = document.querySelector('.canvasrefined-widget-clock');
+        if (!card) {
+            let container = document.querySelector(".ic-DashboardCard__box__container");
+            if (!container) return;
+            let realCard = container.querySelector(".ic-DashboardCard");
+            if (realCard) {
+                card = realCard.cloneNode(false);
+                card.className = "ic-DashboardCard canvasrefined-widget-clock";
+            } else {
+                card = document.createElement("div");
+                card.className = "ic-DashboardCard canvasrefined-widget-clock";
+            }
+            card.setAttribute("aria-label", "Clock widget");
+            card.setAttribute("data-testid", "draggable-card");
+            card.setAttribute("draggable", "true");
+            card.style.cssText = "opacity: 1; display: inline-block; vertical-align: top;";
+            card.innerHTML = `
+                <div class="ic-DashboardCard__header">
+                    <span class="screenreader-only">Clock</span>
+                    <div class="ic-DashboardCard__header_image">
+                        <div class="ic-DashboardCard__header_hero" aria-hidden="true" style="background-color:#2d3b45;opacity:0.6"></div>
+                    </div>
+                    <a href="#" class="ic-DashboardCard__link">
+                        <div class="ic-DashboardCard__header_content">
+                            <h2 class="ic-DashboardCard__header-title ellipsis" title="Clock" data-testid="dashboard-card-title"><span style="color:#2d3b45">Clock</span></h2>
+                            <div class="canvasrefined-clock-display ic-DashboardCard__header-subtitle ellipsis" style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:#2d3b45"></div>
+                            <div class="canvasrefined-clock-date ic-DashboardCard__header-term ellipsis" style="font-size:12px;color:#666"></div>
+                        </div>
+                    </a>
+                    <div>
+                        <div class="ic-DashboardCard__header-button-bg" style="background-color:#2d3b45;opacity:0"></div>
+                        <span data-position="Popover___1" data-cid="Position Popover" class="css-1ihz85b-position">
+                            <button type="button" class="Button Button--icon-action-rev ic-DashboardCard__header-button" aria-expanded="false" data-popover-trigger="true" data-position-target="Popover___1">
+                                <i class="icon-more" aria-hidden="true"></i>
+                                <span class="screenreader-only">Clock widget</span>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+                <nav class="ic-DashboardCard__action-container" aria-label="Actions for Clock">
+                    <a class="ic-DashboardCard__action" style="display:inherit"><img class="canvasrefined-link-image" style="display:none"></a>
+                    <a class="ic-DashboardCard__action" style="display:inherit"><img class="canvasrefined-link-image" style="display:none"></a>
+                    <a class="ic-DashboardCard__action" style="display:inherit"><img class="canvasrefined-link-image" style="display:none"></a>
+                    <a class="ic-DashboardCard__action" style="display:inherit"><img class="canvasrefined-link-image" style="display:none"></a>
+                </nav>
+                <div class="canvasrefined-card-assignment" style="display:none">
+                    <div class="canvasrefined-card-header-container"><h3 class="canvasrefined-card-header">Due</h3></div>
+                    <div class="canvasrefined-card-container"><div class="canvasrefined-assignment-container"><a class="canvasrefined-assignment-link">None</a></div></div>
+                </div>
+            `;
+            container.appendChild(card);
+            try {
+                if (window.jQuery && window.jQuery.fn && window.jQuery.fn.sortable) {
+                    let $c = window.jQuery(container);
+                    if ($c.sortable('instance')) {
+                        let opts = $c.sortable('option');
+                        $c.sortable('destroy');
+                        $c.sortable(window.jQuery.extend({}, opts));
+                    }
+                }
+            } catch (e) {}
+            card.addEventListener('dragstart', function (e) {
+                e.dataTransfer.setData('text', 'canvasrefined-widget-clock');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            setTimeout(() => {
+                try {
+                    let $c = window.jQuery && window.jQuery(container);
+                    if ($c && $c.sortable && $c.sortable('instance')) {
+                        $c.sortable('refresh');
+                    }
+                } catch (e) {}
+            }, 500);
+            updateClock();
+            clockInterval = setInterval(updateClock, 1000);
+        }
+    } else {
+        let card = document.querySelector('.canvasrefined-widget-clock');
+        if (card) card.remove();
+        if (clockInterval) {
+            clearInterval(clockInterval);
+            clockInterval = null;
+        }
+    }
+}
+
+function updateClock() {
+    let display = document.querySelector('.canvasrefined-clock-display');
+    let dateEl = document.querySelector('.canvasrefined-clock-date');
+    if (!display) return;
+    let now = new Date();
+    let hours = String(now.getHours()).padStart(2, '0');
+    let minutes = String(now.getMinutes()).padStart(2, '0');
+    let seconds = String(now.getSeconds()).padStart(2, '0');
+    display.textContent = `${hours}:${minutes}:${seconds}`;
+    if (dateEl) {
+        dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
     }
 }
 

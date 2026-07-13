@@ -65,6 +65,12 @@
 	"24hrformat": {
 		"message": "Use 24 hr Format"
 	},
+	"widgets": {
+		"message": "Widgets"
+	},
+	"widget_clock": {
+		"message": "Clock"
+	},
 	"dashboard_notes": {
 		"message": "Dashboard Notes"
 	},

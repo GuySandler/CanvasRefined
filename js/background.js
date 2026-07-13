@@ -35,6 +35,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "assignments_done": [],
             "dashboard_grades": true,
             "assignment_date_format": false,
+            "widget_clock": false,
             "dashboard_notes": false,
             "dashboard_notes_text": "",
             "better_todo": false,
