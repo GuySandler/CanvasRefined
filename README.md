@@ -198,9 +198,9 @@ To add a new feature, please follow these guidelines.
 
 <a href="https://www.star-history.com/?repos=GuySandler%2FCanvasRefined&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=GuySandler/CanvasRefined&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=GuySandler/CanvasRefined&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=GuySandler/CanvasRefined&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=GuySandler/CanvasRefined&type=date&theme=dark&legend=top-left&sealed_token=PPR8AZSTXJAWskYPcyVUafz4OZ5giutqwV8w3P8alGNMcyQG2Lo7T_Y074Z6kokTomyzK253AWTnF2tyF6ShnECZxoFhFpIEXWMgv88r48nqXNI988bEHOqMmM7r3Kcbja4mHL-IrXq4QkIOCdrLOn8trIxUKgU3iglA3WAQFT3NJgrNNgYPvm-boaTF" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=GuySandler/CanvasRefined&type=date&legend=top-left&sealed_token=PPR8AZSTXJAWskYPcyVUafz4OZ5giutqwV8w3P8alGNMcyQG2Lo7T_Y074Z6kokTomyzK253AWTnF2tyF6ShnECZxoFhFpIEXWMgv88r48nqXNI988bEHOqMmM7r3Kcbja4mHL-IrXq4QkIOCdrLOn8trIxUKgU3iglA3WAQFT3NJgrNNgYPvm-boaTF" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=GuySandler/CanvasRefined&type=date&legend=top-left&sealed_token=PPR8AZSTXJAWskYPcyVUafz4OZ5giutqwV8w3P8alGNMcyQG2Lo7T_Y074Z6kokTomyzK253AWTnF2tyF6ShnECZxoFhFpIEXWMgv88r48nqXNI988bEHOqMmM7r3Kcbja4mHL-IrXq4QkIOCdrLOn8trIxUKgU3iglA3WAQFT3NJgrNNgYPvm-boaTF" />
  </picture>
 </a>
 
