@@ -1,5 +1,6 @@
 :root {--inputbg: #1010104f;--containerbg: #00000047;--inputbg: #ffffff14;}
-body{width:505px;height: 100%; overflow-x: hidden; font-family: 'Wix Madefor Text', sans-serif;color: #e2e2e2;background: #161616;transition: .3s height}
+html, body{width:465px;max-width:465px;overflow-x:hidden;box-sizing:border-box}
+body{min-height:100%;height:auto;font-family: 'Wix Madefor Text', sans-serif;color: #e2e2e2;background: #161616;transition: .3s height}
 button {font-family: 'Wix Madefor Text', sans-serif}
 h1, h2, p, body{margin:0;padding:0}
 h1 {font-size:30px;}
@@ -81,13 +82,26 @@ h2 {margin-top: 20px;font-weight:600}
 .changer-container {display: flex; align-items: center;gap: 10px;}
 .changer-container .card-input[type="color"] {height: 35px; max-width: 35px;background: none; border: none; padding: 0; margin: 0;cursor: pointer}
 .changer-container .card-input[type="color"]::-webkit-color-swatch {border-radius:6px;width:40px;margin:0;padding:0;}
-.color-options {}
 #gradientColorFrom:hover, #gradientColorTo:hover {cursor: pointer}
 .color-picker-small {height: 30px; width: 30px; border: none; background:var(--inputbg); border-radius: 4px}
 .color-picker-small::-webkit-color-swatch {border-radius: 4px; border: 7px solid #000000;border: none;}
 .color-picker-small::-moz-color-swatch {border-radius: 4px; border: 7px solid #000000;border: none;}
 .more-options-container {display: grid; gap: 6px; grid-template-columns: repeat(4, 1fr); margin-top: 10px}
-.more-options-container .big-button {display: flex; flex-direction: column; gap: 6px;justify-content:center;align-items:center;padding:15px 10px}
+.more-options-container .big-button {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    min-height: 72px;
+    box-sizing: border-box;
+    padding: 12px 10px;
+    text-align: center;
+}
+.more-options-container .big-button span {
+    line-height: 1.15;
+}
 .palette-selection {display: flex; gap: 5px;align-items: center;margin-top: 5px;}
 .palette-selection .card-input {width: 70px;margin: 0;}
 .colors-preview {display: flex;overflow:hidden;border-radius:3px;margin-top:4px;}
@@ -132,7 +146,7 @@ input[type="checkbox"] { appearance: none; background: var(--inputbg); margin: 0
 input[type="checkbox"]::before { content: ""; width: 10px; height: 10px; transform: scale(0); box-shadow: inset 1em 1em #323232; transform-origin: center; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);}
 input[type="checkbox"]:checked::before {transform: scale(1);}
 input[type="checkbox"]:checked {background: #8dd28d;}
-#gradientbg {height: 550px;width: 150%;position: absolute;z-index: -1;opacity: .4;left: -25%; top: 0px;background: radial-gradient(at 50% 0%, #ff8349 0px, transparent 50%), radial-gradient(at 90% 0%, #ff67bb 0px, transparent 50%), radial-gradient(at 10% 0%, #ff3558 0px, transparent 50%);}
+#gradientbg {height: 550px;width: 100%;position: fixed;z-index: -1;opacity: .4;left: 0; top: 0px;pointer-events:none;background: radial-gradient(at 50% 0%, #ff8349 0px, transparent 50%), radial-gradient(at 90% 0%, #ff67bb 0px, transparent 50%), radial-gradient(at 10% 0%, #ff3558 0px, transparent 50%);}
 #dark-mode-fix-urls { display: flex; gap: 5px;flex-wrap: wrap;}
 .fixed-url {display: flex; gap:10px; align-items: center;flex: 0;padding: 7px 14px;}
 .fixed-url button {background: #1e1e1e;padding: 3px 6px;border-radius:4px;color: #fff;border:none;font-size:12px}

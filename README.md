@@ -63,7 +63,6 @@ Canvas Refined adds more with more to come!
 - Simplified UI
 
 ## Planned Features (by priority)
-- widgets (music, timer)
 - auto rotate theme + theme history + fix theme submissions
 - mail assistent + ui revamp
 - better calender (+ calender sync)

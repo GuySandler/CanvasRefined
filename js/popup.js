@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'widget_clock'];
+const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards'];
 const syncedSubOptions = [
 	"todo_hide_feedback",
 	"todo_full_height",
@@ -133,7 +133,6 @@ const defaultOptions = {
         "customCardStyles": false,
         "customBackgroundLink": "",
         "customBackgroundScale": 100,
-        "widget_clock": false,
     }
 };
 
@@ -401,10 +400,6 @@ function setup() {
 			"import-export-btn": {
 				setup: displayThemeList,
 				tab: ".import-export",
-			},
-			"widgets-btn": {
-				setup: null,
-				tab: ".widgets-container",
 			},
 			"report-issue-btn": {
 				setup: displayErrors,

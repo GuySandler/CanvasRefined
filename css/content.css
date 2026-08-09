@@ -22,6 +22,7 @@
 .canvasrefined-export-output {position: fixed;height:100vh;width:100vw;top:0;left:0;z-index:10000;background:#000000c7;display:flex;align-items:center;justify-content:center}
 .canvasrefined-export-copy { font-size:12px;white-space: pre-wrap;max-height:80vh;overflow:auto;padding:8px}
 .canvasrefined-export-output-inner {width: 50%;background:#000;color:#fff;}
+.canvasrefined-dashboard-notes {width: 100%; box-sizing: border-box; overflow: hidden; resize: none;}
 .canvasrefined-card-container {padding-bottom: 4px;}
 .canvasrefined-assignment-container {margin: 0;padding:0;color: var(--ic-brand-font-color-dark-lightened-30);display: flex;justify-content:space-between;font-size:14px;align-items: center;transition:.2s all;}
 .canvasrefined-card-header-container {align-items: center;display: flex;justify-content: space-between;padding: 0 18px;color:var(--ic-brand-font-color-dark-lightened-30);font-size:16px;font-weight:700;margin: 0;}
