@@ -122,6 +122,9 @@
 	"relative_due_dates": {
 		"message": "Relative Due Dates"
 	},
+	"equal_height_cards": {
+		"message": "Equal Height"
+	},
 	"enter_multiple": {
 		"message": "(Enter Multiple With A Comma)"
 	},

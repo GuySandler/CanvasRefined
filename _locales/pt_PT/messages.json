@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Datas de vencimento relativas"
   },
+  "equal_height_cards": {
+    "message": "Altura igual"
+  },
   "enter_multiple": {
     "message": "(Digite vários com uma vírgula)"
   },

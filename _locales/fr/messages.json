@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Dates d'échéance relatives"
   },
+  "equal_height_cards": {
+    "message": "Hauteur égale"
+  },
   "enter_multiple": {
     "message": "(Entrez plusieurs avec une virgule)"
   },

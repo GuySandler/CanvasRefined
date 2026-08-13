@@ -6,6 +6,7 @@ const syncedSubOptions = [
 	"device_dark",
 	"relative_dues",
 	"card_overdues",
+	"equal_height_cards",
 	// "todo_overdues",
 	"gpa_calc_prepend",
 	"auto_dark",
@@ -112,6 +113,7 @@ const defaultOptions = {
         // "todo_overdues": false,
         "card_overdues": false,
         "relative_dues": false,
+        "equal_height_cards": false,
         "hide_feedback": false,
         "dark_mode_fix": [],
         "assignment_states": {},
@@ -412,6 +414,25 @@ function toggleBetterTodoSubOptions(betterTodoOn) {
     }
 }
 
+// Hide the sub-options of a big toggle when it is turned off.
+// For gpa_calc / assignments_due / better_todo the whole .sub-options block is
+// hidden. For auto_dark ("schedule dark mode") only the start/end time clocks
+// (.timesets) are hidden, leaving the device-dark checkbox visible.
+function toggleSubOptionsVisibility(option, isOn) {
+    const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark"];
+    if (!togglesWithSubOptions.includes(option)) return;
+    const optionEl = document.getElementById(option);
+    if (!optionEl) return;
+    const subOptions = optionEl.parentElement.querySelector(":scope > .sub-options");
+    if (!subOptions) return;
+    if (option === "auto_dark") {
+        const timesets = subOptions.querySelector(".timesets");
+        if (timesets) timesets.style.display = isOn ? "" : "none";
+    } else {
+        subOptions.style.display = isOn ? "" : "none";
+    }
+}
+
 function setup() {
 
     const menu = {
@@ -428,6 +449,7 @@ function setup() {
 			"device_dark",
 			"relative_dues",
 			"card_overdues",
+			"equal_height_cards",
 			// "todo_overdues",
 			"gpa_calc_prepend",
 			"auto_dark",
@@ -563,10 +585,14 @@ function setup() {
                 if (option === "better_todo") {
                     toggleBetterTodoSubOptions(status);
                 }
+                toggleSubOptionsVisibility(option, status);
             });
         });
         toggleBetterSidebarSubOptions(sync["better_sidebar"] === true);
         toggleBetterTodoSubOptions(sync["better_todo"] === true);
+        ["gpa_calc", "assignments_due", "better_todo", "auto_dark"].forEach(opt => {
+            toggleSubOptionsVisibility(opt, sync[opt] === true);
+        });
     });
 
     chrome.storage.sync.get(menu.checkboxes, sync => {

@@ -72,6 +72,7 @@ chrome.runtime.onInstalled.addListener(function () {
             // "todo_overdues": false,
             "card_overdues": false,
             "relative_dues": false,
+            "equal_height_cards": false,
             "hide_feedback": false,
             "dark_mode_fix": [],
             "assignment_states": {},

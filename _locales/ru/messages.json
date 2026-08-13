@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Относительные сроки выполнения"
   },
+  "equal_height_cards": {
+    "message": "Одинаковая высота"
+  },
   "enter_multiple": {
     "message": "(Введите несколько через запятую)"
   },

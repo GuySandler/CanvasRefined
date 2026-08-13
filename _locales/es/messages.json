@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Fechas pendientes relativas"
   },
+  "equal_height_cards": {
+    "message": "Altura igual"
+  },
   "enter_multiple": {
     "message": "(Ingrese varios con una coma)"
   },

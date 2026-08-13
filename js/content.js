@@ -663,6 +663,11 @@ function applyOptionsChanges(changes) {
 				cardAssignments = preloadAssignmentEls();
 				loadCardAssignments();
 				break;
+			case "equal_height_cards":
+				// No need to rebuild the assignment rows — just stretch (or reset)
+				// the card heights in place for a snappy toggle.
+				equalizeCardHeights();
+				break;
 			case "custom_cards":
 			case "custom_cards_2":
 			case "custom_cards_3":
@@ -3537,6 +3542,51 @@ function createCardAssignment(assignment) {
 
 let cardAssignments;
 
+/*
+Equal Height Cards — when enabled, every dashboard card's assignment area is
+stretched to match the tallest one so cards with fewer assignments don't end
+up shorter than the rest. Uses min-height (never a fixed height) so cards can
+still grow if their content exceeds the tallest card.
+*/
+let equalHeightResizeTimer = null;
+
+function equalizeCardHeights() {
+    const cards = document.querySelectorAll(".ic-DashboardCard");
+    if (cards.length === 0) return;
+
+    const enabled = options.equal_height_cards === true && options.assignments_due === true;
+
+    // Always clear any previously applied min-height first so we can either
+    // measure natural heights (when enabling) or fully reset (when disabling).
+    cards.forEach(card => {
+        const area = card.querySelector(".canvasrefined-card-assignment");
+        if (area) area.style.removeProperty("min-height");
+    });
+
+    if (!enabled) return;
+
+    // Measure the natural height of each card's assignment area, then stretch
+    // every area to the tallest one. Card headers are uniform, so equalizing
+    // the assignment area makes all cards the same total height.
+    let maxHeight = 0;
+    cards.forEach(card => {
+        const area = card.querySelector(".canvasrefined-card-assignment");
+        if (area) maxHeight = Math.max(maxHeight, area.offsetHeight);
+    });
+
+    if (maxHeight > 0) {
+        cards.forEach(card => {
+            const area = card.querySelector(".canvasrefined-card-assignment");
+            if (area) area.style.minHeight = maxHeight + "px";
+        });
+    }
+}
+
+window.addEventListener("resize", () => {
+    if (equalHeightResizeTimer) clearTimeout(equalHeightResizeTimer);
+    equalHeightResizeTimer = setTimeout(equalizeCardHeights, 150);
+});
+
 function preloadAssignmentEls() {
     return new Promise((resolve, reject) => {
         let assignmentEls = {};
@@ -3569,6 +3619,7 @@ function loadCardAssignments() {
         document.querySelectorAll(".canvasrefined-card-assignment").forEach(card => {
             card.style.display = "none";
         });
+        equalizeCardHeights();
         return;
     }
     setupCardAssignments();
@@ -3608,6 +3659,9 @@ function loadCardAssignments() {
                     let assignmentDivLink = makeElement("a", assignmentContainer, { "className": "canvasrefined-assignment-link", "textContent": "None" });
                 }
             });
+            // Wait one frame so the browser lays out the freshly appended
+            // assignment rows before measuring/equalizing card heights.
+            requestAnimationFrame(equalizeCardHeights);
         } catch (e) {
             logError(e);
         }

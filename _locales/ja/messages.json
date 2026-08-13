@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "相対的な期日"
   },
+  "equal_height_cards": {
+    "message": "高さを揃える"
+  },
   "enter_multiple": {
     "message": "(カンマで複数入力)"
   },

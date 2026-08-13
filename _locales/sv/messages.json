@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Relativa förfallodatum"
   },
+  "equal_height_cards": {
+    "message": "Jämn höjd"
+  },
   "enter_multiple": {
     "message": "(Ange flera med komma)"
   },

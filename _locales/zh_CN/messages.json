@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "相对到期日"
   },
+  "equal_height_cards": {
+    "message": "等高"
+  },
   "enter_multiple": {
     "message": "(用逗号输入多个)"
   },

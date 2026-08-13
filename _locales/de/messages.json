@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Relative Fälligkeitsdaten"
   },
+  "equal_height_cards": {
+    "message": "Gleiche Höhe"
+  },
   "enter_multiple": {
     "message": "(Mehrere mit Komma eingeben)"
   },

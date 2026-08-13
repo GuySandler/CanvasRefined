@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Date di scadenza relative"
   },
+  "equal_height_cards": {
+    "message": "Altezza uguale"
+  },
   "enter_multiple": {
     "message": "(Inserisci più numeri con una virgola)"
   },
