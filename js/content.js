@@ -258,7 +258,7 @@ function createNasaInfoOverlay() {
     const icon = nasaInfoOverlayEl.querySelector("#nasa-info-icon");
     const panel = nasaInfoOverlayEl.querySelector("#nasa-info-panel");
     
-    const showPanel = async () => {
+    const populatePanel = async () => {
         const dateStr = new Date().toISOString().slice(0, 10);
         const cacheKey = `nasa_apod_${dateStr}`;
         const cached = await chrome.storage.local.get(cacheKey);
@@ -266,23 +266,41 @@ function createNasaInfoOverlay() {
         const metadataKey = `nasa_apod_meta_${metaDate}`;
         const metadata = await chrome.storage.local.get(metadataKey);
         const meta = metadata[metadataKey];
-        if (meta) {
-            document.getElementById("nasa-info-title").textContent = meta.title || "";
-            document.getElementById("nasa-info-date").textContent = `Date: ${meta.date}`;
-            document.getElementById("nasa-info-credit").textContent = meta.copyright ? `Credit: ${meta.copyright}` : "";
-            document.getElementById("nasa-info-explanation").textContent = meta.explanation || "No description available.";
-            panel.style.display = "block";
-        }
+        if (!meta) return false;
+        document.getElementById("nasa-info-title").textContent = meta.title || "";
+        document.getElementById("nasa-info-date").textContent = `Date: ${meta.date}`;
+        document.getElementById("nasa-info-credit").textContent = meta.copyright ? `Credit: ${meta.copyright}` : "";
+        document.getElementById("nasa-info-explanation").textContent = meta.explanation || "No description available.";
+        return true;
     };
-    
+
+    let pinned = false;
+
+    const showPanel = async () => {
+        if (pinned) return;
+        if (await populatePanel()) panel.style.display = "block";
+    };
+
     const hidePanel = () => {
+        if (pinned) return;
         panel.style.display = "none";
     };
-    
+
+    const togglePanel = async () => {
+        if (pinned) {
+            pinned = false;
+            panel.style.display = "none";
+        } else {
+            pinned = true;
+            if (await populatePanel()) panel.style.display = "block";
+        }
+    };
+
     icon.addEventListener("mouseenter", showPanel);
     icon.addEventListener("mouseleave", hidePanel);
     panel.addEventListener("mouseenter", showPanel);
     panel.addEventListener("mouseleave", hidePanel);
+    icon.addEventListener("click", togglePanel);
     
     contentMain.appendChild(nasaInfoOverlayEl);
 }

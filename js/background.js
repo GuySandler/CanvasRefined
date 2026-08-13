@@ -150,7 +150,7 @@ chrome.runtime.onInstalled.addListener(function () {
 });
 
 // The NASA APOD API with the demo key is limited to 30 requests/hour and 50/day.
-// All calls are serialized through this worker and gated against those limits.
+// Calls are serialized through this worker; the API's own 429 responses handle limiting.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "getNasaBackground") {
         getNasaBackground().then(sendResponse);
@@ -203,15 +203,6 @@ async function getNasaBackground() {
 }
 
 async function callNasaApi(dateStr) {
-    const now = Date.now();
-    const { nasa_api_calls = [] } = await chrome.storage.local.get("nasa_api_calls");
-    const lastHour = nasa_api_calls.filter(t => now - t < 3600 * 1000);
-    const lastDay = nasa_api_calls.filter(t => now - t < 24 * 3600 * 1000);
-    if (lastHour.length >= 30 || lastDay.length >= 50) {
-        console.warn("[CanvasRefined] NASA API rate limit reached, skipping request");
-        return "ratelimited";
-    }
-
     let response;
     try {
         response = await fetch(`https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true&date=${dateStr}`);
@@ -219,9 +210,6 @@ async function callNasaApi(dateStr) {
         console.error("[CanvasRefined] Failed to fetch NASA APOD:", error);
         return null;
     }
-
-    // The request was made, so it counts against the quota
-    await chrome.storage.local.set({ nasa_api_calls: [...lastDay, now] });
 
     if (response.status === 429) return "ratelimited";
     if (!response.ok) {
