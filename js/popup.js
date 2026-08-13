@@ -29,6 +29,9 @@ const syncedSubOptions = [
 	"cardHeight",
 	"customBackgroundLink",
     "customBackgroundScale",
+    "customBackgroundDaily",
+    "customBackgroundNasaDaily",
+    "fitImageToScreen",
     "sidebar_scale",
 ];
 const localSwitches = [];
@@ -133,6 +136,9 @@ const defaultOptions = {
         "customCardStyles": false,
         "customBackgroundLink": "",
         "customBackgroundScale": 100,
+        "customBackgroundDaily": false,
+        "customBackgroundNasaDaily": false,
+        "fitImageToScreen": false,
     }
 };
 
@@ -315,9 +321,41 @@ function setupCustomBackgroundScale(initial) {
     });
 }
 
+function getDailyBackgroundPreset() {
+    if (typeof backgroundPresets === "undefined" || !Array.isArray(backgroundPresets) || backgroundPresets.length === 0) {
+        return null;
+    }
+
+    const today = new Date();
+    const dayNumber = Math.floor(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86400000);
+    return backgroundPresets[Math.abs(dayNumber) % backgroundPresets.length];
+}
+
+function syncCustomBackgroundDailyState(isDaily) {
+    const manualControls = document.getElementById("customBackgroundManualControls");
+    if (manualControls) {
+        manualControls.style.opacity = isDaily ? "0.45" : "1";
+        manualControls.style.pointerEvents = isDaily ? "none" : "auto";
+        manualControls.style.filter = isDaily ? "grayscale(1)" : "none";
+    }
+
+    ["customBackgroundLink", "customBackgroundScale", "clearCustomBackground"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = isDaily;
+    });
+
+    document.querySelectorAll(".background-preset-card").forEach(button => {
+        button.disabled = isDaily;
+    });
+
+    renderBackgroundPresetSelection();
+}
+
 function renderBackgroundPresetSelection() {
-    const currentLink = document.querySelector("#customBackgroundLink")?.value || "";
-    const currentScale = String(document.querySelector("#customBackgroundScale")?.value || "100");
+    const isDaily = document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true;
+    const dailyPreset = isDaily ? getDailyBackgroundPreset() : null;
+    const currentLink = isDaily ? (dailyPreset?.url || "") : (document.querySelector("#customBackgroundLink")?.value || "");
+    const currentScale = isDaily ? String(dailyPreset?.scale || "100") : String(document.querySelector("#customBackgroundScale")?.value || "100");
     document.querySelectorAll(".background-preset-card").forEach(button => {
         const matchesLink = button.dataset.backgroundUrl === currentLink;
         const matchesScale = button.dataset.backgroundScale === currentScale;
@@ -349,6 +387,29 @@ function displayBackgroundPresets() {
         });
     });
     renderBackgroundPresetSelection();
+    syncCustomBackgroundDailyState(document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true);
+}
+
+function toggleBetterSidebarSubOptions(betterSidebarOn) {
+    const remlogoEl = document.getElementById("remlogo");
+    if (remlogoEl) {
+        remlogoEl.style.display = betterSidebarOn ? "none" : "flex";
+    }
+    const sidebarScaleEl = document.getElementById("sidebarScaleSub");
+    if (sidebarScaleEl) {
+        sidebarScaleEl.style.display = betterSidebarOn ? "block" : "none";
+    }
+}
+
+// When the Better Todo List is on, its own "Hide Recent Feedback" sub-option
+// (todo_hide_feedback) replaces the standalone "Hide recent feedback" toggle,
+// so hide the big #hide_feedback toggle to avoid showing two controls for the
+// same thing. Mirrors toggleBetterSidebarSubOptions.
+function toggleBetterTodoSubOptions(betterTodoOn) {
+    const hideFeedbackEl = document.getElementById("hide_feedback");
+    if (hideFeedbackEl) {
+        hideFeedbackEl.style.display = betterTodoOn ? "none" : "flex";
+    }
 }
 
 function setup() {
@@ -376,6 +437,9 @@ function setup() {
 			"grade_hover",
 			// "hide_completed",
 			"hover_preview",
+            "customBackgroundDaily",
+            "customBackgroundNasaDaily",
+            "fitImageToScreen",
 			// "scheduledReminder",
 			"customCardStyles",
 		],
@@ -493,8 +557,16 @@ function setup() {
                 if (option === "auto_dark") {
                     toggleDarkModeDisable(status);
                 }
+                if (option === "better_sidebar") {
+                    toggleBetterSidebarSubOptions(status);
+                }
+                if (option === "better_todo") {
+                    toggleBetterTodoSubOptions(status);
+                }
             });
         });
+        toggleBetterSidebarSubOptions(sync["better_sidebar"] === true);
+        toggleBetterTodoSubOptions(sync["better_todo"] === true);
     });
 
     chrome.storage.sync.get(menu.checkboxes, sync => {
@@ -503,11 +575,21 @@ function setup() {
 			if (!checkbox) {console.log(option); return;}
             checkbox.addEventListener("change", function (e) {
                 let status = this.checked;
-                chrome.storage.sync.set(JSON.parse(`{"${option}": ${status}}`));
+                if (option === "customBackgroundDaily" && status) {
+                    document.querySelector("#customBackgroundNasaDaily").checked = false;
+                    chrome.storage.sync.set({ "customBackgroundDaily": true, "customBackgroundNasaDaily": false });
+                } else if (option === "customBackgroundNasaDaily" && status) {
+                    document.querySelector("#customBackgroundDaily").checked = false;
+                    chrome.storage.sync.set({ "customBackgroundNasaDaily": true, "customBackgroundDaily": false });
+                } else {
+                    chrome.storage.sync.set(JSON.parse(`{"${option}": ${status}}`));
+                }
+                syncCustomBackgroundDailyState(document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true);
             });
             const value = sync[option] !== undefined ? sync[option] : defaultOptions.sync[option];
             document.querySelector("#" + option).checked = value;
         });
+        syncCustomBackgroundDailyState(sync.customBackgroundDaily === true || sync.customBackgroundNasaDaily === true);
         /*
         document.querySelector('#autodark_start').value = result.auto_dark_start["hour"] + ":" + result.auto_dark_start["minute"];
         document.querySelector('#autodark_end').value = result.auto_dark_end["hour"] + ":" + result.auto_dark_end["minute"];
@@ -662,7 +744,7 @@ function setup() {
 								final = { ...final, ...(await getExport(storage, ["custom_styles"])) };
 								break;
 							case "export-background":
-                                final = { ...final, ...(await getExport(storage, ["customBackgroundLink", "customBackgroundScale"])) };
+                                    final = { ...final, ...(await getExport(storage, ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "fitImageToScreen"])) };
 								break;
                         }
                     }
@@ -1270,6 +1352,7 @@ function saveCurrentTheme() {
 				"cardHeight": current["cardHeight"],
 				"customBackgroundLink": current["customBackgroundLink"],
 				"customBackgroundScale": current["customBackgroundScale"],
+				"customBackgroundDaily": current["customBackgroundDaily"],
             }
             const now = new Date();
             local["saved_themes"][now.getTime()] = trimmed;

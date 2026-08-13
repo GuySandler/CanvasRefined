@@ -254,7 +254,16 @@
                         <span class="option-name" data-i18n="better_sidebar">Better Sidebar</span>
                     </div>
                     <div class="sub-options">
-                        <div style="margin-top: 5px">
+                        <div class="option" id="remlogo" style="margin-top:2px">
+                            <input type="radio" id="off" name="remlogo">
+                            <input type="radio" id="on" name="remlogo">
+                            <div class="slider">
+                                <div class="sliderknob"></div>
+                                <div class="sliderbg"></div>
+                            </div>
+                            <span class="option-name" data-i18n="remlogo">Remove sidebar logo</span>
+                        </div>
+                        <div style="margin-top: 5px" id="sidebarScaleSub">
                             <span class="sub-text">Sidebar scale: </span><span id="sidebarScaleValue"></span><span class="sub-text">%</span>
                             <input type="range" min="70" max="150" id="sidebarScaleSlider">
                         </div>
@@ -302,14 +311,6 @@
                             <div class="sliderbg"></div>
                         </div>
                         <span class="option-name" data-i18n="full_width">Full Width Fix</span>
-                    </div>
-                    <div class="option" id="remlogo">
-                        <input type="radio" id="off" name="remlogo">
-                        <input type="radio" id="on" name="remlogo">
-                        <div class="slider">
-                            <div class="sliderknob"></div>
-                            <div class="sliderbg"></div>
-                        </div><span class="option-name" data-i18n="remlogo">Remove sidebar logo</span>
                     </div>
                     <div class="option" id="hide_feedback">
                         <input type="radio" id="off" name="hide_feedback">
@@ -941,16 +942,30 @@
         <div class="custom-font option-container">
             <h3 class="header-small">Custom Background</h3>
             <p>Pick a preset or use your own image url.</p>
-            <div class="background-preset-grid" id="background-presets"></div>
-            <div class="background-scale-row">
-                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
-                    <span class="sub-text" style="font-weight:600; color:#e2e2e2;">Image scale</span>
-                    <span class="sub-text" id="customBackgroundScaleValue">100%</span>
+            <div id="customBackgroundManualControls">
+                <div class="background-preset-grid" id="background-presets"></div>
+                <div class="background-scale-row">
+                    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                        <span class="sub-text" style="font-weight:600; color:#e2e2e2;">Image scale</span>
+                        <span class="sub-text" id="customBackgroundScaleValue">100%</span>
+                    </div>
+                    <input type="range" min="50" max="200" step="1" id="customBackgroundScale">
                 </div>
-                <input type="range" min="50" max="200" step="1" id="customBackgroundScale">
+                <input style="width:85%;" class="card-input" id="customBackgroundLink" placeholder="https://...">
+                <button id="clearCustomBackground" class="big-button" style="margin-top: 8px;">Clear Background</button>
             </div>
-            <input style="width:85%;" class="card-input" id="customBackgroundLink" placeholder="https://...">
-            <button id="clearCustomBackground" class="big-button" style="margin-top: 8px;">Clear Background</button>
+            <div class="sub-option" style="margin-top:10px;">
+                <input type="checkbox" id="customBackgroundDaily" name="customBackgroundDaily">
+                <label for="customBackgroundDaily" class="sub-text">Daily Random Image</label>
+            </div>
+            <div class="sub-option" style="margin-top:6px;">
+                <input type="checkbox" id="customBackgroundNasaDaily" name="customBackgroundNasaDaily">
+                <label for="customBackgroundNasaDaily" class="sub-text">NASA Astronomy Picture of the Day</label>
+            </div>
+            <div class="sub-option" style="margin-top:8px;">
+                <input type="checkbox" id="fitImageToScreen" name="fitImageToScreen">
+                <label for="fitImageToScreen" class="sub-text">Fit image to screen</label>
+            </div>
         </div>
 
     </div>

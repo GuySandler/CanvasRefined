@@ -30,6 +30,10 @@ function isConversationsPage() {
     return /^\/conversations(?:\/|$)/.test(current_page);
 }
 
+function isAccountsPage() {
+    return /^\/accounts(?:\/|$)/.test(current_page);
+}
+
 function isProfilePage() {
     return /^\/profile(?:\/|$)/.test(current_page);
 }
@@ -56,72 +60,6 @@ function addSubmissionPageButton() {
         textContent: "Back to Assignment",
         style: "display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;margin:0 0 12px 0;padding:10px 14px;text-decoration:none;font-weight:700;",
     }, true);
-}
-
-let sequenceFooterObserver = null;
-
-function isAssignmentPage() {
-    return /^\/courses\/\d+\/assignments(?:\/\d+)?(?:\/|$)/.test(current_page);
-}
-
-function removeSequenceFooter() {
-    if (!isAssignmentPage()) return false;
-    const sequenceFooter = document.getElementById("sequence_footer");
-    if (!sequenceFooter) return false;
-    sequenceFooter.remove();
-    return true;
-}
-
-function watchSequenceFooter() {
-    if (!isAssignmentPage()) return;
-    if (removeSequenceFooter()) return;
-    if (sequenceFooterObserver) return;
-
-    sequenceFooterObserver = new MutationObserver(() => {
-        if (removeSequenceFooter() && sequenceFooterObserver) {
-            sequenceFooterObserver.disconnect();
-            sequenceFooterObserver = null;
-        }
-    });
-
-    sequenceFooterObserver.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => {
-        if (sequenceFooterObserver) {
-            sequenceFooterObserver.disconnect();
-            sequenceFooterObserver = null;
-        }
-    }, 10000);
-}
-
-function ensureSubmissionPageButton() {
-    const assignmentLink = getSubmissionAssignmentLink();
-    if (!assignmentLink) return false;
-    const content = document.getElementById("content");
-    if (!content) return false;
-    if (content.querySelector("#canvasrefined-assignment-return")) return true;
-    addSubmissionPageButton();
-    return Boolean(content.querySelector("#canvasrefined-assignment-return"));
-}
-
-function watchSubmissionPageButton() {
-    if (!getSubmissionAssignmentLink()) return;
-    if (ensureSubmissionPageButton()) return;
-    if (submissionPageButtonObserver) return;
-
-    submissionPageButtonObserver = new MutationObserver(() => {
-        if (ensureSubmissionPageButton() && submissionPageButtonObserver) {
-            submissionPageButtonObserver.disconnect();
-            submissionPageButtonObserver = null;
-        }
-    });
-
-    submissionPageButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => {
-        if (submissionPageButtonObserver) {
-            submissionPageButtonObserver.disconnect();
-            submissionPageButtonObserver = null;
-        }
-    }, 10000);
 }
 
 function addProfileLogoutPageButton() {
@@ -166,6 +104,194 @@ function watchProfileLogoutPageButton() {
             profileLogoutButtonObserver = null;
         }
     }, 10000);
+}
+
+function ensureSubmissionPageButton() {
+    const assignmentLink = getSubmissionAssignmentLink();
+    if (!assignmentLink) return false;
+    const content = document.getElementById("content");
+    if (!content) return false;
+    if (content.querySelector("#canvasrefined-assignment-return")) return true;
+    addSubmissionPageButton();
+    return Boolean(content.querySelector("#canvasrefined-assignment-return"));
+}
+
+function watchSequenceFooter() {
+    if (!isAssignmentPage()) return;
+    if (removeSequenceFooter()) return;
+    if (sequenceFooterObserver) return;
+
+    sequenceFooterObserver = new MutationObserver(() => {
+        if (removeSequenceFooter() && sequenceFooterObserver) {
+            sequenceFooterObserver.disconnect();
+            sequenceFooterObserver = null;
+        }
+    });
+
+    sequenceFooterObserver.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(() => {
+        if (sequenceFooterObserver) {
+            sequenceFooterObserver.disconnect();
+            sequenceFooterObserver = null;
+        }
+    }, 10000);
+}
+
+function watchSubmissionPageButton() {
+    if (!getSubmissionAssignmentLink()) return;
+    if (ensureSubmissionPageButton()) return;
+    if (submissionPageButtonObserver) return;
+
+    submissionPageButtonObserver = new MutationObserver(() => {
+        if (ensureSubmissionPageButton() && submissionPageButtonObserver) {
+            submissionPageButtonObserver.disconnect();
+            submissionPageButtonObserver = null;
+        }
+    });
+
+    submissionPageButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(() => {
+        if (submissionPageButtonObserver) {
+            submissionPageButtonObserver.disconnect();
+            submissionPageButtonObserver = null;
+        }
+    }, 10000);
+}
+
+async function getActiveCustomBackground() {
+    const syncOpts = await chrome.storage.sync.get([
+        "customBackgroundDaily",
+        "customBackgroundNasaDaily",
+        "customBackgroundLink",
+        "customBackgroundScale",
+    ]);
+
+    console.log("[CanvasRefined] getActiveCustomBackground:", syncOpts);
+
+    if (syncOpts.customBackgroundNasaDaily === true) {
+        console.log("[CanvasRefined] Using NASA APOD");
+        return await getNasaDailyBackground();
+    }
+
+    if (syncOpts.customBackgroundDaily === true) {
+        console.log("[CanvasRefined] Using Wikimedia Featured");
+        const dailyPreset = await getDailyBackgroundPreset();
+        if (dailyPreset) {
+            console.log("[CanvasRefined] Wikimedia URL:", dailyPreset.url);
+            return {
+                url: dailyPreset.url,
+                scale: dailyPreset.scale,
+            };
+        }
+        console.log("[CanvasRefined] Wikimedia returned null");
+    }
+
+    if (syncOpts.customBackgroundLink && syncOpts.customBackgroundLink !== "") {
+        console.log("[CanvasRefined] Using custom link");
+        return {
+            url: syncOpts.customBackgroundLink,
+            scale: syncOpts.customBackgroundScale || 100,
+        };
+    }
+
+    console.log("[CanvasRefined] No custom background");
+    return null;
+}
+
+async function getDailyBackgroundPreset() {
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const cacheKey = `picsum_daily_${dateStr}`;
+    const cached = await chrome.storage.local.get(cacheKey);
+    if (cached[cacheKey]) return cached[cacheKey];
+
+    const url = `https://picsum.photos/seed/${dateStr}/1920/1080`;
+    const result = { url, scale: 100 };
+    await chrome.storage.local.set({ [cacheKey]: result });
+    return result;
+}
+
+async function getNasaDailyBackground() {
+    try {
+        return await chrome.runtime.sendMessage({ type: "getNasaBackground" });
+    } catch (error) {
+        console.error("[CanvasRefined] Failed to fetch NASA APOD:", error);
+        return null;
+    }
+}
+
+let nasaInfoOverlayEl = null;
+
+function isDashboardPage() {
+    return !!document.querySelector("#DashboardCard_Container");
+}
+
+function createNasaInfoOverlay() {
+    if (options.customBackgroundNasaDaily !== true) return;
+    if (nasaInfoOverlayEl || !isDashboardPage()) return;
+    
+    const contentMain = document.querySelector("#content.ic-Layout-contentMain, .ic-Layout-contentMain");
+    if (!contentMain) return;
+    if (getComputedStyle(contentMain).position === "static") {
+        contentMain.style.position = "relative";
+    }
+
+    nasaInfoOverlayEl = document.createElement("div");
+    nasaInfoOverlayEl.id = "canvasrefined-nasa-info-overlay";
+    nasaInfoOverlayEl.style.cssText = "position:absolute;right:24px;bottom:24px;z-index:9999;";
+    nasaInfoOverlayEl.innerHTML = `
+        <div id="nasa-info-icon" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:rgba(30,30,30,0.85);border:1px solid rgba(255,255,255,0.15);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e2e2e2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+        </div>
+        <div id="nasa-info-panel" style="display:none;position:absolute;bottom:calc(100% + 10px);right:0;background:#1e1e1e;border:1px solid #3c3c3c;border-radius:8px;padding:14px 18px;width:340px;max-width:calc(100vw - 40px);box-shadow:0 4px 16px rgba(0,0,0,0.4);">
+            <div id="nasa-info-title" style="font-weight:600;font-size:14px;margin-bottom:4px;color:#f5f5f5;"></div>
+            <div id="nasa-info-date" style="font-size:12px;color:#ababab;margin-bottom:4px;"></div>
+            <div id="nasa-info-credit" style="font-size:12px;color:#dfa581;margin-bottom:8px;"></div>
+            <div id="nasa-info-explanation" style="font-size:12px;color:#e2e2e2;line-height:1.5;max-height:200px;overflow-y:auto;white-space:pre-wrap;"></div>
+        </div>
+    `;
+    
+    const icon = nasaInfoOverlayEl.querySelector("#nasa-info-icon");
+    const panel = nasaInfoOverlayEl.querySelector("#nasa-info-panel");
+    
+    const showPanel = async () => {
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const cacheKey = `nasa_apod_${dateStr}`;
+        const cached = await chrome.storage.local.get(cacheKey);
+        const metaDate = cached[cacheKey]?.date || dateStr;
+        const metadataKey = `nasa_apod_meta_${metaDate}`;
+        const metadata = await chrome.storage.local.get(metadataKey);
+        const meta = metadata[metadataKey];
+        if (meta) {
+            document.getElementById("nasa-info-title").textContent = meta.title || "";
+            document.getElementById("nasa-info-date").textContent = `Date: ${meta.date}`;
+            document.getElementById("nasa-info-credit").textContent = meta.copyright ? `Credit: ${meta.copyright}` : "";
+            document.getElementById("nasa-info-explanation").textContent = meta.explanation || "No description available.";
+            panel.style.display = "block";
+        }
+    };
+    
+    const hidePanel = () => {
+        panel.style.display = "none";
+    };
+    
+    icon.addEventListener("mouseenter", showPanel);
+    icon.addEventListener("mouseleave", hidePanel);
+    panel.addEventListener("mouseenter", showPanel);
+    panel.addEventListener("mouseleave", hidePanel);
+    
+    contentMain.appendChild(nasaInfoOverlayEl);
+}
+
+function removeNasaInfoOverlay() {
+    if (nasaInfoOverlayEl) {
+        nasaInfoOverlayEl.remove();
+        nasaInfoOverlayEl = null;
+    }
 }
 
 function getSidebarStateMode(mode = getSidebarLayoutMode()) {
@@ -348,6 +474,7 @@ async function reminderWatch() {
 }
 
 function updateReminders() {
+    if (!assignments || typeof assignments.then !== "function") return;
     const fiveDays = 1000 * 60 * 60 * 24 * 5;
     const now = (new Date()).getTime();
     const list = [];
@@ -438,6 +565,17 @@ function isDomainCanvasPage() {
 }
 
 function startExtension() {
+    // Remove footer robustly - run first so a crash below can't block it
+    const removeFooter = () => {
+        const footer = document.querySelector('footer#footer.ic-app-footer, footer#footer');
+        if (footer) footer.remove();
+    };
+    removeFooter();
+    const footerObserver = new MutationObserver(() => {
+        removeFooter();
+    });
+    footerObserver.observe(document.documentElement, { childList: true, subtree: true });
+
     toggleDarkMode();
 
     chrome.storage.sync.get(["better_sidebar", "sidebar_scale"], result => {
@@ -463,7 +601,6 @@ function startExtension() {
 
         //getClassAverages();
         
-        setTimeout(() => document.getElementById("footer")?.remove(), 800);
         setTimeout(() => runDarkModeFixer(false), 800);
         setTimeout(() => runDarkModeFixer(false), 4500);
     });
@@ -567,6 +704,21 @@ function applyOptionsChanges(changes) {
 				applyAestheticChanges();
 				break;
             case "customBackgroundScale":
+                applyCustomBackground();
+                break;
+            case "customBackgroundDaily":
+                applyCustomBackground();
+                removeNasaInfoOverlay();
+                break;
+            case "customBackgroundNasaDaily":
+                applyCustomBackground();
+                if (options.customBackgroundNasaDaily === true) {
+                    createNasaInfoOverlay();
+                } else {
+                    removeNasaInfoOverlay();
+                }
+                break;
+            case "fitImageToScreen":
                 applyCustomBackground();
                 break;
 			// case "show_updates":
@@ -674,22 +826,31 @@ function ensureBetterSidebar() {
     setupBetterSidebar(getSidebarLayoutMode());
 }
 
-function applyCustomBackground() {
+async function applyCustomBackground() {
     // let style = document.querySelector("#DashboardCard_Container")
     let style = document.querySelector("#canvasrefined-background") || document.createElement('style');
     style.id = "canvasrefined-background";
-    
-    if (options.customBackgroundLink && options.customBackgroundLink !== "") {
-        const backgroundScale = Number(options.customBackgroundScale) || 100;
-        style.textContent = `
+
+    const activeBackground = await getActiveCustomBackground();
+    console.log("[CanvasRefined] activeBackground:", activeBackground);
+    if (!activeBackground) {
+        if (style.isConnected) style.remove();
+        return;
+    }
+
+    const backgroundScale = Number(activeBackground.scale) || 100;
+    const backgroundUrl = JSON.stringify(activeBackground.url);
+    const fitToScreen = options.fitImageToScreen === true;
+    console.log("[CanvasRefined] Applying background:", activeBackground.url, "fitToScreen:", fitToScreen);
+    style.textContent = `
         #wrapper {
-            background-image: url('${options.customBackgroundLink}') !important;
+            background-image: url(${backgroundUrl}) !important;
             background-repeat: no-repeat !important;
             background-position: center center !important;
             background-attachment: fixed !important;
         }
         @media (orientation: landscape) {
-            #wrapper { background-size: ${backgroundScale}% auto !important; }
+            #wrapper { background-size: ${fitToScreen ? 'cover' : backgroundScale + '% auto'} !important; }
         }
         @media (orientation: portrait) {
             #wrapper { background-size: cover !important; }
@@ -698,6 +859,20 @@ function applyCustomBackground() {
             background: none !important;
             /* backdrop-filter: blur(10px) !important; */
             border-radius: 5px;
+            padding-left: 20px !important;
+        }
+        #dashboard_header_container {
+            margin-left: -35px !important;
+            margin-right: -35px !important;
+            box-sizing: border-box !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 20%) !important;
+            border: 1px solid color-mix(in srgb, var(--bcborders) 60%, transparent) !important;
+            border-radius: 10px !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 1000 !important;
+            backdrop-filter: blur(8px) saturate(120%) !important;
+            -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
         }
         #right-side-wrapper {
             // backdrop-filter: blur(10px) !important;
@@ -837,8 +1012,7 @@ function applyCustomBackground() {
         tr.student_assignment.assignment_graded.editable > * {
             border:none!important
         }`; 
-        // TODO: liquid glass?
-    }
+    // TODO: liquid glass?
     
     document.documentElement.appendChild(style);
 }
@@ -903,6 +1077,7 @@ function checkDashboardReady() {
                         loadDashboardNotes();
                         setupGPACalc();
                         showUpdateMsg();
+                        createNasaInfoOverlay();
                     }
 
                     const rightSide = document.querySelector("#right-side");
@@ -942,7 +1117,7 @@ function recieveMessage(request, sender, sendResponse) {
         case ("getcolors"): sendResponse(getCardColors()); break;
         case ("inspect"): sendResponse(inspectDarkMode(true)); break;
         case ("fixdm"): sendResponse(runDarkModeFixer(true)); break;
-		case ("updateBackground"): clearCustomBackground(); sendResponse(true); break;
+		case ("updateBackground"): applyCustomBackground(); sendResponse(true); break;
         default: sendResponse(true);
     }
 }
@@ -2442,8 +2617,13 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
         const contentMain = document.querySelector(".ic-Layout-contentMain");
         contentMain?.style.setProperty("flex", "1 1 auto");
         contentMain?.style.setProperty("min-width", "0");
+        const notRightSide = document.getElementById("not_right_side");
+        if (notRightSide && isAccountsPage()) {
+            notRightSide.style.setProperty("width", "100%");
+            notRightSide.style.setProperty("max-width", "100%");
+            notRightSide.style.setProperty("min-width", "0");
+        }
         if (layoutMode === "course" && leftSide) {
-            const notRightSide = document.getElementById("not_right_side");
             const rightSideWrapper = document.getElementById("right-side-wrapper");
             const sectionTabs = document.getElementById("section-tabs");
             leftSide.style.setProperty("padding-top", "0", "important");
@@ -3790,7 +3970,7 @@ function setupGPACalc() {
         grades?.then(result => {
 
             const sortableContainer = document.querySelector(".ic-DashboardCard__box__container");
-            const dashboardContainer = document.querySelector("#DashboardCard_Container");
+            const dashboardContainer = sortableContainer || document.querySelector("#DashboardCard_Container");
             if (!dashboardContainer) return;
 
             let container2 = document.querySelector(".canvasrefined-gpa-card");
@@ -3850,17 +4030,15 @@ function setupGPACalc() {
                 if (cumulative) cumulative.style.display = options.gpa_calc_cumulative ? "block" : "none";
 
                 const shouldPrepend = options.gpa_calc_prepend === true;
-                const firstCard = shouldPrepend ? container : container2;
-                const secondCard = shouldPrepend ? container2 : container;
-
-                if (firstCard.parentElement !== dashboardContainer) {
-                    dashboardContainer.prepend(firstCard);
-                }
-                if (secondCard.parentElement !== dashboardContainer) {
-                    if (shouldPrepend) {
-                        dashboardContainer.prepend(secondCard);
-                    } else {
-                        dashboardContainer.appendChild(secondCard);
+                if (shouldPrepend) {
+                    if (dashboardContainer.children[0] !== container || dashboardContainer.children[1] !== container2) {
+                        dashboardContainer.insertBefore(container, dashboardContainer.firstChild);
+                        dashboardContainer.insertBefore(container2, container.nextSibling);
+                    }
+                } else {
+                    if (dashboardContainer.lastElementChild !== container || container2.nextElementSibling !== container) {
+                        dashboardContainer.appendChild(container2);
+                        dashboardContainer.appendChild(container);
                     }
                 }
             }
@@ -4013,23 +4191,39 @@ function changeFullWidth() {
 function changeGradientCards() {
     if (options.gradient_cards === true) {
         let cardheads = document.querySelectorAll('.ic-DashboardCard__header_hero');
-        let cardcss = document.querySelector("#gradientcss") || document.createElement('style');
-        cardcss.id = "gradientcss";
-        cardcss.textContent = "";
-        document.documentElement.appendChild(cardcss);
 
+        // Only create + append the style once; never re-append an already-
+        // attached element, since appending to <html> triggers the
+        // MutationObserver in checkDashboardReady() and re-runs this function.
+        let cardcss = document.querySelector("#gradientcss");
+        if (!cardcss) {
+            cardcss = document.createElement('style');
+            cardcss.id = "gradientcss";
+            document.documentElement.appendChild(cardcss);
+        }
+
+        // Build the full CSS into a string first, then only touch the DOM
+        // if the content actually changed. This keeps #gradientcss from being
+        // cleared/rewritten on every observer tick.
+        let css = "";
         for (let i = 0; i < cardheads.length; i++) {
             let colorone = cardheads[i].style.backgroundColor.split(',');
             let [r, g, b] = [parseInt(colorone[0].split('(')[1]), parseInt(colorone[1]), parseInt(colorone[2])];
             let [h, s, l] = [rgbToHsl(r, g, b)[0], rgbToHsl(r, g, b)[1], rgbToHsl(r, g, b)[2]];
             let degree = ((h % 60) / 60) >= .66 ? 30 : ((h % 60) / 60) <= .33 ? -30 : 15;
             let newh = h > 300 ? (360 - (h + 65)) + (65 + degree) : h + 65 + degree;
-            cardcss.textContent += ".ic-DashboardCard:nth-of-type(" + (i + 1) + ") .ic-DashboardCard__header_hero{background: linear-gradient(115deg, hsl(" + h + "deg," + s + "%," + l + "%) 5%, hsl(" + newh + "deg," + s + "%," + l + "%) 100%)!important}";
+            css += ".ic-DashboardCard:nth-of-type(" + (i + 1) + ") .ic-DashboardCard__header_hero{background: linear-gradient(115deg, hsl(" + h + "deg," + s + "%," + l + "%) 5%, hsl(" + newh + "deg," + s + "%," + l + "%) 100%)!important}";
+        }
+
+        if (cardcss.textContent !== css) {
+            cardcss.textContent = css;
         }
 
     } else {
         let cardcss = document.querySelector("#gradientcss");
-        if (cardcss) cardcss.textContent = "";
+        if (cardcss && cardcss.textContent !== "") {
+            cardcss.textContent = "";
+        }
     }
 }
 

@@ -104,6 +104,10 @@ chrome.runtime.onInstalled.addListener(function () {
             "customCardStyles": false,
             "customBackgroundLink": "",
             "customBackgroundScale": 100,
+            "customBackgroundDaily": false,
+            "customBackgroundNasaDaily": false,
+            "nasaInfoOverlay": false,
+            "fitImageToScreen": false,
         }
     };
 
@@ -122,6 +126,11 @@ chrome.runtime.onInstalled.addListener(function () {
                 newLocalOptions[option] = default_options["local"][option];
             })
 
+            // migrate old setting name
+            if (sync["nasaFitToScreen"] !== undefined && sync["fitImageToScreen"] === undefined) {
+                newSyncOptions["fitImageToScreen"] = sync["nasaFitToScreen"];
+            }
+
             if (Object.keys(newLocalOptions).length > 0) {
                 chrome.storage.local.set(newLocalOptions);
             }
@@ -138,5 +147,91 @@ chrome.runtime.onInstalled.addListener(function () {
         });
     });
 });
+
+// The NASA APOD API with the demo key is limited to 30 requests/hour and 50/day.
+// All calls are serialized through this worker and gated against those limits.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.type === "getNasaBackground") {
+        getNasaBackground().then(sendResponse);
+        return true;
+    }
+});
+
+let nasaRequestQueue = Promise.resolve();
+function queuedNasaTask(task) {
+    const run = nasaRequestQueue.then(task, task);
+    nasaRequestQueue = run.catch(() => {});
+    return run;
+}
+
+async function getNasaBackground() {
+    return queuedNasaTask(async () => {
+        const date = new Date();
+        for (let i = 0; i < 7; i++) {
+            const dateStr = date.toISOString().slice(0, 10);
+            const cacheKey = `nasa_apod_${dateStr}`;
+            const metadataKey = `nasa_apod_meta_${dateStr}`;
+            const cached = await chrome.storage.local.get([cacheKey, metadataKey]);
+            if (cached[cacheKey]) return cached[cacheKey];
+
+            // Don't re-probe dates the API already told us don't exist
+            const missingKey = `nasa_apod_missing_${dateStr}`;
+            const missing = await chrome.storage.local.get(missingKey);
+            if (missing[missingKey]) {
+                date.setDate(date.getDate() - 1);
+                continue;
+            }
+
+            const data = await callNasaApi(dateStr);
+            if (data === "ratelimited" || data === null) return null;
+            if (data === "missing") {
+                await chrome.storage.local.set({ [missingKey]: true });
+                date.setDate(date.getDate() - 1);
+                continue;
+            }
+
+            const url = data.thumbnail_url || data.hdurl || data.url;
+            if (!url) return null;
+            const result = { url, scale: 100, date: dateStr };
+            await chrome.storage.local.set({ [cacheKey]: result });
+            await chrome.storage.local.set({ [metadataKey]: { title: data.title || "", date: data.date || dateStr, copyright: data.copyright || "", explanation: data.explanation || "" } });
+            return result;
+        }
+        return null;
+    });
+}
+
+async function callNasaApi(dateStr) {
+    const now = Date.now();
+    const { nasa_api_calls = [] } = await chrome.storage.local.get("nasa_api_calls");
+    const lastHour = nasa_api_calls.filter(t => now - t < 3600 * 1000);
+    const lastDay = nasa_api_calls.filter(t => now - t < 24 * 3600 * 1000);
+    if (lastHour.length >= 30 || lastDay.length >= 50) {
+        console.warn("[CanvasRefined] NASA API rate limit reached, skipping request");
+        return "ratelimited";
+    }
+
+    let response;
+    try {
+        response = await fetch(`https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true&date=${dateStr}`);
+    } catch (error) {
+        console.error("[CanvasRefined] Failed to fetch NASA APOD:", error);
+        return null;
+    }
+
+    // The request was made, so it counts against the quota
+    await chrome.storage.local.set({ nasa_api_calls: [...lastDay, now] });
+
+    if (response.status === 429) return "ratelimited";
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData.code === 404 && (errorData.msg || "").toLowerCase().includes("no data available")) {
+            return "missing";
+        }
+        return null;
+    }
+
+    return await response.json().catch(() => null);
+}
 
 // chrome.runtime.setUninstallURL("https://diditupe.dev/canvasrefined/goodbye");
