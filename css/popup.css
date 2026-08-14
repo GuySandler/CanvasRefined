@@ -29,7 +29,7 @@ a.option-container {display: block;color:#5ca5f6;font-size: 14px;}
 a.option-container:hover {background: #333}
 #customDomain {font-size: 12px; background: var(--inputbg); border: none;padding:8px;color: #e2e2e2;margin-top: 6px;border-radius: 7px; font-family: inherit;}
 #customDomain {width: 100%; box-sizing: border-box}
-#auto_dark_start, #auto_dark_end, #scheduledReminderTime {padding: 3px 5px; font-size:12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius: 7px;}
+#auto_dark_start, #auto_dark_end {padding: 3px 5px; font-size:12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius: 7px;}
 .options-left {margin-right: 8px;}
 .options-left, .options-right {width: 50%;}
 .customDomain {font-weight:600}

@@ -20,8 +20,6 @@ const syncedSubOptions = [
 	// "hide_completed",
 	"num_todo_items",
 	"hover_preview",
-	// "scheduledReminder",
-	// "scheduledReminderTime",
 	"customCardStyles",
 	"imageSize",
 	"cardRoundness",
@@ -38,8 +36,6 @@ const syncedSubOptions = [
 const localSwitches = [];
 const fontsDropdownStateKey = "fonts_dropdown_open";
 
-//const apiurl = "http://localhost:3000";
-// const apiurl = "https://canvasrefined.diditupe.dev";
 const apiurl = "none";
 
 const defaultOptions = {
@@ -129,8 +125,6 @@ const defaultOptions = {
         "card_method_date": false,
         "card_method_dashboard": true,
         "card_limit": 25,
-        // "scheduledReminder": false,
-        // "scheduledReminderTime": { "hour": "09", "minute": "00" },
         "imageSize": 100,
         "cardRoundness": 5,
         "cardSpacing": 0,
@@ -230,14 +224,6 @@ function setupAutoDarkInput(initial, time) {
     });
 }
 
-// function setupScheduledReminderInput(initial) {
-//     let el = document.querySelector('#scheduledReminderTime');
-//     el.value = initial.hour + ":" + initial.minute;
-//     el.addEventListener('change', function () {
-//         let timeinput = { "hour": this.value.split(':')[0], "minute": this.value.split(':')[1] };
-//         chrome.storage.sync.set({ scheduledReminderTime: timeinput });
-//     });
-// }
 
 function setupCardLimitSlider(initial) {
     let el = document.querySelector("#card_limit");
@@ -756,7 +742,6 @@ function setup() {
             "customBackgroundDaily",
             "customBackgroundNasaDaily",
             "fitImageToScreen",
-			// "scheduledReminder",
 			"customCardStyles",
 		],
 		tabs: {
@@ -822,10 +807,6 @@ function setup() {
 				identifier: "custom_styles",
 				setup: (initial) => setupCustomStyle(initial),
 			},
-			// {
-			// 	identifier: "scheduledReminderTime",
-			// 	setup: (initial) => setupScheduledReminderInput(initial),
-			// },
 			{
 				identifier: "imageSize",
 				setup: (initial) => setupImageSizeInput(initial),
@@ -910,12 +891,6 @@ function setup() {
             document.querySelector("#" + option).checked = value;
         });
         syncCustomBackgroundDailyState(sync.customBackgroundDaily === true || sync.customBackgroundNasaDaily === true);
-        /*
-        document.querySelector('#autodark_start').value = result.auto_dark_start["hour"] + ":" + result.auto_dark_start["minute"];
-        document.querySelector('#autodark_end').value = result.auto_dark_end["hour"] + ":" + result.auto_dark_end["minute"];
-        document.querySelector("#assignment_date_format").checked = result.assignment_date_format == true;
-        document.querySelector("#todo_hr24").checked = result.todo_hr24 == true;
-        */
         toggleDarkModeDisable(sync.auto_dark);
         displayBackgroundPresets();
     });
@@ -931,15 +906,6 @@ function setup() {
         });
     })
 
-    /*
-    // checkboxes
-    menu.checkboxes.forEach(checkbox => {
-        document.querySelector("#" + checkbox).addEventListener('change', function () {
-            let status = this.checked;
-            chrome.storage.sync.set(JSON.parse(`{"${checkbox}": ${status}}`));
-        });
-    });
-    */
 
     // activate tab buttons
     document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -1044,7 +1010,6 @@ function setup() {
     document.querySelectorAll(".export-details input").forEach(input => {
         input.addEventListener("change", () => {
             chrome.storage.sync.get(syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds"]), async storage => {
-                //chrome.storage.local.get(["dark_preset"], async local => {
                 let final = {};
                 for await (item of document.querySelectorAll(".export-details input")) {
                     if (item.checked) {
@@ -1077,7 +1042,6 @@ function setup() {
                     }
                 }
                 document.querySelector("#export-output").value = JSON.stringify(final);
-                //});
             });
         });
     });
@@ -1144,14 +1108,6 @@ function setup() {
         })
     });
 
-    /*
-    ['autodark_start', 'autodark_end'].forEach(function (timeset) {
-        document.querySelector('#' + timeset).addEventListener('change', function () {
-            let timeinput = { "hour": this.value.split(':')[0], "minute": this.value.split(':')[1] };
-            timeset === "autodark_start" ? chrome.storage.sync.set({ auto_dark_start: timeinput }) : chrome.storage.sync.set({ auto_dark_end: timeinput });
-        });
-    });
-    */
 
     // activate sidebar tool radio
     ["#radio-sidebar-image", "#radio-sidebar-gradient", "#radio-sidebar-solid"].forEach(radio => {
@@ -1180,8 +1136,6 @@ function setup() {
     document.getElementById("theme-search").addEventListener("change", async (e) => {
         searchFor = e.target.value;
         console.log(searchFor);
-        // current_page_num = 1;
-        // displayThemeList(0);
         // linear search
         let themesToShow = [];
         for (let i = 0; i < themes.length; i++) {
@@ -1197,7 +1151,6 @@ function setup() {
     document.getElementById("save-theme").addEventListener("click", saveCurrentTheme);
 
     // activate submit theme button
-    // document.getElementById("submit-theme-btn").addEventListener("click", submitTheme);
 
     document.getElementById("submit-theme-btn-1").addEventListener("click", () => {
         document.getElementById("submit-popup").classList.add("open");
@@ -1230,15 +1183,8 @@ function setup() {
     });
 
     // activate theme browser opt out
-    // document.getElementById("new_browser_out").addEventListener("click", () => {
-        chrome.storage.sync.set({ "new_browser": false });
-        current_page_num = 1;
-        displayThemeList(0);
-        // displayAlert(false, "Success! You are now viewing the old theme browser. This one will no longer recieve updates, but there is still plenty to choose from.");
-    // });
 
     // activate theme browser opt in
-    // document.getElementById("new_browser_in").addEventListener("click", registerUser);
 
     document.querySelectorAll(".theme-sort-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -1256,12 +1202,7 @@ function setup() {
         document.getElementById("browser-settings-popup").classList.remove("open");
     });
 
-    // document.getElementById("reset-optin").addEventListener("click", () => {
-    //     chrome.storage.sync.set({ "new_browser": null });
-    //     document.getElementById("opt-in").style.display = "block";
-    // });
 
-    // document.getElementById("view-submissions-btn").addEventListener("click", displayMySubmissions);
     document.getElementById("submit-form-btn").addEventListener("click", displayThemeSubmissionForm);
 
     document.getElementById("gpa-plus-minus").addEventListener("click", () => {
@@ -1383,37 +1324,6 @@ function displayThemeSubmissionForm() {
     document.getElementById("view-submissions-btn").classList.remove("active");
 }
 
-async function displayMySubmissions() { //TODO: remake
-    const sync = await chrome.storage.sync.get("id");
-    const res = await fetch(`${apiurl}/api/themes/submissions?id=${sync["id"]}`);
-    const data = await res.json();
-
-    //if (data?.errors !== false) return;
-
-    document.getElementById("submit-form").style.display = "none";
-    document.getElementById("view-submissions").style.display = "block";
-    document.getElementById("submit-form-btn").classList.remove("active");
-    document.getElementById("view-submissions-btn").classList.add("active");
-
-    const el = document.getElementById("latest-submissions");
-    el.textContent = "";
-
-    if (data.message.length === 0) {
-        el.textContent = "You haven't submitted any themes yet.";
-    }
-
-    data.message.forEach(theme => {
-        const container = makeElement("div", el, {"className": "submitted-theme" });
-        const btn = makeElement("button", container, { "className": "theme-button clickable customization-button", "style": `min-width:105px;max-width:105px;background-image:linear-gradient(rgba(0, 0, 0, 0.44), rgba(0, 0, 0, 0.44)), url(${theme.preview})` });
-        const title = makeElement("p", btn, { "className": "theme-button-title clickable", "textContent": theme.title });
-        const credits = makeElement("p", btn, { "className": "theme-button-creator clickable", "textContent": theme.credits });
-        const details = makeElement("div", container, { "className": "submitted-theme-details" });
-        const top = makeElement("div", details, { "style": "display:flex;justify-content:space-between;align-items:center" });
-        const tag = makeElement("span", top, { "className": "submitted-theme-tag", "textContent": theme.approved === 1 ? "Approved" : theme.approved === 0 ? "Pending" : "Rejected", "style": `background: ${theme.approved === 1 ? "#ad3a74" : theme.approved === 0 ? "#514e4e": "#000"}` });
-        const msg = makeElement("p", details, { "textContent": theme.approved === 1 ? "Looks great! Thanks for submitting" : theme.approved === 0 ? "Your theme is still awaiting approval." : `Your theme was rejected${theme.reason ? (": " + theme.reason) : " because it did not meet the theme guidelines."}`});
-        const ago = makeElement("span", top, { "className": "submitted-theme-time", "textContent": `${getRelativeDate(new Date(parseInt(theme.time))).time} ago` });
-    });
-}
 
 async function getExport(storage, options) {
     let final = {};
@@ -1489,7 +1399,6 @@ function themeSortFn(method) {
             return themes;
         case "Color":
             return themes.sort((a, b) => {
-                //return (colorValues[a.color] || 88) - (colorValues[b.color] || 88)
                 return (colorValues[a.color] || (a.color !== "whiteblack" && a.color.includes("white") ? 15 : 16)) - (colorValues[b.color] || (b.color !== "whiteblack" && b.color.includes("white") ? 15 : 16))
             })
             return themes.sort((a, b) => {
@@ -1545,110 +1454,8 @@ let searchFor = "";
 let current_sort = "Popular";
 let allThemes = themeSortFn(current_sort);
 
-//sortThemes(current_sort);
-
-function shortScore(score) {
-    if (score >= 1400) {
-        return (Math.floor(score / 1000) + "." +  Math.round((score % 1000) / 100)) + "k";
-    }
-    return score;
-}
-
 let fallback = false;
 
-async function submitTheme() { //TODO: remake
-
-    const sync = await chrome.storage.sync.get(null);
-
-    // if (sync["new_browser"] !== true) {
-    //     displayAlert(true, "You'll need to opt in to the new browser if you want to submit your theme. If you've opted out and want to opt in, you can scroll down to the bottom of this page and opt back in.");
-    //     return;
-    // }
-
-    const theme = await getExport(sync, [
-        ...syncedSwitches,
-        ...syncedSubOptions,
-        "custom_cards",
-        "card_colors",
-        "dark_preset",
-        "custom_font",
-        "gradient_cards",
-        "disable_color_overlay",
-    ]);
-    const title = document.getElementById("submit-title");
-    const credits = document.getElementById("submit-credits");
-
-    if (title.value === "") {
-        displayAlert(true, "The title of your theme can't be empty");
-        return;
-    }
-
-    if (credits.value === "") {
-        displayAlert(true, "The credits for your theme can't be empty");
-        return;
-    }
-    const body = JSON.stringify({
-        "identity": sync["id"],
-        "title": title.value,
-        "credits": credits.value,
-        "theme": JSON.stringify(theme)
-    });
-
-    fetch(`${apiurl}/api/themes/submit`, { //
-        "method": "POST",
-        "body": body,
-        "headers": {
-            "Content-Type": "application/json",
-          },
-    }).then(res => res.json())
-    .then(data => {
-        console.log(data);
-        if (data.errors === false) {
-            displayAlert(false, "Thanks for submitting your theme! I will try to approve it soon, but not every theme may be accepted.");
-            document.getElementById("submit-popup").classList.remove("open");
-        } else {
-            displayAlert(true, `Submission error: ${data.message} Please contact sandlerguy5@gmail.com if you believe this is incorrect.`);
-        }
-    });
-}
-
-async function registerUser() { // TODO: remake
-    try {
-        let id;
-
-        const sync = await chrome.storage.sync.get("id");
-
-        if (sync["id"] && sync["id"] !== "") {
-            id = sync["id"]
-        } else {
-            const res = await fetch(`${apiurl}/api/register`);
-            const data = await res.json();
-            id = data.id;
-        }
-
-        chrome.storage.sync.set({ "id": id }).then(async () => {
-            // test to see if the id was set correctly
-            // don't know why this is happening ??
-            const test = await chrome.storage.sync.get("id");
-            if (test["id"] === undefined || test["id"] === "") throw new Error();
-
-            // show the new browser
-            chrome.storage.sync.set({ "new_browser": true }).then(() => {
-                document.getElementById("opt-in").style.display = "none";
-                current_page_num = 1;
-                displayThemeList(0);
-                displayAlert(false, "Success! You should be able to see the new themes browser now. Enjoy!");
-            });
-
-        }).catch(e => {
-            displayAlert(true, "There was an error connecting an ID to your account. Please try again, and if this error persists, contact sandlerguy5@gmail.com!");
-        });
-
-    } catch (e) {
-        console.log(e);
-        displayAlert(true, "There was an error opting in. Please contact sandlerguy5@gmail.com if this error persists!");
-    }
-}
 
 function saveCurrentTheme() {
     const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors"]);
@@ -1692,234 +1499,8 @@ function saveCurrentTheme() {
 
 
 async function displayThemeList(direction = 0) {
-    // const sync = await chrome.storage.sync.get("new_browser");
-    // if (sync["new_browser"] === true && fallback === false) {
-        // displayThemeListNew(direction);
-    // } else {
-        displayThemeListOld(direction);
-    // }
-    // remove the opt-in notice
-    // if (sync["new_browser"] !== null && document.getElementById("opt-in")) document.getElementById("opt-in").style.display = "none";
 }
 
-function createThemeButton(location, theme) {
-    let themeBtn = makeElement("button", location, { "className": "theme-button clickable" });
-    themeBtn.classList.add("customization-button");
-    if (!themeBtn.style.background) themeBtn.style.backgroundImage = "linear-gradient(#00000070, #00000070), url(" + theme.preview + ")";
-    if (theme.title) makeElement("p", themeBtn, { "className": "theme-button-title clickable", "textContent": theme.title.replaceAll(" ", "") });
-    if (theme.credits) makeElement("p", themeBtn, { "className": "theme-button-creator clickable", "textContent": theme.credits });
-    return themeBtn;
-}
-
-function createThemeLikeBtn(location, initial, score, show) {
-    const likeBtn = makeElement("div", location, {"className": "theme-button-like"});
-    if (initial === true) {
-        likeBtn.classList.add("theme-liked");
-        score += 1;
-    }
-    const amount = makeElement("span", likeBtn, { "className": "theme-button-like-amount", "textContent": shortScore(score) });
-    if (show === true) amount.classList.add("showalways");
-    likeBtn.innerHTML += `<svg  xmlns="http://www.w3.org/2000/svg"  width="12"  height="12"  viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6.979 3.074a6 6 0 0 1 4.988 1.425l.037 .033l.034 -.03a6 6 0 0 1 4.733 -1.44l.246 .036a6 6 0 0 1 3.364 10.008l-.18 .185l-.048 .041l-7.45 7.379a1 1 0 0 1 -1.313 .082l-.094 -.082l-7.493 -7.422a6 6 0 0 1 3.176 -10.215z" /></svg>`;
-    return likeBtn;
-}
-
-let likeThemeTimeout = false;
-
-function setLikeTimeout() {
-    if (likeThemeTimeout === true) return;
-    likeThemeTimeout = true;
-    setTimeout(() => {
-        likeThemeTimeout = false;
-    }, 1000);
-}
-
-async function likeTheme(location, code, score) { // TODO: remake
-
-    if (likeThemeTimeout === true) return;
-
-    const sync = await chrome.storage.sync.get("id");
-    const local = await chrome.storage.local.get("liked_themes");
-
-    const setLikeStatus = (direction) => {
-
-        let output = local;
-    
-        if (direction === -1) {
-            location.classList.remove("theme-liked");
-            location.querySelector(".theme-button-like-amount").textContent = shortScore(score);
-            output = local["liked_themes"].filter(x => x !== code);
-        } else if (direction === 1) {
-            location.classList += (" theme-liked animate-like");
-            location.querySelector(".theme-button-like-amount").textContent = shortScore(score + 1);
-            output = [...local["liked_themes"], code];
-        }
-    
-        return output;
-    }
-
-    // show the updated like status immediately
-    setLikeStatus(location.classList.contains("theme-liked") ? -1 : 1);
-
-    const res = await fetch(`${apiurl}/api/themes/theme/${code}/like`, { 
-        "method": "POST", 
-        "body": JSON.stringify({ "id": sync["id"] }), 
-        "headers": {
-            "Content-Type": "application/json"
-        },
-    });
-
-    const data = await res.json();
-
-    if (data.errors === false) {
-        const direction = parseInt(data.message);
-        // update the like status if there is some disagreement with the server
-        const update = setLikeStatus(direction);
-        chrome.storage.local.set({ "liked_themes": update }).then(setLikeTimeout);
-    } else {
-        setLikeTimeout();
-    }
-}
-
-async function getAndLoadTheme(code) { // todo: remake
-    const key = `themes/${code}`;
-    let output = {};
-    if (cache[key]) {
-        output = cache[key];
-        console.log("got this theme from the cache.");
-    } else {
-        const res = await fetch(`${apiurl}/api/themes/theme/${code}`);
-        const data = await res.json();
-        output = JSON.parse(data.message.exports);
-        cache[key] = output;
-    }
-    importTheme(output);
-}
-
-async function displayThemeListNew(direction) { // TODO: remake
-    
-    document.getElementById("theme-current-sort").textContent = current_sort;
-    if (direction === -1 && current_page_num > 1) current_page_num--;
-    if (direction === 1 && current_page_num < maxPage) current_page_num++;
-
-    let themes = [];
-    let apiLink = `${current_sort.toLowerCase()}?page=${current_page_num}` + (searchFor === "" ? "" : `&searchFor=${searchFor}`);
-    if (current_sort === "Liked") {
-        const sync = await chrome.storage.sync.get("id");
-        const local = await chrome.storage.local.get("liked_themes");
-        if (sync["id"] && sync["id"] !== "") {
-            apiLink += `&id=${sync["id"]}`;
-            maxPage = Math.ceil(local["liked_themes"].length / 28);
-        } else { // fallback if there is no id
-            current_page_num = 1;
-            apiLink = `popular?page=${current_page_num}` + (searchFor === "" ? "" : `&searchFor=${searchFor}`);
-        }
-    }
-
-    // fetch api, fallback if necessary
-    if (cache[apiLink]) {
-        themes = cache[apiLink]["themes"];
-        maxPage = cache[apiLink]["pages"] || maxPage;
-    } else {
-        try {
-            const res = await fetch(`${apiurl}/api/themes/${apiLink}`, {
-                method: "get",
-                headers: {
-                    "Content-Type": "application/json"
-               },
-            });
-            const data = await res.json();
-            if (data.errors === true) throw new Error(data.message);
-            themes = data.message.themes;
-            cache[apiLink] = data.message;
-            if (data?.message?.pages) {
-                maxPage = data.message.pages;
-            }
-        } catch (e) {
-            console.log(e);
-            current_page_num = 1;
-            fallback = true;
-            displayAlert(true, "there is no server you should not be seeing this. There was a problem getting themes from the Canvas Refined server, so the old themes browser is being displayed for now.");
-            displayThemeListOld(0);
-            return;
-        }
-    }
-
-    let container = document.getElementById("premade-themes");
-    container.textContent = "";
-
-    const local = await chrome.storage.local.get("liked_themes");
-    const sync = await chrome.storage.sync.get("browser_show_likes");
-
-    themes.forEach(theme => {
-
-        const themeBtn = createThemeButton(container, theme);
-        themeBtn.addEventListener("click", (e) => {
-            if (!e.target.classList.contains("clickable")) return;
-            // getAndLoadTheme(theme.code)
-        }); 
-
-        const liked = local["liked_themes"].includes(theme.code);
-        // TODO: remake
-        const likeBtn = createThemeLikeBtn(themeBtn, liked, theme.score, sync["browser_show_likes"]);
-        // likeBtn.addEventListener("click" , (e) => likeTheme(likeBtn, theme.code, theme.score));
-
-    });
-
-    if (themes.length === 0) {
-        container.innerHTML = `<div id="themes-empty">Nothing here</div>`;
-    }
-
-    document.getElementById("premade-themes-pagenum").textContent = current_page_num + " of " + maxPage;
-
-    // set the submit theme button to the first custom card image
-
-    try {
-        const sync = await chrome.storage.sync.get("custom_cards");
-        const exports = await getExport(sync, ["custom_cards"]);
-        document.getElementById("theme-button-img").style.background = `linear-gradient(#00000070, #00000070), url(${exports["custom_cards"][0]}) no-repeat center center / cover`;
-    } catch (e) {
-        console.log(e);
-    }
-
-    displaySavedThemes();
-
-}
-
-function displayThemeListOld(pageDir = 0) {
-    //const keys = Object.keys(themes);
-    document.getElementById("theme-current-sort").textContent = current_sort;
-    const perPage = 24;
-    const maxPage = Math.ceil(allThemes.length / perPage);
-    if (pageDir === -1 && current_page_num > 1) current_page_num--;
-    if (pageDir === 1 && current_page_num < maxPage) current_page_num++;
-    let container = document.getElementById("premade-themes");
-    container.textContent = "";
-    let start = (current_page_num - 1) * perPage, end = start + perPage;
-    allThemes.forEach((theme, index) => {
-        if (index < start || index >= end) return;
-        let themeBtn = makeElement("button", container, { "className": "theme-button" });
-        themeBtn.classList.add("customization-button");
-        if (!themeBtn.style.background) themeBtn.style.backgroundImage = "linear-gradient(#00000070, #00000070), url(" + theme.preview + ")";
-        let split = theme.title.split(" by ");
-        makeElement("p", themeBtn, {"className": "theme-button-title", "textContent":  split[0] });
-        makeElement("p", themeBtn, {"className": "theme-button-creator", "textContent": split[1] });
-        themeBtn.addEventListener("click", () => {
-
-            const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors"]);
-            chrome.storage.sync.get(allOptions, sync => {
-                chrome.storage.local.get(["previous_theme"], async local => {
-                    if (local["previous_theme"] === null) {
-                        let previous = await getExport(sync, allOptions);
-                        chrome.storage.local.set({ "previous_theme": previous });
-                    }
-                    importTheme(theme.exports);
-                });
-            });
-        });
-    });
-    document.getElementById("premade-themes-pagenum").textContent = current_page_num + " of " + maxPage;
-    displaySavedThemes();
-}
 
 function displayThemeSearchList(themesToShow, pageDir = 0) {
     document.getElementById("theme-current-sort").textContent = current_sort;
@@ -2153,73 +1734,7 @@ function setCustomImage(key, val) {
 function displayAdvancedCards() {
     sendFromPopup("getCards");
     chrome.storage.sync.get(["custom_cards", "custom_cards_2"], storage => {
-        // document.querySelector(".advanced-cards").innerHTML = '<div id="advanced-current"></div><div id="advanced-past"><h2>Past Courses</h2></div>';
-        // const keys = storage["custom_cards"] ? Object.keys(storage["custom_cards"]) : [];
-        // if (keys.length > 0) {
-        //     let currentEnrollment = keys.reduce((max, key) => storage["custom_cards"][key]?.eid > max ? storage["custom_cards"][key].eid : max, -1);
-        //     keys.forEach(key => {
-        //         let term = document.querySelector("#advanced-past");
-        //         if (storage["custom_cards"][key].eid === currentEnrollment) {
-        //             term = document.querySelector("#advanced-current");
-        //         }
-        //         let card = storage["custom_cards"][key];
-        //         let card_2 = storage["custom_cards_2"][key] || {};
-        //         if (!card || !card_2 || !card_2["links"] || card_2["links"]["custom"]) {
-        //             console.log(key + " error...");
-        //             console.log("card = ", card, "card_2", card_2, "links", card_2["links"]);
-        //         } else {
-        //             let container = makeElement("div", term, { "className": "custom-card" });
-        //             container.classList.add("option-container");
-        //             container.innerHTML = '<div class="custom-card-header"><p class="custom-card-title"></p><div class="custom-card-hide"><p class="custom-key">Hide</p></div></div><div class="custom-card-inputs"><div class="custom-card-left"><div class="custom-card-image"><span class="custom-key">Image</span></div><div class="custom-card-name"><span class="custom-key">Name</span></div><div class="custom-card-code"><span class="custom-key">Code</span></div></div><div class="custom-links-container"><p class="custom-key">Links</p><div class="custom-links"></div></div></div>';
-        //             let imgInput = makeElement("input", container.querySelector(".custom-card-image"), { "className": "card-input" });
-        //             let nameInput = makeElement("input",  container.querySelector(".custom-card-name"), { "className": "card-input" });
-        //             let codeInput = makeElement("input", container.querySelector(".custom-card-code"), { "className": "card-input" });
-        //             let hideInput = makeElement("input", container.querySelector(".custom-card-hide"), { "className": "card-input-checkbox" });
-        //             imgInput.placeholder = "Image url";
-        //             nameInput.placeholder = "Custom name";
-        //             codeInput.placeholder = "Custom code";
-        //             hideInput.type = "checkbox";
-        //             imgInput.value = card.img;
-        //             nameInput.value = card.name;
-        //             codeInput.value = card.code;
-        //             hideInput.checked = card.hidden;
-        //             if (card.img && card.img !== "") container.style.background = "linear-gradient(155deg, #1e1e1eeb 20%, #1e1e1ecc), url(\"" + card.img + "\") center / cover no-repeat";
-        //             imgInput.addEventListener("change", e => {
-        //                 setCustomImage(key, e.target.value);
-        //                 container.style.background = e.target.value === "" ? "var(--containerbg)" : "linear-gradient(155deg, #1e1e1eeb 20%, #1e1e1ecc), url(\"" + e.target.value + "\") center / cover no-repeat";
-        //             });
-        //             nameInput.addEventListener("change", function (e) { updateCards(key, { "name": e.target.value }) });
-        //             codeInput.addEventListener("change", function (e) { updateCards(key, { "code": e.target.value }) });
-        //             hideInput.addEventListener("change", function (e) { updateCards(key, { "hidden": e.target.checked }) });
-        //             container.querySelector(".custom-card-title").textContent = card.default;
 
-        //             for (let i = 0; i < 4; i++) {
-        //                 let customLink = makeElement("input", container.querySelector(".custom-links"), { "className": "card-input" });
-        //                 customLink.value = card_2.links[i].is_default ? "default" : card_2.links[i].path;
-        //                 customLink.addEventListener("change", function (e) {
-        //                     chrome.storage.sync.get("custom_cards_2", storage => {
-        //                         let newLinks = storage.custom_cards_2[key].links;
-        //                         if (e.target.value === "" || e.target.value === "default") {
-        //                             console.log("this value is empty....")
-        //                             //newLinks[i] = { "type": storage.custom_cards_2[key].links.default[i].type, "default": true };
-        //                             newLinks[i] = { "default": newLinks[i].default, "is_default": true, "path": newLinks[i].default };
-        //                             customLink.value = "default";
-        //                         } else {
-        //                             //newLinks[i] = { "type": getLinkType(e.target.value), "path": e.target.value, "default": false };
-        //                             let val = e.target.value;
-        //                             if (!e.target.value.includes("https://") && e.target.value !== "none") val = "https://" + val;
-        //                             newLinks[i] = { "default": newLinks[i].default, "is_default": false, "path": val };
-        //                             customLink.value = val;
-        //                         }
-        //                         chrome.storage.sync.set({ "custom_cards_2": { ...storage.custom_cards_2, [key]: { ...storage.custom_cards_2[key], "links": newLinks } } })
-        //                     });
-        //                 });
-        //             }
-        //         };
-        //     });
-        // } else {
-        //     document.querySelector(".advanced-cards").innerHTML = `<div class="option-container"><h3>Couldn't find your cards!<br/>You may need to refresh your Canvas page and/or this menu page.<br/><br/>If you're having issues please contact me - sandlerguy5@gmail.com</h3></div>`;
-        // }
 
 		const cardGrid = document.getElementById("card-grid");
         if (!cardGrid) {

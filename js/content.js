@@ -340,78 +340,11 @@ let timeCheck = null;
 let reminderCheck = null;
 let betterSidebarLoading = false;
 let dashboardReadyTimer = null;
-//let assignmentData = null;
 
 /*
 Start
 */
 
-/*
-// only works if a course has no quizzes...
-function getClassAverages() {
-    if (true) { // check if option is enabled
-        let match = current_page.match(/courses\/(?<id>\d*)\/grades/);
-        if (match) {
-            let course_grades = getData(`${domain}/api/v1/courses/${match.groups.id}/assignments?include[]=score_statistics&include[]=submission`);
-            let course_quizzes = getData(`${domain}/api/v1/courses/${match.groups.id}/quizzes`);
-            let course_groups = getData(`${domain}/api/v1/courses/${match.groups.id}/assignment_groups`);
-            course_grades.then(grades => {
-                course_groups.then(groups => {
-                    course_quizzes.then(quizzes => {
-                        let total_weight = 0;
-                        let total_points = 0;
-                        let weights = {};
-                        groups.forEach(group => {
-                            weights[group.id] = group.group_weight;
-                            total_weight += group.group_weight;
-                        });
-                        groups.forEach(group => {
-                            weights[group.id] = total_weight === 0 ? 1 : weights[group.id] / total_weight;
-                        });
-                        let min = 0, lowq = 0, mean = 0, median = 0, upq = 0, max = 0, earned = 0;
-                        grades.forEach(grade => {
-                            if (!grade.score_statistics) return;
-                            console.log("\nthis:", grade.name, grade.score_statistics.lower_q, grade.score_statistics.mean, grade.score_statistics.upper_q);
-                            console.log("totals:", lowq, upq, total_points);
-                            min += grade.score_statistics.min * weights[grade.assignment_group_id];
-                            lowq += grade.score_statistics.lower_q * weights[grade.assignment_group_id];
-                            mean += grade.score_statistics.mean * weights[grade.assignment_group_id];
-                            median += grade.score_statistics.median * weights[grade.assignment_group_id];
-                            upq += grade.score_statistics.upper_q * weights[grade.assignment_group_id];
-                            max += grade.score_statistics.max * weights[grade.assignment_group_id];
-                            total_points += grade.points_possible * weights[grade.assignment_group_id];
-                            earned += grade.submission.score * weights[grade.assignment_group_id];
-                        });
-
-                        course_quizzes.forEach(quiz => {
-                            // is it even possible to get quiz statistics?
-                        });
-                        // absolute minimum is if the same student got the lowest score on every assignment
-                        // absolute maximum is if the same student got the highest score on every assignment
-                        // it doesn't really tell you much because both are unlikely
-                        console.log("\nabsolute minimum:", min / total_points, "\nabsolute maximum:", max / total_points, "\nlower quartile:", lowq / total_points, "\nmean:", mean / total_points, "\nupper quartile:", upq / total_points);
-
-                        min = (min / total_points);
-                        lowq = (lowq / total_points);
-                        mean = (mean / total_points);
-                        upq = (upq / total_points);
-                        max = (max / total_points);
-                        earned = (earned / total_points);
-
-                        console.log(weights);
-
-                        const width = 150;
-                        let inner = `<td colspan="6" style="padding-bottom: 20px;"><table id="" class=""><thead><tr><th colspan="5">Class Averages</th><th></th></tr></thead><tbody><tr><td>Mean: ${(mean * 100).toFixed(2)}</td><td>Upper Quartile: ${(upq * 100).toFixed(2)}</td><td>Lower Quartile: ${(lowq * 100).toFixed(2)}</td><td colspan="3"><svg viewBox="-1 0 160 30" xmlns="http://www.w3.org/2000/svg" style="float: right; height: 30px; margin-20px; width: 161px; position: relative; margin-right: 30px;" aria-hidden="true"><line class="zero" x1="0" y1="3" x2="0" y2="27" stroke="#556572"></line><line class="possible" x1="150.0" y1="3" x2="150.0" y2="27" stroke="#556572"></line><line class="min" x1="${min * width}" y1="6" x2="${min * width}" y2="24" stroke="#556572" stroke-width="2"></line><line class="bottomQ" x1="${min * width}" y1="15" x2="${lowq * width}" y2="15" stroke="#556572" stroke-width="2"></line><line class="topQ" x1="${upq * width}" y1="15" x2="${max * width}" y2="15" stroke="#556572" stroke-width="2"></line><line class="max" x1="${max * width}" y1="6" x2="${max * width}" y2="24" stroke="#556572" stroke-width="2"></line><rect class="mid50" x="${lowq * width}" y="3" width="22.499999999999986" height="24" stroke="#556572" stroke-width="2" rx="3" fill="none"></rect><line class="median" x1="${mean * width}" y1="3" x2="${mean * width}" y2="27" stroke="#556572" stroke-width="2"></line><rect class="myScore" x="${(earned * width) - 7}" y="8" width="14" height="14" stroke="#224488" stroke-width="2" rx="3" fill="#aabbdd"></rect></svg></td></tr></tbody></table></td>`;
-
-                        makeElement("tr", document.querySelector("#grades_summary tbody"), { "innerHTML": inner });
-                    });
-                });
-            });
-
-        }
-    }
-}
-*/
 
 /*
 Todo Reminders
@@ -521,38 +454,11 @@ function showExampleReminder() {
     example.querySelector(".canvasrefined-reminder-due").textContent = "This notification will pop up in other pages to remind you of incomplete assignments that are due in less than 6 hours." /*It will notify again at 2 hours if the 'Remind 2x' option is on."*/;
 }
 
-// async function ScheduledReminderCheck() {
-//     let date = new Date();
-//     let currentHour = date.getHours();
-//     let currentMinute = date.getMinutes();
-//     if (options.scheduledReminderTime) {
-//         let [hour, minute] = options.scheduledReminderTime.split(":");
-//         if (parseInt(hour) == currentHour && parseInt(minute) == currentMinute) {
-//             const container = document.getElementById("canvasrefined-reminders") || makeElement("div", document.body, { "id": "canvasrefined-reminders" });
-//             container.style.display = "flex";
-//             container.textContent = "";
-//             const storage = await chrome.storage.sync.get("reminders");
-//             const now = (new Date()).getTime();
-//             storage["reminders"].forEach(reminder => {
-//                 if (reminder.d >= now) {
-//                     createReminder(reminder, container);
-//                 }
-//             });
-//         }
-//     }
-// }
-
-// function toggleScheduledReminders() {
-//     clearInterval(reminderCheck);
-//     if (options.scheduledReminder !== true) return;
-//     ScheduledReminderCheck();
-//     reminderCheck = setInterval(ScheduledReminderCheck, 60000);
-// }
 
 isDomainCanvasPage();
 
 function isDomainCanvasPage() {
-    chrome.storage.sync.get(['custom_domain', 'dark_mode', 'dark_preset', 'device_dark', 'remind'/*, 'scheduledReminder', 'scheduledReminderTime'*/], result => {
+    chrome.storage.sync.get(['custom_domain', 'dark_mode', 'dark_preset', 'device_dark', 'remind'], result => {
         options = result;
         if (result.custom_domain.length && result.custom_domain[0] !== "") {
             for (let i = 0; i < result.custom_domain.length; i++) {
@@ -565,15 +471,10 @@ function isDomainCanvasPage() {
             // if the code reaches this point, its not a canvas page so run the reminders
             setTimeout(reminderWatch, 2000);
             setInterval(reminderWatch, 60000);
-            // toggleScheduledReminders();
             // turn the reminders on/off if the option is changed
             chrome.storage.onChanged.addListener((changes) => {
                 Object.keys(changes).forEach(key => {
                     if (key === "remind") reminderWatch();
-                    if (key === "scheduledReminder" || key === "scheduledReminderTime") {
-                        options[key] = changes[key].newValue;
-                        // toggleScheduledReminders();
-                    }
                 })
             })
         } else {
@@ -617,7 +518,6 @@ function startExtension() {
         watchSubmissionPageButton();
         watchProfileLogoutPageButton();
 
-        //getClassAverages();
         
         setTimeout(() => runDarkModeFixer(false), 800);
         setTimeout(() => runDarkModeFixer(false), 4500);
@@ -746,16 +646,9 @@ function applyOptionsChanges(changes) {
             case "fitImageToScreen":
                 applyCustomBackground();
                 break;
-			// case "show_updates":
-			// 	showUpdateMsg();
-			// 	break;
 			case "remind":
 				showExampleReminder();
 				break;
-			// case "scheduledReminder":
-			// case "scheduledReminderTime":
-			// 	toggleScheduledReminders();
-				// break;
 			case "imageSize":
 			case "cardRoundness":
 			case "cardSpacing":
@@ -1041,10 +934,6 @@ async function applyCustomBackground() {
     
     document.documentElement.appendChild(style);
 }
-function clearCustomBackground() {
-	let style = document.querySelector("#canvasrefined-background");
-	if (style) style.remove();
-}
 
 function applyBetterSidebarLayoutFix() {
     let style = document.querySelector("#canvasrefined-sidebar-layout-fix") || document.createElement("style");
@@ -1171,11 +1060,6 @@ function inspectDarkMode(withOutput = false) {
             const r = parseInt(bgcolor.groups["r"]);
             const g = parseInt(bgcolor.groups["g"]);
             const b = parseInt(bgcolor.groups["b"]);
-            /*
-            if (el.classList.contains("no-touch")) {
-                console.log({ "r": r, "g": g, "b": b }, { "r": r === bg0.r, "g": g === bg0.g, "b": b === bg0.b });
-            }
-            */
             if (r > 245 && g > 245 && b > 245 && !(r === bg0.r && g === bg0.g && b === bg0.b) && !(r === lnk.r && g === lnk.g && b === lnk.b)) {
                 el.style.cssText = (";background:" + options.dark_preset["background-0"] + "!important;color" + options.dark_preset["text-0"] + "!important;") + el.style.cssText;
                 if (withOutput === true) output += selector + "{background: background-0, color: text-0}\n";
@@ -1374,123 +1258,6 @@ async function getCards(api = null) {
 Better todo list
 */
 
-// function setAssignmentState(id, updates) {
-//     let states = options.assignment_states;
-//     let length = JSON.stringify(states).length;
-//     // remove the oldest states if the size is approaching the storage limit
-//     if (length > 7400) {
-//         let keys = Object.keys(states).sort((a, b) => states[b].expire - states[a].expire);
-//         keys.splice(-5);
-//         let newStates = {};
-//         keys.forEach(key => {
-//             newStates[key] = states[key];
-//         });
-//         states = newStates;
-//     }
-//     states[id] = states[id] ? { ...states[id], ...updates } : updates;
-//     chrome.storage.sync.set({ assignment_states: states }).then(() => { cardAssignments = preloadAssignmentEls(); loadBetterTodo(); loadCardAssignments(); });
-// }
-
-function createTodoCreateBtn(location) {
-    let confirmButton = makeElement("button", location, { "className": "canvasrefined-custom-btn", "textContent": "Create" });
-    confirmButton.addEventListener("click", () => {
-        chrome.storage.sync.get("custom_assignments_overflow", overflow => {
-            chrome.storage.sync.get(overflow["custom_assignments_overflow"], storage => {
-                let course_id = parseInt(location.querySelector("#canvasrefined-custom-course").value);
-
-                const assignment = {
-                    "plannable_id": new Date().getTime(),
-                    "context_name": options.custom_cards[location.querySelector("#canvasrefined-custom-course").value].default,
-                    "plannable": { "title": location.querySelector("#canvasrefined-custom-name").value },
-                    "plannable_date": location.querySelector("#canvasrefined-custom-date").value + "T" + location.querySelector("#canvasrefined-custom-time").value + ":00",
-                    "planner_override": { "marked_complete": false, "custom": true },
-                    "plannable_type": "assignment",
-                    "submissions": { "submitted": false },
-                    "course_id": course_id,
-                    "html_url": `/courses/${course_id}/assignments`
-                };
-
-                /* handling overflow since the limit is 8kb per key */
-
-                let found = false;
-                let reload = () => {
-                    location.classList.toggle("canvasrefined-custom-open");
-                    loadBetterTodo();
-                    loadCardAssignments();
-                }
-
-                /* find the first available overflow with space */
-                /* or create a new one if all are full */
-                let findOpenOverflow = (num) => {
-                    let current_overflow = overflow["custom_assignments_overflow"][num];
-                    storage[current_overflow].push(assignment);
-                    chrome.storage.sync.set({ [current_overflow]: storage[current_overflow] }, () => {
-                        /* assuming any error is because the limit is exceeded */
-                        if (chrome.runtime.lastError) {
-                            if (num === overflow["custom_assignments_overflow"].length - 1) {
-                                console.log("all overflows are full! creating new overflow " + (overflow["custom_assignments_overflow"].length + 1));
-                                let new_overflow = "custom_assignments_" + (overflow["custom_assignments_overflow"].length + 1);
-                                overflow["custom_assignments_overflow"].push(new_overflow);
-                                chrome.storage.sync.set({ [new_overflow]: [assignment], "custom_assignments_overflow": overflow["custom_assignments_overflow"] }).then(reload);
-                            } else {
-                                console.log("overflow " + (num + 1) + " full...");
-                                findOpenOverflow(num + 1);
-                            }
-                        } else {
-                            console.log("overflow " + (num + 1) + " has space!");
-                            reload();
-                        }
-                    });
-                }
-
-                findOpenOverflow(0);
-
-            });
-        })
-    });
-}
-
-// better todo html layer 1
-// function createTodoHeader(location) {
-//     let todoHeader = makeElement("h2", location, { "className": "todo-list-header", "style": "display: flex; align-items:center; justify-content:space-between;" });
-//     //todoHeader.style = "display: flex; align-items:center; justify-content:space-between;";
-//     if (!options.custom_cards || Object.keys(options.custom_cards).length === 0) return;
-//     let addFillout = makeElement("div", location, { "className": "canvasrefined-add-assignment" });
-//     let now = new Date();
-//     let year = now.getFullYear();
-//     let month = now.getMonth() + 1;
-//     let day = now.getDate();
-//     month = month < 10 ? "0" + month : month;
-//     day = day < 10 ? "0" + day : day;
-//     addFillout.innerHTML = '<input type="text" placeholder="Name" id="canvasrefined-custom-name" class="canvasrefined-custom-input"></input><select id="canvasrefined-custom-course" class="canvasrefined-custom-input"><option value="" disabled selected>Select course</option></select><div style="display: flex;gap:5px"><input type="date" id="canvasrefined-custom-date"  class="canvasrefined-custom-input"></input><input type="time" id="canvasrefined-custom-time"  class="canvasrefined-custom-input" value="23:59"></input></div>';
-//     addFillout.querySelector("#canvasrefined-custom-date").value = year + "-" + month + "-" + day;
-//     let selectCourse = document.querySelector("#canvasrefined-custom-course");
-//     Object.keys(options.custom_cards).forEach(id => {
-//         let card = options.custom_cards[id];
-//         let courseName = makeElement("option", selectCourse, { "className": "canvasrefined-select-course-option", "textContent": card.default });
-//         courseName.value = id;
-//     });
-
-//     createTodoCreateBtn(addFillout);
-//     let headerText = makeElement("span", todoHeader, { "className": "canvasrefined-todo-header", "textContent": "To Do" });
-//     let addButton = makeElement("button", todoHeader, { "className": "canvasrefined-custom-btn", "textContent": "+ Add" });
-//     addButton.addEventListener("click", () => {
-//         addFillout.classList.toggle("canvasrefined-custom-open");
-//     });
-
-//     headerText.addEventListener("click", () => {
-//         if (filter === "todo") {
-//             filter = "done";
-//             headerText.textContent = "Done";
-//         } else {
-//             filter = "todo";
-//             headerText.textContent = "To Do";
-//         }
-//         moreAssignmentCount = 0;
-//         moreAnnouncementCount = 0;
-//         loadBetterTodo();
-//     });
-// }
 
 function convertToDueDate(dueAt) {
 	final = "due ";
@@ -2918,20 +2685,6 @@ function updateSidebar(expanded, sidebarList, expander) {
         }
     }
 }
-function getCourseLinks() {
-	const linkList = document.getElementById("section-tabs");
-	if (!linkList) return [];
-	const links = linkList.querySelectorAll("a");
-	const courseLinks = [];
-	links.forEach(link => {
-		const url = new URL(link.href).pathname;
-		courseLinks.push({
-			name: link.textContent.trim(),
-			url: url
-		});
-	})
-	return courseLinks;
-}
 
 let delay;
 let moreAssignmentCount = 0;
@@ -3121,84 +2874,8 @@ async function loadBetterTodo() {
                                     });
                                 });
                             });
-                        } /*else {
-                            // set the item as complete through api
-                            fetch(domain + '/api/v1/planner/overrides' + (item.planner_override ? "/" + item.planner_override.id : ""),
-                                {
-                                    method: item.planner_override ? "PUT" : "POST",
-                                    headers: {
-                                        "content-type": "application/json",
-                                        'accept': 'application/json',
-                                        'X-CSRF-Token': csrfToken,
-                                    },
-                                    body: JSON.stringify({ id: item.planner_override ? item.planner_override.id : null, marked_complete: true, plannable_id: item.plannable_id, plannable_type: item.plannable_type })
-                                }).then(resp => {
-                                    if (resp.status === 200 || resp.status === 201) {
-                                        
-                                        let container = listItemContainer.parentElement;
-                                        container.removeChild(listItemContainer);
-                                        assignments.forEach(assignment => {
-                                            if (assignment.plannable_id === item.plannable_id) {
-                                                item.planner_override = { "marked_complete": true };
-                                            }
-                                        });
-                                        
-                                        loadBetterTodo();
-                                        loadCardAssignments();
-                                    }
-                                });
-                        }*/
-                    });
-                    /*
-                    // remove item button
-                    listItemContainer.querySelector(".canvasrefined-todo-complete-btn").addEventListener('click', function () {
-                        if (item.planner_override && item.planner_override.custom && item.planner_override.custom === true) {
-                            // set item as complete locally
-                            chrome.storage.sync.get("custom_assignments_overflow", overflow => {
-                                chrome.storage.sync.get(overflow["custom_assignments_overflow"], storage => {
-                                    overflow["custom_assignments_overflow"].forEach(overflow => {
-                                        for (let i = 0; i < storage[overflow].length; i++) {
-                                            if (storage[overflow][i].plannable_id === item.plannable_id) {
-                                                storage[overflow].splice(i, 1);
-                                                chrome.storage.sync.set({ [overflow]: storage[overflow] }).then(() => {
-                                                    let container = listItemContainer.parentElement;
-                                                    container.removeChild(listItemContainer);
-                                                    loadBetterTodo();
-                                                    loadCardAssignments();
-                                                });
-                                                break;
-                                            }
-                                        }
-                                    });
-                                });
-                            });
-                        } else {
-                            // set the item as complete through api
-                            fetch(domain + '/api/v1/planner/overrides' + (item.planner_override ? "/" + item.planner_override.id : ""),
-                                {
-                                    method: item.planner_override ? "PUT" : "POST",
-                                    headers: {
-                                        "content-type": "application/json",
-                                        'accept': 'application/json',
-                                        'X-CSRF-Token': csrfToken,
-                                    },
-                                    body: JSON.stringify({ id: item.planner_override ? item.planner_override.id : null, marked_complete: true, plannable_id: item.plannable_id, plannable_type: item.plannable_type })
-                                }).then(resp => {
-                                    if (resp.status === 200 || resp.status === 201) {
-                                        let container = listItemContainer.parentElement;
-                                        container.removeChild(listItemContainer);
-                                        assignmentData.forEach(assignment => {
-                                            if (assignment.plannable_id === item.plannable_id) {
-                                                item.planner_override = { "marked_complete": true };
-                                            }
-                                        });
-                                        loadBetterTodo();
-                                        loadCardAssignments();
-                                    }
-                                });
                         }
                     });
-*/
 
                     if (item.plannable_type === "announcement") {
                         announcementsToInsert.push(listItemContainer);
@@ -3208,8 +2885,6 @@ async function loadBetterTodo() {
                             listItemContainer.classList.add("canvasrefined-todo-item-completed");
                         }
                     }
-                    //}
-                    //}
 
 
                 });
@@ -3372,13 +3047,6 @@ function toggleDarkMode() {
         style.textContent = options.dark_mode === true || options.device_dark ? css : "";
         style.className = options.dark_mode === true || options.device_dark ? "canvasrefined-darkmode-enabled" : "";
     }
-    /*
-    if (options.dark_mode === true || options.device_dark) {
-        document.body.classList.add("canvasrefined--darkmode--enabled");
-    } else {
-        document.body.classList.remove("canvasrefined--darkmode--enabled");
-    }
-    */
     runiframeChecker();
 }
 
@@ -3414,25 +3082,6 @@ function autoDarkModeCheck() {
     }
 }
 
-// async function ScheduledReminderCheck() {
-// 	let date = new Date();
-// 	let currentHour = date.getHours();
-// 	let currentMinute = date.getMinutes();
-// 	if (options.scheduledReminderTime) {
-// 		let [hour, minute] = options.scheduledReminderTime.split(":");
-// 		if (parseInt(hour) == currentHour && parseInt(minute) == currentMinute) {
-// 			const container = document.getElementById("canvasrefined-reminders") || makeElement("div", document.body, { "id": "canvasrefined-reminders" });
-// 			container.style.display = "flex";
-// 			container.textContent = "";
-// 			const storage = await chrome.storage.sync.get("reminders");
-// 			const now = (new Date()).getTime();
-// 			storage["reminders"].forEach(reminder => {
-// 				if (reminder.d >= now) {
-// 					createReminder(reminder, container);
-// 				}
-// 			});
-// 		}
-// 	}
 
 // }
 
@@ -3443,12 +3092,6 @@ function toggleAutoDarkMode() {
     timeCheck = setInterval(autoDarkModeCheck, 60000);
 }
 
-// function toggleScheduledReminders() {
-// 	clearInterval(reminderCheck);
-// 	if (options.scheduled_reminders === false) return; //TODO: add it to the options thing
-// 	ScheduledReminderCheck();
-// 	reminderCheck = setInterval(ScheduledReminderCheck, 60000);
-// }
 
 let iframeObserver;
 function runiframeChecker() {
@@ -3526,18 +3169,6 @@ function insertGrades() {
 Card assignments
 */
 
-/*
-function setAssignmentStatus(id, status, assignments_done = []) {
-    if (assignments_done.length > 50) assignments_done = [];
-    if (status === true) {
-        assignments_done.push(id);
-    } else {
-        const pos = assignments_done.indexOf(id);
-        if (pos > -1) assignments_done.splice(pos, 1);
-    }
-    chrome.storage.sync.set({ assignments_done: assignments_done });
-}
-*/
 
 function createCardAssignment(assignment) {
     let assignmentContainer = document.createElement("div");
@@ -3688,59 +3319,6 @@ function loadCardAssignments() {
     });
 }
 
-/*
-function loadCardAssignments2(c = null) {
-    if (options.assignments_due === true) {
-        try {
-            assignments.then(data => {
-                //assignmentData = assignmentData === null ? data : assignmentData; ????
-                let items = combineAssignments(data);
-                let cards = c ? c : document.querySelectorAll('.ic-DashboardCard');
-                const now = new Date();
-
-                cards.forEach(card => {
-                    let count = 0;
-                    let course_id = parseInt(card.querySelector(".ic-DashboardCard__link").href.split("courses/")[1]);
-                    let cardContainer = card.querySelector('.canvasrefined-card-container');
-                    cardContainer.textContent = "";
-                    cardContainer.parentElement.style.display = "block";
-
-                    items.forEach(assignment => {
-                        let due = new Date(assignment.plannable_date);
-                        // lots of checks to make
-                        // 1. item belongs to card
-                        // 2. haven't exceeded item limit
-                        // 3. assignment hasn't been submitted (if hide completed option is on)
-                        // 4. disallow overdue and item not past due/allow overdue and item hasn't been submitted
-                        // 5. correct item type
-                        // 6. no planner override marking item complete
-                        if (course_id !== assignment.course_id) return;
-                        if (count >= options.num_assignments) return;
-                        if (options.hide_completed === true && assignment.submissions.submitted === true) return;
-                        if ((options.card_overdues !== true && now >= due) || (options.card_overdues === true && assignment.submissions.submitted === true)) return;
-                        if ((assignment.plannable_type !== "assignment" && assignment.plannable_type !== "quiz" && assignment.plannable_type !== "discussion_topic")) return;
-                        if (assignment.planner_override && assignment.planner_override.marked_complete === true) return;
-
-                        createCardAssignment(cardContainer, assignment, now >= due);
-                        count++;
-                    });
-
-                    if (count === 0) {
-                        let assignmentContainer = makeElement("div", "canvasrefined-assignment-container", cardContainer);
-                        let assignmentDivLink = makeElement("a", "canvasrefined-assignment-link", assignmentContainer, "None");
-                    }
-                });
-            });
-        } catch (e) {
-            logError(e);
-        }
-    } else {
-        document.querySelectorAll(".canvasrefined-card-assignment").forEach(card => {
-            card.style.display = "none";
-        });
-    }
-}
-*/
 
 function setupCardAssignments() {
     if (options.assignments_due !== true) return;
@@ -3927,14 +3505,6 @@ function calculateGPA2() {
             letter = "F";
             gpa = options.gpa_calc_bounds["F"].gpa;
         }
-        /*
-        if (course.id === "cumulative-gpa") {
-            //gpa = parseFloat(options["cumulative_gpa"]["gr"]);
-            gpa = 0;
-            cumulativePoints += parseFloat(options["cumulative_gpa"]["gr"]) * credits;
-            cumulativeCredits = credits;
-        } else {
-            */
             course.querySelector(".canvasrefined-gpa-letter-grade").textContent = letter;
 
             let weightMultiplier = 0;
@@ -3947,8 +3517,6 @@ function calculateGPA2() {
             qualityPoints += gpa * credits;
             weightedQualityPoints += (gpa + weightMultiplier) * credits;
             numCredits += credits;
-        //}
-
 
 
     });
@@ -4489,16 +4057,6 @@ function applyAestheticChanges() {
     document.documentElement.appendChild(style);
 }
 
-/*
-function changeFullWidth() {
-    if (options.full_width == null) return;
-    if (options.full_width === true) {
-        document.body.classList.add("full-width");
-    } else {
-        document.body.classList.remove("full-width");
-    }
-}
-*/
 
 function changeGradientCards() {
     if (options.gradient_cards === true) {
@@ -4684,14 +4242,6 @@ function makeElement(element, location, options, prepend = false) {
 }
 
 
-function makeElement2(element, elclass, location, text) {
-    let creation = document.createElement(element);
-    creation.classList.add(elclass);
-    creation.textContent = text;
-    location.appendChild(creation);
-    return creation
-}
-
 async function getData(url) {
     let response = await fetch(url, {
         method: 'GET',
@@ -4704,10 +4254,6 @@ async function getData(url) {
     return data
 }
 
-function hexToHsl(hex) {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return rgbToHsl(parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16));
-}
 
 function rgbToHex(rgb) {
     try {
