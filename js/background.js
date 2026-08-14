@@ -37,6 +37,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "assignment_date_format": false,
             "dashboard_notes": false,
             "dashboard_notes_text": "",
+            "dashboard_notes_mode": "edit",
             "better_todo": false,
             "todo_hr24": false,
 			"todo_separate_scrollbar": false,

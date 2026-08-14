@@ -56,11 +56,18 @@ Canvas Refined adds more with more to come!
 	- Searching themes (the original didn't actually impliment that)
 	- made the dark mode into a css file instead of a reallllllly long string
 - Card Styles (image size, card roundness, card spacing, width, height, theme compatible)
-- Custom Background (by URL, theme compatible)
+- Custom Background
+  - Use presets or add your own by URL
+  - Theme compatible
+  - Daily backgrounds
 - Popup UI revamp
 - NEW Better todo list
 - Better sidebar
 - Simplified UI
+  - Some options won't show up when not needed
+- Markdown in dashboard notes
+- Smaller additions:
+  - Equal height cards for card assignments
 
 ## Planned Features (by priority)
 - auto rotate theme + theme history + fix theme submissions

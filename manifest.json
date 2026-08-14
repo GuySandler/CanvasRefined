@@ -25,7 +25,7 @@
   "content_scripts": [
     {
       "matches": ["https://*/*"],
-      "js": ["css/darkmodecss.js", "js/backgrounds.js", "js/content.js"],
+      "js": ["css/darkmodecss.js", "js/backgrounds.js", "js/markdown.js", "js/content.js"],
       "css": ["css/content.css"],
       "run_at": "document_start"
     }
