@@ -63,6 +63,10 @@
     opacity: .95;
 }
 .canvasrefined-custom-btn {background: #f5f5f5; border: 1px solid #c7cdd1; border-radius:6px; padding: 2px 8px;}
+/* Better sidebar buttons sit on the --bcsidebar surface and use --bcsidebar-text
+   for labels/icons, so drop the light button chrome and use a subtle hover tint. */
+.better-sidebar-btn {background: transparent !important; border-color: transparent !important;}
+.better-sidebar-btn:hover {background: color-mix(in srgb, var(--bcsidebar-text) 14%, transparent) !important;}
 .canvasrefined-viewmore-btn {display: block;margin:0 auto;margin-top: 8px;}
 .canvasrefined-course-percent, .canvasrefined-course-credit {border: 1px solid #ccc; color: var(--ic-brand-font-color-dark)}
 
