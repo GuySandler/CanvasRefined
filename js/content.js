@@ -46,6 +46,7 @@ function getSubmissionAssignmentLink() {
 
 let submissionPageButtonObserver = null;
 let profileLogoutButtonObserver = null;
+let newCanvasButtonObserver = null;
 
 function addSubmissionPageButton() {
     const assignmentLink = getSubmissionAssignmentLink();
@@ -156,6 +157,30 @@ function watchSubmissionPageButton() {
             submissionPageButtonObserver = null;
         }
     }, 10000);
+}
+
+function removeNewCanvasButton() {
+    document.querySelectorAll('[data-testid="switch-to-new-dashboard-button"]').forEach(btn => btn.remove());
+}
+
+function watchNewCanvasButton() {
+    if (newCanvasButtonObserver) {
+        newCanvasButtonObserver.disconnect();
+        newCanvasButtonObserver = null;
+    }
+    if (options.hide_new_canvas !== true) return;
+    removeNewCanvasButton();
+    newCanvasButtonObserver = new MutationObserver(() => {
+        if (options.hide_new_canvas !== true) {
+            if (newCanvasButtonObserver) {
+                newCanvasButtonObserver.disconnect();
+                newCanvasButtonObserver = null;
+            }
+            return;
+        }
+        removeNewCanvasButton();
+    });
+    newCanvasButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
 }
 
 async function getActiveCustomBackground() {
@@ -510,6 +535,7 @@ function startExtension() {
         checkDashboardReady();
         loadCustomFont();
         applyAestheticChanges();
+        watchNewCanvasButton();
         changeFavicon();
         updateReminders();
         applyCustomBackground();
@@ -625,8 +651,12 @@ function applyOptionsChanges(changes) {
 			case "condensed_cards":
 			case "hide_feedback":
 			case "full_width":
+			case "center_cards":
 			case "custom_styles":
 				applyAestheticChanges();
+				break;
+			case "hide_new_canvas":
+				watchNewCanvasButton();
 				break;
             case "customBackgroundScale":
                 applyCustomBackground();
@@ -4043,6 +4073,7 @@ function applyAestheticChanges() {
     if (options.disable_color_overlay === true) style.textContent += ".ic-DashboardCard__header_hero{opacity: 0!important} .ic-DashboardCard__header-button-bg{opacity: 1!important}";
     if (options.hide_feedback === true) style.textContent += ".recent_feedback {display: none}";
     if (options.full_width === true) style.textContent += "#wrapper,.ic-Layout-wrapper{max-width:100%!important}";
+    if (options.center_cards === true) style.textContent += ".ic-DashboardCard__box__container{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:flex-start!important}";
 
     if (options.customCardStyles === true) {
         if (options.imageSize !== undefined && options.imageSize !== 100) style.textContent += `.ic-DashboardCard__header_image {transform: scale(${options.imageSize / 100})!important; }`;

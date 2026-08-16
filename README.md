@@ -68,6 +68,8 @@ Canvas Refined adds more with more to come!
 - Markdown in dashboard notes
 - Smaller additions:
   - Equal height cards for card assignments
+  - Center cards
+  - Hide new dashbaord button
 
 ## Planned Features (by priority)
 - auto rotate theme + theme history + fix theme submissions

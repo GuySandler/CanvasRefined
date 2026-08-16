@@ -238,5 +238,17 @@
   },
   "fix_dm_text": {
     "message": "Fixer はこれらのページで自動的に実行されます:"
+  },
+  "hide_links": {
+    "message": "リンクを非表示"
+  },
+  "show_links": {
+    "message": "リンクを表示"
+  },
+  "center_cards": {
+    "message": "カードを中央配置"
+  },
+  "hide_new_canvas": {
+    "message": "新しい Canvas を非表示"
   }
 }

@@ -1,14 +1,17 @@
-const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards'];
+const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'center_cards'];
 const syncedSubOptions = [
 	"todo_hide_feedback",
 	"todo_full_height",
     "todo_confetti",
+    "todo_progress_rings",
 	"device_dark",
 	"relative_dues",
 	"card_overdues",
 	"equal_height_cards",
 	// "todo_overdues",
 	"gpa_calc_prepend",
+	"gpa_calc_cumulative",
+	"gpa_calc_weighted",
 	"auto_dark",
 	"auto_dark_start",
 	"auto_dark_end",
@@ -34,6 +37,22 @@ const syncedSubOptions = [
     "sidebar_scale",
 ];
 const localSwitches = [];
+
+// Theme export categories. Only visual/appearance settings belong in a
+// shared theme; personal productivity features (reminders, dashboard notes,
+// the card-assignments list and its display prefs, card grades, item counts)
+// are intentionally excluded so exported themes never carry personal stuff.
+const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
+const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
+const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight"];
+const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_feedback", "tab_icons"];
+const exportSidebar = ["better_sidebar", "sidebar_scale"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_hr24", "todo_separate_scrollbar"];
+const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
+const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen"];
+// Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
+// no personal productivity features).
+const exportToggles = ["dark_mode"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
 const fontsDropdownStateKey = "fonts_dropdown_open";
 
 const apiurl = "none";
@@ -74,12 +93,13 @@ const defaultOptions = {
         "dashboard_notes": false,
         "dashboard_notes_text": "",
         "dashboard_notes_mode": "edit",
-        "better_todo": false,
+        "better_todo": true,
         "better_sidebar": false,
         "sidebar_scale": 100,
         "todo_hr24": false,
 		"todo_separate_scrollbar": false,
         "condensed_cards": false,
+        "center_cards": false,
         "custom_cards": {},
         "custom_cards_2": {},
         "custom_cards_3": {},
@@ -112,6 +132,7 @@ const defaultOptions = {
         "relative_dues": false,
         "equal_height_cards": false,
         "hide_feedback": false,
+        "hide_new_canvas": true,
         "dark_mode_fix": [],
         "assignment_states": {},
         "tab_icons": false,
@@ -183,6 +204,28 @@ function displayDarkModeFixUrls() {
 }
 
 document.addEventListener("DOMContentLoaded", setup);
+
+// toggle visibility of the Discord/GitHub social links (persists locally)
+document.addEventListener("DOMContentLoaded", () => {
+    const toggle = document.getElementById("social-toggle");
+    const buttons = document.querySelector(".social-buttons");
+    if (!toggle || !buttons) return;
+    const KEY = "hide_socials";
+    const render = (hidden) => {
+        buttons.classList.toggle("hidden", hidden);
+        toggle.textContent = chrome.i18n.getMessage(hidden ? "show_links" : "hide_links");
+    };
+    chrome.storage.local.get(KEY, (res) => render(!!res[KEY]));
+    const flip = () => chrome.storage.local.get(KEY, (res) => {
+        const next = !res[KEY];
+        chrome.storage.local.set({ [KEY]: next });
+        render(next);
+    });
+    toggle.addEventListener("click", flip);
+    toggle.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); }
+    });
+});
 
 function setupAssignmentsSlider(initial) {
     let el = document.querySelector('#numAssignmentsSlider');
@@ -929,7 +972,9 @@ function setup() {
 
     // give everything the appropirate i18n text
     document.querySelectorAll('[data-i18n]').forEach(text => {
-        text.innerText = chrome.i18n.getMessage(text.dataset.i18n);
+        const msg = chrome.i18n.getMessage(text.dataset.i18n);
+        // keep the in-HTML fallback text when a key is missing instead of blanking it
+        if (msg) text.innerText = msg;
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const msg = chrome.i18n.getMessage(el.dataset.i18nPlaceholder);
@@ -1006,38 +1051,70 @@ function setup() {
         importTheme(obj);
     });
 
+    // copy export output to clipboard
+    document.querySelector("#export-copy").addEventListener("click", async () => {
+        const output = document.querySelector("#export-output");
+        const btn = document.querySelector("#export-copy");
+        const text = output.value;
+        if (!text) { displayAlert(true, "Nothing to copy — select what to export first."); return; }
+        const flash = () => { const old = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = old; }, 1200); };
+        try {
+            await navigator.clipboard.writeText(text);
+            flash();
+        } catch (e) {
+            output.select();
+            document.execCommand("copy");
+            flash();
+        }
+    });
+
     // activate export checkbox
     document.querySelectorAll(".export-details input").forEach(input => {
         input.addEventListener("change", () => {
-            chrome.storage.sync.get(syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds"]), async storage => {
+            chrome.storage.sync.get(syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "custom_styles"]), async storage => {
                 let final = {};
                 for await (item of document.querySelectorAll(".export-details input")) {
                     if (item.checked) {
                         switch (item.id) {
                             case "export-toggles":
-                                final = { ...final, ...(await getExport(storage, syncedSwitches.concat(syncedSubOptions))) };
+                                final = { ...final, ...(await getExport(storage, exportToggles)) };
                                 break;
                             case "export-dark":
-                                final = { ...final, ...(await getExport(storage, ["dark_preset"])) };
+                                final = { ...final, ...(await getExport(storage, ["dark_preset", "dark_mode"])) };
+                                break;
+                            case "export-dark-schedule":
+                                final = { ...final, ...(await getExport(storage, exportDarkSchedule)) };
                                 break;
                             case "export-cards":
                                 final = { ...final, ...(await getExport(storage, ["custom_cards"])) };
                                 break;
+                            case "export-colors":
+                                final = { ...final, ...(await getExport(storage, ["card_colors", ...exportCardColorToggles])) };
+                                break;
+                            case "export-card-styles":
+                                final = { ...final, ...(await getExport(storage, exportCardStyles)) };
+                                break;
+                            case "export-customStyles":
+                                final = { ...final, ...(await getExport(storage, ["custom_styles"])) };
+                                break;
                             case "export-font":
                                 final = { ...final, ...(await getExport(storage, ["custom_font"])) };
                                 break;
-                            case "export-colors":
-                                final = { ...final, ...(await getExport(storage, ["card_colors"])) }
+                            case "export-background":
+                                final = { ...final, ...(await getExport(storage, exportBackground)) };
+                                break;
+                            case "export-layout":
+                                final = { ...final, ...(await getExport(storage, exportLayout)) };
+                                break;
+                            case "export-sidebar":
+                                final = { ...final, ...(await getExport(storage, exportSidebar)) };
+                                break;
+                            case "export-todo":
+                                final = { ...final, ...(await getExport(storage, exportTodo)) };
                                 break;
                             case "export-gpa":
-                                final = { ...final, ...(await getExport(storage, ["gpa_calc_bounds"])) }
+                                final = { ...final, ...(await getExport(storage, [...exportGpa, "gpa_calc_bounds"])) };
                                 break;
-							case "export-customStyles":
-								final = { ...final, ...(await getExport(storage, ["custom_styles"])) };
-								break;
-							case "export-background":
-                                    final = { ...final, ...(await getExport(storage, ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "fitImageToScreen"])) };
-								break;
                         }
                     }
                 }
@@ -1348,12 +1425,7 @@ async function getExport(storage, options) {
                 }
                 break;
 			case "custom_styles":
-				final["customCardStyles"] = storage["customCardStyles"];
-				final["imageSize"] = storage["imageSize"];
-				final["cardRoundness"] = storage["cardRoundness"];
-				final["cardSpacing"] = storage["cardSpacing"];
-				final["cardWidth"] = storage["cardWidth"];
-				final["cardHeight"] = storage["cardHeight"];
+				final["custom_styles"] = storage["custom_styles"];
 				break;
             default:
                 final[option] = storage[option];
@@ -1458,7 +1530,7 @@ let fallback = false;
 
 
 function saveCurrentTheme() {
-    const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors"]);
+    const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
     chrome.storage.local.get("saved_themes", local => {
         chrome.storage.sync.get(allOptions, async sync => {
             let current = await getExport(sync, allOptions);
@@ -1473,10 +1545,10 @@ function saveCurrentTheme() {
                 "better_todo": current["better_todo"],
                 "todo_hide_feedback": current["todo_hide_feedback"],
                 "todo_full_height": current["todo_full_height"],
+                "todo_confetti": current["todo_confetti"],
+                "todo_progress_rings": current["todo_progress_rings"],
                 "todo_hr24": current["todo_hr24"],
                 "todo_separate_scrollbar": current["todo_separate_scrollbar"],
-                "num_todo_items": current["num_todo_items"],
-                "hover_preview": current["hover_preview"],
                 "better_sidebar": current["better_sidebar"],
                 "sidebar_scale": current["sidebar_scale"],
 				"imageSize": current["imageSize"],
@@ -1484,9 +1556,13 @@ function saveCurrentTheme() {
 				"cardSpacing": current["cardSpacing"],
 				"cardWidth": current["cardWidth"],
 				"cardHeight": current["cardHeight"],
+				"custom_styles": current["custom_styles"],
+				"customCardStyles": current["customCardStyles"],
 				"customBackgroundLink": current["customBackgroundLink"],
 				"customBackgroundScale": current["customBackgroundScale"],
 				"customBackgroundDaily": current["customBackgroundDaily"],
+				"customBackgroundNasaDaily": current["customBackgroundNasaDaily"],
+				"fitImageToScreen": current["fitImageToScreen"],
             }
             const now = new Date();
             local["saved_themes"][now.getTime()] = trimmed;
@@ -1498,7 +1574,15 @@ function saveCurrentTheme() {
 }
 
 
-async function displayThemeList(direction = 0) {
+function displayThemeList(direction = 0) {
+    // render the full sorted theme list (filtered by any active search).
+    // Previously this was an empty stub, so the browser showed nothing
+    // until the search box fired displayThemeSearchList directly.
+    let themesToShow = allThemes;
+    if (searchFor) {
+        themesToShow = allThemes.filter(theme => theme.title.toLowerCase().includes(searchFor.toLowerCase()));
+    }
+    displayThemeSearchList(themesToShow, direction);
 }
 
 
@@ -1507,7 +1591,7 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
     const perPage = 24;
     const maxPage = Math.ceil(themesToShow.length / perPage);
     if (pageDir == -1 && current_page_num > 1) current_page_num--;
-    if (pageDir == 1 && curren_page_num < maxPage) current_page_num++;
+    if (pageDir == 1 && current_page_num < maxPage) current_page_num++;
     let container = document.getElementById("premade-themes");
     container.textContent = "";
     let start = (current_page_num - 1) * perPage, end = start + perPage;
@@ -1520,7 +1604,7 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
             makeElement("p", themeBtn, {"className": "theme-button-title", "textContent":  split[0] });
             makeElement("p", themeBtn, {"className": "theme-button-creator", "textContent": split[1] });
             themeBtn.addEventListener("click", () => {
-                const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors"]);
+                const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
                 chrome.storage.sync.get(allOptions, sync => {
                     chrome.storage.local.get(["previous_theme"], async local => {
                         if (local["previous_theme"] === null) {

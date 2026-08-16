@@ -250,5 +250,17 @@
 	},
 	"fix_dm_text": {
 		"message": "The Fixer Is Automatically Running On These Pages:"
+	},
+	"hide_links": {
+		"message": "Hide links"
+	},
+	"show_links": {
+		"message": "Show links"
+	},
+	"center_cards": {
+		"message": "Center Cards"
+	},
+	"hide_new_canvas": {
+		"message": "Hide New Canvas"
 	}
 }

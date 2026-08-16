@@ -238,5 +238,17 @@
   },
   "fix_dm_text": {
     "message": "Il fissatore viene eseguito automaticamente su queste pagine:"
+  },
+  "hide_links": {
+    "message": "Nascondi link"
+  },
+  "show_links": {
+    "message": "Mostra link"
+  },
+  "center_cards": {
+    "message": "Centra schede"
+  },
+  "hide_new_canvas": {
+    "message": "Nascondi nuovo Canvas"
   }
 }

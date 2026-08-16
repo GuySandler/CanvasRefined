@@ -238,5 +238,17 @@
   },
   "fix_dm_text": {
     "message": "修复程序会自动在这些页面上运行:"
+  },
+  "hide_links": {
+    "message": "隱藏連結"
+  },
+  "show_links": {
+    "message": "顯示連結"
+  },
+  "center_cards": {
+    "message": "置中卡片"
+  },
+  "hide_new_canvas": {
+    "message": "隱藏新版 Canvas"
   }
 }

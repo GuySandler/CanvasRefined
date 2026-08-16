@@ -238,5 +238,17 @@
   },
   "fix_dm_text": {
     "message": "Fixer автоматически запускается на этих страницах:"
+  },
+  "hide_links": {
+    "message": "Скрыть ссылки"
+  },
+  "show_links": {
+    "message": "Показать ссылки"
+  },
+  "center_cards": {
+    "message": "Центрировать карточки"
+  },
+  "hide_new_canvas": {
+    "message": "Скрыть новый Canvas"
   }
 }

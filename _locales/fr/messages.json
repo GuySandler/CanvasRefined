@@ -238,5 +238,17 @@
   },
   "fix_dm_text": {
     "message": "Le fixateur s'exécute automatiquement sur ces pages :"
+  },
+  "hide_links": {
+    "message": "Masquer les liens"
+  },
+  "show_links": {
+    "message": "Afficher les liens"
+  },
+  "center_cards": {
+    "message": "Centrer les cartes"
+  },
+  "hide_new_canvas": {
+    "message": "Masquer le nouveau Canvas"
   }
 }
