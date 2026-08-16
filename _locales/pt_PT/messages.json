@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Datas de vencimento relativas"
   },
+  "equal_height_cards": {
+    "message": "Altura igual"
+  },
   "enter_multiple": {
     "message": "(Digite vários com uma vírgula)"
   },
@@ -235,5 +238,17 @@
   },
   "fix_dm_text": {
     "message": "O Fixer está sendo executado automaticamente nestas páginas:"
+  },
+  "hide_links": {
+    "message": "Ocultar ligações"
+  },
+  "show_links": {
+    "message": "Mostrar ligações"
+  },
+  "center_cards": {
+    "message": "Centrar cartões"
+  },
+  "hide_new_canvas": {
+    "message": "Ocultar novo Canvas"
   }
 }

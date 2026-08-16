@@ -2,6 +2,9 @@
 	"Canvas_Refined": {
 		"message": "Canvas Refined"
 	},
+	"search_features": {
+		"message": "Search features..."
+	},
 	"updates": {
 		"message": "Updates"
 	},
@@ -121,6 +124,9 @@
 	},
 	"relative_due_dates": {
 		"message": "Relative Due Dates"
+	},
+	"equal_height_cards": {
+		"message": "Equal Height"
 	},
 	"enter_multiple": {
 		"message": "(Enter Multiple With A Comma)"
@@ -244,5 +250,17 @@
 	},
 	"fix_dm_text": {
 		"message": "The Fixer Is Automatically Running On These Pages:"
+	},
+	"hide_links": {
+		"message": "Hide links"
+	},
+	"show_links": {
+		"message": "Show links"
+	},
+	"center_cards": {
+		"message": "Center Cards"
+	},
+	"hide_new_canvas": {
+		"message": "Hide New Dashboard"
 	}
 }

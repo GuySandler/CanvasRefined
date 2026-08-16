@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Fechas pendientes relativas"
   },
+  "equal_height_cards": {
+    "message": "Altura igual"
+  },
   "enter_multiple": {
     "message": "(Ingrese varios con una coma)"
   },
@@ -235,5 +238,17 @@
   },
   "fix_dm_text": {
     "message": "El reparador se ejecuta automáticamente en estas páginas:"
+  },
+  "hide_links": {
+    "message": "Ocultar enlaces"
+  },
+  "show_links": {
+    "message": "Mostrar enlaces"
+  },
+  "center_cards": {
+    "message": "Centrar tarjetas"
+  },
+  "hide_new_canvas": {
+    "message": "Ocultar nuevo Canvas"
   }
 }

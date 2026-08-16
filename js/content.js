@@ -30,6 +30,10 @@ function isConversationsPage() {
     return /^\/conversations(?:\/|$)/.test(current_page);
 }
 
+function isAccountsPage() {
+    return /^\/accounts(?:\/|$)/.test(current_page);
+}
+
 function isProfilePage() {
     return /^\/profile(?:\/|$)/.test(current_page);
 }
@@ -42,6 +46,7 @@ function getSubmissionAssignmentLink() {
 
 let submissionPageButtonObserver = null;
 let profileLogoutButtonObserver = null;
+let newCanvasButtonObserver = null;
 
 function addSubmissionPageButton() {
     const assignmentLink = getSubmissionAssignmentLink();
@@ -56,72 +61,6 @@ function addSubmissionPageButton() {
         textContent: "Back to Assignment",
         style: "display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;margin:0 0 12px 0;padding:10px 14px;text-decoration:none;font-weight:700;",
     }, true);
-}
-
-let sequenceFooterObserver = null;
-
-function isAssignmentPage() {
-    return /^\/courses\/\d+\/assignments(?:\/\d+)?(?:\/|$)/.test(current_page);
-}
-
-function removeSequenceFooter() {
-    if (!isAssignmentPage()) return false;
-    const sequenceFooter = document.getElementById("sequence_footer");
-    if (!sequenceFooter) return false;
-    sequenceFooter.remove();
-    return true;
-}
-
-function watchSequenceFooter() {
-    if (!isAssignmentPage()) return;
-    if (removeSequenceFooter()) return;
-    if (sequenceFooterObserver) return;
-
-    sequenceFooterObserver = new MutationObserver(() => {
-        if (removeSequenceFooter() && sequenceFooterObserver) {
-            sequenceFooterObserver.disconnect();
-            sequenceFooterObserver = null;
-        }
-    });
-
-    sequenceFooterObserver.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => {
-        if (sequenceFooterObserver) {
-            sequenceFooterObserver.disconnect();
-            sequenceFooterObserver = null;
-        }
-    }, 10000);
-}
-
-function ensureSubmissionPageButton() {
-    const assignmentLink = getSubmissionAssignmentLink();
-    if (!assignmentLink) return false;
-    const content = document.getElementById("content");
-    if (!content) return false;
-    if (content.querySelector("#canvasrefined-assignment-return")) return true;
-    addSubmissionPageButton();
-    return Boolean(content.querySelector("#canvasrefined-assignment-return"));
-}
-
-function watchSubmissionPageButton() {
-    if (!getSubmissionAssignmentLink()) return;
-    if (ensureSubmissionPageButton()) return;
-    if (submissionPageButtonObserver) return;
-
-    submissionPageButtonObserver = new MutationObserver(() => {
-        if (ensureSubmissionPageButton() && submissionPageButtonObserver) {
-            submissionPageButtonObserver.disconnect();
-            submissionPageButtonObserver = null;
-        }
-    });
-
-    submissionPageButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => {
-        if (submissionPageButtonObserver) {
-            submissionPageButtonObserver.disconnect();
-            submissionPageButtonObserver = null;
-        }
-    }, 10000);
 }
 
 function addProfileLogoutPageButton() {
@@ -168,6 +107,246 @@ function watchProfileLogoutPageButton() {
     }, 10000);
 }
 
+function ensureSubmissionPageButton() {
+    const assignmentLink = getSubmissionAssignmentLink();
+    if (!assignmentLink) return false;
+    const content = document.getElementById("content");
+    if (!content) return false;
+    if (content.querySelector("#canvasrefined-assignment-return")) return true;
+    addSubmissionPageButton();
+    return Boolean(content.querySelector("#canvasrefined-assignment-return"));
+}
+
+function watchSequenceFooter() {
+    if (!isAssignmentPage()) return;
+    if (removeSequenceFooter()) return;
+    if (sequenceFooterObserver) return;
+
+    sequenceFooterObserver = new MutationObserver(() => {
+        if (removeSequenceFooter() && sequenceFooterObserver) {
+            sequenceFooterObserver.disconnect();
+            sequenceFooterObserver = null;
+        }
+    });
+
+    sequenceFooterObserver.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(() => {
+        if (sequenceFooterObserver) {
+            sequenceFooterObserver.disconnect();
+            sequenceFooterObserver = null;
+        }
+    }, 10000);
+}
+
+function watchSubmissionPageButton() {
+    if (!getSubmissionAssignmentLink()) return;
+    if (ensureSubmissionPageButton()) return;
+    if (submissionPageButtonObserver) return;
+
+    submissionPageButtonObserver = new MutationObserver(() => {
+        if (ensureSubmissionPageButton() && submissionPageButtonObserver) {
+            submissionPageButtonObserver.disconnect();
+            submissionPageButtonObserver = null;
+        }
+    });
+
+    submissionPageButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(() => {
+        if (submissionPageButtonObserver) {
+            submissionPageButtonObserver.disconnect();
+            submissionPageButtonObserver = null;
+        }
+    }, 10000);
+}
+
+function removeNewCanvasButton() {
+    document.querySelectorAll('[data-testid="switch-to-new-dashboard-button"]').forEach(btn => btn.remove());
+}
+
+function watchNewCanvasButton() {
+    if (newCanvasButtonObserver) {
+        newCanvasButtonObserver.disconnect();
+        newCanvasButtonObserver = null;
+    }
+    if (options.hide_new_canvas !== true) return;
+    removeNewCanvasButton();
+    newCanvasButtonObserver = new MutationObserver(() => {
+        if (options.hide_new_canvas !== true) {
+            if (newCanvasButtonObserver) {
+                newCanvasButtonObserver.disconnect();
+                newCanvasButtonObserver = null;
+            }
+            return;
+        }
+        removeNewCanvasButton();
+    });
+    newCanvasButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+async function getActiveCustomBackground() {
+    const syncOpts = await chrome.storage.sync.get([
+        "customBackgroundDaily",
+        "customBackgroundNasaDaily",
+        "customBackgroundLink",
+        "customBackgroundScale",
+    ]);
+
+    console.log("[CanvasRefined] getActiveCustomBackground:", syncOpts);
+
+    if (syncOpts.customBackgroundNasaDaily === true) {
+        console.log("[CanvasRefined] Using NASA APOD");
+        return await getNasaDailyBackground();
+    }
+
+    if (syncOpts.customBackgroundDaily === true) {
+        console.log("[CanvasRefined] Using Wikimedia Featured");
+        const dailyPreset = await getDailyBackgroundPreset();
+        if (dailyPreset) {
+            console.log("[CanvasRefined] Wikimedia URL:", dailyPreset.url);
+            return {
+                url: dailyPreset.url,
+                scale: dailyPreset.scale,
+            };
+        }
+        console.log("[CanvasRefined] Wikimedia returned null");
+    }
+
+    if (syncOpts.customBackgroundLink && syncOpts.customBackgroundLink !== "") {
+        console.log("[CanvasRefined] Using custom link");
+        return {
+            url: syncOpts.customBackgroundLink,
+            scale: syncOpts.customBackgroundScale || 100,
+        };
+    }
+
+    console.log("[CanvasRefined] No custom background");
+    return null;
+}
+
+async function getDailyBackgroundPreset() {
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const cacheKey = `picsum_daily_${dateStr}`;
+    const cached = await chrome.storage.local.get(cacheKey);
+    if (cached[cacheKey]) return cached[cacheKey];
+
+    const url = `https://picsum.photos/seed/${dateStr}/1920/1080`;
+    const result = { url, scale: 100 };
+    await chrome.storage.local.set({ [cacheKey]: result });
+    return result;
+}
+
+async function getNasaDailyBackground() {
+    try {
+        return await chrome.runtime.sendMessage({ type: "getNasaBackground" });
+    } catch (error) {
+        console.error("[CanvasRefined] Failed to fetch NASA APOD:", error);
+        return null;
+    }
+}
+
+let nasaInfoOverlayEl = null;
+
+function isDashboardPage() {
+    return !!document.querySelector("#DashboardCard_Container");
+}
+
+function createNasaInfoOverlay() {
+    if (options.customBackgroundNasaDaily !== true) return;
+    if (nasaInfoOverlayEl || !isDashboardPage()) return;
+    
+    const contentMain = document.querySelector("#content.ic-Layout-contentMain, .ic-Layout-contentMain");
+    if (!contentMain) return;
+    if (getComputedStyle(contentMain).position === "static") {
+        contentMain.style.position = "relative";
+    }
+
+    nasaInfoOverlayEl = document.createElement("div");
+    nasaInfoOverlayEl.id = "canvasrefined-nasa-info-overlay";
+    nasaInfoOverlayEl.style.cssText = "position:absolute;right:24px;bottom:24px;z-index:9999;";
+    nasaInfoOverlayEl.innerHTML = `
+        <div id="nasa-info-icon" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:rgba(30,30,30,0.85);border:1px solid rgba(255,255,255,0.15);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e2e2e2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+        </div>
+        <div id="nasa-info-panel" style="display:none;position:absolute;bottom:calc(100% + 10px);right:0;background:#1e1e1e;border:1px solid #3c3c3c;border-radius:8px;padding:14px 18px;width:340px;max-width:calc(100vw - 40px);box-shadow:0 4px 16px rgba(0,0,0,0.4);">
+            <div id="nasa-info-title" style="font-weight:600;font-size:14px;margin-bottom:4px;color:#f5f5f5;"></div>
+            <div id="nasa-info-date" style="font-size:12px;color:#ababab;margin-bottom:4px;"></div>
+            <div id="nasa-info-credit" style="font-size:12px;color:#dfa581;margin-bottom:8px;"></div>
+            <div id="nasa-info-explanation" style="font-size:12px;color:#e2e2e2;line-height:1.5;max-height:200px;overflow-y:auto;white-space:pre-wrap;"></div>
+        </div>
+    `;
+    
+    const icon = nasaInfoOverlayEl.querySelector("#nasa-info-icon");
+    const panel = nasaInfoOverlayEl.querySelector("#nasa-info-panel");
+    
+    const populatePanel = async () => {
+        // The NASA worker (background.js getNasaBackground) falls back up to 7 days
+        // when today's APOD isn't available yet, so search backward for the date
+        // that was actually cached and displayed instead of assuming today.
+        const date = new Date();
+        for (let i = 0; i < 7; i++) {
+            const dateStr = date.toISOString().slice(0, 10);
+            const cacheKey = `nasa_apod_${dateStr}`;
+            const cached = await chrome.storage.local.get(cacheKey);
+            if (!cached[cacheKey]) {
+                date.setDate(date.getDate() - 1);
+                continue;
+            }
+            const metadataKey = `nasa_apod_meta_${dateStr}`;
+            const metadata = await chrome.storage.local.get(metadataKey);
+            const meta = metadata[metadataKey];
+            if (!meta) return false;
+            document.getElementById("nasa-info-title").textContent = meta.title || "";
+            document.getElementById("nasa-info-date").textContent = `Date: ${meta.date}`;
+            document.getElementById("nasa-info-credit").textContent = meta.copyright ? `Credit: ${meta.copyright}` : "";
+            document.getElementById("nasa-info-explanation").textContent = meta.explanation || "No description available.";
+            return true;
+        }
+        return false;
+    };
+
+    let pinned = false;
+
+    const showPanel = async () => {
+        if (pinned) return;
+        if (await populatePanel()) panel.style.display = "block";
+    };
+
+    const hidePanel = () => {
+        if (pinned) return;
+        panel.style.display = "none";
+    };
+
+    const togglePanel = async () => {
+        if (pinned) {
+            pinned = false;
+            panel.style.display = "none";
+        } else {
+            pinned = true;
+            if (await populatePanel()) panel.style.display = "block";
+        }
+    };
+
+    icon.addEventListener("mouseenter", showPanel);
+    icon.addEventListener("mouseleave", hidePanel);
+    panel.addEventListener("mouseenter", showPanel);
+    panel.addEventListener("mouseleave", hidePanel);
+    icon.addEventListener("click", togglePanel);
+    
+    contentMain.appendChild(nasaInfoOverlayEl);
+}
+
+function removeNasaInfoOverlay() {
+    if (nasaInfoOverlayEl) {
+        nasaInfoOverlayEl.remove();
+        nasaInfoOverlayEl = null;
+    }
+}
+
 function getSidebarStateMode(mode = getSidebarLayoutMode()) {
     return mode === "course" ? "course" : "dashboard";
 }
@@ -177,7 +356,9 @@ function getSidebarStateKey(mode = getSidebarLayoutMode()) {
 }
 
 async function getSidebarExpandedState(mode = getSidebarLayoutMode()) {
-    return false;
+    const key = getSidebarStateKey(mode);
+    const result = await chrome.storage.local.get(key);
+    return result[key] ?? false;
 }
 
 function setSidebarExpandedState(mode, expanded) {
@@ -194,78 +375,11 @@ let timeCheck = null;
 let reminderCheck = null;
 let betterSidebarLoading = false;
 let dashboardReadyTimer = null;
-//let assignmentData = null;
 
 /*
 Start
 */
 
-/*
-// only works if a course has no quizzes...
-function getClassAverages() {
-    if (true) { // check if option is enabled
-        let match = current_page.match(/courses\/(?<id>\d*)\/grades/);
-        if (match) {
-            let course_grades = getData(`${domain}/api/v1/courses/${match.groups.id}/assignments?include[]=score_statistics&include[]=submission`);
-            let course_quizzes = getData(`${domain}/api/v1/courses/${match.groups.id}/quizzes`);
-            let course_groups = getData(`${domain}/api/v1/courses/${match.groups.id}/assignment_groups`);
-            course_grades.then(grades => {
-                course_groups.then(groups => {
-                    course_quizzes.then(quizzes => {
-                        let total_weight = 0;
-                        let total_points = 0;
-                        let weights = {};
-                        groups.forEach(group => {
-                            weights[group.id] = group.group_weight;
-                            total_weight += group.group_weight;
-                        });
-                        groups.forEach(group => {
-                            weights[group.id] = total_weight === 0 ? 1 : weights[group.id] / total_weight;
-                        });
-                        let min = 0, lowq = 0, mean = 0, median = 0, upq = 0, max = 0, earned = 0;
-                        grades.forEach(grade => {
-                            if (!grade.score_statistics) return;
-                            console.log("\nthis:", grade.name, grade.score_statistics.lower_q, grade.score_statistics.mean, grade.score_statistics.upper_q);
-                            console.log("totals:", lowq, upq, total_points);
-                            min += grade.score_statistics.min * weights[grade.assignment_group_id];
-                            lowq += grade.score_statistics.lower_q * weights[grade.assignment_group_id];
-                            mean += grade.score_statistics.mean * weights[grade.assignment_group_id];
-                            median += grade.score_statistics.median * weights[grade.assignment_group_id];
-                            upq += grade.score_statistics.upper_q * weights[grade.assignment_group_id];
-                            max += grade.score_statistics.max * weights[grade.assignment_group_id];
-                            total_points += grade.points_possible * weights[grade.assignment_group_id];
-                            earned += grade.submission.score * weights[grade.assignment_group_id];
-                        });
-
-                        course_quizzes.forEach(quiz => {
-                            // is it even possible to get quiz statistics?
-                        });
-                        // absolute minimum is if the same student got the lowest score on every assignment
-                        // absolute maximum is if the same student got the highest score on every assignment
-                        // it doesn't really tell you much because both are unlikely
-                        console.log("\nabsolute minimum:", min / total_points, "\nabsolute maximum:", max / total_points, "\nlower quartile:", lowq / total_points, "\nmean:", mean / total_points, "\nupper quartile:", upq / total_points);
-
-                        min = (min / total_points);
-                        lowq = (lowq / total_points);
-                        mean = (mean / total_points);
-                        upq = (upq / total_points);
-                        max = (max / total_points);
-                        earned = (earned / total_points);
-
-                        console.log(weights);
-
-                        const width = 150;
-                        let inner = `<td colspan="6" style="padding-bottom: 20px;"><table id="" class=""><thead><tr><th colspan="5">Class Averages</th><th></th></tr></thead><tbody><tr><td>Mean: ${(mean * 100).toFixed(2)}</td><td>Upper Quartile: ${(upq * 100).toFixed(2)}</td><td>Lower Quartile: ${(lowq * 100).toFixed(2)}</td><td colspan="3"><svg viewBox="-1 0 160 30" xmlns="http://www.w3.org/2000/svg" style="float: right; height: 30px; margin-20px; width: 161px; position: relative; margin-right: 30px;" aria-hidden="true"><line class="zero" x1="0" y1="3" x2="0" y2="27" stroke="#556572"></line><line class="possible" x1="150.0" y1="3" x2="150.0" y2="27" stroke="#556572"></line><line class="min" x1="${min * width}" y1="6" x2="${min * width}" y2="24" stroke="#556572" stroke-width="2"></line><line class="bottomQ" x1="${min * width}" y1="15" x2="${lowq * width}" y2="15" stroke="#556572" stroke-width="2"></line><line class="topQ" x1="${upq * width}" y1="15" x2="${max * width}" y2="15" stroke="#556572" stroke-width="2"></line><line class="max" x1="${max * width}" y1="6" x2="${max * width}" y2="24" stroke="#556572" stroke-width="2"></line><rect class="mid50" x="${lowq * width}" y="3" width="22.499999999999986" height="24" stroke="#556572" stroke-width="2" rx="3" fill="none"></rect><line class="median" x1="${mean * width}" y1="3" x2="${mean * width}" y2="27" stroke="#556572" stroke-width="2"></line><rect class="myScore" x="${(earned * width) - 7}" y="8" width="14" height="14" stroke="#224488" stroke-width="2" rx="3" fill="#aabbdd"></rect></svg></td></tr></tbody></table></td>`;
-
-                        makeElement("tr", document.querySelector("#grades_summary tbody"), { "innerHTML": inner });
-                    });
-                });
-            });
-
-        }
-    }
-}
-*/
 
 /*
 Todo Reminders
@@ -346,6 +460,7 @@ async function reminderWatch() {
 }
 
 function updateReminders() {
+    if (!assignments || typeof assignments.then !== "function") return;
     const fiveDays = 1000 * 60 * 60 * 24 * 5;
     const now = (new Date()).getTime();
     const list = [];
@@ -374,38 +489,11 @@ function showExampleReminder() {
     example.querySelector(".canvasrefined-reminder-due").textContent = "This notification will pop up in other pages to remind you of incomplete assignments that are due in less than 6 hours." /*It will notify again at 2 hours if the 'Remind 2x' option is on."*/;
 }
 
-// async function ScheduledReminderCheck() {
-//     let date = new Date();
-//     let currentHour = date.getHours();
-//     let currentMinute = date.getMinutes();
-//     if (options.scheduledReminderTime) {
-//         let [hour, minute] = options.scheduledReminderTime.split(":");
-//         if (parseInt(hour) == currentHour && parseInt(minute) == currentMinute) {
-//             const container = document.getElementById("canvasrefined-reminders") || makeElement("div", document.body, { "id": "canvasrefined-reminders" });
-//             container.style.display = "flex";
-//             container.textContent = "";
-//             const storage = await chrome.storage.sync.get("reminders");
-//             const now = (new Date()).getTime();
-//             storage["reminders"].forEach(reminder => {
-//                 if (reminder.d >= now) {
-//                     createReminder(reminder, container);
-//                 }
-//             });
-//         }
-//     }
-// }
-
-// function toggleScheduledReminders() {
-//     clearInterval(reminderCheck);
-//     if (options.scheduledReminder !== true) return;
-//     ScheduledReminderCheck();
-//     reminderCheck = setInterval(ScheduledReminderCheck, 60000);
-// }
 
 isDomainCanvasPage();
 
 function isDomainCanvasPage() {
-    chrome.storage.sync.get(['custom_domain', 'dark_mode', 'dark_preset', 'device_dark', 'remind'/*, 'scheduledReminder', 'scheduledReminderTime'*/], result => {
+    chrome.storage.sync.get(['custom_domain', 'dark_mode', 'dark_preset', 'device_dark', 'remind'], result => {
         options = result;
         if (result.custom_domain.length && result.custom_domain[0] !== "") {
             for (let i = 0; i < result.custom_domain.length; i++) {
@@ -418,15 +506,10 @@ function isDomainCanvasPage() {
             // if the code reaches this point, its not a canvas page so run the reminders
             setTimeout(reminderWatch, 2000);
             setInterval(reminderWatch, 60000);
-            // toggleScheduledReminders();
             // turn the reminders on/off if the option is changed
             chrome.storage.onChanged.addListener((changes) => {
                 Object.keys(changes).forEach(key => {
                     if (key === "remind") reminderWatch();
-                    if (key === "scheduledReminder" || key === "scheduledReminderTime") {
-                        options[key] = changes[key].newValue;
-                        // toggleScheduledReminders();
-                    }
                 })
             })
         } else {
@@ -436,6 +519,17 @@ function isDomainCanvasPage() {
 }
 
 function startExtension() {
+    // Remove footer robustly - run first so a crash below can't block it
+    const removeFooter = () => {
+        const footer = document.querySelector('footer#footer.ic-app-footer, footer#footer');
+        if (footer) footer.remove();
+    };
+    removeFooter();
+    const footerObserver = new MutationObserver(() => {
+        removeFooter();
+    });
+    footerObserver.observe(document.documentElement, { childList: true, subtree: true });
+
     toggleDarkMode();
 
     chrome.storage.sync.get(["better_sidebar", "sidebar_scale"], result => {
@@ -451,6 +545,7 @@ function startExtension() {
         checkDashboardReady();
         loadCustomFont();
         applyAestheticChanges();
+        watchNewCanvasButton();
         changeFavicon();
         updateReminders();
         applyCustomBackground();
@@ -459,9 +554,7 @@ function startExtension() {
         watchSubmissionPageButton();
         watchProfileLogoutPageButton();
 
-        //getClassAverages();
         
-        setTimeout(() => document.getElementById("footer")?.remove(), 800);
         setTimeout(() => runDarkModeFixer(false), 800);
         setTimeout(() => runDarkModeFixer(false), 4500);
     });
@@ -500,6 +593,8 @@ function applyOptionsChanges(changes) {
 				changeGradientCards();
 				break;
 			case "dashboard_notes":
+			case "dashboard_notes_text":
+			case "dashboard_notes_mode":
 				loadDashboardNotes();
 				break;
 			case "dashboard_grades":
@@ -523,6 +618,11 @@ function applyOptionsChanges(changes) {
 			case "relative_dues":
 				cardAssignments = preloadAssignmentEls();
 				loadCardAssignments();
+				break;
+			case "equal_height_cards":
+				// No need to rebuild the assignment rows — just stretch (or reset)
+				// the card heights in place for a snappy toggle.
+				equalizeCardHeights();
 				break;
 			case "custom_cards":
 			case "custom_cards_2":
@@ -561,22 +661,34 @@ function applyOptionsChanges(changes) {
 			case "condensed_cards":
 			case "hide_feedback":
 			case "full_width":
+			case "center_cards":
 			case "custom_styles":
 				applyAestheticChanges();
+				break;
+			case "hide_new_canvas":
+				watchNewCanvasButton();
 				break;
             case "customBackgroundScale":
                 applyCustomBackground();
                 break;
-			// case "show_updates":
-			// 	showUpdateMsg();
-			// 	break;
+            case "customBackgroundDaily":
+                applyCustomBackground();
+                removeNasaInfoOverlay();
+                break;
+            case "customBackgroundNasaDaily":
+                applyCustomBackground();
+                if (options.customBackgroundNasaDaily === true) {
+                    createNasaInfoOverlay();
+                } else {
+                    removeNasaInfoOverlay();
+                }
+                break;
+            case "fitImageToScreen":
+                applyCustomBackground();
+                break;
 			case "remind":
 				showExampleReminder();
 				break;
-			// case "scheduledReminder":
-			// case "scheduledReminderTime":
-			// 	toggleScheduledReminders();
-				// break;
 			case "imageSize":
 			case "cardRoundness":
 			case "cardSpacing":
@@ -667,37 +779,58 @@ function resetBetterSidebarLayout() {
 
 function ensureBetterSidebar() {
     if (!options.better_sidebar) return;
-    const existingSidebar = document.querySelector("#better-sidebar-container");
-    if (existingSidebar) {
-        const expander = existingSidebar.querySelector(".better-sidebar-expander");
-        existingSidebar.dataset.expanded = "false";
-        setSidebarExpandedState(getSidebarLayoutMode(), false);
-        updateSidebar(false, existingSidebar, expander);
-        return;
-    }
+    if (document.querySelector("#better-sidebar-container")) return;
     if (!document.querySelector("#wrapper") || !document.querySelector(".ic-Layout-contentWrapper")) return;
     setupBetterSidebar(getSidebarLayoutMode());
 }
 
-function applyCustomBackground() {
+async function applyCustomBackground() {
     // let style = document.querySelector("#DashboardCard_Container")
     let style = document.querySelector("#canvasrefined-background") || document.createElement('style');
     style.id = "canvasrefined-background";
-    
-    if (options.customBackgroundLink && options.customBackgroundLink !== "") {
-        const backgroundScale = Number(options.customBackgroundScale) || 100;
-        style.textContent = `
+
+    const activeBackground = await getActiveCustomBackground();
+    console.log("[CanvasRefined] activeBackground:", activeBackground);
+    if (!activeBackground) {
+        if (style.isConnected) style.remove();
+        return;
+    }
+
+    const backgroundScale = Number(activeBackground.scale) || 100;
+    const backgroundUrl = JSON.stringify(activeBackground.url);
+    const fitToScreen = options.fitImageToScreen === true;
+    console.log("[CanvasRefined] Applying background:", activeBackground.url, "fitToScreen:", fitToScreen);
+    style.textContent = `
         #wrapper {
-            background-image: url('${options.customBackgroundLink}') !important;
-            background-size: ${backgroundScale}% auto !important;
+            background-image: url(${backgroundUrl}) !important;
             background-repeat: no-repeat !important;
             background-position: center center !important;
             background-attachment: fixed !important;
+        }
+        @media (orientation: landscape) {
+            #wrapper { background-size: ${fitToScreen ? 'cover' : backgroundScale + '% auto'} !important; }
+        }
+        @media (orientation: portrait) {
+            #wrapper { background-size: cover !important; }
         }
         .ic-Dashboard-header__layout {
             background: none !important;
             /* backdrop-filter: blur(10px) !important; */
             border-radius: 5px;
+            padding-left: 20px !important;
+        }
+        #dashboard_header_container {
+            margin-left: -35px !important;
+            margin-right: -35px !important;
+            box-sizing: border-box !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 20%) !important;
+            border: 1px solid color-mix(in srgb, var(--bcborders) 60%, transparent) !important;
+            border-radius: 10px !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 1000 !important;
+            backdrop-filter: blur(8px) saturate(120%) !important;
+            -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
         }
         #right-side-wrapper {
             // backdrop-filter: blur(10px) !important;
@@ -837,14 +970,9 @@ function applyCustomBackground() {
         tr.student_assignment.assignment_graded.editable > * {
             border:none!important
         }`; 
-        // TODO: liquid glass?
-    }
+    // TODO: liquid glass?
     
     document.documentElement.appendChild(style);
-}
-function clearCustomBackground() {
-	let style = document.querySelector("#canvasrefined-background");
-	if (style) style.remove();
 }
 
 function applyBetterSidebarLayoutFix() {
@@ -884,11 +1012,16 @@ function checkDashboardReady() {
             if (mutation.type !== "childList") continue;
             if (current_page == "/" || current_page == "" || current_page.match(/^\/courses\/(\d+)(?:\/|$)/)) {
                 if (dashboardReadyTimer) continue;
+
+                const dashboardCards = document.querySelector("#DashboardCard_Container");
+                if (dashboardCards) {
+                }
+
                 dashboardReadyTimer = setTimeout(() => {
                     dashboardReadyTimer = null;
 
-                    const dashboardCards = document.querySelector("#DashboardCard_Container");
-                    if (dashboardCards) {
+                    const c = document.querySelector("#DashboardCard_Container");
+                    if (c) {
                         let cards = document.querySelectorAll(".ic-DashboardCard");
                         changeGradientCards();
                         setupCardAssignments();
@@ -898,6 +1031,7 @@ function checkDashboardReady() {
                         loadDashboardNotes();
                         setupGPACalc();
                         showUpdateMsg();
+                        createNasaInfoOverlay();
                     }
 
                     const rightSide = document.querySelector("#right-side");
@@ -937,7 +1071,7 @@ function recieveMessage(request, sender, sendResponse) {
         case ("getcolors"): sendResponse(getCardColors()); break;
         case ("inspect"): sendResponse(inspectDarkMode(true)); break;
         case ("fixdm"): sendResponse(runDarkModeFixer(true)); break;
-		case ("updateBackground"): clearCustomBackground(); sendResponse(true); break;
+		case ("updateBackground"): applyCustomBackground(); sendResponse(true); break;
         default: sendResponse(true);
     }
 }
@@ -966,11 +1100,6 @@ function inspectDarkMode(withOutput = false) {
             const r = parseInt(bgcolor.groups["r"]);
             const g = parseInt(bgcolor.groups["g"]);
             const b = parseInt(bgcolor.groups["b"]);
-            /*
-            if (el.classList.contains("no-touch")) {
-                console.log({ "r": r, "g": g, "b": b }, { "r": r === bg0.r, "g": g === bg0.g, "b": b === bg0.b });
-            }
-            */
             if (r > 245 && g > 245 && b > 245 && !(r === bg0.r && g === bg0.g && b === bg0.b) && !(r === lnk.r && g === lnk.g && b === lnk.b)) {
                 el.style.cssText = (";background:" + options.dark_preset["background-0"] + "!important;color" + options.dark_preset["text-0"] + "!important;") + el.style.cssText;
                 if (withOutput === true) output += selector + "{background: background-0, color: text-0}\n";
@@ -1169,123 +1298,6 @@ async function getCards(api = null) {
 Better todo list
 */
 
-// function setAssignmentState(id, updates) {
-//     let states = options.assignment_states;
-//     let length = JSON.stringify(states).length;
-//     // remove the oldest states if the size is approaching the storage limit
-//     if (length > 7400) {
-//         let keys = Object.keys(states).sort((a, b) => states[b].expire - states[a].expire);
-//         keys.splice(-5);
-//         let newStates = {};
-//         keys.forEach(key => {
-//             newStates[key] = states[key];
-//         });
-//         states = newStates;
-//     }
-//     states[id] = states[id] ? { ...states[id], ...updates } : updates;
-//     chrome.storage.sync.set({ assignment_states: states }).then(() => { cardAssignments = preloadAssignmentEls(); loadBetterTodo(); loadCardAssignments(); });
-// }
-
-function createTodoCreateBtn(location) {
-    let confirmButton = makeElement("button", location, { "className": "canvasrefined-custom-btn", "textContent": "Create" });
-    confirmButton.addEventListener("click", () => {
-        chrome.storage.sync.get("custom_assignments_overflow", overflow => {
-            chrome.storage.sync.get(overflow["custom_assignments_overflow"], storage => {
-                let course_id = parseInt(location.querySelector("#canvasrefined-custom-course").value);
-
-                const assignment = {
-                    "plannable_id": new Date().getTime(),
-                    "context_name": options.custom_cards[location.querySelector("#canvasrefined-custom-course").value].default,
-                    "plannable": { "title": location.querySelector("#canvasrefined-custom-name").value },
-                    "plannable_date": location.querySelector("#canvasrefined-custom-date").value + "T" + location.querySelector("#canvasrefined-custom-time").value + ":00",
-                    "planner_override": { "marked_complete": false, "custom": true },
-                    "plannable_type": "assignment",
-                    "submissions": { "submitted": false },
-                    "course_id": course_id,
-                    "html_url": `/courses/${course_id}/assignments`
-                };
-
-                /* handling overflow since the limit is 8kb per key */
-
-                let found = false;
-                let reload = () => {
-                    location.classList.toggle("canvasrefined-custom-open");
-                    loadBetterTodo();
-                    loadCardAssignments();
-                }
-
-                /* find the first available overflow with space */
-                /* or create a new one if all are full */
-                let findOpenOverflow = (num) => {
-                    let current_overflow = overflow["custom_assignments_overflow"][num];
-                    storage[current_overflow].push(assignment);
-                    chrome.storage.sync.set({ [current_overflow]: storage[current_overflow] }, () => {
-                        /* assuming any error is because the limit is exceeded */
-                        if (chrome.runtime.lastError) {
-                            if (num === overflow["custom_assignments_overflow"].length - 1) {
-                                console.log("all overflows are full! creating new overflow " + (overflow["custom_assignments_overflow"].length + 1));
-                                let new_overflow = "custom_assignments_" + (overflow["custom_assignments_overflow"].length + 1);
-                                overflow["custom_assignments_overflow"].push(new_overflow);
-                                chrome.storage.sync.set({ [new_overflow]: [assignment], "custom_assignments_overflow": overflow["custom_assignments_overflow"] }).then(reload);
-                            } else {
-                                console.log("overflow " + (num + 1) + " full...");
-                                findOpenOverflow(num + 1);
-                            }
-                        } else {
-                            console.log("overflow " + (num + 1) + " has space!");
-                            reload();
-                        }
-                    });
-                }
-
-                findOpenOverflow(0);
-
-            });
-        })
-    });
-}
-
-// better todo html layer 1
-// function createTodoHeader(location) {
-//     let todoHeader = makeElement("h2", location, { "className": "todo-list-header", "style": "display: flex; align-items:center; justify-content:space-between;" });
-//     //todoHeader.style = "display: flex; align-items:center; justify-content:space-between;";
-//     if (!options.custom_cards || Object.keys(options.custom_cards).length === 0) return;
-//     let addFillout = makeElement("div", location, { "className": "canvasrefined-add-assignment" });
-//     let now = new Date();
-//     let year = now.getFullYear();
-//     let month = now.getMonth() + 1;
-//     let day = now.getDate();
-//     month = month < 10 ? "0" + month : month;
-//     day = day < 10 ? "0" + day : day;
-//     addFillout.innerHTML = '<input type="text" placeholder="Name" id="canvasrefined-custom-name" class="canvasrefined-custom-input"></input><select id="canvasrefined-custom-course" class="canvasrefined-custom-input"><option value="" disabled selected>Select course</option></select><div style="display: flex;gap:5px"><input type="date" id="canvasrefined-custom-date"  class="canvasrefined-custom-input"></input><input type="time" id="canvasrefined-custom-time"  class="canvasrefined-custom-input" value="23:59"></input></div>';
-//     addFillout.querySelector("#canvasrefined-custom-date").value = year + "-" + month + "-" + day;
-//     let selectCourse = document.querySelector("#canvasrefined-custom-course");
-//     Object.keys(options.custom_cards).forEach(id => {
-//         let card = options.custom_cards[id];
-//         let courseName = makeElement("option", selectCourse, { "className": "canvasrefined-select-course-option", "textContent": card.default });
-//         courseName.value = id;
-//     });
-
-//     createTodoCreateBtn(addFillout);
-//     let headerText = makeElement("span", todoHeader, { "className": "canvasrefined-todo-header", "textContent": "To Do" });
-//     let addButton = makeElement("button", todoHeader, { "className": "canvasrefined-custom-btn", "textContent": "+ Add" });
-//     addButton.addEventListener("click", () => {
-//         addFillout.classList.toggle("canvasrefined-custom-open");
-//     });
-
-//     headerText.addEventListener("click", () => {
-//         if (filter === "todo") {
-//             filter = "done";
-//             headerText.textContent = "Done";
-//         } else {
-//             filter = "todo";
-//             headerText.textContent = "To Do";
-//         }
-//         moreAssignmentCount = 0;
-//         moreAnnouncementCount = 0;
-//         loadBetterTodo();
-//     });
-// }
 
 function convertToDueDate(dueAt) {
 	final = "due ";
@@ -2421,6 +2433,7 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
     betterSidebarLoading = true;
     try {
         const layoutMode = mode === "course" || mode === "dash" ? mode : getSidebarLayoutMode();
+        let expanded = await getSidebarExpandedState(layoutMode);
         const outerWrapper = document.getElementById("main");
         outerWrapper?.style.setProperty("display", "flex", "important");
         // document.getElementById("not_right_side").style.setProperty("display", "none", "important");
@@ -2436,8 +2449,13 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
         const contentMain = document.querySelector(".ic-Layout-contentMain");
         contentMain?.style.setProperty("flex", "1 1 auto");
         contentMain?.style.setProperty("min-width", "0");
+        const notRightSide = document.getElementById("not_right_side");
+        if (notRightSide && isAccountsPage()) {
+            notRightSide.style.setProperty("width", "100%");
+            notRightSide.style.setProperty("max-width", "100%");
+            notRightSide.style.setProperty("min-width", "0");
+        }
         if (layoutMode === "course" && leftSide) {
-            const notRightSide = document.getElementById("not_right_side");
             const rightSideWrapper = document.getElementById("right-side-wrapper");
             const sectionTabs = document.getElementById("section-tabs");
             leftSide.style.setProperty("padding-top", "0", "important");
@@ -2489,7 +2507,7 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
         }
 
         let sidebarList = makeElement("div", sidebarParent, { id: "better-sidebar-container",
-            style: `display:flex;flex-direction:column;width:50px;justify-content:center;align-items:center;box-sizing:border-box;position:relative;background-color:var(--bcbackground-0);height:100vh;position:sticky;top:0;left:0;`
+            style: `display:flex;flex-direction:column;width:50px;justify-content:center;align-items:center;box-sizing:border-box;position:relative;background-color:var(--bcsidebar);height:100vh;position:sticky;top:0;left:0;`
         }, true);
         let sidebarContent = makeElement("div", sidebarList, {
             style: "display:flex;flex-direction:column;gap:20px;width:100%;flex:1;justify-content:flex-start;align-items:center;margin:40px;"
@@ -2504,20 +2522,18 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
                 <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
                 <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
                 <g id="SVGRepo_iconCarrier">
-                    <path d="M20 4V20M4 12H16M16 12L12 8M16 12L12 16" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M20 4V20M4 12H16M16 12L12 8M16 12L12 16" stroke="var(--bcsidebar-text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
                 </g>
             </svg>
         `
-        sidebarList.dataset.expanded = "false";
-        updateSidebar(false, sidebarList, expander);
-        requestAnimationFrame(() => populateSidebarFromNav(sidebarContent));
-
-        let expanded = false;
         sidebarList.dataset.expanded = expanded ? "true" : "false";
         updateSidebar(expanded, sidebarList, expander);
         setSidebarExpandedState(layoutMode, expanded);
-        // const labels = document.querySelectorAll(".better-sidebar-label");
-        // labels.forEach(label => label.style.display = "none");
+        requestAnimationFrame(() => {
+            populateSidebarFromNav(sidebarContent);
+            updateSidebar(expanded, sidebarList, expander);
+        });
+
         expander.addEventListener("click", () => {
             expanded = !expanded;
             sidebarList.dataset.expanded = expanded ? "true" : "false";
@@ -2532,7 +2548,7 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
 }
 function createSidebarButton(text, url, parent, icon) {
 	let button = makeElement("a", parent, {
-        style: "width:40%;height:var(--bc-sidebar-btn-height,30px);cursor:pointer;text-align:center;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:var(--bc-sidebar-btn-gap,8px);color:var(--bctext-0) !important;font-weight:bold;position:relative;",
+        style: "width:40%;height:var(--bc-sidebar-btn-height,30px);cursor:pointer;text-align:center;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:var(--bc-sidebar-btn-gap,8px);color:var(--bcsidebar-text) !important;font-weight:bold;position:relative;",
 		className: "canvasrefined-custom-btn better-sidebar-btn",
 		href: url,
 	});
@@ -2560,13 +2576,13 @@ function addSidebarButtonBadge(button, count) {
 function populateSidebarFromNav(sidebarContent) {
 	const excludeIds = ["global_nav_help_link", "global_nav_history_link"];
 	const customIcons = {
-		"global_nav_profile_link": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="white"></path></g></svg>`,
-		"global_nav_dashboard_link": `<svg fill="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><rect x="2" y="2" width="9" height="11" rx="2"></rect><rect x="13" y="2" width="9" height="7" rx="2"></rect><rect x="2" y="15" width="9" height="7" rx="2"></rect><rect x="13" y="11" width="9" height="11" rx="2"></rect></g></svg>`,
-		"global_nav_conversations_link": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M4 18L9 12M20 18L15 12M3 8L10.225 12.8166C10.8665 13.2443 11.1872 13.4582 11.5339 13.5412C11.8403 13.6147 12.1597 13.6147 12.4661 13.5412C12.8128 13.4582 13.1335 13.2443 13.775 12.8166L21 8M6.2 19H17.8C18.9201 19 19.4802 19 19.908 18.782C20.2843 18.5903 20.5903 18.2843 20.782 17.908C21 17.4802 21 16.9201 21 15.8V8.2C21 7.0799 21 6.51984 20.782 6.09202C20.5903 5.71569 20.2843 5.40973 19.908 5.21799C19.4802 5 18.9201 5 17.8 5H6.2C5.0799 5 4.51984 5 4.09202 5.21799C3.71569 5.40973 3.40973 5.71569 3.21799 6.09202C3 6.51984 3 7.07989 3 8.2V15.8C3 16.9201 3 17.4802 3.21799 17.908C3.40973 18.2843 3.71569 18.5903 4.09202 18.782C4.51984 19 5.07989 19 6.2 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></g></svg>`,
-		"global_nav_calendar_link": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M3 9H21M7 3V5M17 3V5M6 12H8M11 12H13M16 12H18M6 15H8M11 15H13M16 15H18M6 18H8M11 18H13M16 18H18M6.2 21H17.8C18.9201 21 19.4802 21 19.908 20.782C20.2843 20.5903 20.5903 20.2843 20.782 19.908C21 19.4802 21 18.9201 21 17.8V8.2C21 7.07989 21 6.51984 20.782 6.09202C20.5903 5.71569 20.2843 5.40973 19.908 5.21799C19.4802 5 18.9201 5 17.8 5H6.2C5.0799 5 4.51984 5 4.09202 5.21799C3.71569 5.40973 3.40973 5.71569 3.21799 6.09202C3 6.51984 3 7.07989 3 8.2V17.8C3 18.9201 3 19.4802 3.21799 19.908C3.40973 20.2843 3.71569 20.5903 4.09202 20.782C4.51984 21 5.07989 21 6.2 21Z" stroke="white" stroke-width="2" stroke-linecap="round"></path></g></svg>`,
-		"global_nav_courses_link": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M20 12V4C20 2.89543 19.1046 2 18 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V18.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M13 2V14L16.8182 11L20 14V5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></g></svg>`,
-		"global_nav_groups_link": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path fill-rule="evenodd" clip-rule="evenodd" d="M16 6C14.3432 6 13 7.34315 13 9C13 10.6569 14.3432 12 16 12C17.6569 12 19 10.6569 19 9C19 7.34315 17.6569 6 16 6ZM11 9C11 6.23858 13.2386 4 16 4C18.7614 4 21 6.23858 21 9C21 10.3193 20.489 11.5193 19.6542 12.4128C21.4951 13.0124 22.9176 14.1993 23.8264 15.5329C24.1374 15.9893 24.0195 16.6114 23.5631 16.9224C23.1068 17.2334 22.4846 17.1155 22.1736 16.6591C21.1979 15.2273 19.4178 14 17 14C13.166 14 11 17.0742 11 19C11 19.5523 10.5523 20 10 20C9.44773 20 9.00001 19.5523 9.00001 19C9.00001 18.308 9.15848 17.57 9.46082 16.8425C9.38379 16.7931 9.3123 16.7323 9.24889 16.6602C8.42804 15.7262 7.15417 15 5.50001 15C3.84585 15 2.57199 15.7262 1.75114 16.6602C1.38655 17.075 0.754692 17.1157 0.339855 16.7511C-0.0749807 16.3865 -0.115709 15.7547 0.248886 15.3398C0.809035 14.7025 1.51784 14.1364 2.35725 13.7207C1.51989 12.9035 1.00001 11.7625 1.00001 10.5C1.00001 8.01472 3.01473 6 5.50001 6C7.98529 6 10 8.01472 10 10.5C10 11.7625 9.48013 12.9035 8.64278 13.7207C9.36518 14.0785 9.99085 14.5476 10.5083 15.0777C11.152 14.2659 11.9886 13.5382 12.9922 12.9945C11.7822 12.0819 11 10.6323 11 9ZM3.00001 10.5C3.00001 9.11929 4.1193 8 5.50001 8C6.88072 8 8.00001 9.11929 8.00001 10.5C8.00001 11.8807 6.88072 13 5.50001 13C4.1193 13 3.00001 11.8807 3.00001 10.5Z" fill="white"></path></g></svg>`,
-		"globalNavExternalTool-69": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path fill-rule="evenodd" clip-rule="evenodd" d="M6 1C4.34315 1 3 2.34315 3 4V17V20C3 21.6569 4.34315 23 6 23H18C19.6569 23 21 21.6569 21 20V17V4C21 2.34315 19.6569 1 18 1H6ZM5 20V17C5 16.4477 5.44772 16 6 16H18C18.5523 16 19 16.4477 19 17V20C19 20.5523 18.5523 21 18 21H6C5.44772 21 5 20.5523 5 20ZM18 14C18.3506 14 18.6872 14.0602 19 14.1707V4C19 3.44772 18.5523 3 18 3H6C5.44772 3 5 3.44772 5 4V14.1707C5.31278 14.0602 5.64936 14 6 14H18ZM14.5 19.25C15.1904 19.25 15.75 18.6904 15.75 18C15.75 17.3096 15.1904 16.75 14.5 16.75C13.8096 16.75 13.25 17.3096 13.25 18C13.25 18.6904 13.8096 19.25 14.5 19.25Z" fill="white"></path></g></svg>`,
+		"global_nav_profile_link": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="var(--bcsidebar-text)"></path></g></svg>`,
+		"global_nav_dashboard_link": `<svg fill="var(--bcsidebar-text)" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><rect x="2" y="2" width="9" height="11" rx="2"></rect><rect x="13" y="2" width="9" height="7" rx="2"></rect><rect x="2" y="15" width="9" height="7" rx="2"></rect><rect x="13" y="11" width="9" height="11" rx="2"></rect></g></svg>`,
+		"global_nav_conversations_link": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M4 18L9 12M20 18L15 12M3 8L10.225 12.8166C10.8665 13.2443 11.1872 13.4582 11.5339 13.5412C11.8403 13.6147 12.1597 13.6147 12.4661 13.5412C12.8128 13.4582 13.1335 13.2443 13.775 12.8166L21 8M6.2 19H17.8C18.9201 19 19.4802 19 19.908 18.782C20.2843 18.5903 20.5903 18.2843 20.782 17.908C21 17.4802 21 16.9201 21 15.8V8.2C21 7.0799 21 6.51984 20.782 6.09202C20.5903 5.71569 20.2843 5.40973 19.908 5.21799C19.4802 5 18.9201 5 17.8 5H6.2C5.0799 5 4.51984 5 4.09202 5.21799C3.71569 5.40973 3.40973 5.71569 3.21799 6.09202C3 6.51984 3 7.07989 3 8.2V15.8C3 16.9201 3 17.4802 3.21799 17.908C3.40973 18.2843 3.71569 18.5903 4.09202 18.782C4.51984 19 5.07989 19 6.2 19Z" stroke="var(--bcsidebar-text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></g></svg>`,
+		"global_nav_calendar_link": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M3 9H21M7 3V5M17 3V5M6 12H8M11 12H13M16 12H18M6 15H8M11 15H13M16 15H18M6 18H8M11 18H13M16 18H18M6.2 21H17.8C18.9201 21 19.4802 21 19.908 20.782C20.2843 20.5903 20.5903 20.2843 20.782 19.908C21 19.4802 21 18.9201 21 17.8V8.2C21 7.07989 21 6.51984 20.782 6.09202C20.5903 5.71569 20.2843 5.40973 19.908 5.21799C19.4802 5 18.9201 5 17.8 5H6.2C5.0799 5 4.51984 5 4.09202 5.21799C3.71569 5.40973 3.40973 5.71569 3.21799 6.09202C3 6.51984 3 7.07989 3 8.2V17.8C3 18.9201 3 19.4802 3.21799 19.908C3.40973 20.2843 3.71569 20.5903 4.09202 20.782C4.51984 21 5.07989 21 6.2 21Z" stroke="var(--bcsidebar-text)" stroke-width="2" stroke-linecap="round"></path></g></svg>`,
+		"global_nav_courses_link": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M20 12V4C20 2.89543 19.1046 2 18 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V18.5" stroke="var(--bcsidebar-text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M13 2V14L16.8182 11L20 14V5" stroke="var(--bcsidebar-text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></g></svg>`,
+		"global_nav_groups_link": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path fill-rule="evenodd" clip-rule="evenodd" d="M16 6C14.3432 6 13 7.34315 13 9C13 10.6569 14.3432 12 16 12C17.6569 12 19 10.6569 19 9C19 7.34315 17.6569 6 16 6ZM11 9C11 6.23858 13.2386 4 16 4C18.7614 4 21 6.23858 21 9C21 10.3193 20.489 11.5193 19.6542 12.4128C21.4951 13.0124 22.9176 14.1993 23.8264 15.5329C24.1374 15.9893 24.0195 16.6114 23.5631 16.9224C23.1068 17.2334 22.4846 17.1155 22.1736 16.6591C21.1979 15.2273 19.4178 14 17 14C13.166 14 11 17.0742 11 19C11 19.5523 10.5523 20 10 20C9.44773 20 9.00001 19.5523 9.00001 19C9.00001 18.308 9.15848 17.57 9.46082 16.8425C9.38379 16.7931 9.3123 16.7323 9.24889 16.6602C8.42804 15.7262 7.15417 15 5.50001 15C3.84585 15 2.57199 15.7262 1.75114 16.6602C1.38655 17.075 0.754692 17.1157 0.339855 16.7511C-0.0749807 16.3865 -0.115709 15.7547 0.248886 15.3398C0.809035 14.7025 1.51784 14.1364 2.35725 13.7207C1.51989 12.9035 1.00001 11.7625 1.00001 10.5C1.00001 8.01472 3.01473 6 5.50001 6C7.98529 6 10 8.01472 10 10.5C10 11.7625 9.48013 12.9035 8.64278 13.7207C9.36518 14.0785 9.99085 14.5476 10.5083 15.0777C11.152 14.2659 11.9886 13.5382 12.9922 12.9945C11.7822 12.0819 11 10.6323 11 9ZM3.00001 10.5C3.00001 9.11929 4.1193 8 5.50001 8C6.88072 8 8.00001 9.11929 8.00001 10.5C8.00001 11.8807 6.88072 13 5.50001 13C4.1193 13 3.00001 11.8807 3.00001 10.5Z" fill="var(--bcsidebar-text)"></path></g></svg>`,
+		"globalNavExternalTool-69": `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path fill-rule="evenodd" clip-rule="evenodd" d="M6 1C4.34315 1 3 2.34315 3 4V17V20C3 21.6569 4.34315 23 6 23H18C19.6569 23 21 21.6569 21 20V17V4C21 2.34315 19.6569 1 18 1H6ZM5 20V17C5 16.4477 5.44772 16 6 16H18C18.5523 16 19 16.4477 19 17V20C19 20.5523 18.5523 21 18 21H6C5.44772 21 5 20.5523 5 20ZM18 14C18.3506 14 18.6872 14.0602 19 14.1707V4C19 3.44772 18.5523 3 18 3H6C5.44772 3 5 3.44772 5 4V14.1707C5.31278 14.0602 5.64936 14 6 14H18ZM14.5 19.25C15.1904 19.25 15.75 18.6904 15.75 18C15.75 17.3096 15.1904 16.75 14.5 16.75C13.8096 16.75 13.25 17.3096 13.25 18C13.25 18.6904 13.8096 19.25 14.5 19.25Z" fill="var(--bcsidebar-text)"></path></g></svg>`,
 	};
 	
 	const navMenu = document.getElementById("menu");
@@ -2608,25 +2624,25 @@ function populateSidebarFromNav(sidebarContent) {
                             // Check if svg already has a style attribute
                             if (icon.includes('style="')) {
                                 // Append to existing style
-                                icon = icon.replace(/style="([^"]*)"/, `style="$1 width:20px;height:20px;flex-shrink:0;fill:white;stroke:white;"`);
+                                icon = icon.replace(/style="([^"]*)"/, `style="$1 width:20px;height:20px;flex-shrink:0;fill:var(--bcsidebar-text);stroke:var(--bcsidebar-text);"`);
                             } else {
                                 // Add new style attribute
-                                icon = icon.replace("<svg", '<svg style="width:20px;height:20px;flex-shrink:0;fill:white;stroke:white;"');
+                                icon = icon.replace("<svg", '<svg style="width:20px;height:20px;flex-shrink:0;fill:var(--bcsidebar-text);stroke:var(--bcsidebar-text);"');
                             }
                         } else {
                             // Smaller SVG - just add colors
                             if (icon.includes('style="')) {
-                                icon = icon.replace(/style="([^"]*)"/, `style="$1 fill:white;stroke:white;flex-shrink:0;"`);
+                                icon = icon.replace(/style="([^"]*)"/, `style="$1 fill:var(--bcsidebar-text);stroke:var(--bcsidebar-text);flex-shrink:0;"`);
                             } else {
-                                icon = icon.replace("<svg", '<svg style="fill:white;stroke:white;flex-shrink:0;"');
+                                icon = icon.replace("<svg", '<svg style="fill:var(--bcsidebar-text);stroke:var(--bcsidebar-text);flex-shrink:0;"');
                             }
                         }
                     } else {
                         // No viewBox - just add colors
                         if (icon.includes('style="')) {
-                            icon = icon.replace(/style="([^"]*)"/, `style="$1 fill:white;stroke:white;"`);
+                            icon = icon.replace(/style="([^"]*)"/, `style="$1 fill:var(--bcsidebar-text);stroke:var(--bcsidebar-text);"`);
                         } else {
-                            icon = icon.replace("<svg", '<svg style="fill:white;stroke:white;"');
+                            icon = icon.replace("<svg", '<svg style="fill:var(--bcsidebar-text);stroke:var(--bcsidebar-text);"');
                         }
                     }
                 }
@@ -2708,20 +2724,6 @@ function updateSidebar(expanded, sidebarList, expander) {
             container.style.gap = expanded ? "12px" : "8px";
         }
     }
-}
-function getCourseLinks() {
-	const linkList = document.getElementById("section-tabs");
-	if (!linkList) return [];
-	const links = linkList.querySelectorAll("a");
-	const courseLinks = [];
-	links.forEach(link => {
-		const url = new URL(link.href).pathname;
-		courseLinks.push({
-			name: link.textContent.trim(),
-			url: url
-		});
-	})
-	return courseLinks;
 }
 
 let delay;
@@ -2912,84 +2914,8 @@ async function loadBetterTodo() {
                                     });
                                 });
                             });
-                        } /*else {
-                            // set the item as complete through api
-                            fetch(domain + '/api/v1/planner/overrides' + (item.planner_override ? "/" + item.planner_override.id : ""),
-                                {
-                                    method: item.planner_override ? "PUT" : "POST",
-                                    headers: {
-                                        "content-type": "application/json",
-                                        'accept': 'application/json',
-                                        'X-CSRF-Token': csrfToken,
-                                    },
-                                    body: JSON.stringify({ id: item.planner_override ? item.planner_override.id : null, marked_complete: true, plannable_id: item.plannable_id, plannable_type: item.plannable_type })
-                                }).then(resp => {
-                                    if (resp.status === 200 || resp.status === 201) {
-                                        
-                                        let container = listItemContainer.parentElement;
-                                        container.removeChild(listItemContainer);
-                                        assignments.forEach(assignment => {
-                                            if (assignment.plannable_id === item.plannable_id) {
-                                                item.planner_override = { "marked_complete": true };
-                                            }
-                                        });
-                                        
-                                        loadBetterTodo();
-                                        loadCardAssignments();
-                                    }
-                                });
-                        }*/
-                    });
-                    /*
-                    // remove item button
-                    listItemContainer.querySelector(".canvasrefined-todo-complete-btn").addEventListener('click', function () {
-                        if (item.planner_override && item.planner_override.custom && item.planner_override.custom === true) {
-                            // set item as complete locally
-                            chrome.storage.sync.get("custom_assignments_overflow", overflow => {
-                                chrome.storage.sync.get(overflow["custom_assignments_overflow"], storage => {
-                                    overflow["custom_assignments_overflow"].forEach(overflow => {
-                                        for (let i = 0; i < storage[overflow].length; i++) {
-                                            if (storage[overflow][i].plannable_id === item.plannable_id) {
-                                                storage[overflow].splice(i, 1);
-                                                chrome.storage.sync.set({ [overflow]: storage[overflow] }).then(() => {
-                                                    let container = listItemContainer.parentElement;
-                                                    container.removeChild(listItemContainer);
-                                                    loadBetterTodo();
-                                                    loadCardAssignments();
-                                                });
-                                                break;
-                                            }
-                                        }
-                                    });
-                                });
-                            });
-                        } else {
-                            // set the item as complete through api
-                            fetch(domain + '/api/v1/planner/overrides' + (item.planner_override ? "/" + item.planner_override.id : ""),
-                                {
-                                    method: item.planner_override ? "PUT" : "POST",
-                                    headers: {
-                                        "content-type": "application/json",
-                                        'accept': 'application/json',
-                                        'X-CSRF-Token': csrfToken,
-                                    },
-                                    body: JSON.stringify({ id: item.planner_override ? item.planner_override.id : null, marked_complete: true, plannable_id: item.plannable_id, plannable_type: item.plannable_type })
-                                }).then(resp => {
-                                    if (resp.status === 200 || resp.status === 201) {
-                                        let container = listItemContainer.parentElement;
-                                        container.removeChild(listItemContainer);
-                                        assignmentData.forEach(assignment => {
-                                            if (assignment.plannable_id === item.plannable_id) {
-                                                item.planner_override = { "marked_complete": true };
-                                            }
-                                        });
-                                        loadBetterTodo();
-                                        loadCardAssignments();
-                                    }
-                                });
                         }
                     });
-*/
 
                     if (item.plannable_type === "announcement") {
                         announcementsToInsert.push(listItemContainer);
@@ -2999,8 +2925,6 @@ async function loadBetterTodo() {
                             listItemContainer.classList.add("canvasrefined-todo-item-completed");
                         }
                     }
-                    //}
-                    //}
 
 
                 });
@@ -3132,44 +3056,68 @@ async function changeColorPreset(colors) {
 Dark mode
 */
 
+// Light-mode fallback values for the --bc* theme variables. These are always
+// emitted (even when dark mode is OFF) so extension UI referencing
+// var(--bctext-0) / var(--bcborders) / var(--bcbackground-*) still renders
+// correctly in light mode (e.g. better sidebar/todo icons stay dark instead
+// of falling back to the SVG initial values). Dark mode overrides these below.
+const BC_LIGHT_DEFAULTS = {
+    "background-0": "#ffffff",
+    "background-1": "#c7c7c7",
+    "background-2": "#d9d9d9",
+    "borders": "#808080",
+    "links": "#418df1",
+    "sidebar": "#e3e3e3",
+    "sidebar-text": "#000000",
+    "text-0": "#000000",
+    "text-1": "#050505",
+    "text-2": "#4f4f4f"
+};
+
 function generateDarkModeCSS() {
-    let css =
-		(options.device_dark === true
-			? "@media (prefers-color-scheme: dark) {\n"
-			: "") + ":root{\n";
-	if (options.dark_preset) {
-		Object.keys(options.dark_preset).forEach((key) => {
-			css += "    --bc" + key + ": " + options.dark_preset[key] + ";\n";
-		});
-	}
-	css += "}\n\n";
-	css += DARKMODE_CSS;
-	css += options.device_dark === true ? "\n}" : "";
-	return css;
+    // Always-on light-mode defaults so var(--bc*) resolves in light mode too.
+    let css = ":root{\n";
+    Object.keys(BC_LIGHT_DEFAULTS).forEach((key) => {
+        css += "    --bc" + key + ": " + BC_LIGHT_DEFAULTS[key] + ";\n";
+    });
+    css += "}\n\n";
+
+    const darkOn = options.dark_mode === true || options.device_dark === true;
+    if (!darkOn) return css;
+
+    let darkBlock = ":root{\n";
+    if (options.dark_preset) {
+        Object.keys(options.dark_preset).forEach((key) => {
+            darkBlock += "    --bc" + key + ": " + options.dark_preset[key] + ";\n";
+        });
+    }
+    darkBlock += "}\n\n";
+    darkBlock += DARKMODE_CSS;
+
+    if (options.device_dark === true) {
+        css += "@media (prefers-color-scheme: dark) {\n" + darkBlock + "\n}";
+    } else {
+        css += darkBlock;
+    }
+    return css;
 }
 
 let darkStyleInserted = false;
 function toggleDarkMode() {
     const css = generateDarkModeCSS();
-    if ((options.dark_mode === true || options.device_dark === true) && !darkStyleInserted) {
+    const darkOn = options.dark_mode === true || options.device_dark === true;
+    if (!darkStyleInserted) {
         let style = document.createElement('style');
         style.textContent = css;
         document.documentElement.append(style);
         style.id = 'darkcss';
-        style.className = "canvasrefined-darkmode-enabled";
+        style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
         darkStyleInserted = true;
-    } else if (darkStyleInserted) {
-        let style = document.querySelector("#darkcss");
-        style.textContent = options.dark_mode === true || options.device_dark ? css : "";
-        style.className = options.dark_mode === true || options.device_dark ? "canvasrefined-darkmode-enabled" : "";
-    }
-    /*
-    if (options.dark_mode === true || options.device_dark) {
-        document.body.classList.add("canvasrefined--darkmode--enabled");
     } else {
-        document.body.classList.remove("canvasrefined--darkmode--enabled");
+        let style = document.querySelector("#darkcss");
+        style.textContent = css;
+        style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
     }
-    */
     runiframeChecker();
 }
 
@@ -3205,25 +3153,6 @@ function autoDarkModeCheck() {
     }
 }
 
-// async function ScheduledReminderCheck() {
-// 	let date = new Date();
-// 	let currentHour = date.getHours();
-// 	let currentMinute = date.getMinutes();
-// 	if (options.scheduledReminderTime) {
-// 		let [hour, minute] = options.scheduledReminderTime.split(":");
-// 		if (parseInt(hour) == currentHour && parseInt(minute) == currentMinute) {
-// 			const container = document.getElementById("canvasrefined-reminders") || makeElement("div", document.body, { "id": "canvasrefined-reminders" });
-// 			container.style.display = "flex";
-// 			container.textContent = "";
-// 			const storage = await chrome.storage.sync.get("reminders");
-// 			const now = (new Date()).getTime();
-// 			storage["reminders"].forEach(reminder => {
-// 				if (reminder.d >= now) {
-// 					createReminder(reminder, container);
-// 				}
-// 			});
-// 		}
-// 	}
 
 // }
 
@@ -3234,12 +3163,6 @@ function toggleAutoDarkMode() {
     timeCheck = setInterval(autoDarkModeCheck, 60000);
 }
 
-// function toggleScheduledReminders() {
-// 	clearInterval(reminderCheck);
-// 	if (options.scheduled_reminders === false) return; //TODO: add it to the options thing
-// 	ScheduledReminderCheck();
-// 	reminderCheck = setInterval(ScheduledReminderCheck, 60000);
-// }
 
 let iframeObserver;
 function runiframeChecker() {
@@ -3317,18 +3240,6 @@ function insertGrades() {
 Card assignments
 */
 
-/*
-function setAssignmentStatus(id, status, assignments_done = []) {
-    if (assignments_done.length > 50) assignments_done = [];
-    if (status === true) {
-        assignments_done.push(id);
-    } else {
-        const pos = assignments_done.indexOf(id);
-        if (pos > -1) assignments_done.splice(pos, 1);
-    }
-    chrome.storage.sync.set({ assignments_done: assignments_done });
-}
-*/
 
 function createCardAssignment(assignment) {
     let assignmentContainer = document.createElement("div");
@@ -3352,6 +3263,51 @@ function createCardAssignment(assignment) {
 }
 
 let cardAssignments;
+
+/*
+Equal Height Cards — when enabled, every dashboard card's assignment area is
+stretched to match the tallest one so cards with fewer assignments don't end
+up shorter than the rest. Uses min-height (never a fixed height) so cards can
+still grow if their content exceeds the tallest card.
+*/
+let equalHeightResizeTimer = null;
+
+function equalizeCardHeights() {
+    const cards = document.querySelectorAll(".ic-DashboardCard");
+    if (cards.length === 0) return;
+
+    const enabled = options.equal_height_cards === true && options.assignments_due === true;
+
+    // Always clear any previously applied min-height first so we can either
+    // measure natural heights (when enabling) or fully reset (when disabling).
+    cards.forEach(card => {
+        const area = card.querySelector(".canvasrefined-card-assignment");
+        if (area) area.style.removeProperty("min-height");
+    });
+
+    if (!enabled) return;
+
+    // Measure the natural height of each card's assignment area, then stretch
+    // every area to the tallest one. Card headers are uniform, so equalizing
+    // the assignment area makes all cards the same total height.
+    let maxHeight = 0;
+    cards.forEach(card => {
+        const area = card.querySelector(".canvasrefined-card-assignment");
+        if (area) maxHeight = Math.max(maxHeight, area.offsetHeight);
+    });
+
+    if (maxHeight > 0) {
+        cards.forEach(card => {
+            const area = card.querySelector(".canvasrefined-card-assignment");
+            if (area) area.style.minHeight = maxHeight + "px";
+        });
+    }
+}
+
+window.addEventListener("resize", () => {
+    if (equalHeightResizeTimer) clearTimeout(equalHeightResizeTimer);
+    equalHeightResizeTimer = setTimeout(equalizeCardHeights, 150);
+});
 
 function preloadAssignmentEls() {
     return new Promise((resolve, reject) => {
@@ -3385,6 +3341,7 @@ function loadCardAssignments() {
         document.querySelectorAll(".canvasrefined-card-assignment").forEach(card => {
             card.style.display = "none";
         });
+        equalizeCardHeights();
         return;
     }
     setupCardAssignments();
@@ -3424,70 +3381,21 @@ function loadCardAssignments() {
                     let assignmentDivLink = makeElement("a", assignmentContainer, { "className": "canvasrefined-assignment-link", "textContent": "None" });
                 }
             });
+            // Wait one frame so the browser lays out the freshly appended
+            // assignment rows before measuring/equalizing card heights.
+            requestAnimationFrame(equalizeCardHeights);
         } catch (e) {
             logError(e);
         }
     });
 }
 
-/*
-function loadCardAssignments2(c = null) {
-    if (options.assignments_due === true) {
-        try {
-            assignments.then(data => {
-                //assignmentData = assignmentData === null ? data : assignmentData; ????
-                let items = combineAssignments(data);
-                let cards = c ? c : document.querySelectorAll('.ic-DashboardCard');
-                const now = new Date();
-
-                cards.forEach(card => {
-                    let count = 0;
-                    let course_id = parseInt(card.querySelector(".ic-DashboardCard__link").href.split("courses/")[1]);
-                    let cardContainer = card.querySelector('.canvasrefined-card-container');
-                    cardContainer.textContent = "";
-                    cardContainer.parentElement.style.display = "block";
-
-                    items.forEach(assignment => {
-                        let due = new Date(assignment.plannable_date);
-                        // lots of checks to make
-                        // 1. item belongs to card
-                        // 2. haven't exceeded item limit
-                        // 3. assignment hasn't been submitted (if hide completed option is on)
-                        // 4. disallow overdue and item not past due/allow overdue and item hasn't been submitted
-                        // 5. correct item type
-                        // 6. no planner override marking item complete
-                        if (course_id !== assignment.course_id) return;
-                        if (count >= options.num_assignments) return;
-                        if (options.hide_completed === true && assignment.submissions.submitted === true) return;
-                        if ((options.card_overdues !== true && now >= due) || (options.card_overdues === true && assignment.submissions.submitted === true)) return;
-                        if ((assignment.plannable_type !== "assignment" && assignment.plannable_type !== "quiz" && assignment.plannable_type !== "discussion_topic")) return;
-                        if (assignment.planner_override && assignment.planner_override.marked_complete === true) return;
-
-                        createCardAssignment(cardContainer, assignment, now >= due);
-                        count++;
-                    });
-
-                    if (count === 0) {
-                        let assignmentContainer = makeElement("div", "canvasrefined-assignment-container", cardContainer);
-                        let assignmentDivLink = makeElement("a", "canvasrefined-assignment-link", assignmentContainer, "None");
-                    }
-                });
-            });
-        } catch (e) {
-            logError(e);
-        }
-    } else {
-        document.querySelectorAll(".canvasrefined-card-assignment").forEach(card => {
-            card.style.display = "none";
-        });
-    }
-}
-*/
 
 function setupCardAssignments() {
     if (options.assignments_due !== true) return;
     try {
-        if (document.querySelectorAll('.ic-DashboardCard').length > 0 && document.querySelectorAll('.canvasrefined-card-container').length > 0) return;
+        let containersCount = document.querySelectorAll('.canvasrefined-card-container').length;
+        if (document.querySelectorAll('.ic-DashboardCard').length > 0 && containersCount > 0) return;
         let cards = document.querySelectorAll('.ic-DashboardCard');
         cards.forEach(card => {
             let assignmentContainer = card.querySelector(".canvasrefined-card-assignment") || makeElement("div", card, { "className": "canvasrefined-card-assignment" });
@@ -3506,7 +3414,12 @@ Card customization
 */
 
 function getCardId(card) {
-    let id = card.querySelector(".ic-DashboardCard__link").href.split("courses/")[1];
+    let link = card.querySelector(".ic-DashboardCard__link");
+    if (!link) return -1;
+    let href = link.href;
+    if (!href || !href.includes("courses/")) return -1;
+    let id = href.split("courses/")[1];
+    if (!id) return -1;
     // no ~
     if (!id.includes("~")) return id;
 
@@ -3663,14 +3576,6 @@ function calculateGPA2() {
             letter = "F";
             gpa = options.gpa_calc_bounds["F"].gpa;
         }
-        /*
-        if (course.id === "cumulative-gpa") {
-            //gpa = parseFloat(options["cumulative_gpa"]["gr"]);
-            gpa = 0;
-            cumulativePoints += parseFloat(options["cumulative_gpa"]["gr"]) * credits;
-            cumulativeCredits = credits;
-        } else {
-            */
             course.querySelector(".canvasrefined-gpa-letter-grade").textContent = letter;
 
             let weightMultiplier = 0;
@@ -3683,8 +3588,6 @@ function calculateGPA2() {
             qualityPoints += gpa * credits;
             weightedQualityPoints += (gpa + weightMultiplier) * credits;
             numCredits += credits;
-        //}
-
 
 
     });
@@ -3779,7 +3682,8 @@ function setupGPACalc() {
     try {
         grades?.then(result => {
 
-            const dashboardContainer = document.querySelector(".ic-DashboardCard__box__container");
+            const sortableContainer = document.querySelector(".ic-DashboardCard__box__container");
+            const dashboardContainer = sortableContainer || document.querySelector("#DashboardCard_Container");
             if (!dashboardContainer) return;
 
             let container2 = document.querySelector(".canvasrefined-gpa-card");
@@ -3839,20 +3743,24 @@ function setupGPACalc() {
                 if (cumulative) cumulative.style.display = options.gpa_calc_cumulative ? "block" : "none";
 
                 const shouldPrepend = options.gpa_calc_prepend === true;
-                const firstCard = shouldPrepend ? container : container2;
-                const secondCard = shouldPrepend ? container2 : container;
-
-                if (firstCard.parentElement !== dashboardContainer) {
-                    dashboardContainer.prepend(firstCard);
-                }
-                if (secondCard.parentElement !== dashboardContainer) {
-                    if (shouldPrepend) {
-                        dashboardContainer.prepend(secondCard);
-                    } else {
-                        dashboardContainer.appendChild(secondCard);
+                if (shouldPrepend) {
+                    if (dashboardContainer.children[0] !== container || dashboardContainer.children[1] !== container2) {
+                        dashboardContainer.insertBefore(container, dashboardContainer.firstChild);
+                        dashboardContainer.insertBefore(container2, container.nextSibling);
+                    }
+                } else {
+                    if (dashboardContainer.lastElementChild !== container || container2.nextElementSibling !== container) {
+                        dashboardContainer.appendChild(container2);
+                        dashboardContainer.appendChild(container);
                     }
                 }
             }
+
+            try {
+                if (sortableContainer && window.jQuery && window.jQuery.fn && window.jQuery.fn.sortable) {
+                    window.jQuery(sortableContainer).sortable('refresh');
+                }
+            } catch (e) {}
 
             calculateGPA2();
         });
@@ -3870,28 +3778,288 @@ function delayDashboardNotesStorage(text) {
     clearTimeout(dashboardNotesTimer);
     dashboardNotesTimer = setTimeout(() => {
         chrome.storage.sync.set({ dashboard_notes_text: text });
-    }, 1000);
+    }, 250);
+}
+
+/*
+Built-in fallback Markdown renderer. Used only if js/markdown.js failed to load
+(window.renderMarkdown missing) so the notes still render formatted output instead
+of showing raw markdown text. Covers the common subset: headings, bold/italic/strike,
+inline + fenced code, links, images, lists, task lists, blockquotes, hr, paragraphs.
+All user text is HTML-escaped before formatting.
+*/
+function crRenderMarkdownFallback(src) {
+    if (src == null) return "";
+    const escapeHtml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    const sanitizeUrl = (u) => {
+        const v = String(u == null ? "" : u).trim();
+        if (!v) return "";
+        if (/^(https?:|mailto:|ftp:|tel:)/i.test(v)) return v;
+        if (/^(javascript:|vbscript:|file:|data:)/i.test(v)) return "#";
+        if (/^[#/?]/.test(v)) return v;
+        if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return "#";
+        return v;
+    };
+    let text = String(src).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    const out = [];
+    const lines = text.split("\n");
+    let i = 0;
+    const inline = (t) => {
+        let h = escapeHtml(t);
+        h = h.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, (m, alt, url, title) =>
+            `<img src="${sanitizeUrl(url)}" alt="${alt}"${title ? ` title="${title}"` : ""}>`);
+        h = h.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, (m, txt, url, title) =>
+            `<a href="${sanitizeUrl(url)}" target="_blank" rel="noopener noreferrer"${title ? ` title="${title}"` : ""}>${txt}</a>`);
+        h = h.replace(/`([^`\n]+)`/g, (m, c) => `<code>${c}</code>`);
+        h = h.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>");
+        h = h.replace(/~~([^~]+?)~~/g, "<del>$1</del>");
+        h = h.replace(/(^|[^*])\*([^*]+?)\*(?!\*)/g, "$1<em>$2</em>");
+        return h;
+    };
+    while (i < lines.length) {
+        const line = lines[i];
+        if (/^\s*$/.test(line)) { i++; continue; }
+        const h = line.match(/^(#{1,6})\s+(.*)$/);
+        if (h) { const l = h[1].length; out.push(`<h${l}>${inline(h[2])}</h${l}>`); i++; continue; }
+        if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { out.push("<hr>"); i++; continue; }
+        if (/^>\s?/.test(line)) {
+            const q = []; while (i < lines.length && /^>\s?/.test(lines[i])) { q.push(inline(lines[i].replace(/^>\s?/, ""))); i++; }
+            out.push(`<blockquote>${q.join("<br>")}</blockquote>`); continue;
+        }
+        if (/^\s*[-*+]\s+/.test(line)) {
+            const items = []; while (i < lines.length) { const m = lines[i].match(/^\s*[-*+]\s+(.*)$/); if (!m) break; const tk = m[1].match(/^\[([ xX])\]\s+(.*)$/); if (tk) { items.push(`<li class="cr-task"><input type="checkbox" disabled${/x/i.test(tk[1]) ? " checked" : ""}> ${inline(tk[2])}</li>`); } else { items.push(`<li>${inline(m[1])}</li>`); } i++; } out.push(`<ul>${items.join("")}</ul>`); continue;
+        }
+        if (/^\s*\d+\.\s+/.test(line)) {
+            const items = []; while (i < lines.length) { const m = lines[i].match(/^\s*\d+\.\s+(.*)$/); if (!m) break; items.push(`<li>${inline(m[1])}</li>`); i++; } out.push(`<ol>${items.join("")}</ol>`); continue;
+        }
+        const para = [line]; i++; while (i < lines.length && !/^\s*$/.test(lines[i]) && !/^(#{1,6}\s|\s*[-*+]\s|\s*\d+\.\s|>)/.test(lines[i])) { para.push(lines[i]); i++; }
+        out.push(`<p>${para.map(inline).join("<br>")}</p>`);
+    }
+    return out.join("\n");
+}
+
+function renderDashboardNotesPreview(preview, text) {
+    if (!preview) return;
+    // Skip identical re-renders: writing innerHTML is a childList mutation that the
+    // dashboard MutationObserver picks up, which re-calls loadDashboardNotes, which
+    // re-renders... Without this guard the notes box drives a tight self-sustaining
+    // loop (setTimeout 0) that starves the main thread so the render never paints.
+    if (preview._crLastText === text) return;
+    preview._crLastText = text;
+    const renderer = (typeof window.renderMarkdown === "function") ? window.renderMarkdown : crRenderMarkdownFallback;
+    preview.innerHTML = renderer(text);
+}
+
+/*
+Insert/wrap Markdown formatting in the notes editor at the current selection.
+Dispatches a synthetic `input` event so the live preview + storage handler runs.
+*/
+function notesApplyFormat(editor, action) {
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const value = editor.value;
+    const fire = () => {
+        editor.dispatchEvent(new Event("input", { bubbles: true }));
+        editor.focus();
+    };
+
+    const wrap = (before, after, placeholder) => {
+        const had = end > start;
+        const sel = had ? value.slice(start, end) : (placeholder || "");
+        editor.setRangeText(before + sel + after, start, end, "end");
+        editor.selectionStart = start + before.length;
+        editor.selectionEnd = start + before.length + sel.length;
+        fire();
+    };
+
+    // Range covering every line touched by the selection.
+    const lineBlock = () => {
+        const ls = start === 0 ? 0 : value.lastIndexOf("\n", start - 1) + 1;
+        let le = value.indexOf("\n", end);
+        if (le === -1) le = value.length;
+        return { ls, le, block: value.slice(ls, le) };
+    };
+
+    const togglePrefix = (prefix) => {
+        const { ls, le, block } = lineBlock();
+        const lines = block.split("\n");
+        const allHave = lines.every((l) => l.startsWith(prefix));
+        const newBlock = lines.map((l) => allHave ? l.slice(prefix.length) : prefix + l).join("\n");
+        editor.setRangeText(newBlock, ls, le, "end");
+        editor.selectionStart = ls;
+        editor.selectionEnd = ls + newBlock.length;
+        fire();
+    };
+
+    switch (action) {
+        case "bold": wrap("**", "**", "bold"); break;
+        case "italic": wrap("*", "*", "italic"); break;
+        case "strike": wrap("~~", "~~", "strikethrough"); break;
+        case "code": wrap("`", "`", "code"); break;
+        case "h1": togglePrefix("# "); break;
+        case "h2": togglePrefix("## "); break;
+        case "list": togglePrefix("- "); break;
+        case "numbered": togglePrefix("1. "); break;
+        case "quote": togglePrefix("> "); break;
+        case "task": {
+            const { ls, le, block } = lineBlock();
+            const marker = block.match(/^-\s*\[([ xX])\]\s+/);
+            const bullet = block.match(/^[-*+]\s+/);
+            let newBlock;
+            if (marker) {
+                newBlock = block.slice(marker[0].length);
+            } else if (bullet) {
+                newBlock = "- [ ] " + block.slice(bullet[0].length);
+            } else {
+                newBlock = "- [ ] " + block;
+            }
+            editor.setRangeText(newBlock, ls, le, "end");
+            editor.selectionStart = ls;
+            editor.selectionEnd = ls + newBlock.length;
+            fire();
+            break;
+        }
+        case "link": {
+            const had = end > start;
+            const sel = had ? value.slice(start, end) : "text";
+            editor.setRangeText("[" + sel + "](url)", start, end, "end");
+            const urlStart = start + 1 + sel.length + 2; // after "]("
+            editor.selectionStart = urlStart;
+            editor.selectionEnd = urlStart + 3; // select "url"
+            fire();
+            break;
+        }
+        case "hr": {
+            const lead = start > 0 && value[start - 1] !== "\n" ? "\n" : "";
+            editor.setRangeText(lead + "---\n", start, start, "end");
+            fire();
+            break;
+        }
+        case "codeblock": {
+            const had = end > start;
+            const sel = had ? value.slice(start, end) : "code";
+            const lead = start > 0 && value[start - 1] !== "\n" ? "\n" : "";
+            editor.setRangeText(lead + "```\n" + sel + "\n```", start, end, "end");
+            fire();
+            break;
+        }
+    }
+}
+
+const DASHBOARD_NOTES_HTML = `
+    <div class="canvasrefined-notes-toolbar" role="toolbar" aria-label="Format notes">
+        <button type="button" class="cr-fmt" data-action="bold" title="Bold (Ctrl/Cmd+B)"><strong>B</strong></button>
+        <button type="button" class="cr-fmt" data-action="italic" title="Italic (Ctrl/Cmd+I)"><em>I</em></button>
+        <button type="button" class="cr-fmt" data-action="strike" title="Strikethrough"><s>S</s></button>
+        <button type="button" class="cr-fmt" data-action="code" title="Inline code"><code>&lt;/&gt;</code></button>
+        <span class="cr-fmt-sep"></span>
+        <button type="button" class="cr-fmt" data-action="h1" title="Heading 1">H1</button>
+        <button type="button" class="cr-fmt" data-action="h2" title="Heading 2">H2</button>
+        <span class="cr-fmt-sep"></span>
+        <button type="button" class="cr-fmt" data-action="list" title="Bullet list">&bull;</button>
+        <button type="button" class="cr-fmt" data-action="numbered" title="Numbered list">1.</button>
+        <button type="button" class="cr-fmt" data-action="task" title="Task list">&#9744;</button>
+        <button type="button" class="cr-fmt" data-action="quote" title="Quote">&ldquo;</button>
+        <span class="cr-fmt-sep"></span>
+        <button type="button" class="cr-fmt" data-action="link" title="Insert link">Link</button>
+        <button type="button" class="cr-fmt" data-action="hr" title="Horizontal rule">&mdash;</button>
+        <button type="button" class="cr-fmt" data-action="codeblock" title="Code block">&#96;&#96;&#96;</button>
+    </div>
+    <div class="canvasrefined-notes-surface">
+        <div class="canvasrefined-notes-rendered" tabindex="0" aria-label="Dashboard notes — click to edit" title="Click to edit"></div>
+        <textarea class="canvasrefined-notes-editor" placeholder="Type Markdown — click away to render" spellcheck="false"></textarea>
+    </div>
+`;
+
+function wireDashboardNotes(notes) {
+    const editor = notes.querySelector(".canvasrefined-notes-editor");
+    const rendered = notes.querySelector(".canvasrefined-notes-rendered");
+    editor.value = options.dashboard_notes_text || "";
+    renderDashboardNotesPreview(rendered, editor.value);
+
+    const enterEdit = () => {
+        if (notes.classList.contains("is-editing")) return;
+        notes.classList.add("is-editing");
+        editor.focus();
+        const len = editor.value.length;
+        editor.setSelectionRange(len, len);
+    };
+    const exitEdit = () => {
+        notes.classList.remove("is-editing");
+        renderDashboardNotesPreview(rendered, editor.value);
+    };
+
+    rendered.addEventListener("click", enterEdit);
+    rendered.addEventListener("focus", enterEdit);
+    editor.addEventListener("blur", exitEdit);
+    editor.addEventListener("input", function () {
+        options.dashboard_notes_text = this.value;
+        delayDashboardNotesStorage(this.value);
+    });
+
+    // Toolbar buttons: keep focus in the editor (mousedown preventDefault stops the
+    // button from stealing focus and collapsing back to the rendered view), then apply
+    // the formatting. Enters edit mode first if the user formats from the rendered view.
+    notes.querySelectorAll(".cr-fmt").forEach(btn => {
+        btn.addEventListener("mousedown", e => e.preventDefault());
+        btn.addEventListener("click", () => {
+            if (!notes.classList.contains("is-editing")) enterEdit();
+            notesApplyFormat(editor, btn.dataset.action);
+        });
+    });
+
+    editor.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") { e.preventDefault(); editor.blur(); return; } // Esc: render
+        const mod = e.ctrlKey || e.metaKey;
+        if (!mod) return;
+        const k = e.key.toLowerCase();
+        if (k === "b") { e.preventDefault(); notesApplyFormat(editor, "bold"); }
+        else if (k === "i") { e.preventDefault(); notesApplyFormat(editor, "italic"); }
+        else if (k === "enter") { e.preventDefault(); editor.blur(); } // Ctrl/Cmd+Enter: render
+    });
 }
 
 function loadDashboardNotes() {
+    const container = document.querySelector("#DashboardCard_Container");
     if (options.dashboard_notes === true) {
-        let notes = document.querySelector('.canvasrefined-dashboard-notes') || document.createElement("textarea");
-        notes.classList.add("canvasrefined-dashboard-notes");
-        notes.value = options.dashboard_notes_text;
-        notes.placeholder = "Enter notes here";
-        notes.style.display = "block";
-        if (notes.parentElement === null) document.querySelector("#DashboardCard_Container").prepend(notes);
-        notes.style.height = notes.scrollHeight + 5 + "px";
-        notes.addEventListener('input', function () {
-            delayDashboardNotesStorage(this.value);
-            this.style.height = "1px";
-            this.style.height = this.scrollHeight + 5 + "px";
-        });
+        if (!container) return;
+        let notes = document.querySelector('.canvasrefined-dashboard-notes');
+        // Rebuild older (split edit/preview) markup into the new single-surface layout.
+        if (notes && !notes.querySelector(".canvasrefined-notes-surface")) {
+            notes.remove();
+            notes = null;
+        }
+        if (!notes) {
+            notes = document.createElement("div");
+            notes.classList.add("canvasrefined-dashboard-notes");
+            notes.innerHTML = DASHBOARD_NOTES_HTML;
+            // Mount as a full-width sibling above the card grid. Prepending inside the
+            // DashboardCard_Container makes the notes a masonry/grid cell (narrow & broken).
+            const parent = container.parentNode;
+            if (parent) parent.insertBefore(notes, container);
+            else container.prepend(notes);
+            wireDashboardNotes(notes);
+        } else {
+            notes.style.display = "";
+            const editor = notes.querySelector(".canvasrefined-notes-editor");
+            const rendered = notes.querySelector(".canvasrefined-notes-rendered");
+            // While editing, the textarea is the source of truth: don't clobber it from
+            // storage and don't waste a render on the hidden rendered view (which would
+            // also feed the observer loop). Only sync + render in view mode.
+            if (!notes.classList.contains("is-editing")) {
+                if (editor && editor.value !== (options.dashboard_notes_text || "")) {
+                    editor.value = options.dashboard_notes_text || "";
+                }
+                renderDashboardNotesPreview(rendered, editor ? editor.value : "");
+            }
+        }
     } else {
         let notes = document.querySelector('.canvasrefined-dashboard-notes');
         if (notes) notes.style.display = "none";
     }
 }
+
 
 /*
 Custom font
@@ -3946,6 +4114,7 @@ function applyAestheticChanges() {
     if (options.disable_color_overlay === true) style.textContent += ".ic-DashboardCard__header_hero{opacity: 0!important} .ic-DashboardCard__header-button-bg{opacity: 1!important}";
     if (options.hide_feedback === true) style.textContent += ".recent_feedback {display: none}";
     if (options.full_width === true) style.textContent += "#wrapper,.ic-Layout-wrapper{max-width:100%!important}";
+    if (options.center_cards === true) style.textContent += ".ic-DashboardCard__box__container{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:flex-start!important}";
 
     if (options.customCardStyles === true) {
         if (options.imageSize !== undefined && options.imageSize !== 100) style.textContent += `.ic-DashboardCard__header_image {transform: scale(${options.imageSize / 100})!important; }`;
@@ -3955,41 +4124,48 @@ function applyAestheticChanges() {
         if (options.cardHeight !== undefined && options.cardHeight !== 250) style.textContent += `.ic-DashboardCard {height: ${options.cardHeight}px!important;}`;
     }
 
+    style.textContent += ".ic-app-nav-toggle-and-crumbs{display:none!important}";
     if (options.custom_styles !== "") style.textContent += options.custom_styles;
     document.documentElement.appendChild(style);
 }
 
-/*
-function changeFullWidth() {
-    if (options.full_width == null) return;
-    if (options.full_width === true) {
-        document.body.classList.add("full-width");
-    } else {
-        document.body.classList.remove("full-width");
-    }
-}
-*/
 
 function changeGradientCards() {
     if (options.gradient_cards === true) {
         let cardheads = document.querySelectorAll('.ic-DashboardCard__header_hero');
-        let cardcss = document.querySelector("#gradientcss") || document.createElement('style');
-        cardcss.id = "gradientcss";
-        cardcss.textContent = "";
-        document.documentElement.appendChild(cardcss);
 
+        // Only create + append the style once; never re-append an already-
+        // attached element, since appending to <html> triggers the
+        // MutationObserver in checkDashboardReady() and re-runs this function.
+        let cardcss = document.querySelector("#gradientcss");
+        if (!cardcss) {
+            cardcss = document.createElement('style');
+            cardcss.id = "gradientcss";
+            document.documentElement.appendChild(cardcss);
+        }
+
+        // Build the full CSS into a string first, then only touch the DOM
+        // if the content actually changed. This keeps #gradientcss from being
+        // cleared/rewritten on every observer tick.
+        let css = "";
         for (let i = 0; i < cardheads.length; i++) {
             let colorone = cardheads[i].style.backgroundColor.split(',');
             let [r, g, b] = [parseInt(colorone[0].split('(')[1]), parseInt(colorone[1]), parseInt(colorone[2])];
             let [h, s, l] = [rgbToHsl(r, g, b)[0], rgbToHsl(r, g, b)[1], rgbToHsl(r, g, b)[2]];
             let degree = ((h % 60) / 60) >= .66 ? 30 : ((h % 60) / 60) <= .33 ? -30 : 15;
             let newh = h > 300 ? (360 - (h + 65)) + (65 + degree) : h + 65 + degree;
-            cardcss.textContent += ".ic-DashboardCard:nth-of-type(" + (i + 1) + ") .ic-DashboardCard__header_hero{background: linear-gradient(115deg, hsl(" + h + "deg," + s + "%," + l + "%) 5%, hsl(" + newh + "deg," + s + "%," + l + "%) 100%)!important}";
+            css += ".ic-DashboardCard:nth-of-type(" + (i + 1) + ") .ic-DashboardCard__header_hero{background: linear-gradient(115deg, hsl(" + h + "deg," + s + "%," + l + "%) 5%, hsl(" + newh + "deg," + s + "%," + l + "%) 100%)!important}";
+        }
+
+        if (cardcss.textContent !== css) {
+            cardcss.textContent = css;
         }
 
     } else {
         let cardcss = document.querySelector("#gradientcss");
-        if (cardcss) cardcss.textContent = "";
+        if (cardcss && cardcss.textContent !== "") {
+            cardcss.textContent = "";
+        }
     }
 }
 
@@ -4138,14 +4314,6 @@ function makeElement(element, location, options, prepend = false) {
 }
 
 
-function makeElement2(element, elclass, location, text) {
-    let creation = document.createElement(element);
-    creation.classList.add(elclass);
-    creation.textContent = text;
-    location.appendChild(creation);
-    return creation
-}
-
 async function getData(url) {
     let response = await fetch(url, {
         method: 'GET',
@@ -4158,10 +4326,6 @@ async function getData(url) {
     return data
 }
 
-function hexToHsl(hex) {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return rgbToHsl(parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16));
-}
 
 function rgbToHex(rgb) {
     try {

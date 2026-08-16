@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Relative Fälligkeitsdaten"
   },
+  "equal_height_cards": {
+    "message": "Gleiche Höhe"
+  },
   "enter_multiple": {
     "message": "(Mehrere mit Komma eingeben)"
   },
@@ -235,5 +238,17 @@
   },
   "fix_dm_text": {
     "message": "Der Fixer wird automatisch auf diesen Seiten ausgeführt:"
+  },
+  "hide_links": {
+    "message": "Links ausblenden"
+  },
+  "show_links": {
+    "message": "Links einblenden"
+  },
+  "center_cards": {
+    "message": "Karten zentrieren"
+  },
+  "hide_new_canvas": {
+    "message": "Neues Canvas ausblenden"
   }
 }

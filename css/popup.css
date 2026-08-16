@@ -1,5 +1,6 @@
 :root {--inputbg: #1010104f;--containerbg: #00000047;--inputbg: #ffffff14;}
-body{width:505px;height: 100%; overflow-x: hidden; font-family: 'Wix Madefor Text', sans-serif;color: #e2e2e2;background: #161616;transition: .3s height}
+html, body{width:465px;max-width:465px;overflow-x:hidden;box-sizing:border-box}
+body{min-height:100%;height:auto;font-family: 'Wix Madefor Text', sans-serif;color: #e2e2e2;background: #161616;transition: .3s height}
 button {font-family: 'Wix Madefor Text', sans-serif}
 h1, h2, p, body{margin:0;padding:0}
 h1 {font-size:30px;}
@@ -28,7 +29,7 @@ a.option-container {display: block;color:#5ca5f6;font-size: 14px;}
 a.option-container:hover {background: #333}
 #customDomain {font-size: 12px; background: var(--inputbg); border: none;padding:8px;color: #e2e2e2;margin-top: 6px;border-radius: 7px; font-family: inherit;}
 #customDomain {width: 100%; box-sizing: border-box}
-#auto_dark_start, #auto_dark_end, #scheduledReminderTime {padding: 3px 5px; font-size:12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius: 7px;}
+#auto_dark_start, #auto_dark_end {padding: 3px 5px; font-size:12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius: 7px;}
 .options-left {margin-right: 8px;}
 .options-left, .options-right {width: 50%;}
 .customDomain {font-weight:600}
@@ -67,6 +68,18 @@ h2 {margin-top: 20px;font-weight:600}
 #advanced-settings, #gpa-bounds-btn, #custom-font-btn, #customize-dark-btn, #card-colors-btn {width: 100%;}
 .back-btn {width: 120px;height:100%;margin-top:0}
 .big-button {border: none;border-radius: 7px;background: var(--containerbg);color: #fff;font-family: inherit;padding: 12px 10px;font-weight:600}
+.social-buttons {display: flex;gap: 8px;margin-top: 8px;}
+.social-buttons a {flex: 1;box-sizing: border-box;}
+.discord-button {display: flex;align-items: center;justify-content: center;gap: 8px;padding: 12px 10px;border: none;border-radius: 7px;background: #5865F2;color: #fff;font-family: inherit;font-size: 14px;font-weight: 600;text-decoration: none;transition: .15s background}
+.discord-button:hover {background: #4752c4;cursor: pointer}
+.discord-button:active {filter: brightness(85%)}
+.github-button {display: flex;align-items: center;justify-content: center;gap: 8px;padding: 12px 10px;border: none;border-radius: 7px;background: #30363d;color: #fff;font-family: inherit;font-size: 14px;font-weight: 600;text-decoration: none;transition: .15s background}
+.github-button:hover {background: #21262d;cursor: pointer}
+.github-button:active {filter: brightness(85%)}
+.discord-button svg, .github-button svg {flex-shrink: 0}
+.social-toggle {text-align: center;font-size: 12px;color: #9a9a9a;margin-top: 6px;cursor: pointer;user-select: none;transition: .15s color;text-decoration: none}
+.social-toggle:hover {color: #e2e2e2}
+.social-buttons.hidden {display: none}
 #setSingleColor, #setGradientColor {padding: 8px 20px;margin-top:5px;}
 .gpa-bounds-input {font-size: 14px;background: var(--inputbg); border: none;padding:6px;color: #e2e2e2;margin-top: 6px;border-radius: 6px; font-family: inherit; width: 55px; box-sizing: border-box;text-align: right}
 .gpa-bounds span {font-size: 16px; width: 25px;display: inline-block}
@@ -81,13 +94,26 @@ h2 {margin-top: 20px;font-weight:600}
 .changer-container {display: flex; align-items: center;gap: 10px;}
 .changer-container .card-input[type="color"] {height: 35px; max-width: 35px;background: none; border: none; padding: 0; margin: 0;cursor: pointer}
 .changer-container .card-input[type="color"]::-webkit-color-swatch {border-radius:6px;width:40px;margin:0;padding:0;}
-.color-options {}
 #gradientColorFrom:hover, #gradientColorTo:hover {cursor: pointer}
 .color-picker-small {height: 30px; width: 30px; border: none; background:var(--inputbg); border-radius: 4px}
 .color-picker-small::-webkit-color-swatch {border-radius: 4px; border: 7px solid #000000;border: none;}
 .color-picker-small::-moz-color-swatch {border-radius: 4px; border: 7px solid #000000;border: none;}
 .more-options-container {display: grid; gap: 6px; grid-template-columns: repeat(4, 1fr); margin-top: 10px}
-.more-options-container .big-button {display: flex; flex-direction: column; gap: 6px;justify-content:center;align-items:center;padding:15px 10px}
+.more-options-container .big-button {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    min-height: 72px;
+    box-sizing: border-box;
+    padding: 12px 10px;
+    text-align: center;
+}
+.more-options-container .big-button span {
+    line-height: 1.15;
+}
 .palette-selection {display: flex; gap: 5px;align-items: center;margin-top: 5px;}
 .palette-selection .card-input {width: 70px;margin: 0;}
 .colors-preview {display: flex;overflow:hidden;border-radius:3px;margin-top:4px;}
@@ -127,12 +153,12 @@ textarea {resize: vertical}
 .sidebar-changer {display: flex;gap: 10px;}
 .custom-key { margin-right: 5px; }
 .options-presets .customization-button {padding:9px 14px}
-#export-output {margin: 0; height: 100%;}
+#export-output {margin: 0; height: calc(100% - 46px);}
 input[type="checkbox"] { appearance: none; background: var(--inputbg); margin: 0; width: 16px; height: 16px; border: 1px solid #1a1a1a;;border-radius: 4px; display: grid; place-content: center;}
 input[type="checkbox"]::before { content: ""; width: 10px; height: 10px; transform: scale(0); box-shadow: inset 1em 1em #323232; transform-origin: center; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);}
 input[type="checkbox"]:checked::before {transform: scale(1);}
 input[type="checkbox"]:checked {background: #8dd28d;}
-#gradientbg {height: 550px;width: 150%;position: absolute;z-index: -1;opacity: .4;left: -25%; top: 0px;background: radial-gradient(at 50% 0%, #ff8349 0px, transparent 50%), radial-gradient(at 90% 0%, #ff67bb 0px, transparent 50%), radial-gradient(at 10% 0%, #ff3558 0px, transparent 50%);}
+#gradientbg {height: 550px;width: 100%;position: fixed;z-index: -1;opacity: .4;left: 0; top: 0px;pointer-events:none;background: radial-gradient(at 50% 0%, #ff8349 0px, transparent 50%), radial-gradient(at 90% 0%, #ff67bb 0px, transparent 50%), radial-gradient(at 10% 0%, #ff3558 0px, transparent 50%);}
 #dark-mode-fix-urls { display: flex; gap: 5px;flex-wrap: wrap;}
 .fixed-url {display: flex; gap:10px; align-items: center;flex: 0;padding: 7px 14px;}
 .fixed-url button {background: #1e1e1e;padding: 3px 6px;border-radius:4px;color: #fff;border:none;font-size:12px}
@@ -239,3 +265,20 @@ input[type="checkbox"]:checked {background: #8dd28d;}
         opacity: 1;
     }
 }
+
+/* ===== Header feature search ===== */
+.header-search { position: relative; margin-left: auto; display: flex; align-items: center; gap: 8px; width: 170px; max-width: 42%; background: var(--inputbg); border-radius: 8px; padding: 7px 10px; box-sizing: border-box; }
+.header-search-icon { color: #9a9a9a; flex: none; }
+.header-search:focus-within { box-shadow: 0 0 0 1.5px #56Caf0; }
+#feature-search { flex: 1; min-width: 0; background: none; border: none; outline: none; color: #e2e2e2; font-family: inherit; font-size: 13px; font-weight: 600; }
+#feature-search::placeholder { color: #8d8d8d; font-weight: 500; }
+.search-results { position: absolute; top: calc(100% + 6px); right: 0; min-width: 240px; max-width: 320px; max-height: 320px; overflow-y: auto; background: #0e0e0ee0; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border-radius: 8px; padding: 5px; z-index: 1000; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+.search-results.open { display: block; }
+.search-result { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.search-result.active, .search-result:hover { background: #ffffff14; }
+.search-result-title { font-size: 13px; font-weight: 600; color: #f0f0f0; }
+.search-result-category { font-size: 11px; color: #9a9a9a; }
+.search-result.empty { text-align: center; color: #8d8d8d; font-size: 12px; cursor: default; padding: 12px; }
+.search-result.empty:hover { background: none; }
+.search-highlight { outline: 2px solid #56Caf0; outline-offset: 2px; border-radius: 8px; animation: search-pulse 1.8s ease-out; }
+@keyframes search-pulse { 0% { box-shadow: 0 0 0 0 #56Caf099; } 40% { box-shadow: 0 0 0 6px #56Caf000; } 100% { box-shadow: 0 0 0 0 #56Caf000; } }

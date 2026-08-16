@@ -56,37 +56,44 @@ Canvas Refined adds more with more to come!
 	- Searching themes (the original didn't actually impliment that)
 	- made the dark mode into a css file instead of a reallllllly long string
 - Card Styles (image size, card roundness, card spacing, width, height, theme compatible)
-- Custom Background (by URL, theme compatible)
+- Custom Background
+  - Use presets or add your own by URL
+  - Theme compatible
+  - Daily backgrounds
 - Popup UI revamp
 - NEW Better todo list
 - Better sidebar
 - Simplified UI
+  - Some options won't show up when not needed
+- Markdown in dashboard notes
+- Feature search bar
+- Smaller additions:
+  - Equal height cards for card assignments
+  - Center cards
+  - Hide new dashbaord button
 
-## Planned Features (by priority)
-- widgets (music, timer)
-- auto rotate theme + theme history + fix theme submissions
+## Planned Features
 - mail assistent + ui revamp
 - better calender (+ calender sync)
 - better what if grade
-- global search
-- fix darkmode fixer
+- global canvas search
+- fix darkmode fixer (and automatic)
 - grade history with graph
+- more shapes for the better todo ring thing
 
 ## Extra features that might be added:
 - card grade position, card outline
-- theme copy button
-- revamp cards page UI
 - streaks
-- caching pages for faster loading
+- maybe find a way for faster loading
 - liquid glass theme?
-- animated backgrounds, rotating background, time/weather reactive backgrounds, maybe chache if it becomes an issue
+- rotating background, time/weather background overlay
 - custom side logo
-- transcribe lecture (if there is demand for it)
-- flashcards
 - goals
 - Scheduled Reminder Popups
 - preview font
 - button to remove all card images and undo
+- auto dark mode based on background
+- potential gemini nano features (local AI on your computer) if it would be able to run on more devices
 
 ## Community suggestions (maybe will be done at some point)
 - when opening assignments it will show you "if you get a 0 on this your grade will be _"
@@ -94,6 +101,7 @@ Canvas Refined adds more with more to come!
 - module sorting (newest, oldest) (maybe grid view)
 - grade leaderboard per class (opt in)
 - GPA preset by school name maybe
+- sticky notes
 
 ## Dev Installation
 
@@ -194,7 +202,7 @@ To add a new feature, please follow these guidelines.
   - If the function only adds css, it should be added to `applyAestheticChanges()`, and in this case should not be a separate function, instead add the css to the existing styles found in this function.
   - Anything else should be put under `startExtension()` and should be placed no higher than the `checkDashboardReady` function found here.
 
-## Star History
+## Star History (I think github broke it)
 
 <a href="https://www.star-history.com/?repos=GuySandler%2FCanvasRefined&type=date&legend=top-left">
  <picture>

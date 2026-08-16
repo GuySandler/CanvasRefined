@@ -1,13 +1,17 @@
-const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards'];
+const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'center_cards'];
 const syncedSubOptions = [
 	"todo_hide_feedback",
 	"todo_full_height",
     "todo_confetti",
+    "todo_progress_rings",
 	"device_dark",
 	"relative_dues",
 	"card_overdues",
+	"equal_height_cards",
 	// "todo_overdues",
 	"gpa_calc_prepend",
+	"gpa_calc_cumulative",
+	"gpa_calc_weighted",
 	"auto_dark",
 	"auto_dark_start",
 	"auto_dark_end",
@@ -19,8 +23,6 @@ const syncedSubOptions = [
 	// "hide_completed",
 	"num_todo_items",
 	"hover_preview",
-	// "scheduledReminder",
-	// "scheduledReminderTime",
 	"customCardStyles",
 	"imageSize",
 	"cardRoundness",
@@ -29,13 +31,30 @@ const syncedSubOptions = [
 	"cardHeight",
 	"customBackgroundLink",
     "customBackgroundScale",
+    "customBackgroundDaily",
+    "customBackgroundNasaDaily",
+    "fitImageToScreen",
     "sidebar_scale",
 ];
 const localSwitches = [];
+
+// Theme export categories. Only visual/appearance settings belong in a
+// shared theme; personal productivity features (reminders, dashboard notes,
+// the card-assignments list and its display prefs, card grades, item counts)
+// are intentionally excluded so exported themes never carry personal stuff.
+const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
+const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
+const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight"];
+const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_feedback", "tab_icons"];
+const exportSidebar = ["better_sidebar", "sidebar_scale"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_hr24", "todo_separate_scrollbar"];
+const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
+const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen"];
+// Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
+// no personal productivity features).
+const exportToggles = ["dark_mode"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
 const fontsDropdownStateKey = "fonts_dropdown_open";
 
-//const apiurl = "http://localhost:3000";
-// const apiurl = "https://canvasrefined.diditupe.dev";
 const apiurl = "none";
 
 const defaultOptions = {
@@ -73,12 +92,14 @@ const defaultOptions = {
         "assignment_date_format": false,
         "dashboard_notes": false,
         "dashboard_notes_text": "",
-        "better_todo": false,
+        "dashboard_notes_mode": "edit",
+        "better_todo": true,
         "better_sidebar": false,
         "sidebar_scale": 100,
         "todo_hr24": false,
 		"todo_separate_scrollbar": false,
         "condensed_cards": false,
+        "center_cards": false,
         "custom_cards": {},
         "custom_cards_2": {},
         "custom_cards_3": {},
@@ -109,7 +130,9 @@ const defaultOptions = {
         // "todo_overdues": false,
         "card_overdues": false,
         "relative_dues": false,
+        "equal_height_cards": false,
         "hide_feedback": false,
+        "hide_new_canvas": true,
         "dark_mode_fix": [],
         "assignment_states": {},
         "tab_icons": false,
@@ -123,8 +146,6 @@ const defaultOptions = {
         "card_method_date": false,
         "card_method_dashboard": true,
         "card_limit": 25,
-        // "scheduledReminder": false,
-        // "scheduledReminderTime": { "hour": "09", "minute": "00" },
         "imageSize": 100,
         "cardRoundness": 5,
         "cardSpacing": 0,
@@ -133,6 +154,9 @@ const defaultOptions = {
         "customCardStyles": false,
         "customBackgroundLink": "",
         "customBackgroundScale": 100,
+        "customBackgroundDaily": false,
+        "customBackgroundNasaDaily": false,
+        "fitImageToScreen": false,
     }
 };
 
@@ -181,6 +205,28 @@ function displayDarkModeFixUrls() {
 
 document.addEventListener("DOMContentLoaded", setup);
 
+// toggle visibility of the Discord/GitHub social links (persists locally)
+document.addEventListener("DOMContentLoaded", () => {
+    const toggle = document.getElementById("social-toggle");
+    const buttons = document.querySelector(".social-buttons");
+    if (!toggle || !buttons) return;
+    const KEY = "hide_socials";
+    const render = (hidden) => {
+        buttons.classList.toggle("hidden", hidden);
+        toggle.textContent = chrome.i18n.getMessage(hidden ? "show_links" : "hide_links");
+    };
+    chrome.storage.local.get(KEY, (res) => render(!!res[KEY]));
+    const flip = () => chrome.storage.local.get(KEY, (res) => {
+        const next = !res[KEY];
+        chrome.storage.local.set({ [KEY]: next });
+        render(next);
+    });
+    toggle.addEventListener("click", flip);
+    toggle.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); }
+    });
+});
+
 function setupAssignmentsSlider(initial) {
     let el = document.querySelector('#numAssignmentsSlider');
     el.value = initial;
@@ -221,14 +267,6 @@ function setupAutoDarkInput(initial, time) {
     });
 }
 
-// function setupScheduledReminderInput(initial) {
-//     let el = document.querySelector('#scheduledReminderTime');
-//     el.value = initial.hour + ":" + initial.minute;
-//     el.addEventListener('change', function () {
-//         let timeinput = { "hour": this.value.split(':')[0], "minute": this.value.split(':')[1] };
-//         chrome.storage.sync.set({ scheduledReminderTime: timeinput });
-//     });
-// }
 
 function setupCardLimitSlider(initial) {
     let el = document.querySelector("#card_limit");
@@ -315,9 +353,41 @@ function setupCustomBackgroundScale(initial) {
     });
 }
 
+function getDailyBackgroundPreset() {
+    if (typeof backgroundPresets === "undefined" || !Array.isArray(backgroundPresets) || backgroundPresets.length === 0) {
+        return null;
+    }
+
+    const today = new Date();
+    const dayNumber = Math.floor(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86400000);
+    return backgroundPresets[Math.abs(dayNumber) % backgroundPresets.length];
+}
+
+function syncCustomBackgroundDailyState(isDaily) {
+    const manualControls = document.getElementById("customBackgroundManualControls");
+    if (manualControls) {
+        manualControls.style.opacity = isDaily ? "0.45" : "1";
+        manualControls.style.pointerEvents = isDaily ? "none" : "auto";
+        manualControls.style.filter = isDaily ? "grayscale(1)" : "none";
+    }
+
+    ["customBackgroundLink", "customBackgroundScale", "clearCustomBackground"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = isDaily;
+    });
+
+    document.querySelectorAll(".background-preset-card").forEach(button => {
+        button.disabled = isDaily;
+    });
+
+    renderBackgroundPresetSelection();
+}
+
 function renderBackgroundPresetSelection() {
-    const currentLink = document.querySelector("#customBackgroundLink")?.value || "";
-    const currentScale = String(document.querySelector("#customBackgroundScale")?.value || "100");
+    const isDaily = document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true;
+    const dailyPreset = isDaily ? getDailyBackgroundPreset() : null;
+    const currentLink = isDaily ? (dailyPreset?.url || "") : (document.querySelector("#customBackgroundLink")?.value || "");
+    const currentScale = isDaily ? String(dailyPreset?.scale || "100") : String(document.querySelector("#customBackgroundScale")?.value || "100");
     document.querySelectorAll(".background-preset-card").forEach(button => {
         const matchesLink = button.dataset.backgroundUrl === currentLink;
         const matchesScale = button.dataset.backgroundScale === currentScale;
@@ -349,6 +419,341 @@ function displayBackgroundPresets() {
         });
     });
     renderBackgroundPresetSelection();
+    syncCustomBackgroundDailyState(document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true);
+}
+
+function toggleBetterSidebarSubOptions(betterSidebarOn) {
+    const remlogoEl = document.getElementById("remlogo");
+    if (remlogoEl) {
+        remlogoEl.style.display = betterSidebarOn ? "none" : "flex";
+    }
+    const sidebarScaleEl = document.getElementById("sidebarScaleSub");
+    if (sidebarScaleEl) {
+        sidebarScaleEl.style.display = betterSidebarOn ? "block" : "none";
+    }
+}
+
+// When the Better Todo List is on, its own "Hide Recent Feedback" sub-option
+// (todo_hide_feedback) replaces the standalone "Hide recent feedback" toggle,
+// so hide the big #hide_feedback toggle to avoid showing two controls for the
+// same thing. Mirrors toggleBetterSidebarSubOptions.
+function toggleBetterTodoSubOptions(betterTodoOn) {
+    const hideFeedbackEl = document.getElementById("hide_feedback");
+    if (hideFeedbackEl) {
+        hideFeedbackEl.style.display = betterTodoOn ? "none" : "flex";
+    }
+}
+
+// Hide the sub-options of a big toggle when it is turned off.
+// For gpa_calc / assignments_due / better_todo the whole .sub-options block is
+// hidden. For auto_dark ("schedule dark mode") only the start/end time clocks
+// (.timesets) are hidden, leaving the device-dark checkbox visible.
+function toggleSubOptionsVisibility(option, isOn) {
+    const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark"];
+    if (!togglesWithSubOptions.includes(option)) return;
+    const optionEl = document.getElementById(option);
+    if (!optionEl) return;
+    const subOptions = optionEl.parentElement.querySelector(":scope > .sub-options");
+    if (!subOptions) return;
+    if (option === "auto_dark") {
+        const timesets = subOptions.querySelector(".timesets");
+        if (timesets) timesets.style.display = isOn ? "" : "none";
+    } else {
+        subOptions.style.display = isOn ? "" : "none";
+    }
+}
+
+function setupFeatureSearch(menu) {
+    const searchInput = document.querySelector("#feature-search");
+    const resultsEl = document.querySelector("#feature-search-results");
+    const headerSearch = document.querySelector("#header-search");
+    if (!searchInput || !resultsEl || !headerSearch) return;
+
+    // Map (reference-keyed) each .tab element -> the button id that opens it.
+    // A plain object won't work: DOM elements stringify to the same key.
+    const tabElToBtnId = new Map();
+    Object.entries(menu.tabs).forEach(([btnId, info]) => {
+        const tabEl = document.querySelector(info.tab);
+        if (tabEl) tabElToBtnId.set(tabEl, btnId);
+    });
+
+    function shouldSkip(el) {
+        // Skip overlays / scrapped containers that aren't real features
+        if (el.closest('#submit-popup, #browser-settings-popup, #opt-in, #card-edit-menu')) return true;
+        // Skip anything inside a statically-hidden option-container
+        // (e.g. the scrapped "remind" block, "Submit your theme").
+        // Dynamically-hidden sub-options (whose parent toggle is off) are kept.
+        let node = el;
+        while (node && node !== document.body) {
+            if (node.classList && node.classList.contains('option-container') && node.style.display === 'none') return true;
+            node = node.parentElement;
+        }
+        return false;
+    }
+
+    function labelOf(sub) {
+        const label = sub.querySelector("label");
+        if (label) return label.textContent.trim();
+        const st = sub.querySelector(".sub-text");
+        if (st) return st.textContent.trim();
+        return "";
+    }
+
+    function keyIdOf(sub) {
+        const label = sub.querySelector("label");
+        if (label && label.getAttribute("for")) return label.getAttribute("for");
+        const input = sub.querySelector("input");
+        if (input && input.id) return input.id;
+        return labelOf(sub);
+    }
+
+    function categoryFor(el) {
+        const tabEl = el.closest(".tab");
+        if (tabEl) {
+            const btnId = tabElToBtnId.get(tabEl);
+            if (btnId) {
+                const btn = document.getElementById(btnId);
+                const span = btn && btn.querySelector("span");
+                if (span) return span.textContent.trim();
+            }
+            return "Section";
+        }
+        if (el.classList && el.classList.contains("tab-btn")) return "Section";
+        if (el.classList && el.classList.contains("option")) return "Settings";
+        const owner = el.closest(".option");
+        if (owner) {
+            const name = owner.querySelector(".option-name");
+            if (name) return name.textContent.trim();
+        }
+        return "Settings";
+    }
+
+    function openTab(btnId) {
+        const btn = document.getElementById(btnId);
+        if (btn) btn.click();
+    }
+
+    function showMain() {
+        const back = document.querySelector(".back-btn");
+        if (back) back.click();
+    }
+
+    // Reveal any hidden sub-option blocks between el and .main so the target
+    // is visible (purely visual; doesn't change stored settings).
+    function revealAncestors(el) {
+        const main = document.querySelector(".main");
+        let node = el;
+        while (node && node !== main && node !== document.body) {
+            if (node.style && node.style.display === "none") node.style.display = "";
+            node = node.parentElement;
+        }
+    }
+
+    function highlight(el) {
+        el.classList.add("search-highlight");
+        setTimeout(() => el.classList.remove("search-highlight"), 2000);
+    }
+
+    function goToMainElement(el) {
+        showMain();
+        revealAncestors(el);
+        requestAnimationFrame(() => {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            highlight(el);
+        });
+    }
+
+    function goToTabElement(el) {
+        const tabEl = el.closest(".tab");
+        const btnId = tabElToBtnId.get(tabEl);
+        if (btnId) openTab(btnId);
+        requestAnimationFrame(() => {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            highlight(el);
+        });
+    }
+
+    let featureIndex = null;
+    let currentMatches = [];
+    let activeIndex = -1;
+
+    function buildIndex() {
+        const index = [];
+        const seen = new Set();
+        function add(entry) {
+            if (!entry.text || seen.has(entry.key)) return;
+            seen.add(entry.key);
+            index.push(entry);
+        }
+
+        // Big section buttons (Edit Dark Mode, Cards, Themes, Styles, GPA Settings, Report issue)
+        document.querySelectorAll(".more-options-container .tab-btn").forEach(btn => {
+            const span = btn.querySelector("span");
+            add({ key: "tab:" + btn.id, text: span ? span.textContent.trim() : "", el: btn, action: () => openTab(btn.id) });
+        });
+
+        // Home: option toggles
+        document.querySelectorAll(".options .option").forEach(opt => {
+            if (!opt.id) return;
+            const name = opt.querySelector(".option-name");
+            if (!name) return;
+            if (shouldSkip(opt)) return;
+            add({ key: "option:" + opt.id, text: name.textContent.trim(), el: opt, action: () => goToMainElement(opt) });
+        });
+
+        // Home: sub-options / timesets / labelled rows (e.g. "Use dd/mm", "Start time", max-items)
+        document.querySelectorAll(".options .sub-option, .options .timeset, .options .sub-options > div").forEach(sub => {
+            if (shouldSkip(sub)) return;
+            // Skip statically-hidden sub-options (e.g. the "hover preview" TODO).
+            // Dynamically-hidden sub-options have display:none on their parent
+            // .sub-options, not on themselves, so they stay indexed.
+            if (sub.classList.contains("sub-option") && sub.style.display === "none") return;
+            const text = labelOf(sub);
+            if (!text) return;
+            add({ key: "sub:" + keyIdOf(sub), text, el: sub, action: () => goToMainElement(sub) });
+        });
+
+        // Home: custom Canvas URL
+        const customDomain = document.querySelector("#customDomain");
+        if (customDomain && !shouldSkip(customDomain)) {
+            const wrap = customDomain.closest(".customDomain");
+            const label = wrap ? wrap.querySelector("[data-i18n='enter_url']") : null;
+            add({ key: "custom:customDomain", text: label ? label.textContent.trim() : "Canvas URL", el: wrap || customDomain, action: () => goToMainElement(wrap || customDomain) });
+        }
+
+        // Tabs: section headings (e.g. "Presets", "Custom styles", "Popular Palettes", "Custom Background")
+        document.querySelectorAll(".tab .header-small").forEach(h => {
+            if (shouldSkip(h)) return;
+            const text = h.textContent.trim();
+            if (!text) return;
+            const btnId = tabElToBtnId.get(h.closest(".tab"));
+            add({ key: "heading:" + (btnId || "?") + ":" + text, text, el: h, action: () => goToTabElement(h) });
+        });
+
+        // Tabs: checkbox sub-options (e.g. "Daily Random Image", "Custom Card Styles")
+        document.querySelectorAll(".tab .sub-option").forEach(sub => {
+            if (shouldSkip(sub)) return;
+            const text = labelOf(sub);
+            if (!text) return;
+            const btnId = tabElToBtnId.get(sub.closest(".tab"));
+            add({ key: "tabsub:" + (btnId || "?") + ":" + keyIdOf(sub), text, el: sub, action: () => goToTabElement(sub) });
+        });
+
+        // Dark mode color fields (e.g. "Sidebar Text", "Background Main")
+        document.querySelectorAll(".tab .color-type-header").forEach(h => {
+            if (shouldSkip(h)) return;
+            const text = h.textContent.trim();
+            if (!text) return;
+            const btnId = tabElToBtnId.get(h.closest(".tab"));
+            add({ key: "color:" + (btnId || "?") + ":" + text, text, el: h, action: () => goToTabElement(h) });
+        });
+
+        return index;
+    }
+
+    function filterFeatures(query) {
+        const q = query.trim().toLowerCase();
+        if (!q) return [];
+        if (!featureIndex) featureIndex = buildIndex();
+        const scored = [];
+        for (const entry of featureIndex) {
+            const t = entry.text.toLowerCase();
+            let score = -1;
+            if (t === q) score = 1000;
+            else if (t.startsWith(q)) score = 500 - t.length;
+            else {
+                const idx = t.indexOf(q);
+                if (idx !== -1) score = 200 - idx;
+                else if (t.split(/\s+/).some(w => w.toLowerCase().startsWith(q))) score = 50;
+            }
+            if (score >= 0) scored.push({ entry, score });
+        }
+        scored.sort((a, b) => b.score - a.score || a.entry.text.length - b.entry.text.length);
+        return scored.slice(0, 12).map(s => s.entry);
+    }
+
+    function renderResults(matches) {
+        currentMatches = matches;
+        activeIndex = matches.length ? 0 : -1;
+        resultsEl.innerHTML = "";
+        if (!matches.length) {
+            const empty = document.createElement("div");
+            empty.className = "search-result empty";
+            empty.textContent = "No features found";
+            resultsEl.appendChild(empty);
+            resultsEl.classList.add("open");
+            return;
+        }
+        matches.forEach((entry, i) => {
+            const item = document.createElement("div");
+            item.className = "search-result" + (i === activeIndex ? " active" : "");
+            item.setAttribute("role", "option");
+            const title = document.createElement("span");
+            title.className = "search-result-title";
+            title.textContent = entry.text;
+            const cat = document.createElement("span");
+            cat.className = "search-result-category";
+            cat.textContent = categoryFor(entry.el);
+            item.appendChild(title);
+            item.appendChild(cat);
+            item.addEventListener("mousedown", (e) => {
+                e.preventDefault();
+                selectResult(i);
+            });
+            resultsEl.appendChild(item);
+        });
+        resultsEl.classList.add("open");
+    }
+
+    function setActive(i) {
+        activeIndex = i;
+        const items = resultsEl.querySelectorAll(".search-result");
+        items.forEach((el, idx) => el.classList.toggle("active", idx === i));
+        const active = resultsEl.querySelector(".search-result.active");
+        if (active) active.scrollIntoView({ block: "nearest" });
+    }
+
+    function closeResults() {
+        resultsEl.classList.remove("open");
+        resultsEl.innerHTML = "";
+        currentMatches = [];
+        activeIndex = -1;
+    }
+
+    function selectResult(i) {
+        const entry = currentMatches[i];
+        if (!entry) return;
+        closeResults();
+        searchInput.value = "";
+        searchInput.blur();
+        entry.action();
+    }
+
+    searchInput.addEventListener("input", () => {
+        if (!searchInput.value.trim()) { closeResults(); return; }
+        renderResults(filterFeatures(searchInput.value));
+    });
+    searchInput.addEventListener("focus", () => {
+        if (searchInput.value.trim()) renderResults(filterFeatures(searchInput.value));
+    });
+    searchInput.addEventListener("keydown", (e) => {
+        if (!currentMatches.length) {
+            if (e.key === "Escape") searchInput.blur();
+            return;
+        }
+        if (e.key === "ArrowDown") { e.preventDefault(); setActive((activeIndex + 1) % currentMatches.length); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); setActive((activeIndex - 1 + currentMatches.length) % currentMatches.length); }
+        else if (e.key === "Enter") { e.preventDefault(); if (activeIndex >= 0) selectResult(activeIndex); }
+        else if (e.key === "Escape") { e.preventDefault(); closeResults(); searchInput.blur(); }
+    });
+    searchInput.addEventListener("blur", () => setTimeout(closeResults, 150));
+
+    const icon = headerSearch.querySelector(".header-search-icon");
+    if (icon) icon.addEventListener("click", () => searchInput.focus());
+
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest("#header-search")) closeResults();
+    });
 }
 
 function setup() {
@@ -367,6 +772,7 @@ function setup() {
 			"device_dark",
 			"relative_dues",
 			"card_overdues",
+			"equal_height_cards",
 			// "todo_overdues",
 			"gpa_calc_prepend",
 			"auto_dark",
@@ -376,7 +782,9 @@ function setup() {
 			"grade_hover",
 			// "hide_completed",
 			"hover_preview",
-			// "scheduledReminder",
+            "customBackgroundDaily",
+            "customBackgroundNasaDaily",
+            "fitImageToScreen",
 			"customCardStyles",
 		],
 		tabs: {
@@ -442,10 +850,6 @@ function setup() {
 				identifier: "custom_styles",
 				setup: (initial) => setupCustomStyle(initial),
 			},
-			// {
-			// 	identifier: "scheduledReminderTime",
-			// 	setup: (initial) => setupScheduledReminderInput(initial),
-			// },
 			{
 				identifier: "imageSize",
 				setup: (initial) => setupImageSizeInput(initial),
@@ -493,7 +897,19 @@ function setup() {
                 if (option === "auto_dark") {
                     toggleDarkModeDisable(status);
                 }
+                if (option === "better_sidebar") {
+                    toggleBetterSidebarSubOptions(status);
+                }
+                if (option === "better_todo") {
+                    toggleBetterTodoSubOptions(status);
+                }
+                toggleSubOptionsVisibility(option, status);
             });
+        });
+        toggleBetterSidebarSubOptions(sync["better_sidebar"] === true);
+        toggleBetterTodoSubOptions(sync["better_todo"] === true);
+        ["gpa_calc", "assignments_due", "better_todo", "auto_dark"].forEach(opt => {
+            toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
     });
 
@@ -503,17 +919,21 @@ function setup() {
 			if (!checkbox) {console.log(option); return;}
             checkbox.addEventListener("change", function (e) {
                 let status = this.checked;
-                chrome.storage.sync.set(JSON.parse(`{"${option}": ${status}}`));
+                if (option === "customBackgroundDaily" && status) {
+                    document.querySelector("#customBackgroundNasaDaily").checked = false;
+                    chrome.storage.sync.set({ "customBackgroundDaily": true, "customBackgroundNasaDaily": false });
+                } else if (option === "customBackgroundNasaDaily" && status) {
+                    document.querySelector("#customBackgroundDaily").checked = false;
+                    chrome.storage.sync.set({ "customBackgroundNasaDaily": true, "customBackgroundDaily": false });
+                } else {
+                    chrome.storage.sync.set(JSON.parse(`{"${option}": ${status}}`));
+                }
+                syncCustomBackgroundDailyState(document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true);
             });
             const value = sync[option] !== undefined ? sync[option] : defaultOptions.sync[option];
             document.querySelector("#" + option).checked = value;
         });
-        /*
-        document.querySelector('#autodark_start').value = result.auto_dark_start["hour"] + ":" + result.auto_dark_start["minute"];
-        document.querySelector('#autodark_end').value = result.auto_dark_end["hour"] + ":" + result.auto_dark_end["minute"];
-        document.querySelector("#assignment_date_format").checked = result.assignment_date_format == true;
-        document.querySelector("#todo_hr24").checked = result.todo_hr24 == true;
-        */
+        syncCustomBackgroundDailyState(sync.customBackgroundDaily === true || sync.customBackgroundNasaDaily === true);
         toggleDarkModeDisable(sync.auto_dark);
         displayBackgroundPresets();
     });
@@ -529,15 +949,6 @@ function setup() {
         });
     })
 
-    /*
-    // checkboxes
-    menu.checkboxes.forEach(checkbox => {
-        document.querySelector("#" + checkbox).addEventListener('change', function () {
-            let status = this.checked;
-            chrome.storage.sync.set(JSON.parse(`{"${checkbox}": ${status}}`));
-        });
-    });
-    */
 
     // activate tab buttons
     document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -561,8 +972,17 @@ function setup() {
 
     // give everything the appropirate i18n text
     document.querySelectorAll('[data-i18n]').forEach(text => {
-        text.innerText = chrome.i18n.getMessage(text.dataset.i18n);
+        const msg = chrome.i18n.getMessage(text.dataset.i18n);
+        // keep the in-HTML fallback text when a key is missing instead of blanking it
+        if (msg) text.innerText = msg;
     });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const msg = chrome.i18n.getMessage(el.dataset.i18nPlaceholder);
+        if (msg) el.placeholder = msg;
+    });
+
+    // header feature search (search bar that jumps to features)
+    setupFeatureSearch(menu);
 
     // activate dark mode inspector button
     document.querySelector("#inspector-btn").addEventListener("click", async function () {
@@ -631,44 +1051,74 @@ function setup() {
         importTheme(obj);
     });
 
+    // copy export output to clipboard
+    document.querySelector("#export-copy").addEventListener("click", async () => {
+        const output = document.querySelector("#export-output");
+        const btn = document.querySelector("#export-copy");
+        const text = output.value;
+        if (!text) { displayAlert(true, "Nothing to copy — select what to export first."); return; }
+        const flash = () => { const old = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = old; }, 1200); };
+        try {
+            await navigator.clipboard.writeText(text);
+            flash();
+        } catch (e) {
+            output.select();
+            document.execCommand("copy");
+            flash();
+        }
+    });
+
     // activate export checkbox
     document.querySelectorAll(".export-details input").forEach(input => {
         input.addEventListener("change", () => {
-            chrome.storage.sync.get(syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds"]), async storage => {
-                //chrome.storage.local.get(["dark_preset"], async local => {
+            chrome.storage.sync.get(syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "custom_styles"]), async storage => {
                 let final = {};
                 for await (item of document.querySelectorAll(".export-details input")) {
                     if (item.checked) {
                         switch (item.id) {
                             case "export-toggles":
-                                final = { ...final, ...(await getExport(storage, syncedSwitches.concat(syncedSubOptions))) };
+                                final = { ...final, ...(await getExport(storage, exportToggles)) };
                                 break;
                             case "export-dark":
-                                final = { ...final, ...(await getExport(storage, ["dark_preset"])) };
+                                final = { ...final, ...(await getExport(storage, ["dark_preset", "dark_mode"])) };
+                                break;
+                            case "export-dark-schedule":
+                                final = { ...final, ...(await getExport(storage, exportDarkSchedule)) };
                                 break;
                             case "export-cards":
                                 final = { ...final, ...(await getExport(storage, ["custom_cards"])) };
                                 break;
+                            case "export-colors":
+                                final = { ...final, ...(await getExport(storage, ["card_colors", ...exportCardColorToggles])) };
+                                break;
+                            case "export-card-styles":
+                                final = { ...final, ...(await getExport(storage, exportCardStyles)) };
+                                break;
+                            case "export-customStyles":
+                                final = { ...final, ...(await getExport(storage, ["custom_styles"])) };
+                                break;
                             case "export-font":
                                 final = { ...final, ...(await getExport(storage, ["custom_font"])) };
                                 break;
-                            case "export-colors":
-                                final = { ...final, ...(await getExport(storage, ["card_colors"])) }
+                            case "export-background":
+                                final = { ...final, ...(await getExport(storage, exportBackground)) };
+                                break;
+                            case "export-layout":
+                                final = { ...final, ...(await getExport(storage, exportLayout)) };
+                                break;
+                            case "export-sidebar":
+                                final = { ...final, ...(await getExport(storage, exportSidebar)) };
+                                break;
+                            case "export-todo":
+                                final = { ...final, ...(await getExport(storage, exportTodo)) };
                                 break;
                             case "export-gpa":
-                                final = { ...final, ...(await getExport(storage, ["gpa_calc_bounds"])) }
+                                final = { ...final, ...(await getExport(storage, [...exportGpa, "gpa_calc_bounds"])) };
                                 break;
-							case "export-customStyles":
-								final = { ...final, ...(await getExport(storage, ["custom_styles"])) };
-								break;
-							case "export-background":
-                                final = { ...final, ...(await getExport(storage, ["customBackgroundLink", "customBackgroundScale"])) };
-								break;
                         }
                     }
                 }
                 document.querySelector("#export-output").value = JSON.stringify(final);
-                //});
             });
         });
     });
@@ -735,14 +1185,6 @@ function setup() {
         })
     });
 
-    /*
-    ['autodark_start', 'autodark_end'].forEach(function (timeset) {
-        document.querySelector('#' + timeset).addEventListener('change', function () {
-            let timeinput = { "hour": this.value.split(':')[0], "minute": this.value.split(':')[1] };
-            timeset === "autodark_start" ? chrome.storage.sync.set({ auto_dark_start: timeinput }) : chrome.storage.sync.set({ auto_dark_end: timeinput });
-        });
-    });
-    */
 
     // activate sidebar tool radio
     ["#radio-sidebar-image", "#radio-sidebar-gradient", "#radio-sidebar-solid"].forEach(radio => {
@@ -771,8 +1213,6 @@ function setup() {
     document.getElementById("theme-search").addEventListener("change", async (e) => {
         searchFor = e.target.value;
         console.log(searchFor);
-        // current_page_num = 1;
-        // displayThemeList(0);
         // linear search
         let themesToShow = [];
         for (let i = 0; i < themes.length; i++) {
@@ -788,7 +1228,6 @@ function setup() {
     document.getElementById("save-theme").addEventListener("click", saveCurrentTheme);
 
     // activate submit theme button
-    // document.getElementById("submit-theme-btn").addEventListener("click", submitTheme);
 
     document.getElementById("submit-theme-btn-1").addEventListener("click", () => {
         document.getElementById("submit-popup").classList.add("open");
@@ -821,15 +1260,8 @@ function setup() {
     });
 
     // activate theme browser opt out
-    // document.getElementById("new_browser_out").addEventListener("click", () => {
-        chrome.storage.sync.set({ "new_browser": false });
-        current_page_num = 1;
-        displayThemeList(0);
-        // displayAlert(false, "Success! You are now viewing the old theme browser. This one will no longer recieve updates, but there is still plenty to choose from.");
-    // });
 
     // activate theme browser opt in
-    // document.getElementById("new_browser_in").addEventListener("click", registerUser);
 
     document.querySelectorAll(".theme-sort-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -847,12 +1279,7 @@ function setup() {
         document.getElementById("browser-settings-popup").classList.remove("open");
     });
 
-    // document.getElementById("reset-optin").addEventListener("click", () => {
-    //     chrome.storage.sync.set({ "new_browser": null });
-    //     document.getElementById("opt-in").style.display = "block";
-    // });
 
-    // document.getElementById("view-submissions-btn").addEventListener("click", displayMySubmissions);
     document.getElementById("submit-form-btn").addEventListener("click", displayThemeSubmissionForm);
 
     document.getElementById("gpa-plus-minus").addEventListener("click", () => {
@@ -974,37 +1401,6 @@ function displayThemeSubmissionForm() {
     document.getElementById("view-submissions-btn").classList.remove("active");
 }
 
-async function displayMySubmissions() { //TODO: remake
-    const sync = await chrome.storage.sync.get("id");
-    const res = await fetch(`${apiurl}/api/themes/submissions?id=${sync["id"]}`);
-    const data = await res.json();
-
-    //if (data?.errors !== false) return;
-
-    document.getElementById("submit-form").style.display = "none";
-    document.getElementById("view-submissions").style.display = "block";
-    document.getElementById("submit-form-btn").classList.remove("active");
-    document.getElementById("view-submissions-btn").classList.add("active");
-
-    const el = document.getElementById("latest-submissions");
-    el.textContent = "";
-
-    if (data.message.length === 0) {
-        el.textContent = "You haven't submitted any themes yet.";
-    }
-
-    data.message.forEach(theme => {
-        const container = makeElement("div", el, {"className": "submitted-theme" });
-        const btn = makeElement("button", container, { "className": "theme-button clickable customization-button", "style": `min-width:105px;max-width:105px;background-image:linear-gradient(rgba(0, 0, 0, 0.44), rgba(0, 0, 0, 0.44)), url(${theme.preview})` });
-        const title = makeElement("p", btn, { "className": "theme-button-title clickable", "textContent": theme.title });
-        const credits = makeElement("p", btn, { "className": "theme-button-creator clickable", "textContent": theme.credits });
-        const details = makeElement("div", container, { "className": "submitted-theme-details" });
-        const top = makeElement("div", details, { "style": "display:flex;justify-content:space-between;align-items:center" });
-        const tag = makeElement("span", top, { "className": "submitted-theme-tag", "textContent": theme.approved === 1 ? "Approved" : theme.approved === 0 ? "Pending" : "Rejected", "style": `background: ${theme.approved === 1 ? "#ad3a74" : theme.approved === 0 ? "#514e4e": "#000"}` });
-        const msg = makeElement("p", details, { "textContent": theme.approved === 1 ? "Looks great! Thanks for submitting" : theme.approved === 0 ? "Your theme is still awaiting approval." : `Your theme was rejected${theme.reason ? (": " + theme.reason) : " because it did not meet the theme guidelines."}`});
-        const ago = makeElement("span", top, { "className": "submitted-theme-time", "textContent": `${getRelativeDate(new Date(parseInt(theme.time))).time} ago` });
-    });
-}
 
 async function getExport(storage, options) {
     let final = {};
@@ -1029,12 +1425,7 @@ async function getExport(storage, options) {
                 }
                 break;
 			case "custom_styles":
-				final["customCardStyles"] = storage["customCardStyles"];
-				final["imageSize"] = storage["imageSize"];
-				final["cardRoundness"] = storage["cardRoundness"];
-				final["cardSpacing"] = storage["cardSpacing"];
-				final["cardWidth"] = storage["cardWidth"];
-				final["cardHeight"] = storage["cardHeight"];
+				final["custom_styles"] = storage["custom_styles"];
 				break;
             default:
                 final[option] = storage[option];
@@ -1080,7 +1471,6 @@ function themeSortFn(method) {
             return themes;
         case "Color":
             return themes.sort((a, b) => {
-                //return (colorValues[a.color] || 88) - (colorValues[b.color] || 88)
                 return (colorValues[a.color] || (a.color !== "whiteblack" && a.color.includes("white") ? 15 : 16)) - (colorValues[b.color] || (b.color !== "whiteblack" && b.color.includes("white") ? 15 : 16))
             })
             return themes.sort((a, b) => {
@@ -1136,113 +1526,11 @@ let searchFor = "";
 let current_sort = "Popular";
 let allThemes = themeSortFn(current_sort);
 
-//sortThemes(current_sort);
-
-function shortScore(score) {
-    if (score >= 1400) {
-        return (Math.floor(score / 1000) + "." +  Math.round((score % 1000) / 100)) + "k";
-    }
-    return score;
-}
-
 let fallback = false;
 
-async function submitTheme() { //TODO: remake
-
-    const sync = await chrome.storage.sync.get(null);
-
-    // if (sync["new_browser"] !== true) {
-    //     displayAlert(true, "You'll need to opt in to the new browser if you want to submit your theme. If you've opted out and want to opt in, you can scroll down to the bottom of this page and opt back in.");
-    //     return;
-    // }
-
-    const theme = await getExport(sync, [
-        ...syncedSwitches,
-        ...syncedSubOptions,
-        "custom_cards",
-        "card_colors",
-        "dark_preset",
-        "custom_font",
-        "gradient_cards",
-        "disable_color_overlay",
-    ]);
-    const title = document.getElementById("submit-title");
-    const credits = document.getElementById("submit-credits");
-
-    if (title.value === "") {
-        displayAlert(true, "The title of your theme can't be empty");
-        return;
-    }
-
-    if (credits.value === "") {
-        displayAlert(true, "The credits for your theme can't be empty");
-        return;
-    }
-    const body = JSON.stringify({
-        "identity": sync["id"],
-        "title": title.value,
-        "credits": credits.value,
-        "theme": JSON.stringify(theme)
-    });
-
-    fetch(`${apiurl}/api/themes/submit`, { //
-        "method": "POST",
-        "body": body,
-        "headers": {
-            "Content-Type": "application/json",
-          },
-    }).then(res => res.json())
-    .then(data => {
-        console.log(data);
-        if (data.errors === false) {
-            displayAlert(false, "Thanks for submitting your theme! I will try to approve it soon, but not every theme may be accepted.");
-            document.getElementById("submit-popup").classList.remove("open");
-        } else {
-            displayAlert(true, `Submission error: ${data.message} Please contact sandlerguy5@gmail.com if you believe this is incorrect.`);
-        }
-    });
-}
-
-async function registerUser() { // TODO: remake
-    try {
-        let id;
-
-        const sync = await chrome.storage.sync.get("id");
-
-        if (sync["id"] && sync["id"] !== "") {
-            id = sync["id"]
-        } else {
-            const res = await fetch(`${apiurl}/api/register`);
-            const data = await res.json();
-            id = data.id;
-        }
-
-        chrome.storage.sync.set({ "id": id }).then(async () => {
-            // test to see if the id was set correctly
-            // don't know why this is happening ??
-            const test = await chrome.storage.sync.get("id");
-            if (test["id"] === undefined || test["id"] === "") throw new Error();
-
-            // show the new browser
-            chrome.storage.sync.set({ "new_browser": true }).then(() => {
-                document.getElementById("opt-in").style.display = "none";
-                current_page_num = 1;
-                displayThemeList(0);
-                displayAlert(false, "Success! You should be able to see the new themes browser now. Enjoy!");
-            });
-
-        }).catch(e => {
-            displayAlert(true, "There was an error connecting an ID to your account. Please try again, and if this error persists, contact sandlerguy5@gmail.com!");
-        });
-
-    } catch (e) {
-        console.log(e);
-        displayAlert(true, "There was an error opting in. Please contact sandlerguy5@gmail.com if this error persists!");
-    }
-}
 
 function saveCurrentTheme() {
-    const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors"]);
+    const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
     chrome.storage.local.get("saved_themes", local => {
         chrome.storage.sync.get(allOptions, async sync => {
             let current = await getExport(sync, allOptions);
@@ -1257,10 +1545,10 @@ function saveCurrentTheme() {
                 "better_todo": current["better_todo"],
                 "todo_hide_feedback": current["todo_hide_feedback"],
                 "todo_full_height": current["todo_full_height"],
+                "todo_confetti": current["todo_confetti"],
+                "todo_progress_rings": current["todo_progress_rings"],
                 "todo_hr24": current["todo_hr24"],
                 "todo_separate_scrollbar": current["todo_separate_scrollbar"],
-                "num_todo_items": current["num_todo_items"],
-                "hover_preview": current["hover_preview"],
                 "better_sidebar": current["better_sidebar"],
                 "sidebar_scale": current["sidebar_scale"],
 				"imageSize": current["imageSize"],
@@ -1268,8 +1556,13 @@ function saveCurrentTheme() {
 				"cardSpacing": current["cardSpacing"],
 				"cardWidth": current["cardWidth"],
 				"cardHeight": current["cardHeight"],
+				"custom_styles": current["custom_styles"],
+				"customCardStyles": current["customCardStyles"],
 				"customBackgroundLink": current["customBackgroundLink"],
 				"customBackgroundScale": current["customBackgroundScale"],
+				"customBackgroundDaily": current["customBackgroundDaily"],
+				"customBackgroundNasaDaily": current["customBackgroundNasaDaily"],
+				"fitImageToScreen": current["fitImageToScreen"],
             }
             const now = new Date();
             local["saved_themes"][now.getTime()] = trimmed;
@@ -1281,242 +1574,24 @@ function saveCurrentTheme() {
 }
 
 
-async function displayThemeList(direction = 0) {
-    // const sync = await chrome.storage.sync.get("new_browser");
-    // if (sync["new_browser"] === true && fallback === false) {
-        // displayThemeListNew(direction);
-    // } else {
-        displayThemeListOld(direction);
-    // }
-    // remove the opt-in notice
-    // if (sync["new_browser"] !== null && document.getElementById("opt-in")) document.getElementById("opt-in").style.display = "none";
+function displayThemeList(direction = 0) {
+    // render the full sorted theme list (filtered by any active search).
+    // Previously this was an empty stub, so the browser showed nothing
+    // until the search box fired displayThemeSearchList directly.
+    let themesToShow = allThemes;
+    if (searchFor) {
+        themesToShow = allThemes.filter(theme => theme.title.toLowerCase().includes(searchFor.toLowerCase()));
+    }
+    displayThemeSearchList(themesToShow, direction);
 }
 
-function createThemeButton(location, theme) {
-    let themeBtn = makeElement("button", location, { "className": "theme-button clickable" });
-    themeBtn.classList.add("customization-button");
-    if (!themeBtn.style.background) themeBtn.style.backgroundImage = "linear-gradient(#00000070, #00000070), url(" + theme.preview + ")";
-    if (theme.title) makeElement("p", themeBtn, { "className": "theme-button-title clickable", "textContent": theme.title.replaceAll(" ", "") });
-    if (theme.credits) makeElement("p", themeBtn, { "className": "theme-button-creator clickable", "textContent": theme.credits });
-    return themeBtn;
-}
-
-function createThemeLikeBtn(location, initial, score, show) {
-    const likeBtn = makeElement("div", location, {"className": "theme-button-like"});
-    if (initial === true) {
-        likeBtn.classList.add("theme-liked");
-        score += 1;
-    }
-    const amount = makeElement("span", likeBtn, { "className": "theme-button-like-amount", "textContent": shortScore(score) });
-    if (show === true) amount.classList.add("showalways");
-    likeBtn.innerHTML += `<svg  xmlns="http://www.w3.org/2000/svg"  width="12"  height="12"  viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6.979 3.074a6 6 0 0 1 4.988 1.425l.037 .033l.034 -.03a6 6 0 0 1 4.733 -1.44l.246 .036a6 6 0 0 1 3.364 10.008l-.18 .185l-.048 .041l-7.45 7.379a1 1 0 0 1 -1.313 .082l-.094 -.082l-7.493 -7.422a6 6 0 0 1 3.176 -10.215z" /></svg>`;
-    return likeBtn;
-}
-
-let likeThemeTimeout = false;
-
-function setLikeTimeout() {
-    if (likeThemeTimeout === true) return;
-    likeThemeTimeout = true;
-    setTimeout(() => {
-        likeThemeTimeout = false;
-    }, 1000);
-}
-
-async function likeTheme(location, code, score) { // TODO: remake
-
-    if (likeThemeTimeout === true) return;
-
-    const sync = await chrome.storage.sync.get("id");
-    const local = await chrome.storage.local.get("liked_themes");
-
-    const setLikeStatus = (direction) => {
-
-        let output = local;
-    
-        if (direction === -1) {
-            location.classList.remove("theme-liked");
-            location.querySelector(".theme-button-like-amount").textContent = shortScore(score);
-            output = local["liked_themes"].filter(x => x !== code);
-        } else if (direction === 1) {
-            location.classList += (" theme-liked animate-like");
-            location.querySelector(".theme-button-like-amount").textContent = shortScore(score + 1);
-            output = [...local["liked_themes"], code];
-        }
-    
-        return output;
-    }
-
-    // show the updated like status immediately
-    setLikeStatus(location.classList.contains("theme-liked") ? -1 : 1);
-
-    const res = await fetch(`${apiurl}/api/themes/theme/${code}/like`, { 
-        "method": "POST", 
-        "body": JSON.stringify({ "id": sync["id"] }), 
-        "headers": {
-            "Content-Type": "application/json"
-        },
-    });
-
-    const data = await res.json();
-
-    if (data.errors === false) {
-        const direction = parseInt(data.message);
-        // update the like status if there is some disagreement with the server
-        const update = setLikeStatus(direction);
-        chrome.storage.local.set({ "liked_themes": update }).then(setLikeTimeout);
-    } else {
-        setLikeTimeout();
-    }
-}
-
-async function getAndLoadTheme(code) { // todo: remake
-    const key = `themes/${code}`;
-    let output = {};
-    if (cache[key]) {
-        output = cache[key];
-        console.log("got this theme from the cache.");
-    } else {
-        const res = await fetch(`${apiurl}/api/themes/theme/${code}`);
-        const data = await res.json();
-        output = JSON.parse(data.message.exports);
-        cache[key] = output;
-    }
-    importTheme(output);
-}
-
-async function displayThemeListNew(direction) { // TODO: remake
-    
-    document.getElementById("theme-current-sort").textContent = current_sort;
-    if (direction === -1 && current_page_num > 1) current_page_num--;
-    if (direction === 1 && current_page_num < maxPage) current_page_num++;
-
-    let themes = [];
-    let apiLink = `${current_sort.toLowerCase()}?page=${current_page_num}` + (searchFor === "" ? "" : `&searchFor=${searchFor}`);
-    if (current_sort === "Liked") {
-        const sync = await chrome.storage.sync.get("id");
-        const local = await chrome.storage.local.get("liked_themes");
-        if (sync["id"] && sync["id"] !== "") {
-            apiLink += `&id=${sync["id"]}`;
-            maxPage = Math.ceil(local["liked_themes"].length / 28);
-        } else { // fallback if there is no id
-            current_page_num = 1;
-            apiLink = `popular?page=${current_page_num}` + (searchFor === "" ? "" : `&searchFor=${searchFor}`);
-        }
-    }
-
-    // fetch api, fallback if necessary
-    if (cache[apiLink]) {
-        themes = cache[apiLink]["themes"];
-        maxPage = cache[apiLink]["pages"] || maxPage;
-    } else {
-        try {
-            const res = await fetch(`${apiurl}/api/themes/${apiLink}`, {
-                method: "get",
-                headers: {
-                    "Content-Type": "application/json"
-               },
-            });
-            const data = await res.json();
-            if (data.errors === true) throw new Error(data.message);
-            themes = data.message.themes;
-            cache[apiLink] = data.message;
-            if (data?.message?.pages) {
-                maxPage = data.message.pages;
-            }
-        } catch (e) {
-            console.log(e);
-            current_page_num = 1;
-            fallback = true;
-            displayAlert(true, "there is no server you should not be seeing this. There was a problem getting themes from the Canvas Refined server, so the old themes browser is being displayed for now.");
-            displayThemeListOld(0);
-            return;
-        }
-    }
-
-    let container = document.getElementById("premade-themes");
-    container.textContent = "";
-
-    const local = await chrome.storage.local.get("liked_themes");
-    const sync = await chrome.storage.sync.get("browser_show_likes");
-
-    themes.forEach(theme => {
-
-        const themeBtn = createThemeButton(container, theme);
-        themeBtn.addEventListener("click", (e) => {
-            if (!e.target.classList.contains("clickable")) return;
-            // getAndLoadTheme(theme.code)
-        }); 
-
-        const liked = local["liked_themes"].includes(theme.code);
-        // TODO: remake
-        const likeBtn = createThemeLikeBtn(themeBtn, liked, theme.score, sync["browser_show_likes"]);
-        // likeBtn.addEventListener("click" , (e) => likeTheme(likeBtn, theme.code, theme.score));
-
-    });
-
-    if (themes.length === 0) {
-        container.innerHTML = `<div id="themes-empty">Nothing here</div>`;
-    }
-
-    document.getElementById("premade-themes-pagenum").textContent = current_page_num + " of " + maxPage;
-
-    // set the submit theme button to the first custom card image
-
-    try {
-        const sync = await chrome.storage.sync.get("custom_cards");
-        const exports = await getExport(sync, ["custom_cards"]);
-        document.getElementById("theme-button-img").style.background = `linear-gradient(#00000070, #00000070), url(${exports["custom_cards"][0]}) no-repeat center center / cover`;
-    } catch (e) {
-        console.log(e);
-    }
-
-    displaySavedThemes();
-
-}
-
-function displayThemeListOld(pageDir = 0) {
-    //const keys = Object.keys(themes);
-    document.getElementById("theme-current-sort").textContent = current_sort;
-    const perPage = 24;
-    const maxPage = Math.ceil(allThemes.length / perPage);
-    if (pageDir === -1 && current_page_num > 1) current_page_num--;
-    if (pageDir === 1 && current_page_num < maxPage) current_page_num++;
-    let container = document.getElementById("premade-themes");
-    container.textContent = "";
-    let start = (current_page_num - 1) * perPage, end = start + perPage;
-    allThemes.forEach((theme, index) => {
-        if (index < start || index >= end) return;
-        let themeBtn = makeElement("button", container, { "className": "theme-button" });
-        themeBtn.classList.add("customization-button");
-        if (!themeBtn.style.background) themeBtn.style.backgroundImage = "linear-gradient(#00000070, #00000070), url(" + theme.preview + ")";
-        let split = theme.title.split(" by ");
-        makeElement("p", themeBtn, {"className": "theme-button-title", "textContent":  split[0] });
-        makeElement("p", themeBtn, {"className": "theme-button-creator", "textContent": split[1] });
-        themeBtn.addEventListener("click", () => {
-
-            const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors"]);
-            chrome.storage.sync.get(allOptions, sync => {
-                chrome.storage.local.get(["previous_theme"], async local => {
-                    if (local["previous_theme"] === null) {
-                        let previous = await getExport(sync, allOptions);
-                        chrome.storage.local.set({ "previous_theme": previous });
-                    }
-                    importTheme(theme.exports);
-                });
-            });
-        });
-    });
-    document.getElementById("premade-themes-pagenum").textContent = current_page_num + " of " + maxPage;
-    displaySavedThemes();
-}
 
 function displayThemeSearchList(themesToShow, pageDir = 0) {
     document.getElementById("theme-current-sort").textContent = current_sort;
     const perPage = 24;
     const maxPage = Math.ceil(themesToShow.length / perPage);
     if (pageDir == -1 && current_page_num > 1) current_page_num--;
-    if (pageDir == 1 && curren_page_num < maxPage) current_page_num++;
+    if (pageDir == 1 && current_page_num < maxPage) current_page_num++;
     let container = document.getElementById("premade-themes");
     container.textContent = "";
     let start = (current_page_num - 1) * perPage, end = start + perPage;
@@ -1529,7 +1604,7 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
             makeElement("p", themeBtn, {"className": "theme-button-title", "textContent":  split[0] });
             makeElement("p", themeBtn, {"className": "theme-button-creator", "textContent": split[1] });
             themeBtn.addEventListener("click", () => {
-                const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors"]);
+                const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
                 chrome.storage.sync.get(allOptions, sync => {
                     chrome.storage.local.get(["previous_theme"], async local => {
                         if (local["previous_theme"] === null) {
@@ -1743,73 +1818,7 @@ function setCustomImage(key, val) {
 function displayAdvancedCards() {
     sendFromPopup("getCards");
     chrome.storage.sync.get(["custom_cards", "custom_cards_2"], storage => {
-        // document.querySelector(".advanced-cards").innerHTML = '<div id="advanced-current"></div><div id="advanced-past"><h2>Past Courses</h2></div>';
-        // const keys = storage["custom_cards"] ? Object.keys(storage["custom_cards"]) : [];
-        // if (keys.length > 0) {
-        //     let currentEnrollment = keys.reduce((max, key) => storage["custom_cards"][key]?.eid > max ? storage["custom_cards"][key].eid : max, -1);
-        //     keys.forEach(key => {
-        //         let term = document.querySelector("#advanced-past");
-        //         if (storage["custom_cards"][key].eid === currentEnrollment) {
-        //             term = document.querySelector("#advanced-current");
-        //         }
-        //         let card = storage["custom_cards"][key];
-        //         let card_2 = storage["custom_cards_2"][key] || {};
-        //         if (!card || !card_2 || !card_2["links"] || card_2["links"]["custom"]) {
-        //             console.log(key + " error...");
-        //             console.log("card = ", card, "card_2", card_2, "links", card_2["links"]);
-        //         } else {
-        //             let container = makeElement("div", term, { "className": "custom-card" });
-        //             container.classList.add("option-container");
-        //             container.innerHTML = '<div class="custom-card-header"><p class="custom-card-title"></p><div class="custom-card-hide"><p class="custom-key">Hide</p></div></div><div class="custom-card-inputs"><div class="custom-card-left"><div class="custom-card-image"><span class="custom-key">Image</span></div><div class="custom-card-name"><span class="custom-key">Name</span></div><div class="custom-card-code"><span class="custom-key">Code</span></div></div><div class="custom-links-container"><p class="custom-key">Links</p><div class="custom-links"></div></div></div>';
-        //             let imgInput = makeElement("input", container.querySelector(".custom-card-image"), { "className": "card-input" });
-        //             let nameInput = makeElement("input",  container.querySelector(".custom-card-name"), { "className": "card-input" });
-        //             let codeInput = makeElement("input", container.querySelector(".custom-card-code"), { "className": "card-input" });
-        //             let hideInput = makeElement("input", container.querySelector(".custom-card-hide"), { "className": "card-input-checkbox" });
-        //             imgInput.placeholder = "Image url";
-        //             nameInput.placeholder = "Custom name";
-        //             codeInput.placeholder = "Custom code";
-        //             hideInput.type = "checkbox";
-        //             imgInput.value = card.img;
-        //             nameInput.value = card.name;
-        //             codeInput.value = card.code;
-        //             hideInput.checked = card.hidden;
-        //             if (card.img && card.img !== "") container.style.background = "linear-gradient(155deg, #1e1e1eeb 20%, #1e1e1ecc), url(\"" + card.img + "\") center / cover no-repeat";
-        //             imgInput.addEventListener("change", e => {
-        //                 setCustomImage(key, e.target.value);
-        //                 container.style.background = e.target.value === "" ? "var(--containerbg)" : "linear-gradient(155deg, #1e1e1eeb 20%, #1e1e1ecc), url(\"" + e.target.value + "\") center / cover no-repeat";
-        //             });
-        //             nameInput.addEventListener("change", function (e) { updateCards(key, { "name": e.target.value }) });
-        //             codeInput.addEventListener("change", function (e) { updateCards(key, { "code": e.target.value }) });
-        //             hideInput.addEventListener("change", function (e) { updateCards(key, { "hidden": e.target.checked }) });
-        //             container.querySelector(".custom-card-title").textContent = card.default;
 
-        //             for (let i = 0; i < 4; i++) {
-        //                 let customLink = makeElement("input", container.querySelector(".custom-links"), { "className": "card-input" });
-        //                 customLink.value = card_2.links[i].is_default ? "default" : card_2.links[i].path;
-        //                 customLink.addEventListener("change", function (e) {
-        //                     chrome.storage.sync.get("custom_cards_2", storage => {
-        //                         let newLinks = storage.custom_cards_2[key].links;
-        //                         if (e.target.value === "" || e.target.value === "default") {
-        //                             console.log("this value is empty....")
-        //                             //newLinks[i] = { "type": storage.custom_cards_2[key].links.default[i].type, "default": true };
-        //                             newLinks[i] = { "default": newLinks[i].default, "is_default": true, "path": newLinks[i].default };
-        //                             customLink.value = "default";
-        //                         } else {
-        //                             //newLinks[i] = { "type": getLinkType(e.target.value), "path": e.target.value, "default": false };
-        //                             let val = e.target.value;
-        //                             if (!e.target.value.includes("https://") && e.target.value !== "none") val = "https://" + val;
-        //                             newLinks[i] = { "default": newLinks[i].default, "is_default": false, "path": val };
-        //                             customLink.value = val;
-        //                         }
-        //                         chrome.storage.sync.set({ "custom_cards_2": { ...storage.custom_cards_2, [key]: { ...storage.custom_cards_2[key], "links": newLinks } } })
-        //                     });
-        //                 });
-        //             }
-        //         };
-        //     });
-        // } else {
-        //     document.querySelector(".advanced-cards").innerHTML = `<div class="option-container"><h3>Couldn't find your cards!<br/>You may need to refresh your Canvas page and/or this menu page.<br/><br/>If you're having issues please contact me - sandlerguy5@gmail.com</h3></div>`;
-        // }
 
 		const cardGrid = document.getElementById("card-grid");
         if (!cardGrid) {

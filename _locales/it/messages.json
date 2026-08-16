@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Date di scadenza relative"
   },
+  "equal_height_cards": {
+    "message": "Altezza uguale"
+  },
   "enter_multiple": {
     "message": "(Inserisci più numeri con una virgola)"
   },
@@ -235,5 +238,17 @@
   },
   "fix_dm_text": {
     "message": "Il fissatore viene eseguito automaticamente su queste pagine:"
+  },
+  "hide_links": {
+    "message": "Nascondi link"
+  },
+  "show_links": {
+    "message": "Mostra link"
+  },
+  "center_cards": {
+    "message": "Centra schede"
+  },
+  "hide_new_canvas": {
+    "message": "Nascondi nuovo Canvas"
   }
 }

@@ -113,6 +113,9 @@
   "relative_due_dates": {
     "message": "Relativa förfallodatum"
   },
+  "equal_height_cards": {
+    "message": "Jämn höjd"
+  },
   "enter_multiple": {
     "message": "(Ange flera med komma)"
   },
@@ -235,5 +238,17 @@
   },
   "fix_dm_text": {
     "message": "Fixern körs automatiskt på dessa sidor:"
+  },
+  "hide_links": {
+    "message": "Dölj länkar"
+  },
+  "show_links": {
+    "message": "Visa länkar"
+  },
+  "center_cards": {
+    "message": "Centrera kort"
+  },
+  "hide_new_canvas": {
+    "message": "Dölj ny Canvas"
   }
 }
