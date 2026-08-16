@@ -38,10 +38,7 @@ const syncedSubOptions = [
 ];
 const localSwitches = [];
 
-// Theme export categories. Only visual/appearance settings belong in a
-// shared theme; personal productivity features (reminders, dashboard notes,
-// the card-assignments list and its display prefs, card grades, item counts)
-// are intentionally excluded so exported themes never carry personal stuff.
+// Theme export only carries visual settings, never personal productivity data.
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight"];
@@ -433,10 +430,7 @@ function toggleBetterSidebarSubOptions(betterSidebarOn) {
     }
 }
 
-// When the Better Todo List is on, its own "Hide Recent Feedback" sub-option
-// (todo_hide_feedback) replaces the standalone "Hide recent feedback" toggle,
-// so hide the big #hide_feedback toggle to avoid showing two controls for the
-// same thing. Mirrors toggleBetterSidebarSubOptions.
+// Hide the standalone feedback toggle when Better Todo's own sub-option replaces it.
 function toggleBetterTodoSubOptions(betterTodoOn) {
     const hideFeedbackEl = document.getElementById("hide_feedback");
     if (hideFeedbackEl) {
@@ -444,10 +438,7 @@ function toggleBetterTodoSubOptions(betterTodoOn) {
     }
 }
 
-// Hide the sub-options of a big toggle when it is turned off.
-// For gpa_calc / assignments_due / better_todo the whole .sub-options block is
-// hidden. For auto_dark ("schedule dark mode") only the start/end time clocks
-// (.timesets) are hidden, leaving the device-dark checkbox visible.
+// Hide a toggle's sub-options when it's off; auto_dark only hides its time clocks.
 function toggleSubOptionsVisibility(option, isOn) {
     const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark"];
     if (!togglesWithSubOptions.includes(option)) return;
@@ -480,9 +471,7 @@ function setupFeatureSearch(menu) {
     function shouldSkip(el) {
         // Skip overlays / scrapped containers that aren't real features
         if (el.closest('#submit-popup, #browser-settings-popup, #opt-in, #card-edit-menu')) return true;
-        // Skip anything inside a statically-hidden option-container
-        // (e.g. the scrapped "remind" block, "Submit your theme").
-        // Dynamically-hidden sub-options (whose parent toggle is off) are kept.
+        // Skip statically-hidden containers but keep dynamically-hidden sub-options.
         let node = el;
         while (node && node !== document.body) {
             if (node.classList && node.classList.contains('option-container') && node.style.display === 'none') return true;
@@ -604,9 +593,7 @@ function setupFeatureSearch(menu) {
         // Home: sub-options / timesets / labelled rows (e.g. "Use dd/mm", "Start time", max-items)
         document.querySelectorAll(".options .sub-option, .options .timeset, .options .sub-options > div").forEach(sub => {
             if (shouldSkip(sub)) return;
-            // Skip statically-hidden sub-options (e.g. the "hover preview" TODO).
-            // Dynamically-hidden sub-options have display:none on their parent
-            // .sub-options, not on themselves, so they stay indexed.
+            // Skip statically-hidden sub-options; dynamically-hidden ones stay indexed.
             if (sub.classList.contains("sub-option") && sub.style.display === "none") return;
             const text = labelOf(sub);
             if (!text) return;
@@ -1123,6 +1110,21 @@ function setup() {
         });
     });
 
+    // Toggle all export checkboxes and dispatch one change event to refresh output.
+    const exportCheckboxes = () => document.querySelectorAll(".export-details input");
+    const refreshExport = () => {
+        const first = exportCheckboxes()[0];
+        if (first) first.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    document.querySelector("#export-check-all")?.addEventListener("click", () => {
+        exportCheckboxes().forEach(c => { c.checked = true; });
+        refreshExport();
+    });
+    document.querySelector("#export-check-none")?.addEventListener("click", () => {
+        exportCheckboxes().forEach(c => { c.checked = false; });
+        refreshExport();
+    });
+
     // activate revert to original button
     document.querySelector("#theme-revert").addEventListener("click", () => {
         chrome.storage.local.get("previous_theme", local => {
@@ -1575,9 +1577,7 @@ function saveCurrentTheme() {
 
 
 function displayThemeList(direction = 0) {
-    // render the full sorted theme list (filtered by any active search).
-    // Previously this was an empty stub, so the browser showed nothing
-    // until the search box fired displayThemeSearchList directly.
+    // Render the sorted theme list, filtered by any active search.
     let themesToShow = allThemes;
     if (searchFor) {
         themesToShow = allThemes.filter(theme => theme.title.toLowerCase().includes(searchFor.toLowerCase()));

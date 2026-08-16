@@ -1193,4 +1193,18 @@ hr {
 .event-details strong {
 	color: var(--bctext-0) !important;
 }
+/* Theme the native date/time picker icons so they stay visible on the dark
+   sidebar surface. Applied in dark mode only — light mode keeps the default
+   dark glyphs (see css/content.css).
+   color-scheme: dark is the cross-browser way to flip the native picker icon
+   to a light glyph. Firefox 109+ ignores ::-webkit-calendar-picker-indicator
+   (the icon lives in a closed Shadow DOM), so a filter alone does nothing
+   there; color-scheme fixes both Firefox and modern Chrome. Do NOT also apply
+   an invert filter — color-scheme already makes the glyph light, and inverting
+   would flip it back to dark in Chrome. */
+#better-todo-new-task-date,
+#better-todo-new-task-time {
+    color-scheme: dark !important;
+    color: var(--bctext-0) !important;
+}
 `;

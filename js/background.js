@@ -81,6 +81,8 @@ chrome.runtime.onInstalled.addListener(function () {
             "tab_icons": false,
             "todo_hide_feedback": false,
             "todo_full_height": true,
+            "todo_progress_rings": true,
+            "todo_confetti": true,
             "device_dark": false,
             "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
             // "show_updates": false,
