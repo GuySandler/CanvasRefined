@@ -284,19 +284,29 @@ function createNasaInfoOverlay() {
     const panel = nasaInfoOverlayEl.querySelector("#nasa-info-panel");
     
     const populatePanel = async () => {
-        const dateStr = new Date().toISOString().slice(0, 10);
-        const cacheKey = `nasa_apod_${dateStr}`;
-        const cached = await chrome.storage.local.get(cacheKey);
-        const metaDate = cached[cacheKey]?.date || dateStr;
-        const metadataKey = `nasa_apod_meta_${metaDate}`;
-        const metadata = await chrome.storage.local.get(metadataKey);
-        const meta = metadata[metadataKey];
-        if (!meta) return false;
-        document.getElementById("nasa-info-title").textContent = meta.title || "";
-        document.getElementById("nasa-info-date").textContent = `Date: ${meta.date}`;
-        document.getElementById("nasa-info-credit").textContent = meta.copyright ? `Credit: ${meta.copyright}` : "";
-        document.getElementById("nasa-info-explanation").textContent = meta.explanation || "No description available.";
-        return true;
+        // The NASA worker (background.js getNasaBackground) falls back up to 7 days
+        // when today's APOD isn't available yet, so search backward for the date
+        // that was actually cached and displayed instead of assuming today.
+        const date = new Date();
+        for (let i = 0; i < 7; i++) {
+            const dateStr = date.toISOString().slice(0, 10);
+            const cacheKey = `nasa_apod_${dateStr}`;
+            const cached = await chrome.storage.local.get(cacheKey);
+            if (!cached[cacheKey]) {
+                date.setDate(date.getDate() - 1);
+                continue;
+            }
+            const metadataKey = `nasa_apod_meta_${dateStr}`;
+            const metadata = await chrome.storage.local.get(metadataKey);
+            const meta = metadata[metadataKey];
+            if (!meta) return false;
+            document.getElementById("nasa-info-title").textContent = meta.title || "";
+            document.getElementById("nasa-info-date").textContent = `Date: ${meta.date}`;
+            document.getElementById("nasa-info-credit").textContent = meta.copyright ? `Credit: ${meta.copyright}` : "";
+            document.getElementById("nasa-info-explanation").textContent = meta.explanation || "No description available.";
+            return true;
+        }
+        return false;
     };
 
     let pinned = false;

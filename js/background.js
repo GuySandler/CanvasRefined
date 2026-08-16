@@ -194,8 +194,10 @@ async function getNasaBackground() {
             const url = data.thumbnail_url || data.hdurl || data.url;
             if (!url) return null;
             const result = { url, scale: 100, date: dateStr };
-            await chrome.storage.local.set({ [cacheKey]: result });
-            await chrome.storage.local.set({ [metadataKey]: { title: data.title || "", date: data.date || dateStr, copyright: data.copyright || "", explanation: data.explanation || "" } });
+            const meta = { title: data.title || "", date: data.date || dateStr, copyright: data.copyright || "", explanation: data.explanation || "" };
+            // Write image + metadata atomically so the info overlay never sees a
+            // cached image with missing metadata.
+            await chrome.storage.local.set({ [cacheKey]: result, [metadataKey]: meta });
             return result;
         }
         return null;
