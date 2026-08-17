@@ -2172,7 +2172,7 @@ async function createTodoSections(location) {
             if (key == "Later") label = "Due <strong>Later</strong>";
             if (key == "-1") label = "<strong>Overdue</strong>";
             else if (key == "0") label = "Due <strong>Today</strong>";
-            else if (key == "1") label = "Due <strong>Tommorow</strong>";
+            else if (key == "1") label = "Due <strong>Tomorrow</strong>";
             else if (key >= 2 && key < 7) label = "Due <strong>" + key + " days</strong>";
             else if (key >= 7 && key < 30) label = "Due <strong>" + key/7 + " weeks</strong>";
             else if (key == "30") label = "Due <strong>1 month</strong>";
@@ -4268,7 +4268,7 @@ const DASHBOARD_NOTES_HTML = `
     </div>
     <div class="canvasrefined-notes-surface">
         <div class="canvasrefined-notes-rendered" tabindex="0" aria-label="Dashboard notes — click to edit" title="Click to edit"></div>
-        <textarea class="canvasrefined-notes-editor" placeholder="Type Markdown — click away to render" spellcheck="false"></textarea>
+        <textarea class="canvasrefined-notes-editor" placeholder="Type away!" spellcheck="false"></textarea>
     </div>
 `;
 
