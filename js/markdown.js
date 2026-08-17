@@ -94,6 +94,7 @@ via innerHTML. Exposes window.renderMarkdown(text) -> html.
         const out = [];
         const n = lines.length;
         let i = 0;
+        let taskSeq = 0; // ordinal of rendered task items, stable across code-block stashing
         const isToken = (s) => /^\u0000\d+\u0000$/.test(s);
 
         while (i < n) {
@@ -140,7 +141,7 @@ via innerHTML. Exposes window.renderMarkdown(text) -> html.
                         if (task) {
                             const checked = /x/i.test(task[1]);
                             items.push(
-                                '<li class="cr-task"><input type="checkbox" disabled' +
+                                '<li class="cr-task" data-cr-task="' + taskSeq++ + '"><input type="checkbox"' +
                                 (checked ? " checked" : "") + "> " + inline(task[2])
                             );
                         } else {

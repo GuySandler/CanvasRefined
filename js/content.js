@@ -284,9 +284,7 @@ function createNasaInfoOverlay() {
     const panel = nasaInfoOverlayEl.querySelector("#nasa-info-panel");
     
     const populatePanel = async () => {
-        // The NASA worker (background.js getNasaBackground) falls back up to 7 days
-        // when today's APOD isn't available yet, so search backward for the date
-        // that was actually cached and displayed instead of assuming today.
+        // Search backward up to 7 days for the APOD actually cached, since today's may not be ready.
         const date = new Date();
         for (let i = 0; i < 7; i++) {
             const dateStr = date.toISOString().slice(0, 10);
@@ -620,8 +618,7 @@ function applyOptionsChanges(changes) {
 				loadCardAssignments();
 				break;
 			case "equal_height_cards":
-				// No need to rebuild the assignment rows — just stretch (or reset)
-				// the card heights in place for a snappy toggle.
+				// Stretch or reset card heights in place instead of rebuilding rows.
 				equalizeCardHeights();
 				break;
 			case "custom_cards":
@@ -833,7 +830,7 @@ async function applyCustomBackground() {
             -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
         }
         #right-side-wrapper {
-            // backdrop-filter: blur(10px) !important;
+            /* backdrop-filter: blur(10px) !important; */
             background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%);
             border-radius: 5px;
         }
@@ -1553,6 +1550,7 @@ function buildPlannerNotePayload(form) {
     const courseIdRaw = form.querySelector("#better-todo-new-task-course")?.value;
     const dateValue = form.querySelector("#better-todo-new-task-date")?.value;
     const timeValue = form.querySelector("#better-todo-new-task-time")?.value;
+    const link = form.querySelector("#better-todo-new-task-link")?.value?.trim() || "";
 
     if (!title) {
         throw new Error("Task title is required.");
@@ -1570,6 +1568,7 @@ function buildPlannerNotePayload(form) {
     return {
         title,
         details,
+        link,
         courseId: courseIdRaw ? parseInt(courseIdRaw) : null,
         // Canvas accepts local timestamp strings more reliably than UTC ISO strings for planner notes.
         todoDate: `${dateValue}T${timeValue}:00`,
@@ -1646,6 +1645,167 @@ async function createCanvasPlannerNote(payload) {
     throw new Error(lastError || "Canvas rejected task creation.");
 }
 
+/* Custom task links: Canvas planner notes have no link field, so store a
+   user link in sync storage keyed by the note id. */
+function getCustomTaskLinks() {
+    return (options && options.custom_task_links) || {};
+}
+
+function getCustomTaskLinkId(item) {
+    return item?.plannable_id ?? item?.plannable?.id ?? null;
+}
+
+function normalizeTaskLink(link) {
+    if (!link) return "";
+    link = String(link).trim();
+    if (!link) return "";
+    if (/^https?:\/\//i.test(link)) return link;
+    if (link.startsWith("//")) return "https:" + link;
+    return domain + (link.startsWith("/") ? link : "/" + link);
+}
+
+function customTaskHref(item) {
+    const id = getCustomTaskLinkId(item);
+    const links = getCustomTaskLinks();
+    if (id != null && links[String(id)]) {
+        return normalizeTaskLink(links[String(id)]);
+    }
+    const courseId = item?.course_id || item?.plannable?.course_id || item?.context_id;
+    if (courseId) return `${domain}/courses/${courseId}`;
+    return `${domain}/`;
+}
+
+function saveCustomTaskLink(noteId, link) {
+    if (noteId == null) return;
+    const links = { ...getCustomTaskLinks() };
+    const key = String(noteId);
+    if (link && String(link).trim()) {
+        links[key] = String(link).trim();
+    } else {
+        delete links[key];
+    }
+    options = { ...options, custom_task_links: links };
+    chrome.storage.sync.set({ custom_task_links: links });
+}
+
+function deleteCustomTaskLink(noteId) {
+    if (noteId == null) return;
+    const links = { ...getCustomTaskLinks() };
+    delete links[String(noteId)];
+    options = { ...options, custom_task_links: links };
+    chrome.storage.sync.set({ custom_task_links: links });
+}
+
+async function updateCanvasPlannerNote(id, payload) {
+    if (!id) throw new Error("Missing task id.");
+    const csrfToken = CSRFtoken();
+    const plannerNote = {
+        title: payload.title,
+        todo_date: payload.todoDate,
+    };
+    if (payload.details) plannerNote.details = payload.details;
+    // Sending course_id as empty string disassociates the note from its course.
+    plannerNote.course_id = payload.courseId || "";
+
+    const attempts = [
+        {
+            headers: {
+                "content-type": "application/json",
+                "accept": "application/json",
+                "X-CSRF-Token": csrfToken,
+            },
+            body: JSON.stringify({ planner_note: plannerNote }),
+        },
+        {
+            headers: {
+                "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "accept": "application/json",
+                "X-CSRF-Token": csrfToken,
+            },
+            body: (() => {
+                const formBody = new URLSearchParams();
+                formBody.set("planner_note[title]", plannerNote.title);
+                formBody.set("planner_note[todo_date]", plannerNote.todo_date);
+                if (plannerNote.details) formBody.set("planner_note[details]", plannerNote.details);
+                formBody.set("planner_note[course_id]", plannerNote.course_id);
+                return formBody.toString();
+            })(),
+        },
+    ];
+
+    let lastError = "Canvas rejected task update.";
+    for (const attempt of attempts) {
+        const response = await fetch(`${domain}/api/v1/planner_notes/${id}`, {
+            method: "PUT",
+            headers: attempt.headers,
+            body: attempt.body,
+        });
+
+        if (response.status === 200 || response.status === 201) {
+            return response.json();
+        }
+
+        try {
+            const errData = await response.json();
+            if (errData?.errors?.length) {
+                lastError = errData.errors.join(" ");
+            } else if (errData?.message) {
+                lastError = errData.message;
+            }
+        } catch (_) {
+            // Keep prior error text when body is not JSON.
+        }
+    }
+
+    throw new Error(lastError || "Canvas rejected task update.");
+}
+
+async function deleteCanvasPlannerNote(id) {
+    if (!id) throw new Error("Missing task id.");
+    const csrfToken = CSRFtoken();
+    const response = await fetch(`${domain}/api/v1/planner_notes/${id}`, {
+        method: "DELETE",
+        headers: {
+            "content-type": "application/json",
+            "accept": "application/json",
+            "X-CSRF-Token": csrfToken,
+        },
+    });
+
+    if (response.status === 200 || response.status === 201 || response.status === 204) {
+        return true;
+    }
+
+    let lastError = "Canvas rejected task deletion.";
+    try {
+        const errData = await response.json();
+        if (errData?.errors?.length) lastError = errData.errors.join(" ");
+        else if (errData?.message) lastError = errData.message;
+    } catch (_) { /* ignore */ }
+    throw new Error(lastError);
+}
+
+/* Scroll a task form field into view, leaving room below for the native date/time picker. */
+function scrollTodoIntoView(el, smooth = true) {
+    if (!el) return;
+    const sidebar = document.getElementById("right-side-wrapper");
+    const style = sidebar ? getComputedStyle(sidebar) : null;
+    const scrollsSidebar = sidebar &&
+        (style.overflowY === "auto" || style.overflowY === "scroll") &&
+        sidebar.scrollHeight > sidebar.clientHeight;
+    const behavior = smooth ? "smooth" : "auto";
+    if (scrollsSidebar) {
+        const rect = el.getBoundingClientRect();
+        const sRect = sidebar.getBoundingClientRect();
+        const elTop = rect.top - sRect.top + sidebar.scrollTop;
+        // Keep the element near the top so the picker below it stays on screen.
+        const target = elTop - (sidebar.clientHeight - rect.height) * 0.3;
+        sidebar.scrollTo({ top: Math.max(0, target), behavior });
+    } else {
+        el.scrollIntoView({ block: "center", behavior });
+    }
+}
+
 function fillTaskCourseOptions(courseSelect) {
     const cards = options.custom_cards || {};
     const courseColors = options.custom_cards_3 || {};
@@ -1705,7 +1865,8 @@ function ensureTodoTaskMenu(location, feedbackElement) {
         });
 
         menu.innerHTML = `
-            <div style="display:flex;flex-direction:column;gap:8px;padding:8px;border:1px solid #c7cdd1;border-radius:6px;background:var(--bcbackground-2);">
+            <div style="display:flex;flex-direction:column;gap:8px;padding:8px;border:1px solid #c7cdd1;border-radius:6px;background:var(--bcbackground-2);position:relative;">
+                <button id="better-todo-add-task-close" type="button" class="canvasrefined-custom-btn" title="Close" style="position:absolute;top:4px;right:6px;padding:0 6px;cursor:pointer;line-height:18px;font-size:14px;color:var(--bctext-1);">\u00d7</button>
                 <input type="text" id="better-todo-new-task-title" class="canvasrefined-custom-input" placeholder="Task title" maxlength="255">
                 <textarea id="better-todo-new-task-details" class="canvasrefined-custom-input" placeholder="Details (optional)" style="min-height:70px;resize:vertical;padding-top:6px;padding-bottom:6px;"></textarea>
                 <select id="better-todo-new-task-course" class="canvasrefined-custom-input"></select>
@@ -1713,9 +1874,13 @@ function ensureTodoTaskMenu(location, feedbackElement) {
                     <input type="date" id="better-todo-new-task-date" class="canvasrefined-custom-input">
                     <input type="time" id="better-todo-new-task-time" class="canvasrefined-custom-input">
                 </div>
+                <input type="text" id="better-todo-new-task-link" class="canvasrefined-custom-input" placeholder="Link (optional)" maxlength="2048">
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                    <span id="better-todo-add-task-status" style="font-size:12px;color:var(--bctext-0);"></span>
-                    <button id="better-todo-add-task-submit" class="canvasrefined-custom-btn" style="padding:4px 10px;cursor:pointer;" type="button">Create</button>
+                    <span id="better-todo-add-task-status" style="font-size:12px;color:var(--bctext-0);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <button id="better-todo-add-task-delete" class="canvasrefined-custom-btn" style="padding:4px 10px;cursor:pointer;display:none;color:#db3754;" type="button" title="Delete this custom task">Delete</button>
+                        <button id="better-todo-add-task-submit" class="canvasrefined-custom-btn" style="padding:4px 10px;cursor:pointer;" type="button">Create</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -1729,32 +1894,90 @@ function ensureTodoTaskMenu(location, feedbackElement) {
         courseSelect.addEventListener("change", () => updateTaskCourseSelectColor(courseSelect));
 
         addTaskButton.addEventListener("click", () => {
+            const willOpen = !menu.classList.contains("canvasrefined-custom-open");
             menu.classList.toggle("canvasrefined-custom-open");
+            if (willOpen) {
+                resetTaskFormToCreate(menu);
+                // Scroll the form up so the picker stays on screen.
+                scrollTodoIntoView(menu, true);
+            }
         });
 
-        menu.querySelector("#better-todo-add-task-submit").addEventListener("click", async () => {
+        const submitTask = async () => {
             const status = menu.querySelector("#better-todo-add-task-status");
             const submitButton = menu.querySelector("#better-todo-add-task-submit");
+            const deleteButton = menu.querySelector("#better-todo-add-task-delete");
             status.textContent = "";
             submitButton.disabled = true;
+            if (deleteButton) deleteButton.disabled = true;
 
             try {
                 const payload = buildPlannerNotePayload(menu);
-                await createCanvasPlannerNote(payload);
-                status.textContent = "Task created.";
+                const editingId = menu.dataset.editingId || null;
+                if (editingId) {
+                    await updateCanvasPlannerNote(editingId, payload);
+                    saveCustomTaskLink(editingId, payload.link);
+                    status.textContent = "Task updated.";
+                } else {
+                    const created = await createCanvasPlannerNote(payload);
+                    const newId = created?.id;
+                    if (newId != null) saveCustomTaskLink(newId, payload.link);
+                    status.textContent = "Task created.";
+                }
                 status.style.color = "#198754";
-                menu.querySelector("#better-todo-new-task-title").value = "";
-                menu.querySelector("#better-todo-new-task-details").value = "";
+                resetTaskFormToCreate(menu);
                 menu.classList.remove("canvasrefined-custom-open");
 
                 getAssignments();
                 clearTodoList();
                 createTodoSections(location);
             } catch (e) {
-                status.textContent = e?.message || "Could not create task.";
+                status.textContent = e?.message || "Could not save task.";
                 status.style.color = "#db3754";
             } finally {
                 submitButton.disabled = false;
+                if (deleteButton) deleteButton.disabled = false;
+            }
+        };
+
+        menu.querySelector("#better-todo-add-task-submit").addEventListener("click", submitTask);
+
+        // Close (×) button: dismiss the form without creating/editing a task.
+        menu.querySelector("#better-todo-add-task-close")?.addEventListener("click", () => {
+            resetTaskFormToCreate(menu);
+            menu.classList.remove("canvasrefined-custom-open");
+        });
+
+        // Reposition the field on focus so the picker opens on screen.
+        ["#better-todo-new-task-date", "#better-todo-new-task-time"].forEach((sel) => {
+            const input = menu.querySelector(sel);
+            input?.addEventListener("focus", () => scrollTodoIntoView(input, false));
+        });
+
+        menu.querySelector("#better-todo-add-task-delete").addEventListener("click", async () => {
+            const editingId = menu.dataset.editingId || null;
+            if (!editingId) return;
+            if (!confirm("Delete this custom task? This cannot be undone.")) return;
+            const status = menu.querySelector("#better-todo-add-task-status");
+            const submitButton = menu.querySelector("#better-todo-add-task-submit");
+            const deleteButton = menu.querySelector("#better-todo-add-task-delete");
+            status.textContent = "";
+            submitButton.disabled = true;
+            deleteButton.disabled = true;
+            try {
+                await deleteCanvasPlannerNote(editingId);
+                deleteCustomTaskLink(editingId);
+                resetTaskFormToCreate(menu);
+                menu.classList.remove("canvasrefined-custom-open");
+                getAssignments();
+                clearTodoList();
+                createTodoSections(location);
+            } catch (e) {
+                status.textContent = e?.message || "Could not delete task.";
+                status.style.color = "#db3754";
+            } finally {
+                submitButton.disabled = false;
+                deleteButton.disabled = false;
             }
         });
     }
@@ -1766,6 +1989,64 @@ function ensureTodoTaskMenu(location, feedbackElement) {
     } else if (actionsRow.parentElement !== location) {
         location.append(actionsRow);
     }
+}
+
+// Reset the shared add/edit task form back to a blank "create" state.
+function resetTaskFormToCreate(menu) {
+    if (!menu) return;
+    menu.querySelector("#better-todo-new-task-title").value = "";
+    menu.querySelector("#better-todo-new-task-details").value = "";
+    menu.querySelector("#better-todo-new-task-link").value = "";
+    const courseSelect = menu.querySelector("#better-todo-new-task-course");
+    if (courseSelect) {
+        fillTaskCourseOptions(courseSelect);
+        updateTaskCourseSelectColor(courseSelect);
+    }
+    const now = new Date();
+    menu.querySelector("#better-todo-new-task-date").value = formatDateForInput(now);
+    menu.querySelector("#better-todo-new-task-time").value = formatTimeForInput(now);
+    const status = menu.querySelector("#better-todo-add-task-status");
+    if (status) { status.textContent = ""; status.style.color = ""; }
+    const del = menu.querySelector("#better-todo-add-task-delete");
+    if (del) del.style.display = "none";
+    const submit = menu.querySelector("#better-todo-add-task-submit");
+    if (submit) submit.textContent = "Create";
+    delete menu.dataset.editingId;
+}
+
+// Open the shared form pre-filled with a custom task for editing or deletion.
+function openTaskForEdit(item) {
+    const location = document.getElementById("canvasrefined-todo-list");
+    if (!location) return;
+    const feedbackElement = location.querySelector(".recent_feedback");
+    ensureTodoTaskMenu(location, feedbackElement);
+    const menu = document.getElementById("better-todo-add-task-menu");
+    if (!menu) return;
+
+    const noteId = getCustomTaskLinkId(item);
+    menu.querySelector("#better-todo-new-task-title").value = item?.plannable?.title || "";
+    menu.querySelector("#better-todo-new-task-details").value = item?.plannable?.details || "";
+    const courseSelect = menu.querySelector("#better-todo-new-task-course");
+    const cid = item?.course_id || item?.plannable?.course_id || "";
+    if (courseSelect) courseSelect.value = cid ? String(cid) : "";
+    updateTaskCourseSelectColor(courseSelect);
+
+    const dateObj = new Date(item?.plannable_date || item?.plannable?.todo_date || Date.now());
+    if (!Number.isNaN(dateObj.getTime())) {
+        menu.querySelector("#better-todo-new-task-date").value = formatDateForInput(dateObj);
+        menu.querySelector("#better-todo-new-task-time").value = formatTimeForInput(dateObj);
+    }
+    const links = getCustomTaskLinks();
+    menu.querySelector("#better-todo-new-task-link").value = (noteId != null && links[String(noteId)]) || "";
+
+    menu.dataset.editingId = noteId != null ? String(noteId) : "";
+    const del = menu.querySelector("#better-todo-add-task-delete");
+    if (del) del.style.display = "";
+    menu.querySelector("#better-todo-add-task-submit").textContent = "Save";
+    const status = menu.querySelector("#better-todo-add-task-status");
+    if (status) { status.textContent = ""; status.style.color = ""; }
+    menu.classList.add("canvasrefined-custom-open");
+    scrollTodoIntoView(menu, true);
 }
 
 async function createTodoSections(location) {
@@ -2071,6 +2352,10 @@ function populateAssignments(iscompleted = false) {
 			"#cccccc";
 
         const isCustomTask = item.plannable_type == "planner_note" || item.planner_override?.custom === true;
+        const taskHref = isCustomTask ? customTaskHref(item) : (domain + item.html_url);
+        const editButtonSvg = isCustomTask
+            ? `<svg class="better-todo-assignment-edit" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:18px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="Edit this custom task"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
+            : "";
         const iconSize = isCustomTask ? 26 : 20;
         const iconLeftOffset = isCustomTask ? 2 : 5;
         const taskIcon = isCustomTask
@@ -2095,9 +2380,10 @@ function populateAssignments(iscompleted = false) {
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;position:relative;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
 					<span style="color:${courseColor};font-size:12px;margin-top:-2px;">${item.context_name}</span>
-					<a href="${domain + item.html_url}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${item.plannable.title}</a>
+					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${item.plannable.title}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
+				${editButtonSvg}
 				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">
 					<g id="SVGRepo_bgCarrier" stroke-width="0"></g>
 					<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
@@ -2112,6 +2398,14 @@ function populateAssignments(iscompleted = false) {
 			console.log("marking ", item.plannable.title, " as complete");
 			markAs(item, assignment.firstElementChild);
 		});
+		const editBtn = assignment.querySelector(".better-todo-assignment-edit");
+		if (editBtn) {
+			editBtn.addEventListener("click", (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				openTaskForEdit(item);
+			});
+		}
 	});
 
 	if (document.getElementById("better-todo-see-more")) {
@@ -3056,11 +3350,7 @@ async function changeColorPreset(colors) {
 Dark mode
 */
 
-// Light-mode fallback values for the --bc* theme variables. These are always
-// emitted (even when dark mode is OFF) so extension UI referencing
-// var(--bctext-0) / var(--bcborders) / var(--bcbackground-*) still renders
-// correctly in light mode (e.g. better sidebar/todo icons stay dark instead
-// of falling back to the SVG initial values). Dark mode overrides these below.
+// Light-mode fallbacks for the --bc* variables, always emitted so extension UI renders in light mode; dark mode overrides below.
 const BC_LIGHT_DEFAULTS = {
     "background-0": "#ffffff",
     "background-1": "#c7c7c7",
@@ -3264,12 +3554,8 @@ function createCardAssignment(assignment) {
 
 let cardAssignments;
 
-/*
-Equal Height Cards — when enabled, every dashboard card's assignment area is
-stretched to match the tallest one so cards with fewer assignments don't end
-up shorter than the rest. Uses min-height (never a fixed height) so cards can
-still grow if their content exceeds the tallest card.
-*/
+/* Equal Height Cards: stretch each card's assignment area to match the tallest
+   one, using min-height so cards can still grow. */
 let equalHeightResizeTimer = null;
 
 function equalizeCardHeights() {
@@ -3278,8 +3564,7 @@ function equalizeCardHeights() {
 
     const enabled = options.equal_height_cards === true && options.assignments_due === true;
 
-    // Always clear any previously applied min-height first so we can either
-    // measure natural heights (when enabling) or fully reset (when disabling).
+    // Clear prior min-height so we can measure fresh or fully reset.
     cards.forEach(card => {
         const area = card.querySelector(".canvasrefined-card-assignment");
         if (area) area.style.removeProperty("min-height");
@@ -3287,9 +3572,7 @@ function equalizeCardHeights() {
 
     if (!enabled) return;
 
-    // Measure the natural height of each card's assignment area, then stretch
-    // every area to the tallest one. Card headers are uniform, so equalizing
-    // the assignment area makes all cards the same total height.
+    // Stretch each assignment area to the tallest one.
     let maxHeight = 0;
     cards.forEach(card => {
         const area = card.querySelector(".canvasrefined-card-assignment");
@@ -3781,13 +4064,7 @@ function delayDashboardNotesStorage(text) {
     }, 250);
 }
 
-/*
-Built-in fallback Markdown renderer. Used only if js/markdown.js failed to load
-(window.renderMarkdown missing) so the notes still render formatted output instead
-of showing raw markdown text. Covers the common subset: headings, bold/italic/strike,
-inline + fenced code, links, images, lists, task lists, blockquotes, hr, paragraphs.
-All user text is HTML-escaped before formatting.
-*/
+/* Fallback Markdown renderer used only if js/markdown.js failed to load. */
 function crRenderMarkdownFallback(src) {
     if (src == null) return "";
     const escapeHtml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -3804,6 +4081,7 @@ function crRenderMarkdownFallback(src) {
     const out = [];
     const lines = text.split("\n");
     let i = 0;
+    let taskSeq = 0; // ordinal of rendered task items, stable across code-block stashing
     const inline = (t) => {
         let h = escapeHtml(t);
         h = h.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, (m, alt, url, title) =>
@@ -3827,7 +4105,7 @@ function crRenderMarkdownFallback(src) {
             out.push(`<blockquote>${q.join("<br>")}</blockquote>`); continue;
         }
         if (/^\s*[-*+]\s+/.test(line)) {
-            const items = []; while (i < lines.length) { const m = lines[i].match(/^\s*[-*+]\s+(.*)$/); if (!m) break; const tk = m[1].match(/^\[([ xX])\]\s+(.*)$/); if (tk) { items.push(`<li class="cr-task"><input type="checkbox" disabled${/x/i.test(tk[1]) ? " checked" : ""}> ${inline(tk[2])}</li>`); } else { items.push(`<li>${inline(m[1])}</li>`); } i++; } out.push(`<ul>${items.join("")}</ul>`); continue;
+            const items = []; while (i < lines.length) { const m = lines[i].match(/^\s*[-*+]\s+(.*)$/); if (!m) break; const tk = m[1].match(/^\[([ xX])\]\s+(.*)$/); if (tk) { items.push(`<li class="cr-task" data-cr-task="${taskSeq++}"><input type="checkbox"${/x/i.test(tk[1]) ? " checked" : ""}> ${inline(tk[2])}</li>`); } else { items.push(`<li>${inline(m[1])}</li>`); } i++; } out.push(`<ul>${items.join("")}</ul>`); continue;
         }
         if (/^\s*\d+\.\s+/.test(line)) {
             const items = []; while (i < lines.length) { const m = lines[i].match(/^\s*\d+\.\s+(.*)$/); if (!m) break; items.push(`<li>${inline(m[1])}</li>`); i++; } out.push(`<ol>${items.join("")}</ol>`); continue;
@@ -3840,20 +4118,14 @@ function crRenderMarkdownFallback(src) {
 
 function renderDashboardNotesPreview(preview, text) {
     if (!preview) return;
-    // Skip identical re-renders: writing innerHTML is a childList mutation that the
-    // dashboard MutationObserver picks up, which re-calls loadDashboardNotes, which
-    // re-renders... Without this guard the notes box drives a tight self-sustaining
-    // loop (setTimeout 0) that starves the main thread so the render never paints.
+    // Skip identical re-renders to avoid a self-sustaining observer loop.
     if (preview._crLastText === text) return;
     preview._crLastText = text;
     const renderer = (typeof window.renderMarkdown === "function") ? window.renderMarkdown : crRenderMarkdownFallback;
     preview.innerHTML = renderer(text);
 }
 
-/*
-Insert/wrap Markdown formatting in the notes editor at the current selection.
-Dispatches a synthetic `input` event so the live preview + storage handler runs.
-*/
+/* Insert/wrap Markdown formatting at the selection and fire an input event. */
 function notesApplyFormat(editor, action) {
     if (!editor) return;
     const start = editor.selectionStart;
@@ -3947,6 +4219,34 @@ function notesApplyFormat(editor, action) {
     }
 }
 
+/* Toggle the Nth rendered Markdown task checkbox and re-render, using a task
+   ordinal that skips fenced code blocks. */
+function toggleDashboardNoteTask(editor, taskIndex) {
+    if (!editor) return;
+    const value = editor.value || "";
+    const lines = value.split("\n");
+    let inFence = false;
+    let count = 0;
+    for (let idx = 0; idx < lines.length; idx++) {
+        const line = lines[idx];
+        if (/^\s*```/.test(line)) { inFence = !inFence; continue; }
+        if (inFence) continue;
+        const m = line.match(/^(\s*[-*+]\s+)\[([ xX])\](\s+)/);
+        if (!m) continue;
+        if (count === taskIndex) {
+            const newMark = m[2] === " " ? "x" : " ";
+            lines[idx] = m[1] + "[" + newMark + "]" + m[3] + line.slice(m[0].length);
+            editor.value = lines.join("\n");
+            editor.dispatchEvent(new Event("input", { bubbles: true }));
+            const notes = editor.closest(".canvasrefined-dashboard-notes");
+            const rendered = notes ? notes.querySelector(".canvasrefined-notes-rendered") : null;
+            if (rendered) renderDashboardNotesPreview(rendered, editor.value);
+            return;
+        }
+        count++;
+    }
+}
+
 const DASHBOARD_NOTES_HTML = `
     <div class="canvasrefined-notes-toolbar" role="toolbar" aria-label="Format notes">
         <button type="button" class="cr-fmt" data-action="bold" title="Bold (Ctrl/Cmd+B)"><strong>B</strong></button>
@@ -3990,7 +4290,18 @@ function wireDashboardNotes(notes) {
         renderDashboardNotesPreview(rendered, editor.value);
     };
 
-    rendered.addEventListener("click", enterEdit);
+    rendered.addEventListener("click", (e) => {
+        // Clicking a checkbox toggles the task; clicking the text edits.
+        const t = e.target;
+        if (t && t.nodeType === 1 && t.tagName === "INPUT" && t.type === "checkbox" && t.closest && t.closest("li.cr-task")) {
+            e.stopPropagation();
+            const li = t.closest("li.cr-task");
+            const taskIndex = parseInt(li.dataset.crTask, 10);
+            if (!Number.isNaN(taskIndex)) toggleDashboardNoteTask(editor, taskIndex);
+            return;
+        }
+        enterEdit();
+    });
     rendered.addEventListener("focus", enterEdit);
     editor.addEventListener("blur", exitEdit);
     editor.addEventListener("input", function () {
@@ -3998,11 +4309,10 @@ function wireDashboardNotes(notes) {
         delayDashboardNotesStorage(this.value);
     });
 
-    // Toolbar buttons: keep focus in the editor (mousedown preventDefault stops the
-    // button from stealing focus and collapsing back to the rendered view), then apply
-    // the formatting. Enters edit mode first if the user formats from the rendered view.
+    // preventDefault on the toolbar keeps focus in the editor across misclicks.
+    const toolbar = notes.querySelector(".canvasrefined-notes-toolbar");
+    if (toolbar) toolbar.addEventListener("mousedown", e => e.preventDefault());
     notes.querySelectorAll(".cr-fmt").forEach(btn => {
-        btn.addEventListener("mousedown", e => e.preventDefault());
         btn.addEventListener("click", () => {
             if (!notes.classList.contains("is-editing")) enterEdit();
             notesApplyFormat(editor, btn.dataset.action);
@@ -4044,9 +4354,7 @@ function loadDashboardNotes() {
             notes.style.display = "";
             const editor = notes.querySelector(".canvasrefined-notes-editor");
             const rendered = notes.querySelector(".canvasrefined-notes-rendered");
-            // While editing, the textarea is the source of truth: don't clobber it from
-            // storage and don't waste a render on the hidden rendered view (which would
-            // also feed the observer loop). Only sync + render in view mode.
+            // Only sync and render in view mode; the textarea is the source of truth while editing.
             if (!notes.classList.contains("is-editing")) {
                 if (editor && editor.value !== (options.dashboard_notes_text || "")) {
                     editor.value = options.dashboard_notes_text || "";
@@ -4134,9 +4442,7 @@ function changeGradientCards() {
     if (options.gradient_cards === true) {
         let cardheads = document.querySelectorAll('.ic-DashboardCard__header_hero');
 
-        // Only create + append the style once; never re-append an already-
-        // attached element, since appending to <html> triggers the
-        // MutationObserver in checkDashboardReady() and re-runs this function.
+        // Create the style once; re-appending triggers the MutationObserver and re-runs this function.
         let cardcss = document.querySelector("#gradientcss");
         if (!cardcss) {
             cardcss = document.createElement('style');
@@ -4144,9 +4450,7 @@ function changeGradientCards() {
             document.documentElement.appendChild(cardcss);
         }
 
-        // Build the full CSS into a string first, then only touch the DOM
-        // if the content actually changed. This keeps #gradientcss from being
-        // cleared/rewritten on every observer tick.
+        // Build CSS into a string and only touch the DOM if it changed.
         let css = "";
         for (let i = 0; i < cardheads.length; i++) {
             let colorone = cardheads[i].style.backgroundColor.split(',');
@@ -4323,7 +4627,12 @@ async function getData(url) {
         }
     });
     let data = await response.json();
-    return data
+    // Deep-clone via JSON to unwrap Firefox Xray objects so nested props are mutable.
+    try {
+        return JSON.parse(JSON.stringify(data));
+    } catch (_) {
+        return data;
+    }
 }
 
 

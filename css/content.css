@@ -48,7 +48,7 @@
 }
 .canvasrefined-add-assignment {max-height: 0; overflow:hidden;transition: .3s max-height;}
 .canvasrefined-custom-open {max-height: 250px}
-#better-todo-add-task-menu.canvasrefined-custom-open {max-height: 420px;}
+#better-todo-add-task-menu.canvasrefined-custom-open {max-height: 520px;}
 .canvasrefined-custom-input {box-sizing: border-box!important; width: 100%!important; height: 32px!important}
 #better-todo-new-task-date,
 #better-todo-new-task-time {
@@ -58,10 +58,9 @@
     font-size: 12px;
     padding-inline: 6px;
 }
-#better-todo-new-task-date::-webkit-calendar-picker-indicator {
-    filter: invert(1) brightness(2);
-    opacity: .95;
-}
+/* The native date/time picker icons are themed in dark mode only via
+   color-scheme (see DARKMODE_CSS in css/darkmodecss.js); light mode keeps the
+   default dark glyphs on the light surface. */
 .canvasrefined-custom-btn {background: #f5f5f5; border: 1px solid #c7cdd1; border-radius:6px; padding: 2px 8px;}
 /* Better sidebar buttons sit on the --bcsidebar surface and use --bcsidebar-text
    for labels/icons, so drop the light button chrome and use a subtle hover tint. */
@@ -204,7 +203,7 @@
 .canvasrefined-notes-rendered ul,.canvasrefined-notes-rendered ol {margin:8px 0;padding-left:24px;}
 .canvasrefined-notes-rendered li {margin:3px 0;}
 .canvasrefined-notes-rendered li.cr-task {list-style:none;margin-left:-18px;display:flex;align-items:flex-start;gap:6px;}
-.canvasrefined-notes-rendered li.cr-task input {margin-top:4px;}
+.canvasrefined-notes-rendered li.cr-task input {margin-top:4px;cursor:pointer;}
 .canvasrefined-notes-rendered blockquote {margin:8px 0;padding:4px 12px;border-left:3px solid var(--bcborders,#c7cdd1);color:var(--bctext-1,#5b6770);background:var(--bcbackground-2,rgba(0,0,0,.03));}
 .canvasrefined-notes-rendered code {font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em;background:var(--bcbackground-2,#f1f3f5);padding:1px 5px;border-radius:3px;}
 .canvasrefined-notes-rendered pre {margin:10px 0;padding:10px 12px;background:var(--bcbackground-2,#f1f3f5);border:1px solid var(--bcborders,#e2e6e8);border-radius:4px;overflow:auto;}
