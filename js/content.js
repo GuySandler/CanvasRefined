@@ -373,6 +373,9 @@ let timeCheck = null;
 let reminderCheck = null;
 let betterSidebarLoading = false;
 let dashboardReadyTimer = null;
+let sidebarBadgeObserver = null;
+let sidebarBadgeSyncTimer = null;
+let sidebarBadgeWatchRetries = 0;
 
 /*
 Start
@@ -772,6 +775,9 @@ function resetBetterSidebarLayout() {
     document.getElementById("section-tabs")?.style.removeProperty("padding-top");
     document.getElementById("better-sidebar-container")?.remove();
     clearBetterSidebarLayoutFix();
+    if (sidebarBadgeObserver) { sidebarBadgeObserver.disconnect(); sidebarBadgeObserver = null; }
+    if (sidebarBadgeSyncTimer) { clearTimeout(sidebarBadgeSyncTimer); sidebarBadgeSyncTimer = null; }
+    sidebarBadgeWatchRetries = 0;
 }
 
 function ensureBetterSidebar() {
@@ -1699,13 +1705,18 @@ function deleteCustomTaskLink(noteId) {
 async function updateCanvasPlannerNote(id, payload) {
     if (!id) throw new Error("Missing task id.");
     const csrfToken = CSRFtoken();
+    // Canvas's planner_notes update endpoint permits FLAT parameters
+    // (title, details, course_id, todo_date) — NOT nested under planner_note.
+    // Sending nested params is silently ignored, so note.update({}) runs and
+    // returns 200 with the unchanged note, making edits appear to "not save".
+    // Always include details (even empty) so the field can be cleared.
     const plannerNote = {
         title: payload.title,
         todo_date: payload.todoDate,
+        details: payload.details || "",
+        // Sending course_id as empty string disassociates the note from its course.
+        course_id: payload.courseId || "",
     };
-    if (payload.details) plannerNote.details = payload.details;
-    // Sending course_id as empty string disassociates the note from its course.
-    plannerNote.course_id = payload.courseId || "";
 
     const attempts = [
         {
@@ -1714,7 +1725,7 @@ async function updateCanvasPlannerNote(id, payload) {
                 "accept": "application/json",
                 "X-CSRF-Token": csrfToken,
             },
-            body: JSON.stringify({ planner_note: plannerNote }),
+            body: JSON.stringify(plannerNote),
         },
         {
             headers: {
@@ -1724,10 +1735,10 @@ async function updateCanvasPlannerNote(id, payload) {
             },
             body: (() => {
                 const formBody = new URLSearchParams();
-                formBody.set("planner_note[title]", plannerNote.title);
-                formBody.set("planner_note[todo_date]", plannerNote.todo_date);
-                if (plannerNote.details) formBody.set("planner_note[details]", plannerNote.details);
-                formBody.set("planner_note[course_id]", plannerNote.course_id);
+                formBody.set("title", plannerNote.title);
+                formBody.set("todo_date", plannerNote.todo_date);
+                formBody.set("details", plannerNote.details);
+                formBody.set("course_id", plannerNote.course_id);
                 return formBody.toString();
             })(),
         },
@@ -1810,7 +1821,9 @@ function fillTaskCourseOptions(courseSelect) {
     const cards = options.custom_cards || {};
     const courseColors = options.custom_cards_3 || {};
     const currentCourseId = getCurrentCourseId();
+    // Hidden courses should not be offered as a target for custom tasks.
     const entries = Object.entries(cards)
+        .filter(([, card]) => card?.hidden !== true)
         .map(([id, card]) => ({
             id,
             label: card?.default || `Course ${id}`,
@@ -2826,6 +2839,7 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
         requestAnimationFrame(() => {
             populateSidebarFromNav(sidebarContent);
             updateSidebar(expanded, sidebarList, expander);
+            watchSidebarBadges();
         });
 
         expander.addEventListener("click", () => {
@@ -2859,13 +2873,51 @@ function getNavBadgeCount(item) {
 }
 
 function addSidebarButtonBadge(button, count) {
-    if (!button || !count) return;
+    if (!button) return;
+    // Always clear any existing badge first so a drop to 0 unread removes it.
     button.querySelector(".better-sidebar-badge")?.remove();
+    if (!count) return;
     makeElement("div", button, {
         className: "better-sidebar-badge",
         style: "position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background-color:#ff0000;color:white;font-size:11px;line-height:16px;display:flex;justify-content:center;align-items:center;box-sizing:border-box;pointer-events:none;",
         textContent: String(count),
     });
+}
+
+// Re-read the global nav badge for each better-sidebar button and update its dot.
+// Canvas loads the unread counts (Inbox/announcements) asynchronously after the
+// page renders, so the dot captured at build time is often missing or stale.
+function syncSidebarBadges() {
+    document.querySelectorAll(".better-sidebar-btn").forEach(button => {
+        const navId = button.dataset.navItemId;
+        if (!navId) return;
+        const navItem = document.getElementById(navId);
+        if (!navItem) return;
+        addSidebarButtonBadge(button, getNavBadgeCount(navItem));
+    });
+}
+
+function scheduleSidebarBadgeSync() {
+    if (sidebarBadgeSyncTimer) clearTimeout(sidebarBadgeSyncTimer);
+    sidebarBadgeSyncTimer = setTimeout(() => {
+        sidebarBadgeSyncTimer = null;
+        syncSidebarBadges();
+    }, 100);
+}
+
+// Watch the global nav for badge changes (late load, new mail, read/unread)
+// and keep the better-sidebar dots in sync.
+function watchSidebarBadges() {
+    const navMenu = document.getElementById("menu");
+    if (!navMenu) {
+        if (sidebarBadgeWatchRetries++ < 20) setTimeout(watchSidebarBadges, 500);
+        return;
+    }
+    sidebarBadgeWatchRetries = 0;
+    if (sidebarBadgeObserver) sidebarBadgeObserver.disconnect();
+    sidebarBadgeObserver = new MutationObserver(scheduleSidebarBadgeSync);
+    sidebarBadgeObserver.observe(navMenu, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "style"] });
+    scheduleSidebarBadgeSync();
 }
 function populateSidebarFromNav(sidebarContent) {
 	const excludeIds = ["global_nav_help_link", "global_nav_history_link"];
@@ -2944,6 +2996,7 @@ function populateSidebarFromNav(sidebarContent) {
 
             if (itemId === "global_nav_dashboard_link") hasDashboardButton = true;
             const button = createSidebarButton(text, href, sidebarContent, icon);
+            if (itemId) button.dataset.navItemId = itemId;
             addSidebarButtonBadge(button, getNavBadgeCount(item));
         });
     }
