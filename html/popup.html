@@ -236,9 +236,15 @@
                             <input type="checkbox" id="todo_hide_feedback" name="todo_hide_feedback">
                             <label for="todo_hide_feedback" class="sub-text" data-i18n="todo_hide_feedback">Hide Recent Feedback</label>
                         </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_progress_rings" name="todo_progress_rings">
-                            <label for="todo_progress_rings" class="sub-text">Show progress rings</label>
+                        <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                            <label for="todo_progress_rings" class="sub-text">Progress display</label>
+                            <select id="todo_progress_rings" name="todo_progress_rings">
+                                <option value="none">None</option>
+                                <option value="rings">Rings</option>
+                                <option value="rainbow">Rainbow</option>
+                                <option value="lines">Multiple lines</option>
+                                <option value="line">One line</option>
+                            </select>
                         </div>
                         <div class="sub-option">
                             <input type="checkbox" id="todo_confetti" name="todo_confetti">

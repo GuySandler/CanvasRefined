@@ -711,7 +711,7 @@ function applyOptionsChanges(changes) {
                     // toggle progress rings immediately
                     const placeholder = document.getElementById("better-todo-progress-placeholder");
                     if (!placeholder) break;
-                    if (changes[key].newValue === true || changes[key].newValue === undefined) {
+                    if (progressRingsEnabled()) {
                         if (typeof assignments?.then === 'function') {
                             assignments.then(data => {
                                 const courseId = getCurrentCourseId();
@@ -1330,7 +1330,26 @@ function updateIndicator(element) {
 }
 // better todo html
 betterTodoFilter = "tasks";
+// null = show every class; a string courseId = only that class's tasks.
+let betterTodoProgressFilter = null;
 let domContainers = {};
+
+// true when `courseId` is the dimmed-out class because another class is selected.
+function progressFilterDim(courseId) {
+    return betterTodoProgressFilter != null && String(courseId) !== String(betterTodoProgressFilter);
+}
+// Make an element filter the todo list to one class on click. A no-op on
+// course pages (where only one class is in scope anyway); toggles off when the
+// active class is clicked again.
+function attachProgressFilterClick(el, courseId) {
+    if (getCurrentCourseId() != null) { el.style.cursor = ''; el.onclick = null; return; }
+    el.style.cursor = 'pointer';
+    el.onclick = () => {
+        betterTodoProgressFilter = (String(betterTodoProgressFilter) === String(courseId)) ? null : String(courseId);
+        const loc = document.querySelector("#canvasrefined-todo-list");
+        if (loc) { clearTodoList(); createTodoSections(loc); }
+    };
+}
 
 function formatDateForInput(date) {
     const year = date.getFullYear();
@@ -1345,161 +1364,95 @@ function formatTimeForInput(date) {
     return `${hours}:${minutes}`;
 }
 
-function renderProgressRings(container, scopedData) {
-    const allAssignments = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note"));
+/* Progress display mode, stored in options.todo_progress_rings.
+   Modes: "none", "rings", "rainbow", "lines", "line".
+   Legacy booleans normalize: true/undefined -> rings, false -> none. */
+function getProgressRingMode() {
+    const v = options.todo_progress_rings;
+    if (v === false) return "none";
+    if (v === true || v === undefined || v === null) return "rings";
+    const allowed = ["none", "rings", "rainbow", "lines", "line"];
+    if (allowed.includes(v)) return v;
+    // migrate unreleased string values from the prior experimental set
+    if (v === "per_course") return "rings";
+    if (v === "combined" || v === "segmented") return "line";
+    return "rings";
+}
 
-    // exclude items older than one month
-    const oneMonthAgo = Date.now() - 1000 * 60 * 60 * 24 * 30;
-    const recentAssignments = allAssignments.filter(item => {
-        const dateStr = item.plannable_date || item.todo_date || item.plannable?.due_at || item.plannable?.plannable_date;
-        if (!dateStr) return true; // keep items without a date
-        const ts = Date.parse(dateStr);
-        if (Number.isNaN(ts)) return true;
-        return ts >= oneMonthAgo;
-    });
-    const groups = {};
-    allAssignments.forEach(item => {
-        const cid = String(item.course_id || item.context_id || item.plannable?.course_id || "personal");
-        groups[cid] = groups[cid] || [];
-        groups[cid].push(item);
-    });
+function progressRingsEnabled() {
+    return getProgressRingMode() !== "none";
+}
 
-    const entries = Object.keys(groups).map(cid => {
-        const arr = groups[cid];
-        const completed = arr.filter(it => (it.submissions?.submitted || it.planner_override?.marked_complete)).length;
-        return { courseId: cid, total: arr.length, completed };
-    }).filter(e => e.total > 0);
+function courseRingColor(courseId, idx) {
+    return options.custom_cards_3?.[String(courseId)]?.color
+        || options.custom_cards_3?.[courseId]?.color
+        || `hsl(${(idx * 60) % 360} 70% 50%)`;
+}
 
-    if (!entries.length) {
-        container.innerHTML = "";
-        return;
-    }
+function courseRingLabel(courseId) {
+    const card = options.custom_cards?.[String(courseId)] || options.custom_cards?.[courseId];
+    return card?.default || `Course ${courseId}`;
+}
 
-    // sort by total desc and limit rings to 6
-    entries.sort((a, b) => b.total - a.total);
-    const shown = entries.slice(0, 6);
-
-    const totalAll = shown.reduce((s, e) => s + e.total, 0);
-    const completedAll = shown.reduce((s, e) => s + e.completed, 0);
-    const percent = totalAll === 0 ? 0 : Math.round((completedAll / totalAll) * 100);
-
-    // build SVG rings with visible gaps and a larger central hole.
-    // calculate available width from the container so the outer ring is slightly inset
-    const containerWidth = (container.clientWidth || 240);
-    const maxSize = Math.min(280, Math.floor(containerWidth * 0.99));
-    const size = maxSize; // svg square size
+// Mode "rings": concentric rings, one per course, each filled by completion.
+function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent) {
+    const containerWidth = wrapper.clientWidth || 240;
+    const size = Math.min(280, Math.floor(containerWidth * 0.99));
     const cx = size / 2;
     const cy = size / 2;
-    let svgInner = "";
-
-    const ringCount = shown.length;
-    const stroke = 8; // ring thickness (thinner)
-    const gap = 4; // visible gap between rings (reduced)
-    const decrement = stroke + gap; // radius difference per ring ensures gap
-
-    // make outer ring extend closer to container edges by using a small padding
     const padding = 2;
-    const startRadius = Math.floor((size / 2) - padding - (stroke / 2));
+    const outerRadius = Math.floor((size / 2) - padding);
 
-    // ensure radii stay positive; if too small, reduce stroke/gap
-    const minCenterRadius = 28; // minimum desired central hole radius
-    const requiredSpace = (ringCount - 1) * decrement + stroke / 2 + minCenterRadius;
-    let adjustFactor = 1;
-    if (requiredSpace > startRadius) {
-        // scale down decrement to fit
-        adjustFactor = (startRadius - minCenterRadius - stroke / 2) / Math.max(1, (ringCount - 1) * decrement);
-    }
-
-    shown.forEach((entry, idx) => {
-        const effectiveDecrement = Math.max(1, Math.floor(decrement * adjustFactor));
-        const radius = startRadius - idx * effectiveDecrement;
-        if (radius <= 0) return;
-        const circumference = 2 * Math.PI * radius;
-        const prog = entry.total === 0 ? 0 : (entry.completed / entry.total);
-        const color = options.custom_cards_3?.[String(entry.courseId)]?.color || options.custom_cards_3?.[entry.courseId]?.color || `hsl(${(idx * 60) % 360} 70% 50%)`;
-
-        // background ring (faded course color)
-        svgInner += `<circle cx='${cx}' cy='${cy}' r='${radius}' stroke='${color}' stroke-opacity='0.25' stroke-width='${stroke}' fill='none'></circle>`;
-        // progress ring (rotate -90 to start at top) - initialize empty and animate to target
-        const dasharrayVal = circumference.toFixed(3);
-        const dashoffsetTarget = (circumference * (1 - prog)).toFixed(3);
-        // start with full offset (empty) and store target in data attribute; we'll animate after inserting into DOM
-        svgInner += `<circle class='canvasrefined-progress-ring' cx='${cx}' cy='${cy}' r='${radius}' stroke='${color}' stroke-width='${stroke}' fill='none' stroke-linecap='round' transform='rotate(-90 ${cx} ${cy})' stroke-dasharray='${dasharrayVal}' stroke-dashoffset='${dasharrayVal}' data-target='${dashoffsetTarget}' style='transition: stroke-dashoffset .8s cubic-bezier(.2,.9,.2,1), opacity .3s ease;'></circle>`;
-    });
-
-    // center overlay text positioned inside the hole
-    // Reuse existing elements when possible to avoid DOM replacement flicker
-    let wrapper = container.querySelector('.canvasrefined-progress-wrapper');
-    if (!wrapper) {
-        wrapper = document.createElement('div');
-        wrapper.className = 'canvasrefined-progress-wrapper';
-        wrapper.style.display = 'flex';
-        wrapper.style.flexDirection = 'column';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.position = 'relative';
-        container.appendChild(wrapper);
-    }
-
-    // svg container
     let svg = wrapper.querySelector('svg.canvasrefined-progress-svg');
     if (!svg) {
         svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'canvasrefined-progress-svg');
-        svg.setAttribute('width', String(size));
-        svg.setAttribute('height', String(size));
-        svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
         svg.style.display = 'block';
         wrapper.appendChild(svg);
-    } else {
-        svg.setAttribute('width', String(size));
-        svg.setAttribute('height', String(size));
-        svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
     }
+    svg.setAttribute('width', String(size));
+    svg.setAttribute('height', String(size));
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
 
-    // ensure overlay text exists
     let overlay = wrapper.querySelector('.canvasrefined-progress-overlay');
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.className = 'canvasrefined-progress-overlay';
-        overlay.style.position = 'absolute';
-        overlay.style.left = '0';
-        overlay.style.top = '0';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
-        overlay.style.display = 'flex';
-        overlay.style.alignItems = 'center';
-        overlay.style.justifyContent = 'center';
-        overlay.style.pointerEvents = 'none';
+        overlay.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;';
         const textWrap = document.createElement('div');
-        textWrap.style.textAlign = 'center';
-        textWrap.style.color = 'var(--bctext-0)';
-        textWrap.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;'>${percent}%</div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:4px;'>${completedAll}/${totalAll} done</div>`;
+        textWrap.style.cssText = 'text-align:center;color:var(--bctext-0);';
+        textWrap.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;'></div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:4px;'></div>`;
         overlay.appendChild(textWrap);
         wrapper.appendChild(overlay);
-    } else {
-        const pc = overlay.querySelector('.canvasrefined-progress-percent');
-        const cnt = overlay.querySelector('.canvasrefined-progress-count');
-        if (pc) pc.textContent = `${percent}%`;
-        if (cnt) cnt.textContent = `${completedAll}/${totalAll} done`;
+    }
+    overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
+    overlay.querySelector('.canvasrefined-progress-count').textContent = `${completedAll}/${totalAll} done`;
+
+    const stroke = 8;
+    const gap = 4;
+    const decrement = stroke + gap;
+    const ringCount = shown.length;
+    const startRadius = outerRadius - stroke / 2;
+    const minCenterRadius = 28;
+    const requiredSpace = (ringCount - 1) * decrement + stroke / 2 + minCenterRadius;
+    let adjustFactor = 1;
+    if (requiredSpace > startRadius) {
+        adjustFactor = (startRadius - minCenterRadius - stroke / 2) / Math.max(1, (ringCount - 1) * decrement);
     }
 
-    // Update or create rings in-place
-    const existingBg = svg.querySelectorAll('circle.canvasrefined-ring-bg');
-    const existingFg = svg.querySelectorAll('circle.canvasrefined-progress-ring');
-
-    // reuse or create circles per shown entry
     shown.forEach((entry, idx) => {
         const radius = startRadius - idx * Math.max(1, Math.floor(decrement * adjustFactor));
+        if (radius <= 0) return;
         const circumference = 2 * Math.PI * radius;
-        const prog = entry.total === 0 ? 0 : (entry.completed / entry.total);
-        const color = options.custom_cards_3?.[String(entry.courseId)]?.color || options.custom_cards_3?.[entry.courseId]?.color || `hsl(${(idx * 60) % 360} 70% 50%)`;
+        const prog = entry.total === 0 ? 0 : entry.completed / entry.total;
+        const color = courseRingColor(entry.courseId, idx);
 
-        // background circle
-        let bg = svg.querySelector(`circle.canvasrefined-ring-bg[data-idx='${idx}']`);
+        let bg = svg.querySelector(`circle[data-idx='${idx}'][data-role='bg']`);
         if (!bg) {
             bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            bg.classList.add('canvasrefined-ring-bg');
             bg.setAttribute('data-idx', String(idx));
+            bg.setAttribute('data-role', 'bg');
+            bg.classList.add('canvasrefined-ring-bg');
             svg.appendChild(bg);
         }
         bg.setAttribute('cx', String(cx));
@@ -1509,15 +1462,18 @@ function renderProgressRings(container, scopedData) {
         bg.setAttribute('stroke-opacity', '0.25');
         bg.setAttribute('stroke-width', String(stroke));
         bg.setAttribute('fill', 'none');
+        bg.removeAttribute('stroke-dasharray');
+        bg.removeAttribute('stroke-dashoffset');
+        bg.removeAttribute('transform');
 
-        // foreground (progress) circle
-        let fg = svg.querySelector(`circle.canvasrefined-progress-ring[data-idx='${idx}']`);
+        let fg = svg.querySelector(`circle[data-idx='${idx}'][data-role='fg']`);
         const dasharrayVal = circumference.toFixed(3);
-        const dashoffsetTarget = (circumference * (1 - prog)).toFixed(3);
+        const target = (circumference * (1 - prog)).toFixed(3);
         if (!fg) {
             fg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            fg.classList.add('canvasrefined-progress-ring');
             fg.setAttribute('data-idx', String(idx));
+            fg.setAttribute('data-role', 'fg');
+            fg.classList.add('canvasrefined-progress-ring');
             fg.setAttribute('stroke-linecap', 'round');
             fg.setAttribute('transform', `rotate(-90 ${cx} ${cy})`);
             fg.setAttribute('stroke-dasharray', dasharrayVal);
@@ -1532,22 +1488,365 @@ function renderProgressRings(container, scopedData) {
         fg.setAttribute('stroke-width', String(stroke));
         fg.setAttribute('fill', 'none');
         fg.setAttribute('stroke-dasharray', dasharrayVal);
-        fg.setAttribute('data-target', dashoffsetTarget);
-
-        // request animation frame to set dashoffset to target (triggers transition)
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                fg.setAttribute('stroke-dashoffset', dashoffsetTarget);
-            });
-        });
+        const dim = progressFilterDim(entry.courseId);
+        bg.style.transition = 'opacity .3s ease';
+        bg.style.opacity = dim ? '0.25' : '';
+        fg.style.opacity = dim ? '0.3' : '';
+        requestAnimationFrame(() => requestAnimationFrame(() => fg.setAttribute('stroke-dashoffset', target)));
+        // transparent hit band on top so the whole ring is easy to click;
+        // width tracks the ring spacing so adjacent bands don't overlap.
+        const step = Math.max(1, Math.floor(decrement * adjustFactor));
+        let hit = svg.querySelector(`circle[data-idx='${idx}'][data-role='hit']`);
+        if (!hit) {
+            hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            hit.setAttribute('data-idx', String(idx));
+            hit.setAttribute('data-role', 'hit');
+            hit.setAttribute('fill', 'none');
+            hit.setAttribute('stroke', 'transparent');
+            hit.setAttribute('pointer-events', 'stroke');
+            svg.appendChild(hit);
+        }
+        hit.setAttribute('cx', String(cx));
+        hit.setAttribute('cy', String(cy));
+        hit.setAttribute('r', String(radius));
+        hit.setAttribute('stroke-width', String(Math.max(stroke, step)));
+        attachProgressFilterClick(hit, entry.courseId);
+        hit.onmouseenter = () => { bg.style.opacity = '0.8'; fg.style.opacity = '0.8'; };
+        hit.onmouseleave = () => {
+            const d = progressFilterDim(entry.courseId);
+            bg.style.opacity = d ? '0.25' : '';
+            fg.style.opacity = d ? '0.3' : '';
+        };
     });
 
-    // remove any extra existing circles
     const maxIdx = shown.length - 1;
-    svg.querySelectorAll('circle.canvasrefined-ring-bg, circle.canvasrefined-progress-ring').forEach(c => {
+    svg.querySelectorAll('circle').forEach(c => {
         const idx = parseInt(c.getAttribute('data-idx'));
         if (Number.isNaN(idx) || idx > maxIdx) c.remove();
     });
+}
+
+// Mode "rainbow": like "rings" (one arc per class) but condensed into a top
+// half-circle and colored with a rainbow palette instead of course colors.
+function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) {
+    const containerWidth = wrapper.clientWidth || 240;
+    const size = Math.min(280, Math.floor(containerWidth * 0.99));
+    const cx = size / 2;
+    const stroke = 8;
+    const gap = 4;
+    const decrement = stroke + gap;
+    const ringCount = shown.length;
+    const pad = 2;
+    const outerRadius = Math.max(20, Math.floor(size / 2) - stroke / 2 - pad);
+    // diameter line; arcs bulge UPWARD from here (into y < baseY)
+    const baseY = outerRadius + stroke / 2 + pad;
+    const svgHeight = Math.ceil(baseY + stroke / 2 + 2);
+
+    let svg = wrapper.querySelector('svg.canvasrefined-progress-svg');
+    if (!svg) {
+        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'canvasrefined-progress-svg');
+        svg.style.display = 'block';
+        wrapper.appendChild(svg);
+    }
+    svg.setAttribute('width', String(size));
+    svg.setAttribute('height', String(svgHeight));
+    svg.setAttribute('viewBox', `0 0 ${size} ${svgHeight}`);
+
+    // shrink spacing if too many classes would overflow the inner radius
+    const minInnerRadius = 14;
+    const requiredSpace = (ringCount - 1) * decrement;
+    let adjustFactor = 1;
+    if (requiredSpace > outerRadius - minInnerRadius) {
+        adjustFactor = (outerRadius - minInnerRadius) / Math.max(1, (ringCount - 1) * decrement);
+    }
+
+    shown.forEach((entry, idx) => {
+        const radius = outerRadius - idx * Math.max(1, Math.floor(decrement * adjustFactor));
+        if (radius <= 0) return;
+        // sweep-flag 1 => arc bulges UPWARD (top semicircle), drawn left -> right
+        const arcPath = `M ${cx - radius} ${baseY} A ${radius} ${radius} 0 0 1 ${cx + radius} ${baseY}`;
+        const prog = entry.total === 0 ? 0 : entry.completed / entry.total;
+        const color = `hsl(${Math.round((idx * 360) / Math.max(1, ringCount))},70%,55%)`;
+
+        // track: full semicircle, faded class color
+        let track = svg.querySelector(`path[data-idx='${idx}'][data-role='bg']`);
+        if (!track) {
+            track = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            track.setAttribute('data-idx', String(idx));
+            track.setAttribute('data-role', 'bg');
+            track.setAttribute('fill', 'none');
+            track.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(track);
+        }
+        track.setAttribute('d', arcPath);
+        track.setAttribute('stroke', color);
+        track.setAttribute('stroke-opacity', '0.25');
+        track.setAttribute('stroke-width', String(stroke));
+        track.removeAttribute('stroke-dasharray');
+        track.removeAttribute('stroke-dashoffset');
+
+        // progress arc: completed portion drawn from the left, via pathLength=100
+        let progArc = svg.querySelector(`path[data-idx='${idx}'][data-role='fg']`);
+        const targetOff = (100 * (1 - prog)).toFixed(3);
+        if (!progArc) {
+            progArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            progArc.setAttribute('data-idx', String(idx));
+            progArc.setAttribute('data-role', 'fg');
+            progArc.setAttribute('fill', 'none');
+            progArc.setAttribute('stroke-linecap', 'round');
+            progArc.setAttribute('pathLength', '100');
+            progArc.setAttribute('stroke-dasharray', '100 100');
+            progArc.setAttribute('stroke-dashoffset', '100'); // start empty
+            progArc.style.transition = 'stroke-dashoffset .8s cubic-bezier(.2,.9,.2,1), opacity .3s ease';
+            svg.appendChild(progArc);
+        }
+        progArc.setAttribute('d', arcPath);
+        progArc.setAttribute('stroke', color);
+        progArc.setAttribute('stroke-width', String(stroke));
+        progArc.setAttribute('stroke-dasharray', '100 100');
+        const dim = progressFilterDim(entry.courseId);
+        track.style.transition = 'opacity .3s ease';
+        track.style.opacity = dim ? '0.25' : '';
+        progArc.style.opacity = dim ? '0.3' : '';
+        requestAnimationFrame(() => requestAnimationFrame(() => progArc.setAttribute('stroke-dashoffset', targetOff)));
+        // transparent hit arc on top so the whole arc is easy to click.
+        let hit = svg.querySelector(`path[data-idx='${idx}'][data-role='hit']`);
+        if (!hit) {
+            hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            hit.setAttribute('data-idx', String(idx));
+            hit.setAttribute('data-role', 'hit');
+            hit.setAttribute('fill', 'none');
+            hit.setAttribute('stroke', 'transparent');
+            hit.setAttribute('stroke-linecap', 'round');
+            hit.setAttribute('pointer-events', 'stroke');
+            svg.appendChild(hit);
+        }
+        hit.setAttribute('d', arcPath);
+        hit.setAttribute('stroke-width', String(stroke + 6));
+        attachProgressFilterClick(hit, entry.courseId);
+        hit.onmouseenter = () => { track.style.opacity = '0.8'; progArc.style.opacity = '0.8'; };
+        hit.onmouseleave = () => {
+            const d = progressFilterDim(entry.courseId);
+            track.style.opacity = d ? '0.25' : '';
+            progArc.style.opacity = d ? '0.3' : '';
+        };
+    });
+
+    // drop arcs for classes no longer shown
+    const maxIdx = shown.length - 1;
+    svg.querySelectorAll('path').forEach(p => {
+        const idx = parseInt(p.getAttribute('data-idx'));
+        if (Number.isNaN(idx) || idx > maxIdx) p.remove();
+    });
+
+    // Overlay the percent/count text INSIDE the rainbow's semicircle hole
+    // (the empty bowl bounded by the INNERMOST arc) instead of beneath it or
+    // up among the arcs. The SVG is centered in the wrapper, so an absolutely-
+    // positioned overlay covering the wrapper with flex centering aligns the
+    // text to the SVG's horizontal center. Vertically we target the centroid of
+    // the innermost semicircle (a touch above the diameter line) so the text
+    // sits in the arc-free pocket near the bottom rather than near the apexes
+    // of the inner arcs, where it would overlap the rainbow strokes.
+    const step = Math.max(1, Math.floor(decrement * adjustFactor));
+    const innerRadius = ringCount > 0 ? Math.max(1, outerRadius - (ringCount - 1) * step) : outerRadius;
+    const holeCenterY = baseY - (4 * innerRadius) / (3 * Math.PI) + 6;
+    const nudge = Math.round(holeCenterY - svgHeight / 2);
+    let overlay = wrapper.querySelector('.canvasrefined-progress-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'canvasrefined-progress-overlay';
+        overlay.style.cssText = `position:absolute;left:0;top:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;transform:translateY(${nudge}px);`;
+        overlay.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;color:var(--bctext-0);'></div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:3px;color:var(--bctext-0);'></div>`;
+        wrapper.appendChild(overlay);
+    } else {
+        overlay.style.transform = `translateY(${nudge}px)`;
+    }
+    overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
+    overlay.querySelector('.canvasrefined-progress-count').textContent = `${completedAll}/${totalAll} done`;
+}
+
+// Mode "lines": one horizontal bar per course, each with its own %.
+function renderProgressLines(wrapper, shown) {
+    let list = wrapper.querySelector('.canvasrefined-progress-lines');
+    if (!list) {
+        list = document.createElement('div');
+        list.className = 'canvasrefined-progress-lines';
+        list.style.cssText = 'display:flex;flex-direction:column;gap:8px;width:100%;box-sizing:border-box;';
+        wrapper.appendChild(list);
+    }
+    while (list.children.length > shown.length) list.lastChild.remove();
+
+    shown.forEach((entry, idx) => {
+        const prog = entry.total === 0 ? 0 : entry.completed / entry.total;
+        const pct = Math.round(prog * 100);
+        const color = courseRingColor(entry.courseId, idx);
+
+        let row = list.children[idx];
+        if (!row) {
+            row = document.createElement('div');
+            row.className = 'canvasrefined-progress-line';
+            row.style.cssText = 'display:flex;flex-direction:column;gap:3px;width:100%;';
+            row.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;"><span class="cr-pl-label" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;"></span><span class="cr-pl-pct" style="flex-shrink:0;font-weight:600;color:var(--bctext-0);"></span></div><div style="position:relative;height:8px;border-radius:999px;overflow:hidden;"><div class="cr-pl-fill" style="height:100%;border-radius:999px;width:0%;transition:width .8s cubic-bezier(.2,.9,.2,1);"></div></div>`;
+            list.appendChild(row);
+        }
+        const labelEl = row.querySelector('.cr-pl-label');
+        labelEl.textContent = courseRingLabel(entry.courseId);
+        labelEl.style.color = color;
+        row.querySelector('.cr-pl-pct').textContent = `${pct}% (${entry.completed}/${entry.total})`;
+        const track = row.children[1];
+        track.style.background = `color-mix(in srgb, ${color} 25%, transparent)`;
+        const fill = row.querySelector('.cr-pl-fill');
+        fill.style.background = color;
+        if (!fill.dataset.init) {
+            fill.dataset.init = '1';
+            requestAnimationFrame(() => requestAnimationFrame(() => fill.style.width = `${pct}%`));
+        } else {
+            fill.style.width = `${pct}%`;
+        }
+        row.style.transition = 'opacity .3s ease';
+        row.style.opacity = progressFilterDim(entry.courseId) ? '0.4' : '';
+        attachProgressFilterClick(row, entry.courseId);
+        row.onmouseenter = () => { row.style.opacity = '0.8'; };
+        row.onmouseleave = () => { row.style.opacity = progressFilterDim(entry.courseId) ? '0.4' : ''; };
+    });
+}
+
+// Mode "line": one horizontal bar where each class's COMPLETED portion is packed
+// to the left (full course color) and its UNCOMPLETED portion to the right
+// (faded course color), with no gaps between segments. Overall % shown above.
+function renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent) {
+    let box = wrapper.querySelector('.canvasrefined-progress-oneline');
+    if (!box) {
+        box = document.createElement('div');
+        box.className = 'canvasrefined-progress-oneline';
+        box.style.cssText = 'display:flex;flex-direction:column;gap:5px;width:100%;box-sizing:border-box;';
+        wrapper.appendChild(box);
+    }
+
+    let head = box.querySelector('.cr-ol-head');
+    if (!head) {
+        head = document.createElement('div');
+        head.className = 'cr-ol-head';
+        head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--bctext-0);';
+        head.innerHTML = `<span>Overall</span><span class="cr-ol-pct" style="font-weight:700;"></span>`;
+        box.appendChild(head);
+    }
+    box.querySelector('.cr-ol-pct').textContent = `${percent}% (${completedAll}/${totalAll})`;
+    // Clicking the "Overall" header clears the active class filter.
+    if (getCurrentCourseId() == null) {
+        head.style.cursor = betterTodoProgressFilter != null ? 'pointer' : '';
+        head.onclick = () => {
+            if (betterTodoProgressFilter == null) return;
+            betterTodoProgressFilter = null;
+            const loc = document.querySelector("#canvasrefined-todo-list");
+            if (loc) { clearTodoList(); createTodoSections(loc); }
+        };
+    } else {
+        head.style.cursor = '';
+        head.onclick = null;
+    }
+
+    let bar = box.querySelector('.cr-ol-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'cr-ol-bar';
+        // position:relative so absolutely-positioned segments anchor to it
+        bar.style.cssText = 'position:relative;width:100%;height:14px;border-radius:999px;overflow:hidden;background:var(--bcbackground-1);';
+        box.appendChild(bar);
+    }
+
+    // Build the segment list left -> right: ALL completed blocks first (each
+    // class's full course color), then ALL remaining blocks (each class's faded
+    // course color). This keeps every completed segment on the left and every
+    // remaining segment on the right. Consecutive segments share edges, so
+    // there are no gaps between them.
+    const segs = [];
+    let left = 0;
+    // First pass: completed blocks for every class (left side).
+    shown.forEach((entry, idx) => {
+        const color = courseRingColor(entry.courseId, idx);
+        const doneW = totalAll === 0 ? 0 : (entry.completed / totalAll) * 100;
+        if (doneW > 0) { segs.push({ left, w: doneW, bg: color, courseId: entry.courseId }); left += doneW; }              // completed: full color
+    });
+    // Second pass: remaining blocks for every class (right side).
+    shown.forEach((entry, idx) => {
+        const color = courseRingColor(entry.courseId, idx);
+        const remW = totalAll === 0 ? 0 : ((entry.total - entry.completed) / totalAll) * 100;
+        if (remW > 0) { segs.push({ left, w: remW, bg: `color-mix(in srgb, ${color} 25%, transparent)`, courseId: entry.courseId }); left += remW; } // remaining: faded
+    });
+
+    while (bar.children.length > segs.length) bar.lastChild.remove();
+
+    segs.forEach((seg, idx) => {
+        let el = bar.children[idx];
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'cr-ol-seg';
+            el.style.cssText = 'position:absolute;top:0;height:100%;transition:left .6s ease,width .6s ease,background .3s ease,opacity .3s ease;';
+            bar.appendChild(el);
+        }
+        el.style.left = `${seg.left}%`;
+        el.style.width = `${seg.w}%`;
+        el.style.background = seg.bg;
+        el.style.opacity = progressFilterDim(seg.courseId) ? '0.35' : '';
+        attachProgressFilterClick(el, seg.courseId);
+        el.onmouseenter = () => { el.style.opacity = '0.8'; };
+        el.onmouseleave = () => { el.style.opacity = progressFilterDim(seg.courseId) ? '0.35' : ''; };
+    });
+}
+
+function renderProgressRings(container, scopedData) {
+    const mode = getProgressRingMode();
+    if (mode === "none") { container.innerHTML = ""; return; }
+
+    const allAssignments = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note"));
+
+    const groups = {};
+    allAssignments.forEach(item => {
+        const cid = String(item.course_id || item.context_id || item.plannable?.course_id || "personal");
+        groups[cid] = groups[cid] || [];
+        groups[cid].push(item);
+    });
+
+    const entries = Object.keys(groups).map(cid => {
+        const arr = groups[cid];
+        const completed = arr.filter(it => (it.submissions?.submitted || it.planner_override?.marked_complete)).length;
+        return { courseId: cid, total: arr.length, completed };
+    }).filter(e => e.total > 0);
+
+    if (!entries.length) { container.innerHTML = ""; return; }
+
+    // sort by total desc and limit to 6 courses
+    entries.sort((a, b) => b.total - a.total);
+    const shown = entries.slice(0, 6);
+
+    const totalAll = shown.reduce((s, e) => s + e.total, 0);
+    const completedAll = shown.reduce((s, e) => s + e.completed, 0);
+    const percent = totalAll === 0 ? 0 : Math.round((completedAll / totalAll) * 100);
+
+    // wrapper reused across renders; clear on mode switch so each mode rebuilds fresh DOM
+    let wrapper = container.querySelector('.canvasrefined-progress-wrapper');
+    if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'canvasrefined-progress-wrapper';
+        wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:center;position:relative;width:100%;box-sizing:border-box;';
+        container.appendChild(wrapper);
+    }
+    if (wrapper.dataset.mode !== mode) {
+        wrapper.innerHTML = '';
+        wrapper.dataset.mode = mode;
+    }
+
+    if (mode === "rings") {
+        renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent);
+    } else if (mode === "rainbow") {
+        renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent);
+    } else if (mode === "lines") {
+        renderProgressLines(wrapper, shown);
+    } else if (mode === "line") {
+        renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent);
+    }
 }
 
 function buildPlannerNotePayload(form) {
@@ -2149,9 +2448,20 @@ async function createTodoSections(location) {
             })
             : data;
 
-        announcements = scopedData.filter(item => item.plannable_type == "announcement");
-        assignmentsDue = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && !item.submissions?.submitted && !item.planner_override?.marked_complete);
-        completed = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && (item.submissions?.submitted || item.planner_override?.marked_complete));
+        // Clicking a color in the progress display filters the list to that
+        // one class. The filter only makes sense where multiple classes show
+        // (dashboard/profile), so it is cleared on course pages.
+        if (courseId) betterTodoProgressFilter = null;
+        const displayData = (betterTodoProgressFilter == null)
+            ? scopedData
+            : scopedData.filter(item => {
+                const cid = String(item.course_id || item.context_id || item.plannable?.course_id || "personal");
+                return cid === String(betterTodoProgressFilter);
+            });
+
+        announcements = displayData.filter(item => item.plannable_type == "announcement");
+        assignmentsDue = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && !item.submissions?.submitted && !item.planner_override?.marked_complete);
+        completed = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && (item.submissions?.submitted || item.planner_override?.marked_complete));
 		// console.log("assignments", assignmentsDue);
 		// console.log("announcements", announcements);
 		// console.log("completed", completed);
@@ -2217,7 +2527,7 @@ async function createTodoSections(location) {
         // populate progress rings placeholder (respect user toggle)
         const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
         if (progressPlaceholder) {
-            if (options.todo_progress_rings === undefined || options.todo_progress_rings === true) {
+            if (progressRingsEnabled()) {
                 renderProgressRings(progressPlaceholder, scopedData);
             } else {
                 progressPlaceholder.innerHTML = "";
@@ -2648,7 +2958,7 @@ function markAs(item, element) {
 
         // update progress rings immediately so they animate while the item slides/fades
         const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
-        if (progressPlaceholder && typeof assignments?.then === 'function' && (options.todo_progress_rings === undefined || options.todo_progress_rings === true)) {
+        if (progressPlaceholder && typeof assignments?.then === 'function' && progressRingsEnabled()) {
             assignments.then(data => {
                 const courseId = getCurrentCourseId();
                 const scopedData = courseId

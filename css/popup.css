@@ -1,4 +1,4 @@
-:root {--inputbg: #1010104f;--containerbg: #00000047;--inputbg: #ffffff14;}
+:root {--inputbg: #1010104f;--containerbg: #00000047;--inputbg: #ffffff14;color-scheme: dark;}
 html, body{width:465px;max-width:465px;overflow-x:hidden;box-sizing:border-box}
 body{min-height:100%;height:auto;font-family: 'Wix Madefor Text', sans-serif;color: #e2e2e2;background: #161616;transition: .3s height}
 button {font-family: 'Wix Madefor Text', sans-serif}
@@ -65,6 +65,10 @@ h2 {margin-top: 20px;font-weight:600}
 .custom-card-hide {display: flex; align-items: center;}
 .option-name {font-weight: 600}
 .sub-text {font-size: 12px;color: #c7c7c7}
+#todo_progress_rings {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
+#todo_progress_rings option {background:#1e1e1e;color:#e2e2e2;}
+#todo_progress_rings option:checked,
+#todo_progress_rings option:hover {background:#2e2e2e;color:#fff;}
 #advanced-settings, #gpa-bounds-btn, #custom-font-btn, #customize-dark-btn, #card-colors-btn {width: 100%;}
 .back-btn {width: 120px;height:100%;margin-top:0}
 .big-button {border: none;border-radius: 7px;background: var(--containerbg);color: #fff;font-family: inherit;padding: 12px 10px;font-weight:600}

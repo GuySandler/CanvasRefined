@@ -135,7 +135,7 @@ const defaultOptions = {
         "tab_icons": false,
         "todo_hide_feedback": false,
 		"todo_full_height": false,
-        "todo_progress_rings": true,
+        "todo_progress_rings": "rings",
 		"todo_confetti": true,
         "device_dark": false,
         "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
@@ -252,6 +252,22 @@ function setupSidebarScaleSlider(initial) {
     el.addEventListener("input", function () {
         document.querySelector("#sidebarScaleValue").textContent = this.value;
         chrome.storage.sync.set({ "sidebar_scale": parseInt(this.value) });
+    });
+}
+
+// Progress display dropdown. Normalizes legacy boolean values:
+// true -> rings, false/undefined -> none.
+function setupProgressRingsSelect(initial) {
+    const el = document.querySelector("#todo_progress_rings");
+    if (!el) return;
+    let value = initial;
+    if (value === true) value = "rings";
+    else if (value === false || value === undefined || value === null) value = "none";
+    const allowed = ["none", "rings", "rainbow", "lines", "line"];
+    if (!allowed.includes(value)) value = "rings";
+    el.value = value;
+    el.addEventListener("change", function () {
+        chrome.storage.sync.set({ "todo_progress_rings": this.value });
     });
 }
 
@@ -753,7 +769,6 @@ function setup() {
 			"gpa_calc_cumulative",
 			// /*'card_method_date',*/ "show_updates",
             "todo_hide_feedback",
-            "todo_progress_rings",
             "todo_confetti",
 			"todo_full_height",
 			"device_dark",
@@ -865,6 +880,10 @@ function setup() {
                 identifier: "customBackgroundScale",
                 setup: (initial) => setupCustomBackgroundScale(initial),
             },
+			{
+				identifier: "todo_progress_rings",
+				setup: (initial) => setupProgressRingsSelect(initial),
+			},
 		],
 	};
 
