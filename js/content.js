@@ -117,6 +117,18 @@ function ensureSubmissionPageButton() {
     return Boolean(content.querySelector("#canvasrefined-assignment-return"));
 }
 
+function isAssignmentPage() {
+    return /^\/courses\/\d+\/assignments(?:\/\d+)?(?:\/|$)/.test(current_page);
+}
+
+function removeSequenceFooter() {
+    if (!isAssignmentPage()) return false;
+    const sequenceFooter = document.getElementById("sequence_footer");
+    if (!sequenceFooter) return false;
+    sequenceFooter.remove();
+    return true;
+}
+
 function watchSequenceFooter() {
     if (!isAssignmentPage()) return;
     if (removeSequenceFooter()) return;
@@ -170,7 +182,8 @@ function watchNewCanvasButton() {
     }
     if (options.hide_new_canvas !== true) return;
     removeNewCanvasButton();
-    newCanvasButtonObserver = new MutationObserver(() => {
+    let newCanvasButtonScheduled = false;
+    newCanvasButtonObserver = new MutationObserver((mutationList) => {
         if (options.hide_new_canvas !== true) {
             if (newCanvasButtonObserver) {
                 newCanvasButtonObserver.disconnect();
@@ -178,7 +191,18 @@ function watchNewCanvasButton() {
             }
             return;
         }
-        removeNewCanvasButton();
+        // Only scan when nodes were actually added, and coalesce to one pass per frame.
+        let added = false;
+        for (const mutation of mutationList) {
+            if (mutation.addedNodes && mutation.addedNodes.length) { added = true; break; }
+        }
+        if (!added || newCanvasButtonScheduled) return;
+        newCanvasButtonScheduled = true;
+        requestAnimationFrame(() => {
+            newCanvasButtonScheduled = false;
+            if (options.hide_new_canvas !== true) return;
+            removeNewCanvasButton();
+        });
     });
     newCanvasButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
 }
@@ -191,35 +215,27 @@ async function getActiveCustomBackground() {
         "customBackgroundScale",
     ]);
 
-    console.log("[CanvasRefined] getActiveCustomBackground:", syncOpts);
-
     if (syncOpts.customBackgroundNasaDaily === true) {
-        console.log("[CanvasRefined] Using NASA APOD");
         return await getNasaDailyBackground();
     }
 
     if (syncOpts.customBackgroundDaily === true) {
-        console.log("[CanvasRefined] Using Wikimedia Featured");
         const dailyPreset = await getDailyBackgroundPreset();
         if (dailyPreset) {
-            console.log("[CanvasRefined] Wikimedia URL:", dailyPreset.url);
             return {
                 url: dailyPreset.url,
                 scale: dailyPreset.scale,
             };
         }
-        console.log("[CanvasRefined] Wikimedia returned null");
     }
 
     if (syncOpts.customBackgroundLink && syncOpts.customBackgroundLink !== "") {
-        console.log("[CanvasRefined] Using custom link");
         return {
             url: syncOpts.customBackgroundLink,
             scale: syncOpts.customBackgroundScale || 100,
         };
     }
 
-    console.log("[CanvasRefined] No custom background");
     return null;
 }
 
@@ -373,6 +389,7 @@ let timeCheck = null;
 let reminderCheck = null;
 let betterSidebarLoading = false;
 let dashboardReadyTimer = null;
+let sidebarReadyTimer = null;
 let sidebarBadgeObserver = null;
 let sidebarBadgeSyncTimer = null;
 let sidebarBadgeWatchRetries = 0;
@@ -526,8 +543,16 @@ function startExtension() {
         if (footer) footer.remove();
     };
     removeFooter();
+    let footerScheduled = false;
     const footerObserver = new MutationObserver(() => {
-        removeFooter();
+        // Canvas mutates the DOM constantly; only check for the footer at most once
+        // per animation frame instead of running a querySelector on every mutation.
+        if (footerScheduled) return;
+        footerScheduled = true;
+        requestAnimationFrame(() => {
+            footerScheduled = false;
+            removeFooter();
+        });
     });
     footerObserver.observe(document.documentElement, { childList: true, subtree: true });
 
@@ -578,7 +603,6 @@ function applyOptionsChanges(changes) {
     // so any changes made in the menu no longer require a refresh to apply
 
     Object.keys(changes).forEach(key => {
-        console.log(key + " changed");
         switch (key) {
 			case "dark_mode":
 			case "dark_preset":
@@ -793,7 +817,6 @@ async function applyCustomBackground() {
     style.id = "canvasrefined-background";
 
     const activeBackground = await getActiveCustomBackground();
-    console.log("[CanvasRefined] activeBackground:", activeBackground);
     if (!activeBackground) {
         if (style.isConnected) style.remove();
         return;
@@ -802,7 +825,6 @@ async function applyCustomBackground() {
     const backgroundScale = Number(activeBackground.scale) || 100;
     const backgroundUrl = JSON.stringify(activeBackground.url);
     const fitToScreen = options.fitImageToScreen === true;
-    console.log("[CanvasRefined] Applying background:", activeBackground.url, "fitToScreen:", fitToScreen);
     style.textContent = `
         #wrapper {
             background-image: url(${backgroundUrl}) !important;
@@ -1010,54 +1032,59 @@ function resetTimer() {
 }
 
 function checkDashboardReady() {
-    const callback = (mutationList) => {
-        for (const mutation of mutationList) {
-            if (mutation.type !== "childList") continue;
-            if (current_page == "/" || current_page == "" || current_page.match(/^\/courses\/(\d+)(?:\/|$)/)) {
-                if (dashboardReadyTimer) continue;
+    const isDashboard = () => current_page == "/" || current_page == "" || /^\/courses\/(\d+)(?:\/|$)/.test(current_page);
 
-                const dashboardCards = document.querySelector("#DashboardCard_Container");
-                if (dashboardCards) {
+    const callback = (mutationList) => {
+        // Ignore attribute-only mutations; only structural (childList) changes matter here.
+        let hasChildList = false;
+        for (const mutation of mutationList) {
+            if (mutation.type === "childList") { hasChildList = true; break; }
+        }
+        if (!hasChildList) return;
+
+        if (isDashboard()) {
+            // Debounce: a single setup pass per burst of mutations.
+            if (dashboardReadyTimer) return;
+            dashboardReadyTimer = setTimeout(() => {
+                dashboardReadyTimer = null;
+
+                const c = document.querySelector("#DashboardCard_Container");
+                if (c) {
+                    let cards = document.querySelectorAll(".ic-DashboardCard");
+                    changeGradientCards();
+                    setupCardAssignments();
+                    loadCardAssignments();
+                    customizeCards(cards);
+                    insertGrades();
+                    loadDashboardNotes();
+                    setupGPACalc();
+                    showUpdateMsg();
+                    createNasaInfoOverlay();
                 }
 
-                dashboardReadyTimer = setTimeout(() => {
-                    dashboardReadyTimer = null;
+                const rightSide = document.querySelector("#right-side");
+                if (rightSide && !rightSide.querySelector(".canvasrefined-todosidebar")) {
+                    setupBetterTodo();
+                    setupBetterSidebar(getSidebarLayoutMode());
+                }
 
-                    const c = document.querySelector("#DashboardCard_Container");
-                    if (c) {
-                        let cards = document.querySelectorAll(".ic-DashboardCard");
-                        changeGradientCards();
-                        setupCardAssignments();
-                        loadCardAssignments();
-                        customizeCards(cards);
-                        insertGrades();
-                        loadDashboardNotes();
-                        setupGPACalc();
-                        showUpdateMsg();
-                        createNasaInfoOverlay();
-                    }
-
-                    const rightSide = document.querySelector("#right-side");
-                    if (rightSide && !rightSide.querySelector(".canvasrefined-todosidebar")) {
-                        setupBetterTodo();
-                        setupBetterSidebar(getSidebarLayoutMode());
-                    }
-
-                    if (options.better_sidebar) {
-                        ensureBetterSidebar();
-                    }
-                }, 0);
-            } else {
-                console.log("I am outside", current_page);
                 if (options.better_sidebar) {
                     ensureBetterSidebar();
                 }
-            }
+            }, 0);
+        } else if (options.better_sidebar) {
+            // Throttle sidebar setup checks on non-dashboard (course) pages instead
+            // of calling ensureBetterSidebar() on every mutation burst.
+            if (sidebarReadyTimer) return;
+            sidebarReadyTimer = setTimeout(() => {
+                sidebarReadyTimer = null;
+                ensureBetterSidebar();
+            }, 100);
         }
     };
 
     const observer = new MutationObserver(callback);
-    observer.observe(document.querySelector('html'), { childList: true, subtree: true });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
 }
 
 function recieveMessage(request, sender, sendResponse) {
@@ -3759,18 +3786,17 @@ let darkStyleInserted = false;
 function toggleDarkMode() {
     const css = generateDarkModeCSS();
     const darkOn = options.dark_mode === true || options.device_dark === true;
-    if (!darkStyleInserted) {
-        let style = document.createElement('style');
-        style.textContent = css;
-        document.documentElement.append(style);
+    // Reuse the existing #darkcss style if present (never create a duplicate), so a
+    // document_start dark-mode bootstrap and later updates stay on one element.
+    let style = document.querySelector("#darkcss");
+    if (!style) {
+        style = document.createElement('style');
         style.id = 'darkcss';
-        style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
-        darkStyleInserted = true;
-    } else {
-        let style = document.querySelector("#darkcss");
-        style.textContent = css;
-        style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
+        document.documentElement.append(style);
     }
+    style.textContent = css;
+    style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
+    darkStyleInserted = true;
     runiframeChecker();
 }
 
@@ -3801,6 +3827,9 @@ function autoDarkModeCheck() {
         status = currentHour > startHour && currentHour < endHour;
     }
     if (options.auto_dark === true) {
+        // Skip the write (and the storage.onChanged cascade it would trigger) when the
+        // computed state already matches dark_mode, so the 60s timer is a cheap no-op.
+        if (status === options.dark_mode) return;
         options.dark_mode = status;
         chrome.storage.sync.set({ "dark_mode": status }, toggleDarkMode);
     }
@@ -3834,19 +3863,27 @@ function runiframeChecker() {
 
     const callback = (mutationList) => {
         for (const mutation of mutationList) {
-            if (mutation.type === 'childList' && mutation.addedNodes.length > 0 && mutation.addedNodes[0].nodeName == "IFRAME") {
-                const frame = mutation.addedNodes[0];
-                const new_style_element = document.createElement("style");
-                new_style_element.textContent = generateDarkModeCSS();
-                new_style_element.id = "darkcss";
-                frame.contentDocument.body.classList.add("canvasrefined--darkmode--enabled");
-                frame.contentDocument.documentElement.prepend(new_style_element);
+            if (mutation.type !== 'childList' || !mutation.addedNodes.length) continue;
+            for (const node of mutation.addedNodes) {
+                if (node.nodeName !== 'IFRAME') continue;
+                // Cross-origin iframes expose no contentDocument; access it safely so we
+                // don't throw a TypeError into the console on every added iframe.
+                let doc;
+                try { doc = node.contentDocument; } catch (_) { continue; }
+                if (!doc || !doc.documentElement || !doc.body) continue;
+                try {
+                    const new_style_element = document.createElement("style");
+                    new_style_element.textContent = generateDarkModeCSS();
+                    new_style_element.id = "darkcss";
+                    doc.body.classList.add("canvasrefined--darkmode--enabled");
+                    doc.documentElement.prepend(new_style_element);
+                } catch (_) { /* cross-origin or detached frame: ignore */ }
             }
         }
     };
 
     iframeObserver = new MutationObserver(callback);
-    iframeObserver.observe(document.querySelector('html'), { childList: true, subtree: true });
+    iframeObserver.observe(document.documentElement, { childList: true, subtree: true });
 }
 
 /* 
