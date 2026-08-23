@@ -724,6 +724,18 @@ function applyOptionsChanges(changes) {
 			case "customBackgroundLink":
 				applyCustomBackground();
 				break;
+            case "bg_opacity":
+                applyCustomBackground();
+                applyBetterSidebarContentPanel();
+                break;
+            case "bg_blur":
+                applyCustomBackground();
+                applyBetterSidebarContentPanel();
+                break;
+            case "sidebar_opacity":
+            case "sidebar_blur":
+                applyCustomBackground();
+                break;
 			case "better_todo":
 				if (options.better_todo) {
 					setupBetterTodo();
@@ -825,6 +837,19 @@ async function applyCustomBackground() {
     const backgroundScale = Number(activeBackground.scale) || 100;
     const backgroundUrl = JSON.stringify(activeBackground.url);
     const fitToScreen = options.fitImageToScreen === true;
+    // Opacity sliders (0-100). 100 = fully opaque surface, 0 = fully transparent
+    // so the background image shows through. Only emitted while a background is
+    // active, since transparency without an image just exposes the dark body.
+    const bgOpacity = Math.max(0, Math.min(100, Number(options.bg_opacity ?? 65)));
+    const sidebarOpacity = Math.max(0, Math.min(100, Number(options.sidebar_opacity ?? 100)));
+    const bgTransparent = 100 - bgOpacity;
+    const sidebarTransparent = 100 - sidebarOpacity;
+    // Blur sliders (px). Pairs with opacity: blur only has a visible effect when
+    // the surface is semi-transparent (opacity < 100) so the background behind
+    // shows through and gets blurred. Default 8px on content surfaces preserves
+    // the previous dashboard-header glass look; sidebar defaults to none.
+    const bgBlur = Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)));
+    const sidebarBlur = Math.max(0, Math.min(30, Number(options.sidebar_blur ?? 0)));
     style.textContent = `
         #wrapper {
             background-image: url(${backgroundUrl}) !important;
@@ -848,19 +873,76 @@ async function applyCustomBackground() {
             margin-left: -35px !important;
             margin-right: -35px !important;
             box-sizing: border-box !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 20%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
             border: 1px solid color-mix(in srgb, var(--bcborders) 60%, transparent) !important;
             border-radius: 10px !important;
             position: sticky !important;
             top: 0 !important;
             z-index: 1000 !important;
-            backdrop-filter: blur(8px) saturate(120%) !important;
-            -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
+            backdrop-filter: blur(${bgBlur}px) saturate(120%) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) saturate(120%) !important;
         }
         #right-side-wrapper {
-            /* backdrop-filter: blur(10px) !important; */
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%);
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%);
             border-radius: 5px;
+        }
+        /* Recent feedback lives in #right-side. The dark-mode CSS
+           (darkmodecss.js) recolors its text, but those rules are dark-mode-
+           only — so in light mode + custom background the sub-text (context,
+           grade, quote) keeps Canvas's default gray on the now-translucent
+           panel and becomes hard to read. Recolor to the theme text color so
+           it stays readable in both modes whenever a background is active.
+           Mirrors the dark-mode selectors; redundant (same value) in dark mode. */
+        .recent_feedback .event-details {
+            background: none !important;
+        }
+        #right-side .event-details .event-details__context,
+        #right-side .event-details .event-details__context *,
+        #right-side .recent_feedback .event-details p,
+        #right-side .recent_feedback .event-details span {
+            color: var(--bctext-0) !important;
+        }
+        .event-details strong {
+            color: var(--bctext-0) !important;
+        }
+        /* Native global nav sidebar. color-mix only accepts a solid color, so
+           gradient/image sidebars keep their existing look (rule is invalid and
+           ignored). At 100% opacity this is equivalent to var(--bcsidebar).
+           Sidebar blur only shows when sidebar opacity < 100.
+           The icon/text colors are recolored to var(--bcsidebar-text) to match
+           the background we just set — without this, light mode (where
+           --bcsidebar is the light default #e3e3e3) would leave institution-
+           themed light icons on a now-light background = white-on-white.
+           Mirrors the dark-mode rules in css/darkmodecss.js. */
+        .ic-app-header {
+            background: color-mix(in srgb, var(--bcsidebar), transparent ${sidebarTransparent}%) !important;
+            backdrop-filter: blur(${sidebarBlur}px) !important;
+            -webkit-backdrop-filter: blur(${sidebarBlur}px) !important;
+        }
+        .ic-app-header__menu-list-link svg,
+        .ic-app-header__menu-list-item.ic-app-header__menu-list-item--active svg {
+            fill: var(--bcsidebar-text) !important;
+        }
+        .menu-item-icon-container,
+        .ic-app-header__menu-list-link .menu-item__text,
+        .ic-app-header__menu-list-item.ic-app-header__menu-list-item--active .menu-item__text {
+            color: var(--bcsidebar-text) !important;
+        }
+        .ic-app-header__menu-list-item.ic-app-header__menu-list-item--active .ic-app-header__menu-list-link,
+        .ic-app-header__menu-list-link:hover {
+            background: #0000004f !important;
+        }
+        /* Better sidebar. The inline background-color is var(--bcsidebar), so the
+           !important here is required to override it. The same sidebar_opacity /
+           sidebar_blur sliders drive both surfaces, so whichever sidebar is
+           active (Better Sidebar when enabled, otherwise the native nav) picks
+           up the value. */
+        #better-sidebar-container {
+            background-color: color-mix(in srgb, var(--bcsidebar), transparent ${sidebarTransparent}%) !important;
+            backdrop-filter: blur(${sidebarBlur}px) !important;
+            -webkit-backdrop-filter: blur(${sidebarBlur}px) !important;
         }
         .header-bar {
             background: none !important;
@@ -870,8 +952,8 @@ async function applyCustomBackground() {
         .item-group-condensed,
         .item-group-container {
             background: transparent !important;
-            /* backdrop-filter: blur(14px) saturate(120%) !important;
-               -webkit-backdrop-filter: blur(14px) saturate(120%) !important; */
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 12px !important;
             border: 1px solid color-mix(in srgb, var(--bcborders) 75%, transparent) !important;
             /* box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important; */
@@ -897,7 +979,9 @@ async function applyCustomBackground() {
             border-radius: 0 !important;
         }
         #assignments.ui-tabs-panel {
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
         }
         #assignments {
@@ -910,7 +994,9 @@ async function applyCustomBackground() {
         #content {
             margin: 36px 48px 48px !important;
             padding: 10px !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
             box-sizing: border-box !important;
         }
@@ -919,14 +1005,18 @@ async function applyCustomBackground() {
         #content {
             margin: 36px 48px 48px !important;
             padding: 10px !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
             box-sizing: border-box !important;
         }
         ` : ""}
         ${isConversationsPage() ? `
         .css-1nh4pc4-view-flexItem {
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
             box-sizing: border-box !important;
         }
@@ -977,15 +1067,16 @@ async function applyCustomBackground() {
             padding-top: 0 !important;
         }
 
-        /* Apply backdrop blur only to module panels, not to all headers */
+        /* Module panels keep the slider blur on hover (previously a fixed 5px). */
         .item-group-condensed.context_module,
         .item-group-condensed.context_module_item,
+        .item-group-condensed[class~="context_module"],
         .item-group-condensed.context_module:hover,
         .item-group-condensed.context_module_item:hover,
         .item-group-condensed.context_module.context_module_item_hover,
         .item-group-condensed.context_module_item.context_module_item_hover {
-            backdrop-filter: blur(5px) !important;
-            -webkit-backdrop-filter: blur(5px) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
         }
         .canvasrefined-gpa-card,
         .canvasrefined-gpa,
@@ -3069,6 +3160,22 @@ function applySidebarScaleStyles(sidebarList) {
     sidebarList.style.setProperty("--bc-sidebar-label-size", `${Math.round(14 * scale)}px`);
 }
 
+// Re-apply the tinted course-content panel when the background opacity slider
+// changes. Only the better sidebar (course mode) gives .ic-Layout-contentMain a
+// tinted panel in the first place (see setupBetterSidebar). Re-applies both the
+// opacity and blur sliders so changing either updates the panel live.
+function applyBetterSidebarContentPanel() {
+    if (!options.better_sidebar) return;
+    if (getSidebarLayoutMode() !== "course") return;
+    const contentMain = document.querySelector(".ic-Layout-contentMain");
+    if (!contentMain) return;
+    const bgOpacity = Math.max(0, Math.min(100, Number(options.bg_opacity ?? 65)));
+    const bgBlur = Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)));
+    contentMain.style.setProperty("background", `color-mix(in srgb, var(--bcbackground-0) ${bgOpacity}%, transparent)`, "important");
+    contentMain.style.setProperty("backdrop-filter", `blur(${bgBlur}px)`, "important");
+    contentMain.style.setProperty("-webkit-backdrop-filter", `blur(${bgBlur}px)`, "important");
+}
+
 async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
     if (!options.better_sidebar) return;
     if (document.querySelector('#better-sidebar-container')) return;
@@ -3127,9 +3234,9 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
             contentMain?.style.setProperty("margin", "26px 38px 38px", "important");
             contentMain?.style.setProperty("padding", "10px", "important");
             contentMain?.style.setProperty("border-radius", "10px", "important");
-            contentMain?.style.setProperty("background", "color-mix(in srgb, var(--bcbackground-0) 45%, transparent)", "important");
-            contentMain?.style.setProperty("backdrop-filter", "blur(5px)", "important");
-            contentMain?.style.setProperty("-webkit-backdrop-filter", "blur(5px)", "important");
+            contentMain?.style.setProperty("background", `color-mix(in srgb, var(--bcbackground-0) ${Math.max(0, Math.min(100, Number(options.bg_opacity ?? 65)))}%, transparent)`, "important");
+            contentMain?.style.setProperty("backdrop-filter", `blur(${Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)))}px)`, "important");
+            contentMain?.style.setProperty("-webkit-backdrop-filter", `blur(${Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)))}px)`, "important");
         }
         const sidebarParent = layoutMode === "course" && leftSide ? leftSide : mainWrapper;
         if (layoutMode === "course" && leftSide) {
@@ -4823,7 +4930,6 @@ function applyAestheticChanges() {
     if (options.hide_feedback === true) style.textContent += ".recent_feedback {display: none}";
     if (options.full_width === true) style.textContent += "#wrapper,.ic-Layout-wrapper{max-width:100%!important}";
     if (options.center_cards === true) style.textContent += ".ic-DashboardCard__box__container{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:flex-start!important}";
-
     if (options.customCardStyles === true) {
         if (options.imageSize !== undefined && options.imageSize !== 100) style.textContent += `.ic-DashboardCard__header_image {transform: scale(${options.imageSize / 100})!important; }`;
         if (options.cardRoundness !== undefined && options.cardRoundness !== 5) style.textContent += `.ic-DashboardCard {border-radius: ${options.cardRoundness}px!important;}`;

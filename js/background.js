@@ -111,6 +111,10 @@ chrome.runtime.onInstalled.addListener(function () {
             "customBackgroundNasaDaily": false,
             "nasaInfoOverlay": false,
             "fitImageToScreen": false,
+            "bg_opacity": 65,
+            "sidebar_opacity": 100,
+            "bg_blur": 8,
+            "sidebar_blur": 0,
         }
     };
 

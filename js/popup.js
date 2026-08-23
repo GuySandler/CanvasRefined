@@ -35,6 +35,10 @@ const syncedSubOptions = [
     "customBackgroundNasaDaily",
     "fitImageToScreen",
     "sidebar_scale",
+    "bg_opacity",
+    "sidebar_opacity",
+    "bg_blur",
+    "sidebar_blur",
 ];
 const localSwitches = [];
 
@@ -46,7 +50,7 @@ const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_he
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_hr24", "todo_separate_scrollbar"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
-const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen"];
+const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
 // no personal productivity features).
 const exportToggles = ["dark_mode"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
@@ -93,6 +97,10 @@ const defaultOptions = {
         "better_todo": true,
         "better_sidebar": false,
         "sidebar_scale": 100,
+        "bg_opacity": 65,
+        "sidebar_opacity": 100,
+        "bg_blur": 8,
+        "sidebar_blur": 0,
         "todo_hr24": false,
 		"todo_separate_scrollbar": false,
         "condensed_cards": false,
@@ -255,6 +263,32 @@ function setupSidebarScaleSlider(initial) {
     });
 }
 
+// Generic range slider (0..max). `key` is the storage id, `valueId` is the
+// <span> that shows the live value, `resetId` is the small reset button that
+// restores `defaultValue`. `unit` is appended to the displayed value ("%" or "px").
+function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, unit, initial) {
+    const el = document.querySelector("#" + sliderId);
+    const out = document.querySelector("#" + valueId);
+    if (!el || !out) return;
+    const value = Math.max(0, Math.min(max, parseInt(initial)));
+    if (isNaN(value)) return;
+    el.value = value;
+    out.textContent = `${value}${unit}`;
+    el.addEventListener("input", function () {
+        out.textContent = `${this.value}${unit}`;
+        chrome.storage.sync.set({ [key]: parseInt(this.value) });
+    });
+    const reset = document.querySelector("#" + resetId);
+    if (reset) {
+        reset.addEventListener("click", () => {
+            const v = Math.max(0, Math.min(max, parseInt(defaultValue)));
+            el.value = v;
+            out.textContent = `${v}${unit}`;
+            chrome.storage.sync.set({ [key]: v });
+        });
+    }
+}
+
 // Progress display dropdown. Normalizes legacy boolean values:
 // true -> rings, false/undefined -> none.
 function setupProgressRingsSelect(initial) {
@@ -345,10 +379,12 @@ function setupCardHeightInput(initial) {
 function setupCustomBackgroundLink(initial) {
     let el = document.querySelector("#customBackgroundLink");
     el.value = initial || "";
+    toggleOpacityOptions();
     el.addEventListener("input", (e) => {
         chrome.storage.sync.set({ "customBackgroundLink": e.target.value });
         renderBackgroundPresetSelection();
-    })
+        toggleOpacityOptions();
+    });
 }
 
 function setupCustomBackgroundScale(initial) {
@@ -429,6 +465,7 @@ function displayBackgroundPresets() {
             document.querySelector("#customBackgroundScaleValue").textContent = `${backgroundScale}%`;
             chrome.storage.sync.set({ "customBackgroundLink": backgroundUrl, "customBackgroundScale": backgroundScale });
             renderBackgroundPresetSelection();
+            toggleOpacityOptions();
         });
     });
     renderBackgroundPresetSelection();
@@ -444,6 +481,21 @@ function toggleBetterSidebarSubOptions(betterSidebarOn) {
     if (sidebarScaleEl) {
         sidebarScaleEl.style.display = betterSidebarOn ? "block" : "none";
     }
+}
+
+// The opacity sliders live under "Edit dark mode" but only make sense (and
+// only show) when a custom background is active, since transparency without a
+// background image behind these surfaces would just expose the dark body.
+function customBackgroundActive() {
+    const link = document.querySelector("#customBackgroundLink");
+    const daily = document.querySelector("#customBackgroundDaily");
+    const nasa = document.querySelector("#customBackgroundNasaDaily");
+    return (link && link.value.trim() !== "") || (daily && daily.checked) || (nasa && nasa.checked);
+}
+
+function toggleOpacityOptions() {
+    const el = document.getElementById("opacity-options");
+    if (el) el.style.display = customBackgroundActive() ? "" : "none";
 }
 
 // Hide the standalone feedback toggle when Better Todo's own sub-option replaces it.
@@ -840,6 +892,22 @@ function setup() {
                 identifier: "sidebar_scale",
                 setup: (initial) => setupSidebarScaleSlider(initial),
             },
+            {
+                identifier: "bg_opacity",
+                setup: (initial) => setupRangeSlider("bg_opacity", "bgOpacitySlider", "bgOpacityValue", "bgOpacityReset", 65, 100, "%", initial),
+            },
+            {
+                identifier: "sidebar_opacity",
+                setup: (initial) => setupRangeSlider("sidebar_opacity", "sidebarOpacitySlider", "sidebarOpacityValue", "sidebarOpacityReset", 100, 100, "%", initial),
+            },
+            {
+                identifier: "bg_blur",
+                setup: (initial) => setupRangeSlider("bg_blur", "bgBlurSlider", "bgBlurValue", "bgBlurReset", 8, 30, "px", initial),
+            },
+            {
+                identifier: "sidebar_blur",
+                setup: (initial) => setupRangeSlider("sidebar_blur", "sidebarBlurSlider", "sidebarBlurValue", "sidebarBlurReset", 0, 30, "px", initial),
+            },
 			{
 				identifier: "card_limit",
 				setup: (initial) => setupCardLimitSlider(initial),
@@ -935,6 +1003,7 @@ function setup() {
                     chrome.storage.sync.set(JSON.parse(`{"${option}": ${status}}`));
                 }
                 syncCustomBackgroundDailyState(document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true);
+                toggleOpacityOptions();
             });
             const value = sync[option] !== undefined ? sync[option] : defaultOptions.sync[option];
             document.querySelector("#" + option).checked = value;
@@ -942,6 +1011,7 @@ function setup() {
         syncCustomBackgroundDailyState(sync.customBackgroundDaily === true || sync.customBackgroundNasaDaily === true);
         toggleDarkModeDisable(sync.auto_dark);
         displayBackgroundPresets();
+        toggleOpacityOptions();
     });
 
     const specialOptions = menu.special.map(obj => obj.identifier);
@@ -985,6 +1055,10 @@ function setup() {
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const msg = chrome.i18n.getMessage(el.dataset.i18nPlaceholder);
         if (msg) el.placeholder = msg;
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const msg = chrome.i18n.getMessage(el.dataset.i18nTitle);
+        if (msg) el.title = msg;
     });
 
     // header feature search (search bar that jumps to features)
@@ -1371,6 +1445,7 @@ function setup() {
 		document.querySelector("#customBackgroundScaleValue").textContent = "100%";
 		renderBackgroundPresetSelection();
 		sendFromPopup("updateBackground");
+        toggleOpacityOptions();
     });
 
     const applyFontsDropdownState = (isOpen) => {
@@ -1584,6 +1659,10 @@ function saveCurrentTheme() {
 				"customBackgroundDaily": current["customBackgroundDaily"],
 				"customBackgroundNasaDaily": current["customBackgroundNasaDaily"],
 				"fitImageToScreen": current["fitImageToScreen"],
+				"bg_opacity": current["bg_opacity"],
+				"sidebar_opacity": current["sidebar_opacity"],
+				"bg_blur": current["bg_blur"],
+				"sidebar_blur": current["sidebar_blur"],
             }
             const now = new Date();
             local["saved_themes"][now.getTime()] = trimmed;

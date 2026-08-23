@@ -1025,6 +1025,50 @@
                 <label for="fitImageToScreen" class="sub-text">Fit image to screen</label>
             </div>
         </div>
+        <div class="option-container" id="opacity-options" style="display:none;">
+            <h3 class="header-small" data-i18n="opacity_options">Opacity &amp; Blur</h3>
+            <p class="sub-text" style="color:#a4a4a4;margin:4px 0 8px;" data-i18n="opacity_only_background">Only available with a custom background.</p>
+            <div class="opacity-slider-row">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:6px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="background_opacity">Background opacity</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="bgOpacityReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="bgOpacityValue">65%</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" step="1" id="bgOpacitySlider">
+            </div>
+            <div class="opacity-slider-row">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="bg_blur">Background blur</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="bgBlurReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="bgBlurValue">8px</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="30" step="1" id="bgBlurSlider">
+            </div>
+            <div class="opacity-slider-row">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="sidebar_opacity">Sidebar opacity</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="sidebarOpacityReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="sidebarOpacityValue">100%</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" step="1" id="sidebarOpacitySlider">
+            </div>
+            <div class="opacity-slider-row">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="sidebar_blur">Sidebar blur</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="sidebarBlurReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="sidebarBlurValue">0px</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="30" step="1" id="sidebarBlurSlider">
+            </div>
+        </div>
 
     </div>
 

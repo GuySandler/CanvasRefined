@@ -56,6 +56,30 @@
 	"better_sidebar": {
 		"message": "Better Sidebar"
 	},
+	"opacity_options": {
+		"message": "Opacity & Blur"
+	},
+	"opacity_only_background": {
+		"message": "Only available with a custom background. Lower opacity to let the background show through; add blur for a glass effect."
+	},
+	"background_opacity": {
+		"message": "Background opacity"
+	},
+	"bg_blur": {
+		"message": "Background blur"
+	},
+	"sidebar_opacity": {
+		"message": "Sidebar opacity"
+	},
+	"sidebar_blur": {
+		"message": "Sidebar blur"
+	},
+	"sidebar_opacity_auto": {
+		"message": "Applies to the Better Sidebar when it's on, otherwise the normal sidebar."
+	},
+	"reset_default": {
+		"message": "Reset to default"
+	},
 	"max_items": {
 		"message": "Max Items: "
 	},

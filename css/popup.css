@@ -21,8 +21,8 @@ h2 {font-size:24px;}
 .header {font-size: 16px;display: flex;align-items: center;gap:12px; margin-bottom:14px;}
 .header h1 { font-weight: 600; font-size:24px; }
 #bclogo {height: 30px;width:30px;filter: none}
-#numAssignmentsSlider, #numTodoItemsSlider, #sidebarScaleSlider, #customBackgroundScale {display: block;margin-top: 14px;width: 100%;-webkit-appearance: none; appearance: none;background:var(--inputbg);outline: none;height:6px;border-radius:20px;}
-#numAssignmentsSlider::-webkit-slider-thumb,  #numTodoItemsSlider::-webkit-slider-thumb, #sidebarScaleSlider::-webkit-slider-thumb, #customBackgroundScale::-webkit-slider-thumb {-webkit-appearance: none; appearance: none;height: 18px; width: 18px;background: #727272;cursor: pointer;border-radius:30px;}
+#numAssignmentsSlider, #numTodoItemsSlider, #sidebarScaleSlider, #customBackgroundScale, #bgOpacitySlider, #sidebarOpacitySlider, #bgBlurSlider, #sidebarBlurSlider {display: block;margin-top: 14px;width: 100%;-webkit-appearance: none; appearance: none;background:var(--inputbg);outline: none;height:6px;border-radius:20px;}
+#numAssignmentsSlider::-webkit-slider-thumb,  #numTodoItemsSlider::-webkit-slider-thumb, #sidebarScaleSlider::-webkit-slider-thumb, #customBackgroundScale::-webkit-slider-thumb, #bgOpacitySlider::-webkit-slider-thumb, #sidebarOpacitySlider::-webkit-slider-thumb, #bgBlurSlider::-webkit-slider-thumb, #sidebarBlurSlider::-webkit-slider-thumb {-webkit-appearance: none; appearance: none;height: 18px; width: 18px;background: #727272;cursor: pointer;border-radius:30px;}
 .option-container {font-size: 14px; margin-top: 8px;background: var(--containerbg);padding: 18px;border-radius: 14px;box-sizing:border-box}
 .options .option-container {padding: 14px;}
 a.option-container {display: block;color:#5ca5f6;font-size: 14px;}
@@ -130,6 +130,8 @@ h2 {margin-top: 20px;font-weight:600}
 .background-preset-card {min-height: 96px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; border-radius: 8px;}
 .background-preset-card.selected {outline: 2px solid #56Caf0; outline-offset: 2px;}
 .background-preset-scale {font-size:10px;white-space:nowrap;opacity:0.9;}
+.opacity-reset-btn {display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;border-radius:50%;background:var(--inputbg);color:#cfcfcf;cursor:pointer;font-size:13px;line-height:1;padding:0;transition:background .15s ease,color .15s ease;}
+.opacity-reset-btn:hover {background:#3a3a3a;color:#fff;}
 .theme-sort-btn {padding:10px 30px 10px 20px;border-radius:7px;background:none;border:none;color: #9d9d9d;font-size:12px;font-weight:600;text-align: left;cursor: pointer;transition:.18s color}
 .theme-sort-btn:hover {color: #fff;}
 .theme-header {display:flex;justify-content: space-between;margin-bottom:10px;align-items:center}
