@@ -146,6 +146,9 @@
 	"todo_full_height": {
 		"message": "Force Full Height"
 	},
+	"todo_alternate_colors": {
+		"message": "Alternate colors"
+	},
 	"relative_due_dates": {
 		"message": "Relative Due Dates"
 	},

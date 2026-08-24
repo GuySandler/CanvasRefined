@@ -19,6 +19,7 @@ const syncedSubOptions = [
 	"assignment_date_format",
 	"todo_hr24",
 	"todo_separate_scrollbar",
+	"todo_alternate_colors",
 	"grade_hover",
 	// "hide_completed",
 	"num_todo_items",
@@ -48,7 +49,7 @@ const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_feedback", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
-const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_hr24", "todo_separate_scrollbar"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
@@ -103,6 +104,7 @@ const defaultOptions = {
         "sidebar_blur": 0,
         "todo_hr24": false,
 		"todo_separate_scrollbar": false,
+		"todo_alternate_colors": false,
         "condensed_cards": false,
         "center_cards": false,
         "custom_cards": {},
@@ -506,6 +508,13 @@ function toggleBetterTodoSubOptions(betterTodoOn) {
     }
 }
 
+// "Alternate colors" (Better Todo List sub-option) only makes sense in light
+// mode, so hide its checkbox whenever dark mode is on.
+function toggleAlternateColorsVisibility(darkModeOn) {
+    const wrap = document.getElementById("todo_alternate_colors_wrap");
+    if (wrap) wrap.style.display = darkModeOn ? "none" : "";
+}
+
 // Hide a toggle's sub-options when it's off; auto_dark only hides its time clocks.
 function toggleSubOptionsVisibility(option, isOn) {
     const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark"];
@@ -833,6 +842,7 @@ function setup() {
 			"assignment_date_format",
 			"todo_hr24",
 			"todo_separate_scrollbar",
+			"todo_alternate_colors",
 			"grade_hover",
 			// "hide_completed",
 			"hover_preview",
@@ -977,6 +987,9 @@ function setup() {
                 if (option === "better_todo") {
                     toggleBetterTodoSubOptions(status);
                 }
+                if (option === "dark_mode") {
+                    toggleAlternateColorsVisibility(status);
+                }
                 toggleSubOptionsVisibility(option, status);
             });
         });
@@ -985,6 +998,7 @@ function setup() {
         ["gpa_calc", "assignments_due", "better_todo", "auto_dark"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
+        toggleAlternateColorsVisibility(sync["dark_mode"] === true);
     });
 
     chrome.storage.sync.get(menu.checkboxes, sync => {
