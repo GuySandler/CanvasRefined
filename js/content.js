@@ -2746,6 +2746,128 @@ function applyTodoAlternateColors() {
     todoAltStyleEl.textContent = `:root{--cr-todo-icon:${color};}`;
 }
 
+// --- Hover preview (Better Todo List: "Previews on hover") ---
+// The todo list is rendered by createTodoSections -> populateAssignments /
+// populateAnnouncements (the old loadBetterTodo renderer is no longer called).
+// A single shared, body-level tooltip is reused across items so it is never
+// clipped by the sidebar's scroll/overflow containers. It reuses the
+// .canvasrefined-hover-preview class so existing light/dark styling applies.
+let todoPreviewDelay = null;
+let todoPreviewToken = 0;
+const todoPreviewCache = new Map();
+
+function stripHtmlPreview(html) {
+    if (!html) return "";
+    return String(html).replace(/<\/?[^>]+(>|$)/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getTodoPreviewEl() {
+    let el = document.getElementById("canvasrefined-todo-preview");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "canvasrefined-todo-preview";
+    el.className = "canvasrefined-hover-preview";
+    el.innerHTML = '<p class="canvasrefined-preview-title"></p><p class="canvasrefined-preview-text"></p>';
+    el.style.position = "fixed";
+    el.style.zIndex = "100001";
+    el.style.width = "300px";
+    el.style.maxWidth = "90vw";
+    el.style.maxHeight = "260px";
+    document.body.append(el);
+    return el;
+}
+
+function positionTodoPreview(el, anchor) {
+    const r = anchor.getBoundingClientRect();
+    const gap = 10;
+    const pw = el.offsetWidth || 300;
+    const ph = el.offsetHeight || 160;
+    let left = r.left - pw - gap;
+    let top = r.top;
+    if (left < gap) {
+        left = r.right + gap;
+        if (left + pw > window.innerWidth - gap) left = Math.max(gap, window.innerWidth - pw - gap);
+    }
+    if (top + ph > window.innerHeight - gap) top = Math.max(gap, window.innerHeight - ph - gap);
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+}
+
+async function getTodoPreviewText(item) {
+    const type = item.plannable_type;
+    const id = item.plannable_id;
+    const key = type + ":" + id;
+    if (todoPreviewCache.has(key)) return todoPreviewCache.get(key);
+    // Custom task (planner note): the description is already on the planner
+    // item as item.plannable.details, so no API call is needed.
+    if (type === "planner_note" || (item.planner_override && item.planner_override.custom === true)) {
+        const raw = item.plannable && item.plannable.details ? item.plannable.details : "";
+        const text = stripHtmlPreview(raw) || "No details given";
+        todoPreviewCache.set(key, text);
+        return text;
+    }
+    let url = null;
+    let field = "description";
+    if (type === "assignment") {
+        url = `${domain}/api/v1/courses/${item.course_id}/assignments/${id}`;
+    } else if (type === "quiz") {
+        url = `${domain}/api/v1/courses/${item.course_id}/quizzes/${id}`;
+    } else if (type === "discussion_topic" || type === "announcement") {
+        url = `${domain}/api/v1/courses/${item.course_id}/discussion_topics/${id}`;
+        field = "message";
+    }
+    if (!url) {
+        const text = "No preview available";
+        todoPreviewCache.set(key, text);
+        return text;
+    }
+    try {
+        const data = await getData(url);
+        const raw = data && data[field] ? data[field] : "";
+        const text = stripHtmlPreview(raw) || "No details given";
+        todoPreviewCache.set(key, text);
+        return text;
+    } catch (e) {
+        return "Couldn't load preview";
+    }
+}
+
+function hideTodoPreview() {
+    todoPreviewToken++; // cancel any pending async text update
+    const el = document.getElementById("canvasrefined-todo-preview");
+    if (el) el.style.display = "none";
+}
+
+async function showTodoPreview(anchor, item) {
+    const token = ++todoPreviewToken;
+    const el = getTodoPreviewEl();
+    const title = el.querySelector(".canvasrefined-preview-title");
+    const text = el.querySelector(".canvasrefined-preview-text");
+    title.textContent = item.plannable && item.plannable.title ? item.plannable.title : "";
+    text.textContent = "Loading…";
+    el.style.display = "block";
+    positionTodoPreview(el, anchor);
+    const content = await getTodoPreviewText(item);
+    if (token !== todoPreviewToken) return; // a newer hover (or hide) superseded this one
+    if (el.style.display !== "block") return; // user already moved away
+    text.textContent = content;
+    positionTodoPreview(el, anchor); // reposition now that the height is known
+}
+
+function attachTodoHoverPreview(anchor, item) {
+    if (options.hover_preview !== true) return;
+    anchor.addEventListener("mouseenter", () => {
+        clearTimeout(todoPreviewDelay);
+        todoPreviewDelay = setTimeout(() => {
+            if (anchor.matches(":hover")) showTodoPreview(anchor, item);
+        }, 250);
+    });
+    anchor.addEventListener("mouseleave", () => {
+        clearTimeout(todoPreviewDelay);
+        hideTodoPreview();
+    });
+}
+
 function populateAssignments(iscompleted = false) {
 	const today = new Date();
 	today.setHours(0,0,0,0);
@@ -2870,6 +2992,7 @@ function populateAssignments(iscompleted = false) {
 				openTaskForEdit(item);
 			});
 		}
+		attachTodoHoverPreview(assignment, item);
 	});
 
 	if (document.getElementById("better-todo-see-more")) {
@@ -2949,6 +3072,7 @@ function populateAnnouncements() {
 			</div>
 		</div>
 		`;
+		attachTodoHoverPreview(announcement, item);
 	});
 }
 
@@ -3634,9 +3758,10 @@ async function loadBetterTodo() {
                             delay = setTimeout(async () => {
                                 if (listItem.classList.contains("canvasrefined-todo-hover")) {
                                     previewTitle.textContent = item.plannable.title;
-                                    // custom assignment
+                                    // custom assignment (planner note): preview its description/details
                                     if (customItem) {
-                                        previewText.textContent = "Custom assignment";
+                                        const details = item.plannable && item.plannable.details ? item.plannable.details : "";
+                                        previewText.textContent = details === "" ? "No details given" : details.replace(/<\/?[^>]+(>|$)/g, " ");
                                     } else {
                                         console.log(item);
                                         let found = false;

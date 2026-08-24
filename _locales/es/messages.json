@@ -54,7 +54,7 @@
     "message": "Artículos máximos: "
   },
   "hover_preview": {
-    "message": "Pasa el cursor para obtener una vista previa de los detalles"
+    "message": "Vista previa al pasar el cursor"
   },
   "hide_completed": {
     "message": "Ocultar completado"

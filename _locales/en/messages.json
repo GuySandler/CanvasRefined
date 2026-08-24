@@ -84,7 +84,7 @@
 		"message": "Max Items: "
 	},
 	"hover_preview": {
-		"message": "Hover To Preview Details"
+		"message": "Previews on hover"
 	},
 	"hide_completed": {
 		"message": "Hide Completed"
