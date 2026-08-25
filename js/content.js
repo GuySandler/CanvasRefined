@@ -407,6 +407,14 @@ let reminderCheck = null;
 let betterSidebarLoading = false;
 let dashboardReadyTimer = null;
 let sidebarReadyTimer = null;
+// Signature of the dashboard card set last time we ran the full setup pass.
+// The MutationObserver in checkDashboardReady fires on every childList change
+// in the document — including the ones our own setup pass (loadCardAssignments,
+// customizeCards, etc.) causes. Without a guard, that re-triggers the observer
+// and re-runs the whole pass every animation frame (an infinite reflow loop).
+// We only need to re-run when Canvas actually changes the dashboard cards, so
+// we skip the heavy pass whenever the card set is unchanged.
+let lastDashboardCardSignature = null;
 let sidebarBadgeObserver = null;
 let sidebarBadgeSyncTimer = null;
 let sidebarBadgeWatchRetries = 0;
@@ -1195,15 +1203,30 @@ function checkDashboardReady() {
                 const c = document.querySelector("#DashboardCard_Container");
                 if (c) {
                     let cards = document.querySelectorAll(".ic-DashboardCard");
-                    changeGradientCards();
-                    setupCardAssignments();
-                    loadCardAssignments();
-                    customizeCards(cards);
-                    insertGrades();
-                    loadDashboardNotes();
-                    setupGPACalc();
-                    showUpdateMsg();
-                    createNasaInfoOverlay();
+                    // Build a cheap signature of the current card set. The setup
+                    // pass below mutates the cards' internals (assignment rows,
+                    // grades, etc.) but never adds/removes the .ic-DashboardCard
+                    // elements themselves, so the signature stays stable across
+                    // our own mutations. It only changes when Canvas re-renders the
+                    // dashboard (cards added/removed/reordered/replaced). Skipping
+                    // when it's unchanged breaks the self-retriggering reflow loop.
+                    let signature = cards.length + "";
+                    for (let i = 0; i < cards.length; i++) {
+                        const link = cards[i].querySelector(".ic-DashboardCard__link");
+                        signature += "|" + (link ? link.getAttribute("href") : "");
+                    }
+                    if (signature !== lastDashboardCardSignature) {
+                        lastDashboardCardSignature = signature;
+                        changeGradientCards();
+                        setupCardAssignments();
+                        loadCardAssignments();
+                        customizeCards(cards);
+                        insertGrades();
+                        loadDashboardNotes();
+                        setupGPACalc();
+                        showUpdateMsg();
+                        createNasaInfoOverlay();
+                    }
                 }
 
                 const rightSide = document.querySelector("#right-side");
@@ -5158,7 +5181,14 @@ function applyAestheticChanges() {
         if (options.cardRoundness !== undefined && options.cardRoundness !== 5) style.textContent += `.ic-DashboardCard {border-radius: ${options.cardRoundness}px!important;}`;
         if (options.cardSpacing !== undefined && options.cardSpacing !== 0) style.textContent += `.ic-DashboardCard {margin-right: ${options.cardSpacing / 2}px!important; margin-bottom: ${options.cardSpacing / 2}px!important;}`;
         if (options.cardWidth !== undefined && options.cardWidth !== 262) style.textContent += `.ic-DashboardCard {width: ${options.cardWidth}px!important;}`;
-        if (options.cardHeight !== undefined && options.cardHeight !== 250) style.textContent += `.ic-DashboardCard {height: ${options.cardHeight}px!important;}`;
+        // Always emit a fixed card height when custom card styles are on. The old
+        // `!== 250` guard silently dropped the height rule when cardHeight matched
+        // the default, which is exactly what happens after importing a theme that
+        // carries the default cardHeight (250) — leaving cards content-sized.
+        // Content-sized cards plus the dashboard reflow loop trigger Firefox scroll
+        // anchoring to yank the viewport back up while scrolling. A fixed height
+        // (even the default 250px) keeps layout stable.
+        if (options.cardHeight !== undefined && options.cardHeight !== null && options.cardHeight !== "") style.textContent += `.ic-DashboardCard {height: ${options.cardHeight}px!important;}`;
     }
 
     style.textContent += ".ic-app-nav-toggle-and-crumbs{display:none!important}";
