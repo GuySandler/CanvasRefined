@@ -558,7 +558,10 @@ function startExtension() {
 
     toggleDarkMode();
 
-    chrome.storage.sync.get(["better_sidebar", "sidebar_scale"], result => {
+    // Include bg_opacity/bg_blur so setupBetterSidebar (called below) tints the
+    // course-content panel with the user's slider values on first load, instead
+    // of falling back to the defaults until a slider is touched.
+    chrome.storage.sync.get(["better_sidebar", "sidebar_scale", "bg_opacity", "bg_blur"], result => {
         options = { ...options, ...result };
         ensureBetterSidebar();
     });
@@ -1015,6 +1018,23 @@ async function applyCustomBackground() {
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
             box-sizing: border-box !important;
+        }
+        ` : ""}
+        /* Course content pages (sidebar layout "course": /courses/:id/* and
+           /profile): tint the #content.ic-Layout-contentMain panel so the
+           bg_opacity/bg_blur sliders have a surface to control even without Better
+           Sidebar. setupBetterSidebar only adds this panel when Better Sidebar is
+           on; this mirrors its inline values so the panel shows regardless. When
+           Better Sidebar is on, its inline !important overrides these (same values),
+           so this rule is inert in that case. */
+        ${getSidebarLayoutMode() === "course" ? `
+        .ic-Layout-contentMain {
+            margin: 26px 38px 38px !important;
+            padding: 10px !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            border-radius: 10px !important;
         }
         ` : ""}
         ${isConversationsPage() ? `
