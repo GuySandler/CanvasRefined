@@ -1,9 +1,10 @@
-const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'center_cards'];
+const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'center_cards', 'quiz_safe_mode'];
 const syncedSubOptions = [
 	"todo_hide_feedback",
 	"todo_full_height",
     "todo_confetti",
     "todo_progress_rings",
+    "todo_timeframe",
 	"device_dark",
 	"relative_dues",
 	"card_overdues",
@@ -19,6 +20,7 @@ const syncedSubOptions = [
 	"assignment_date_format",
 	"todo_hr24",
 	"todo_separate_scrollbar",
+	"todo_alternate_colors",
 	"grade_hover",
 	// "hide_completed",
 	"num_todo_items",
@@ -29,27 +31,34 @@ const syncedSubOptions = [
 	"cardSpacing",
 	"cardWidth",
 	"cardHeight",
+	"cardPadding",
 	"customBackgroundLink",
     "customBackgroundScale",
     "customBackgroundDaily",
     "customBackgroundNasaDaily",
     "fitImageToScreen",
     "sidebar_scale",
+    "bg_opacity",
+    "sidebar_opacity",
+    "bg_blur",
+    "sidebar_blur",
+    "card_opacity",
+    "card_blur",
 ];
 const localSwitches = [];
 
 // Theme export only carries visual settings, never personal productivity data.
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
-const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight"];
+const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_feedback", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
-const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_hr24", "todo_separate_scrollbar"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
-const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen"];
+const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
 // no personal productivity features).
-const exportToggles = ["dark_mode"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
+const exportToggles = ["dark_mode", "quiz_safe_mode"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
 const fontsDropdownStateKey = "fonts_dropdown_open";
 
 const apiurl = "none";
@@ -93,8 +102,16 @@ const defaultOptions = {
         "better_todo": true,
         "better_sidebar": false,
         "sidebar_scale": 100,
+        "bg_opacity": 65,
+        "sidebar_opacity": 100,
+        "bg_blur": 8,
+        "sidebar_blur": 0,
+        "card_transparency": false,
+        "card_opacity": 80,
+        "card_blur": 8,
         "todo_hr24": false,
 		"todo_separate_scrollbar": false,
+		"todo_alternate_colors": false,
         "condensed_cards": false,
         "center_cards": false,
         "custom_cards": {},
@@ -130,12 +147,14 @@ const defaultOptions = {
         "equal_height_cards": false,
         "hide_feedback": false,
         "hide_new_canvas": true,
+        "quiz_safe_mode": false,
         "dark_mode_fix": [],
         "assignment_states": {},
         "tab_icons": false,
         "todo_hide_feedback": false,
 		"todo_full_height": false,
-        "todo_progress_rings": true,
+        "todo_progress_rings": "rings",
+		"todo_timeframe": "all",
 		"todo_confetti": true,
         "device_dark": false,
         "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
@@ -148,6 +167,7 @@ const defaultOptions = {
         "cardSpacing": 0,
         "cardWidth": 262,
         "cardHeight": 250,
+        "cardPadding": 0,
         "customCardStyles": false,
         "customBackgroundLink": "",
         "customBackgroundScale": 100,
@@ -255,6 +275,61 @@ function setupSidebarScaleSlider(initial) {
     });
 }
 
+// Generic range slider (0..max). `key` is the storage id, `valueId` is the
+// <span> that shows the live value, `resetId` is the small reset button that
+// restores `defaultValue`. `unit` is appended to the displayed value ("%" or "px").
+function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, unit, initial) {
+    const el = document.querySelector("#" + sliderId);
+    const out = document.querySelector("#" + valueId);
+    if (!el || !out) return;
+    const value = Math.max(0, Math.min(max, parseInt(initial)));
+    if (isNaN(value)) return;
+    el.value = value;
+    out.textContent = `${value}${unit}`;
+    el.addEventListener("input", function () {
+        out.textContent = `${this.value}${unit}`;
+        chrome.storage.sync.set({ [key]: parseInt(this.value) });
+    });
+    const reset = document.querySelector("#" + resetId);
+    if (reset) {
+        reset.addEventListener("click", () => {
+            const v = Math.max(0, Math.min(max, parseInt(defaultValue)));
+            el.value = v;
+            out.textContent = `${v}${unit}`;
+            chrome.storage.sync.set({ [key]: v });
+        });
+    }
+}
+
+// Progress display dropdown. Normalizes legacy boolean values:
+// true -> rings, false/undefined -> none.
+function setupProgressRingsSelect(initial) {
+    const el = document.querySelector("#todo_progress_rings");
+    if (!el) return;
+    let value = initial;
+    if (value === true) value = "rings";
+    else if (value === false || value === undefined || value === null) value = "none";
+    const allowed = ["none", "rings", "rainbow", "lines", "line"];
+    if (!allowed.includes(value)) value = "rings";
+    el.value = value;
+    el.addEventListener("change", function () {
+        chrome.storage.sync.set({ "todo_progress_rings": this.value });
+    });
+}
+
+// Timeframe dropdown for the upcoming Tasks tab. Persisted so the Better Todo
+// List remembers the selected range across sessions.
+function setupTimeframeSelect(initial) {
+    const el = document.querySelector("#todo_timeframe");
+    if (!el) return;
+    const allowed = ["all", "1week", "2week", "month", "2month"];
+    let value = allowed.includes(initial) ? initial : "all";
+    el.value = value;
+    el.addEventListener("change", function () {
+        chrome.storage.sync.set({ "todo_timeframe": this.value });
+    });
+}
+
 function setupAutoDarkInput(initial, time) {
     let el = document.querySelector('#' + time);
     el.value = initial.hour + ":" + initial.minute;
@@ -286,11 +361,26 @@ function setupDashboardMethod(initial) {
     });
 }
 
+// Custom card style inputs (image size, roundness, spacing, width, height,
+// padding) fire `chrome.storage.sync.set` on every keystroke/arrow press.
+// chrome.storage.sync caps writes at MAX_WRITE_OPERATIONS_PER_MINUTE (120/min),
+// so rapidly adjusting these number inputs used to hit the quota and surface
+// a "quota exceeded" error. Coalesce rapid edits into a single write with a
+// short (200ms) debounce — barely noticeable to the user, but stays well
+// under the write quota even when dragging arrows or typing fast.
+const cardStyleSetTimers = {};
+function debouncedCardStyleSet(key, value, delay = 200) {
+    if (cardStyleSetTimers[key]) clearTimeout(cardStyleSetTimers[key]);
+    cardStyleSetTimers[key] = setTimeout(() => {
+        chrome.storage.sync.set({ [key]: value });
+    }, delay);
+}
+
 function setupImageSizeInput(initial) {
     let el = document.querySelector("#imageSize");
     el.value = initial;
     el.addEventListener("input", (e) => {
-        chrome.storage.sync.set({ "imageSize": e.target.value });
+        debouncedCardStyleSet("imageSize", e.target.value);
     });
 }
 
@@ -298,7 +388,7 @@ function setupCardRoundnessInput(initial) {
     let el = document.querySelector("#cardRoundness");
     el.value = initial;
     el.addEventListener("input", (e) => {
-        chrome.storage.sync.set({ "cardRoundness": e.target.value });
+        debouncedCardStyleSet("cardRoundness", e.target.value);
     });
 }
 
@@ -306,7 +396,7 @@ function setupCardSpacingInput(initial) {
     let el = document.querySelector("#cardSpacing");
     el.value = initial;
     el.addEventListener("input", (e) => {
-        chrome.storage.sync.set({ "cardSpacing": e.target.value });
+        debouncedCardStyleSet("cardSpacing", e.target.value);
     });
 }
 
@@ -314,7 +404,7 @@ function setupCardWidthInput(initial) {
     let el = document.querySelector("#cardWidth");
     el.value = initial;
     el.addEventListener("input", (e) => {
-        chrome.storage.sync.set({ "cardWidth": e.target.value });
+        debouncedCardStyleSet("cardWidth", e.target.value);
     });
 }
 
@@ -322,17 +412,27 @@ function setupCardHeightInput(initial) {
 	let el = document.querySelector("#cardHeight");
 	el.value = initial;
 	el.addEventListener("input", (e) => {
-		chrome.storage.sync.set({ "cardHeight": e.target.value });
+		debouncedCardStyleSet("cardHeight", e.target.value);
 	});
+}
+
+function setupCardPaddingInput(initial) {
+    let el = document.querySelector("#cardPadding");
+    el.value = initial;
+    el.addEventListener("input", (e) => {
+        debouncedCardStyleSet("cardPadding", e.target.value);
+    });
 }
 
 function setupCustomBackgroundLink(initial) {
     let el = document.querySelector("#customBackgroundLink");
     el.value = initial || "";
+    toggleOpacityOptions();
     el.addEventListener("input", (e) => {
         chrome.storage.sync.set({ "customBackgroundLink": e.target.value });
         renderBackgroundPresetSelection();
-    })
+        toggleOpacityOptions();
+    });
 }
 
 function setupCustomBackgroundScale(initial) {
@@ -413,6 +513,7 @@ function displayBackgroundPresets() {
             document.querySelector("#customBackgroundScaleValue").textContent = `${backgroundScale}%`;
             chrome.storage.sync.set({ "customBackgroundLink": backgroundUrl, "customBackgroundScale": backgroundScale });
             renderBackgroundPresetSelection();
+            toggleOpacityOptions();
         });
     });
     renderBackgroundPresetSelection();
@@ -430,12 +531,45 @@ function toggleBetterSidebarSubOptions(betterSidebarOn) {
     }
 }
 
+// The opacity sliders live under "Edit dark mode" but only make sense (and
+// only show) when a custom background is active, since transparency without a
+// background image behind these surfaces would just expose the dark body.
+function customBackgroundActive() {
+    const link = document.querySelector("#customBackgroundLink");
+    const daily = document.querySelector("#customBackgroundDaily");
+    const nasa = document.querySelector("#customBackgroundNasaDaily");
+    return (link && link.value.trim() !== "") || (daily && daily.checked) || (nasa && nasa.checked);
+}
+
+function toggleOpacityOptions() {
+    const el = document.getElementById("opacity-options");
+    if (el) el.style.display = customBackgroundActive() ? "" : "none";
+    toggleCardTransparencyOptions();
+}
+
+// Card opacity/blur sliders only show when both a custom background is active
+// (so #opacity-options is visible) and the "Card transparency" checkbox is on.
+function toggleCardTransparencyOptions() {
+    const on = document.getElementById("card_transparency")?.checked === true;
+    const opacityRow = document.getElementById("card-transparency-options");
+    const blurRow = document.getElementById("card-transparency-blur-row");
+    if (opacityRow) opacityRow.style.display = on ? "" : "none";
+    if (blurRow) blurRow.style.display = on ? "" : "none";
+}
+
 // Hide the standalone feedback toggle when Better Todo's own sub-option replaces it.
 function toggleBetterTodoSubOptions(betterTodoOn) {
     const hideFeedbackEl = document.getElementById("hide_feedback");
     if (hideFeedbackEl) {
         hideFeedbackEl.style.display = betterTodoOn ? "none" : "flex";
     }
+}
+
+// "Alternate colors" (Better Todo List sub-option) only makes sense in light
+// mode, so hide its checkbox whenever dark mode is on.
+function toggleAlternateColorsVisibility(darkModeOn) {
+    const wrap = document.getElementById("todo_alternate_colors_wrap");
+    if (wrap) wrap.style.display = darkModeOn ? "none" : "";
 }
 
 // Hide a toggle's sub-options when it's off; auto_dark only hides its time clocks.
@@ -753,7 +887,6 @@ function setup() {
 			"gpa_calc_cumulative",
 			// /*'card_method_date',*/ "show_updates",
             "todo_hide_feedback",
-            "todo_progress_rings",
             "todo_confetti",
 			"todo_full_height",
 			"device_dark",
@@ -766,12 +899,14 @@ function setup() {
 			"assignment_date_format",
 			"todo_hr24",
 			"todo_separate_scrollbar",
+			"todo_alternate_colors",
 			"grade_hover",
 			// "hide_completed",
 			"hover_preview",
             "customBackgroundDaily",
             "customBackgroundNasaDaily",
             "fitImageToScreen",
+            "card_transparency",
 			"customCardStyles",
 		],
 		tabs: {
@@ -825,6 +960,30 @@ function setup() {
                 identifier: "sidebar_scale",
                 setup: (initial) => setupSidebarScaleSlider(initial),
             },
+            {
+                identifier: "bg_opacity",
+                setup: (initial) => setupRangeSlider("bg_opacity", "bgOpacitySlider", "bgOpacityValue", "bgOpacityReset", 65, 100, "%", initial),
+            },
+            {
+                identifier: "sidebar_opacity",
+                setup: (initial) => setupRangeSlider("sidebar_opacity", "sidebarOpacitySlider", "sidebarOpacityValue", "sidebarOpacityReset", 100, 100, "%", initial),
+            },
+            {
+                identifier: "bg_blur",
+                setup: (initial) => setupRangeSlider("bg_blur", "bgBlurSlider", "bgBlurValue", "bgBlurReset", 8, 30, "px", initial),
+            },
+            {
+                identifier: "sidebar_blur",
+                setup: (initial) => setupRangeSlider("sidebar_blur", "sidebarBlurSlider", "sidebarBlurValue", "sidebarBlurReset", 0, 30, "px", initial),
+            },
+            {
+                identifier: "card_opacity",
+                setup: (initial) => setupRangeSlider("card_opacity", "cardOpacitySlider", "cardOpacityValue", "cardOpacityReset", 80, 100, "%", initial),
+            },
+            {
+                identifier: "card_blur",
+                setup: (initial) => setupRangeSlider("card_blur", "cardBlurSlider", "cardBlurValue", "cardBlurReset", 8, 30, "px", initial),
+            },
 			{
 				identifier: "card_limit",
 				setup: (initial) => setupCardLimitSlider(initial),
@@ -858,6 +1017,10 @@ function setup() {
 				setup: (initial) => setupCardHeightInput(initial),
 			},
 			{
+				identifier: "cardPadding",
+				setup: (initial) => setupCardPaddingInput(initial),
+			},
+			{
 				identifier: "customBackgroundLink",
 				setup: (initial) => setupCustomBackgroundLink(initial),
 			},
@@ -865,6 +1028,14 @@ function setup() {
                 identifier: "customBackgroundScale",
                 setup: (initial) => setupCustomBackgroundScale(initial),
             },
+			{
+				identifier: "todo_progress_rings",
+				setup: (initial) => setupProgressRingsSelect(initial),
+			},
+			{
+				identifier: "todo_timeframe",
+				setup: (initial) => setupTimeframeSelect(initial),
+			},
 		],
 	};
 
@@ -890,6 +1061,9 @@ function setup() {
                 if (option === "better_todo") {
                     toggleBetterTodoSubOptions(status);
                 }
+                if (option === "dark_mode") {
+                    toggleAlternateColorsVisibility(status);
+                }
                 toggleSubOptionsVisibility(option, status);
             });
         });
@@ -898,6 +1072,7 @@ function setup() {
         ["gpa_calc", "assignments_due", "better_todo", "auto_dark"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
+        toggleAlternateColorsVisibility(sync["dark_mode"] === true);
     });
 
     chrome.storage.sync.get(menu.checkboxes, sync => {
@@ -916,6 +1091,7 @@ function setup() {
                     chrome.storage.sync.set(JSON.parse(`{"${option}": ${status}}`));
                 }
                 syncCustomBackgroundDailyState(document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true);
+                toggleOpacityOptions();
             });
             const value = sync[option] !== undefined ? sync[option] : defaultOptions.sync[option];
             document.querySelector("#" + option).checked = value;
@@ -923,6 +1099,7 @@ function setup() {
         syncCustomBackgroundDailyState(sync.customBackgroundDaily === true || sync.customBackgroundNasaDaily === true);
         toggleDarkModeDisable(sync.auto_dark);
         displayBackgroundPresets();
+        toggleOpacityOptions();
     });
 
     const specialOptions = menu.special.map(obj => obj.identifier);
@@ -966,6 +1143,10 @@ function setup() {
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const msg = chrome.i18n.getMessage(el.dataset.i18nPlaceholder);
         if (msg) el.placeholder = msg;
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const msg = chrome.i18n.getMessage(el.dataset.i18nTitle);
+        if (msg) el.title = msg;
     });
 
     // header feature search (search bar that jumps to features)
@@ -1318,32 +1499,13 @@ function setup() {
             "F": { "cutoff": 0, "gpa": 0 }
         });
     });
-    
-    document.getElementById("imageSize").addEventListener("input", (e) => {
-        const value = e.target.value;
-        chrome.storage.sync.set({ "imageSize": value });
-        document.querySelector("#imageSizeValue").textContent = value + "%";
-    })
-    document.getElementById("cardRoundness").addEventListener("input", (e) => {
-        const value = e.target.value;
-        chrome.storage.sync.set({ "cardRoundness": value });
-        document.querySelector("#cardRoundnessValue").textContent = value + "px";
-    })
-    document.getElementById("cardSpacing").addEventListener("input", (e) => {
-        const value = e.target.value;
-        chrome.storage.sync.set({ "cardSpacing": value });
-        document.querySelector("#cardSpacingValue").textContent = value + "px";
-    })
-    document.getElementById("cardWidth").addEventListener("input", (e) => {
-        const value = e.target.value;
-        chrome.storage.sync.set({ "cardWidth": value });
-        document.querySelector("#cardWidthValue").textContent = value + "%";
-    });
-    document.getElementById("cardHeight").addEventListener("input", (e) => {
-		const value = e.target.value;
-		chrome.storage.sync.set({ "cardHeight": value });
-		document.querySelector("#cardHeightValue").textContent = value + "%";
-	});
+
+    // Note: the card-style number inputs (imageSize, cardRoundness, cardSpacing,
+    // cardWidth, cardHeight, cardPadding) are wired via their setup*Input
+    // handlers in menu.special above, which debounce the storage writes. The
+    // duplicate listeners that used to live here referenced nonexistent
+    // #*Value spans (threw on every input) and double-wrote to storage, which
+    // is what blew the sync write quota when adjusting card styles quickly.
 
     document.getElementById("clearCustomBackground").addEventListener("click", () => {
                 chrome.storage.sync.set({ "customBackgroundLink": "", "customBackgroundScale": 100 });
@@ -1352,6 +1514,7 @@ function setup() {
 		document.querySelector("#customBackgroundScaleValue").textContent = "100%";
 		renderBackgroundPresetSelection();
 		sendFromPopup("updateBackground");
+        toggleOpacityOptions();
     });
 
     const applyFontsDropdownState = (isOpen) => {
@@ -1549,6 +1712,7 @@ function saveCurrentTheme() {
                 "todo_full_height": current["todo_full_height"],
                 "todo_confetti": current["todo_confetti"],
                 "todo_progress_rings": current["todo_progress_rings"],
+                "todo_timeframe": current["todo_timeframe"],
                 "todo_hr24": current["todo_hr24"],
                 "todo_separate_scrollbar": current["todo_separate_scrollbar"],
                 "better_sidebar": current["better_sidebar"],
@@ -1565,6 +1729,10 @@ function saveCurrentTheme() {
 				"customBackgroundDaily": current["customBackgroundDaily"],
 				"customBackgroundNasaDaily": current["customBackgroundNasaDaily"],
 				"fitImageToScreen": current["fitImageToScreen"],
+				"bg_opacity": current["bg_opacity"],
+				"sidebar_opacity": current["sidebar_opacity"],
+				"bg_blur": current["bg_blur"],
+				"sidebar_blur": current["sidebar_blur"],
             }
             const now = new Date();
             local["saved_themes"][now.getTime()] = trimmed;

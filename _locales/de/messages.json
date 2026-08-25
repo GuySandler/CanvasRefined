@@ -54,7 +54,7 @@
     "message": "Max. Anzahl Elemente: "
   },
   "hover_preview": {
-    "message": "Bewegen Sie den Mauszeiger, um Details in der Vorschau anzuzeigen"
+    "message": "Vorschau beim Überfahren"
   },
   "hide_completed": {
     "message": "Abgeschlossene ausblenden"

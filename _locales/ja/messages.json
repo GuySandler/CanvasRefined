@@ -54,7 +54,7 @@
     "message": "最大アイテム数: "
   },
   "hover_preview": {
-    "message": "詳細をプレビューするにはマウスを移動します"
+    "message": "ホバーでプレビュー"
   },
   "hide_completed": {
     "message": "完了を非表示"

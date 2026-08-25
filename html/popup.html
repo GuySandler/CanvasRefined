@@ -190,6 +190,20 @@
                         <span class="option-name" data-i18n="todo_remind">Todo Reminders</span>
                     </div>
                 </div>
+                <div class="option-container">
+                    <div class="option" id="quiz_safe_mode">
+                        <input type="radio" id="off" name="quiz_safe_mode">
+                        <input type="radio" id="on" name="quiz_safe_mode">
+                        <div class="slider">
+                            <div class="sliderknob"></div>
+                            <div class="sliderbg"></div>
+                        </div><span class="option-name" data-i18n="quiz_safe_mode">Quiz Safe Mode</span>
+                        <span class="cr-info-bubble" tabindex="0" role="button" aria-label="Quiz Safe Mode info">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                            <span class="cr-info-bubble-text" data-i18n="quiz_safe_mode_desc">Turns off most Canvas Refined features on quiz pages so you get the default Canvas quiz experience.</span>
+                        </span>
+                    </div>
+                </div>
                 <div class="social-buttons">
                 <a class="discord-button" href="https://discord.gg/GjFh4JA3wh" target="_blank" rel="noopener noreferrer" title="Join our Discord">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.369a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.182 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
@@ -215,11 +229,6 @@
                         <span class="option-name" data-i18n="better_todo">Better Todo List</span>
                     </div>
                     <div class="sub-options">
-                        <div class="sub-option" style="display:none;">
-                            <input type="checkbox" id="hover_preview" name="hover_preview">
-                            <label for="hover_preview" class="sub-text" data-i18n="hover_preview">Hover to preview
-                                details</label> <!-- TODO: Later -->
-                        </div>
                         <div class="sub-option">
                             <input type="checkbox" id="todo_separate_scrollbar" name="todo_separate_scrollbar">
                             <label for="todo_separate_scrollbar" class="sub-text" data-i18n="todo_separate_scrollbar">Separate Scrollbar</label>
@@ -233,16 +242,40 @@
                             <label for="todo_full_height" class="sub-text" data-i18n="todo_full_height">Force Full Height</label> <!-- TO REMOVE and replace with full height -->
                         </div>
                         <div class="sub-option">
+                            <input type="checkbox" id="hover_preview" name="hover_preview">
+                            <label for="hover_preview" class="sub-text" data-i18n="hover_preview">Previews on hover</label>
+                        </div>
+                        <div class="sub-option">
                             <input type="checkbox" id="todo_hide_feedback" name="todo_hide_feedback">
                             <label for="todo_hide_feedback" class="sub-text" data-i18n="todo_hide_feedback">Hide Recent Feedback</label>
                         </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_progress_rings" name="todo_progress_rings">
-                            <label for="todo_progress_rings" class="sub-text">Show progress rings</label>
+                        <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                            <label for="todo_progress_rings" class="sub-text">Progress display</label>
+                            <select id="todo_progress_rings" name="todo_progress_rings">
+                                <option value="none">None</option>
+                                <option value="rings">Rings</option>
+                                <option value="rainbow">Rainbow</option>
+                                <option value="lines">Multiple lines</option>
+                                <option value="line">One line</option>
+                            </select>
+                        </div>
+                        <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                            <label for="todo_timeframe" class="sub-text">Time frame</label>
+                            <select id="todo_timeframe" name="todo_timeframe">
+                                <option value="all">All time</option>
+                                <option value="1week">1 week</option>
+                                <option value="2week">2 weeks</option>
+                                <option value="month">Month</option>
+                                <option value="2month">2 months</option>
+                            </select>
                         </div>
                         <div class="sub-option">
                             <input type="checkbox" id="todo_confetti" name="todo_confetti">
                             <label for="todo_confetti" class="sub-text">Show confetti on complete</label>
+                        </div>
+                        <div class="sub-option" id="todo_alternate_colors_wrap" style="display:none;">
+                            <input type="checkbox" id="todo_alternate_colors" name="todo_alternate_colors">
+                            <label for="todo_alternate_colors" class="sub-text" data-i18n="todo_alternate_colors">Alternate colors</label>
                         </div>
                         <div style="margin-top: 5px">
                             <span class="sub-text" data-i18n="max_items">Max items to show: </span><span
@@ -559,7 +592,7 @@
                     </div>
 					<div class="sub-option">
                         <input type="checkbox" id="export-background" />
-                        <span>Background image</span>
+                        <span>Background &amp; opacity</span>
                     </div>
                 </div>
                 <div style="flex: 1">
@@ -818,6 +851,13 @@
                         <span class="sub-text">px</span>
                     </div>
                 </div>
+                <div class="sub-option">
+                    <div style="margin-top: 5px;display: flex;gap: 8px;align-items: center">
+                        <span class="sub-text" style="width:75px;">Card Padding</span>
+                        <input type="number" id="cardPadding" class="card-input" min="0" max="100" value="0" style="width: 80px;">
+                        <span class="sub-text">px</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1017,6 +1057,74 @@
             <div class="sub-option" style="margin-top:8px;">
                 <input type="checkbox" id="fitImageToScreen" name="fitImageToScreen">
                 <label for="fitImageToScreen" class="sub-text">Fit image to screen</label>
+            </div>
+            <div class="sub-option" style="margin-top:8px;">
+                <input type="checkbox" id="card_transparency" name="card_transparency">
+                <label for="card_transparency" class="sub-text" data-i18n="card_transparency">Card transparency</label>
+            </div>
+        </div>
+        <div class="option-container" id="opacity-options" style="display:none;">
+            <h3 class="header-small" data-i18n="opacity_options">Opacity &amp; Blur</h3>
+            <p class="sub-text" style="color:#a4a4a4;margin:4px 0 8px;" data-i18n="opacity_only_background">Only available with a custom background.</p>
+            <div class="opacity-slider-row">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:6px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="background_opacity">Background opacity</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="bgOpacityReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="bgOpacityValue">65%</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" step="1" id="bgOpacitySlider">
+            </div>
+            <div class="opacity-slider-row">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="bg_blur">Background blur</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="bgBlurReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="bgBlurValue">8px</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="30" step="1" id="bgBlurSlider">
+            </div>
+            <div class="opacity-slider-row">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="sidebar_opacity">Sidebar opacity</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="sidebarOpacityReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="sidebarOpacityValue">100%</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" step="1" id="sidebarOpacitySlider">
+            </div>
+            <div class="opacity-slider-row">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="sidebar_blur">Sidebar blur</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="sidebarBlurReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="sidebarBlurValue">0px</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="30" step="1" id="sidebarBlurSlider">
+            </div>
+            <div class="opacity-slider-row" id="card-transparency-options" style="display:none;">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="card_opacity">Card opacity</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="cardOpacityReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="cardOpacityValue">80%</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" step="1" id="cardOpacitySlider">
+            </div>
+            <div class="opacity-slider-row" id="card-transparency-blur-row" style="display:none;">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="card_blur">Card blur</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="cardBlurReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="cardBlurValue">8px</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="30" step="1" id="cardBlurSlider">
             </div>
         </div>
 

@@ -54,7 +54,7 @@
     "message": "Nombre maximal d'articles : "
   },
   "hover_preview": {
-    "message": "Survolez pour prévisualiser les détails"
+    "message": "Aperçu au survol"
   },
   "hide_completed": {
     "message": "Masquer terminé"

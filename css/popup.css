@@ -1,4 +1,4 @@
-:root {--inputbg: #1010104f;--containerbg: #00000047;--inputbg: #ffffff14;}
+:root {--inputbg: #1010104f;--containerbg: #00000047;--inputbg: #ffffff14;color-scheme: dark;}
 html, body{width:465px;max-width:465px;overflow-x:hidden;box-sizing:border-box}
 body{min-height:100%;height:auto;font-family: 'Wix Madefor Text', sans-serif;color: #e2e2e2;background: #161616;transition: .3s height}
 button {font-family: 'Wix Madefor Text', sans-serif}
@@ -21,8 +21,8 @@ h2 {font-size:24px;}
 .header {font-size: 16px;display: flex;align-items: center;gap:12px; margin-bottom:14px;}
 .header h1 { font-weight: 600; font-size:24px; }
 #bclogo {height: 30px;width:30px;filter: none}
-#numAssignmentsSlider, #numTodoItemsSlider, #sidebarScaleSlider, #customBackgroundScale {display: block;margin-top: 14px;width: 100%;-webkit-appearance: none; appearance: none;background:var(--inputbg);outline: none;height:6px;border-radius:20px;}
-#numAssignmentsSlider::-webkit-slider-thumb,  #numTodoItemsSlider::-webkit-slider-thumb, #sidebarScaleSlider::-webkit-slider-thumb, #customBackgroundScale::-webkit-slider-thumb {-webkit-appearance: none; appearance: none;height: 18px; width: 18px;background: #727272;cursor: pointer;border-radius:30px;}
+#numAssignmentsSlider, #numTodoItemsSlider, #sidebarScaleSlider, #customBackgroundScale, #bgOpacitySlider, #sidebarOpacitySlider, #bgBlurSlider, #sidebarBlurSlider, #cardOpacitySlider, #cardBlurSlider {display: block;margin-top: 14px;width: 100%;-webkit-appearance: none; appearance: none;background:var(--inputbg);outline: none;height:6px;border-radius:20px;}
+#numAssignmentsSlider::-webkit-slider-thumb,  #numTodoItemsSlider::-webkit-slider-thumb, #sidebarScaleSlider::-webkit-slider-thumb, #customBackgroundScale::-webkit-slider-thumb, #bgOpacitySlider::-webkit-slider-thumb, #sidebarOpacitySlider::-webkit-slider-thumb, #bgBlurSlider::-webkit-slider-thumb, #sidebarBlurSlider::-webkit-slider-thumb, #cardOpacitySlider::-webkit-slider-thumb, #cardBlurSlider::-webkit-slider-thumb {-webkit-appearance: none; appearance: none;height: 18px; width: 18px;background: #727272;cursor: pointer;border-radius:30px;}
 .option-container {font-size: 14px; margin-top: 8px;background: var(--containerbg);padding: 18px;border-radius: 14px;box-sizing:border-box}
 .options .option-container {padding: 14px;}
 a.option-container {display: block;color:#5ca5f6;font-size: 14px;}
@@ -65,6 +65,14 @@ h2 {margin-top: 20px;font-weight:600}
 .custom-card-hide {display: flex; align-items: center;}
 .option-name {font-weight: 600}
 .sub-text {font-size: 12px;color: #c7c7c7}
+#todo_progress_rings {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
+#todo_progress_rings option {background:#1e1e1e;color:#e2e2e2;}
+#todo_progress_rings option:checked,
+#todo_progress_rings option:hover {background:#2e2e2e;color:#fff;}
+#todo_timeframe {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
+#todo_timeframe option {background:#1e1e1e;color:#e2e2e2;}
+#todo_timeframe option:checked,
+#todo_timeframe option:hover {background:#2e2e2e;color:#fff;}
 #advanced-settings, #gpa-bounds-btn, #custom-font-btn, #customize-dark-btn, #card-colors-btn {width: 100%;}
 .back-btn {width: 120px;height:100%;margin-top:0}
 .big-button {border: none;border-radius: 7px;background: var(--containerbg);color: #fff;font-family: inherit;padding: 12px 10px;font-weight:600}
@@ -126,6 +134,8 @@ h2 {margin-top: 20px;font-weight:600}
 .background-preset-card {min-height: 96px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; border-radius: 8px;}
 .background-preset-card.selected {outline: 2px solid #56Caf0; outline-offset: 2px;}
 .background-preset-scale {font-size:10px;white-space:nowrap;opacity:0.9;}
+.opacity-reset-btn {display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;border-radius:50%;background:var(--inputbg);color:#cfcfcf;cursor:pointer;font-size:13px;line-height:1;padding:0;transition:background .15s ease,color .15s ease;}
+.opacity-reset-btn:hover {background:#3a3a3a;color:#fff;}
 .theme-sort-btn {padding:10px 30px 10px 20px;border-radius:7px;background:none;border:none;color: #9d9d9d;font-size:12px;font-weight:600;text-align: left;cursor: pointer;transition:.18s color}
 .theme-sort-btn:hover {color: #fff;}
 .theme-header {display:flex;justify-content: space-between;margin-bottom:10px;align-items:center}
@@ -282,3 +292,43 @@ input[type="checkbox"]:checked {background: #8dd28d;}
 .search-result.empty:hover { background: none; }
 .search-highlight { outline: 2px solid #56Caf0; outline-offset: 2px; border-radius: 8px; animation: search-pulse 1.8s ease-out; }
 @keyframes search-pulse { 0% { box-shadow: 0 0 0 0 #56Caf099; } 40% { box-shadow: 0 0 0 6px #56Caf000; } 100% { box-shadow: 0 0 0 0 #56Caf000; } }
+/* ===== Quiz Safe Mode info bubble ===== */
+.cr-info-bubble {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    width: 16px;
+    height: 16px;
+    color: #8d8d8d;
+    cursor: help;
+    position: relative;
+    vertical-align: middle;
+}
+.cr-info-bubble:hover,
+.cr-info-bubble:focus { color: #56Caf0; }
+.cr-info-bubble-text {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 220px;
+    background: #0e0e0ef0;
+    color: #e2e2e2;
+    border: 1px solid #ffffff1a;
+    border-radius: 8px;
+    padding: 8px 11px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    box-shadow: 0 8px 24px rgba(0,0,0,.45);
+    transition: opacity .15s ease, visibility .15s ease;
+    z-index: 1000;
+    text-align: left;
+}
+.cr-info-bubble:hover .cr-info-bubble-text,
+.cr-info-bubble:focus .cr-info-bubble-text { visibility: visible; opacity: 1; }

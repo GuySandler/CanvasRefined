@@ -54,7 +54,7 @@
     "message": "Itens máximos: "
   },
   "hover_preview": {
-    "message": "Passe o mouse para visualizar os detalhes"
+    "message": "Pré-visualização ao passar o cursor"
   },
   "hide_completed": {
     "message": "Ocultar Concluído"

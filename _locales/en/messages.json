@@ -56,11 +56,50 @@
 	"better_sidebar": {
 		"message": "Better Sidebar"
 	},
+	"quiz_safe_mode": {
+		"message": "Quiz Safe Mode"
+	},
+	"quiz_safe_mode_desc": {
+		"message": "Turns off most Canvas Refined features on quiz pages so you get the default Canvas quiz experience"
+	},
+	"opacity_options": {
+		"message": "Opacity & Blur"
+	},
+	"opacity_only_background": {
+		"message": "Only available with a custom background"
+	},
+	"card_transparency": {
+		"message": "Card transparency"
+	},
+	"background_opacity": {
+		"message": "Background opacity"
+	},
+	"bg_blur": {
+		"message": "Background blur"
+	},
+	"sidebar_opacity": {
+		"message": "Sidebar opacity"
+	},
+	"sidebar_blur": {
+		"message": "Sidebar blur"
+	},
+	"card_opacity": {
+		"message": "Card opacity"
+	},
+	"card_blur": {
+		"message": "Card blur"
+	},
+	"sidebar_opacity_auto": {
+		"message": "Applies to the Better Sidebar when it's on, otherwise the normal sidebar."
+	},
+	"reset_default": {
+		"message": "Reset to default"
+	},
 	"max_items": {
 		"message": "Max Items: "
 	},
 	"hover_preview": {
-		"message": "Hover To Preview Details"
+		"message": "Previews on hover"
 	},
 	"hide_completed": {
 		"message": "Hide Completed"
@@ -121,6 +160,9 @@
 	},
 	"todo_full_height": {
 		"message": "Force Full Height"
+	},
+	"todo_alternate_colors": {
+		"message": "Alternate colors"
 	},
 	"relative_due_dates": {
 		"message": "Relative Due Dates"

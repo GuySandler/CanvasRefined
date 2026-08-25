@@ -76,12 +76,13 @@ chrome.runtime.onInstalled.addListener(function () {
             "equal_height_cards": false,
             "hide_feedback": false,
             "hide_new_canvas": true,
+            "quiz_safe_mode": false,
             "dark_mode_fix": [],
             "assignment_states": {},
             "tab_icons": false,
             "todo_hide_feedback": false,
             "todo_full_height": true,
-            "todo_progress_rings": true,
+            "todo_progress_rings": "rings",
             "todo_confetti": true,
             "device_dark": false,
             "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
@@ -111,6 +112,10 @@ chrome.runtime.onInstalled.addListener(function () {
             "customBackgroundNasaDaily": false,
             "nasaInfoOverlay": false,
             "fitImageToScreen": false,
+            "bg_opacity": 65,
+            "sidebar_opacity": 100,
+            "bg_blur": 8,
+            "sidebar_blur": 0,
         }
     };
 

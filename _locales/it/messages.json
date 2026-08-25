@@ -54,7 +54,7 @@
     "message": "Numero massimo di articoli: "
   },
   "hover_preview": {
-    "message": "Passa il mouse per visualizzare l'anteprima dei dettagli"
+    "message": "Anteprima al passaggio del mouse"
   },
   "hide_completed": {
     "message": "Nascondi Completato"

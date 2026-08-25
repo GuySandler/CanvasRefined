@@ -38,6 +38,23 @@ function isProfilePage() {
     return /^\/profile(?:\/|$)/.test(current_page);
 }
 
+// Quiz pages: /courses/123/quizzes/456 (pre-take/intro) and
+// /courses/123/quizzes/456/take (the actual quiz).
+function isQuizPage() {
+    return /^\/courses\/\d+\/quizzes\/\d+(?:\/|$)/.test(current_page);
+}
+function isQuizTakePage() {
+    return /^\/courses\/\d+\/quizzes\/\d+\/take(?:\/|$)/.test(current_page);
+}
+function isQuizPreTakePage() {
+    return isQuizPage() && !isQuizTakePage();
+}
+// "Quiz safe mode" disables features that interfere with the default Canvas
+// quiz experience. Only active on quiz pages when the user has opted in.
+function quizSafeModeActive() {
+    return isQuizPage() && options.quiz_safe_mode === true;
+}
+
 function getSubmissionAssignmentLink() {
     const match = current_page.match(/^\/courses\/(\d+)\/assignments\/(\d+)\/submissions\/(\d+)(?:\/|$)/);
     if (!match) return null;
@@ -117,6 +134,18 @@ function ensureSubmissionPageButton() {
     return Boolean(content.querySelector("#canvasrefined-assignment-return"));
 }
 
+function isAssignmentPage() {
+    return /^\/courses\/\d+\/assignments(?:\/\d+)?(?:\/|$)/.test(current_page);
+}
+
+function removeSequenceFooter() {
+    if (!isAssignmentPage()) return false;
+    const sequenceFooter = document.getElementById("sequence_footer");
+    if (!sequenceFooter) return false;
+    sequenceFooter.remove();
+    return true;
+}
+
 function watchSequenceFooter() {
     if (!isAssignmentPage()) return;
     if (removeSequenceFooter()) return;
@@ -170,7 +199,8 @@ function watchNewCanvasButton() {
     }
     if (options.hide_new_canvas !== true) return;
     removeNewCanvasButton();
-    newCanvasButtonObserver = new MutationObserver(() => {
+    let newCanvasButtonScheduled = false;
+    newCanvasButtonObserver = new MutationObserver((mutationList) => {
         if (options.hide_new_canvas !== true) {
             if (newCanvasButtonObserver) {
                 newCanvasButtonObserver.disconnect();
@@ -178,7 +208,18 @@ function watchNewCanvasButton() {
             }
             return;
         }
-        removeNewCanvasButton();
+        // Only scan when nodes were actually added, and coalesce to one pass per frame.
+        let added = false;
+        for (const mutation of mutationList) {
+            if (mutation.addedNodes && mutation.addedNodes.length) { added = true; break; }
+        }
+        if (!added || newCanvasButtonScheduled) return;
+        newCanvasButtonScheduled = true;
+        requestAnimationFrame(() => {
+            newCanvasButtonScheduled = false;
+            if (options.hide_new_canvas !== true) return;
+            removeNewCanvasButton();
+        });
     });
     newCanvasButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
 }
@@ -191,35 +232,27 @@ async function getActiveCustomBackground() {
         "customBackgroundScale",
     ]);
 
-    console.log("[CanvasRefined] getActiveCustomBackground:", syncOpts);
-
     if (syncOpts.customBackgroundNasaDaily === true) {
-        console.log("[CanvasRefined] Using NASA APOD");
         return await getNasaDailyBackground();
     }
 
     if (syncOpts.customBackgroundDaily === true) {
-        console.log("[CanvasRefined] Using Wikimedia Featured");
         const dailyPreset = await getDailyBackgroundPreset();
         if (dailyPreset) {
-            console.log("[CanvasRefined] Wikimedia URL:", dailyPreset.url);
             return {
                 url: dailyPreset.url,
                 scale: dailyPreset.scale,
             };
         }
-        console.log("[CanvasRefined] Wikimedia returned null");
     }
 
     if (syncOpts.customBackgroundLink && syncOpts.customBackgroundLink !== "") {
-        console.log("[CanvasRefined] Using custom link");
         return {
             url: syncOpts.customBackgroundLink,
             scale: syncOpts.customBackgroundScale || 100,
         };
     }
 
-    console.log("[CanvasRefined] No custom background");
     return null;
 }
 
@@ -373,6 +406,18 @@ let timeCheck = null;
 let reminderCheck = null;
 let betterSidebarLoading = false;
 let dashboardReadyTimer = null;
+let sidebarReadyTimer = null;
+// Signature of the dashboard card set last time we ran the full setup pass.
+// The MutationObserver in checkDashboardReady fires on every childList change
+// in the document — including the ones our own setup pass (loadCardAssignments,
+// customizeCards, etc.) causes. Without a guard, that re-triggers the observer
+// and re-runs the whole pass every animation frame (an infinite reflow loop).
+// We only need to re-run when Canvas actually changes the dashboard cards, so
+// we skip the heavy pass whenever the card set is unchanged.
+let lastDashboardCardSignature = null;
+let sidebarBadgeObserver = null;
+let sidebarBadgeSyncTimer = null;
+let sidebarBadgeWatchRetries = 0;
 
 /*
 Start
@@ -523,20 +568,32 @@ function startExtension() {
         if (footer) footer.remove();
     };
     removeFooter();
+    let footerScheduled = false;
     const footerObserver = new MutationObserver(() => {
-        removeFooter();
+        // Canvas mutates the DOM constantly; only check for the footer at most once
+        // per animation frame instead of running a querySelector on every mutation.
+        if (footerScheduled) return;
+        footerScheduled = true;
+        requestAnimationFrame(() => {
+            footerScheduled = false;
+            removeFooter();
+        });
     });
     footerObserver.observe(document.documentElement, { childList: true, subtree: true });
 
     toggleDarkMode();
 
-    chrome.storage.sync.get(["better_sidebar", "sidebar_scale"], result => {
+    // Include bg_opacity/bg_blur so setupBetterSidebar (called below) tints the
+    // course-content panel with the user's slider values on first load, instead
+    // of falling back to the defaults until a slider is touched.
+    chrome.storage.sync.get(["better_sidebar", "sidebar_scale", "bg_opacity", "bg_blur"], result => {
         options = { ...options, ...result };
         ensureBetterSidebar();
     });
 
     chrome.storage.sync.get(null, result => {
         options = { ...options, ...result };
+        applyTodoAlternateColors();
         toggleAutoDarkMode();
         // toggleScheduledReminders();
         getApiData();
@@ -551,6 +608,8 @@ function startExtension() {
         watchSequenceFooter();
         watchSubmissionPageButton();
         watchProfileLogoutPageButton();
+
+        setupQuizSafeModeBanner();
 
         
         setTimeout(() => runDarkModeFixer(false), 800);
@@ -575,12 +634,15 @@ function applyOptionsChanges(changes) {
     // so any changes made in the menu no longer require a refresh to apply
 
     Object.keys(changes).forEach(key => {
-        console.log(key + " changed");
         switch (key) {
 			case "dark_mode":
 			case "dark_preset":
 			case "device_dark":
 				toggleDarkMode();
+				applyTodoAlternateColors();
+				break;
+			case "todo_alternate_colors":
+				applyTodoAlternateColors();
 				break;
 			case "auto_dark":
 			case "auto_dark_start":
@@ -609,6 +671,10 @@ function applyOptionsChanges(changes) {
 				)
 					setupCardAssignments();
 				loadCardAssignments();
+				// The card overflow fix in applyAestheticChanges() depends on
+				// assignments_due, so re-run it when that option toggles to keep
+				// the overflow rule in sync without a page reload.
+				applyAestheticChanges();
 				break;
 			case "custom_assignments":
 			case "assignment_date_format":
@@ -630,6 +696,7 @@ function applyOptionsChanges(changes) {
 			case "todo_separate_scrollbar":
 			case "num_todo_items":
 			case "hover_preview":
+			case "todo_timeframe":
 			// case "todo_overdues":
 			case "todo_hide_feedback":
 			case "todo_full_height":
@@ -691,12 +758,35 @@ function applyOptionsChanges(changes) {
 			case "cardSpacing":
 			case "cardWidth":
 			case "cardHeight":
+			case "cardPadding":
 			case "customCardStyles":
-				applyAestheticChanges();
+				// Coalesce rapid card-style edits (e.g. holding the arrow keys on a
+			// number input) into a single applyAestheticChanges() call. Each
+			// storage onChanged event would otherwise re-run the dashboard style
+			// pass immediately; a ~150ms cooldown is barely noticeable but keeps
+			// the page from thrashing while the user is still adjusting values.
+				debouncedApplyAestheticChanges();
 				break;
 			case "customBackgroundLink":
 				applyCustomBackground();
 				break;
+            case "bg_opacity":
+                applyCustomBackground();
+                applyBetterSidebarContentPanel();
+                break;
+            case "bg_blur":
+                applyCustomBackground();
+                applyBetterSidebarContentPanel();
+                break;
+            case "sidebar_opacity":
+            case "sidebar_blur":
+                applyCustomBackground();
+                break;
+            case "card_transparency":
+            case "card_opacity":
+            case "card_blur":
+                applyCustomBackground();
+                break;
 			case "better_todo":
 				if (options.better_todo) {
 					setupBetterTodo();
@@ -708,7 +798,7 @@ function applyOptionsChanges(changes) {
                     // toggle progress rings immediately
                     const placeholder = document.getElementById("better-todo-progress-placeholder");
                     if (!placeholder) break;
-                    if (changes[key].newValue === true || changes[key].newValue === undefined) {
+                    if (progressRingsEnabled()) {
                         if (typeof assignments?.then === 'function') {
                             assignments.then(data => {
                                 const courseId = getCurrentCourseId();
@@ -733,6 +823,11 @@ function applyOptionsChanges(changes) {
                     resetBetterSidebarLayout();
                 }
 				break;
+            case "quiz_safe_mode":
+                // Toggling safe mode changes which features run on quiz pages; reload
+                // so the gating is applied cleanly.
+                if (isQuizPage()) window.location.reload();
+                break;
             case "sidebar_scale": {
                 const existingSidebar = document.getElementById("better-sidebar-container");
                 if (existingSidebar) {
@@ -772,22 +867,28 @@ function resetBetterSidebarLayout() {
     document.getElementById("section-tabs")?.style.removeProperty("padding-top");
     document.getElementById("better-sidebar-container")?.remove();
     clearBetterSidebarLayoutFix();
+    if (sidebarBadgeObserver) { sidebarBadgeObserver.disconnect(); sidebarBadgeObserver = null; }
+    if (sidebarBadgeSyncTimer) { clearTimeout(sidebarBadgeSyncTimer); sidebarBadgeSyncTimer = null; }
+    sidebarBadgeWatchRetries = 0;
 }
 
 function ensureBetterSidebar() {
     if (!options.better_sidebar) return;
+    // Quiz safe mode: don't replace the Canvas sidebar on quiz pages.
+    if (quizSafeModeActive()) return;
     if (document.querySelector("#better-sidebar-container")) return;
     if (!document.querySelector("#wrapper") || !document.querySelector(".ic-Layout-contentWrapper")) return;
     setupBetterSidebar(getSidebarLayoutMode());
 }
 
 async function applyCustomBackground() {
+    // Quiz safe mode: leave the quiz page background untouched.
+    if (quizSafeModeActive()) return;
     // let style = document.querySelector("#DashboardCard_Container")
     let style = document.querySelector("#canvasrefined-background") || document.createElement('style');
     style.id = "canvasrefined-background";
 
     const activeBackground = await getActiveCustomBackground();
-    console.log("[CanvasRefined] activeBackground:", activeBackground);
     if (!activeBackground) {
         if (style.isConnected) style.remove();
         return;
@@ -796,7 +897,27 @@ async function applyCustomBackground() {
     const backgroundScale = Number(activeBackground.scale) || 100;
     const backgroundUrl = JSON.stringify(activeBackground.url);
     const fitToScreen = options.fitImageToScreen === true;
-    console.log("[CanvasRefined] Applying background:", activeBackground.url, "fitToScreen:", fitToScreen);
+    // Opacity sliders (0-100). 100 = fully opaque surface, 0 = fully transparent
+    // so the background image shows through. Only emitted while a background is
+    // active, since transparency without an image just exposes the dark body.
+    const bgOpacity = Math.max(0, Math.min(100, Number(options.bg_opacity ?? 65)));
+    const sidebarOpacity = Math.max(0, Math.min(100, Number(options.sidebar_opacity ?? 100)));
+    const bgTransparent = 100 - bgOpacity;
+    const sidebarTransparent = 100 - sidebarOpacity;
+    // Blur sliders (px). Pairs with opacity: blur only has a visible effect when
+    // the surface is semi-transparent (opacity < 100) so the background behind
+    // shows through and gets blurred. Default 8px on content surfaces preserves
+    // the previous dashboard-header glass look; sidebar defaults to none.
+    const bgBlur = Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)));
+    const sidebarBlur = Math.max(0, Math.min(30, Number(options.sidebar_blur ?? 0)));
+    // Card transparency mirrors the content-panel glass effect (bg_opacity/
+    // bg_blur) but applies it to dashboard course cards (.ic-DashboardCard).
+    // Only active when the user explicitly enables it, since transparent cards
+    // over a busy background can hurt legibility.
+    const cardTransparency = options.card_transparency === true;
+    const cardOpacity = Math.max(0, Math.min(100, Number(options.card_opacity ?? 80)));
+    const cardBlur = Math.max(0, Math.min(30, Number(options.card_blur ?? 8)));
+    const cardTransparent = 100 - cardOpacity;
     style.textContent = `
         #wrapper {
             background-image: url(${backgroundUrl}) !important;
@@ -820,19 +941,76 @@ async function applyCustomBackground() {
             margin-left: -35px !important;
             margin-right: -35px !important;
             box-sizing: border-box !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 20%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
             border: 1px solid color-mix(in srgb, var(--bcborders) 60%, transparent) !important;
             border-radius: 10px !important;
             position: sticky !important;
             top: 0 !important;
             z-index: 1000 !important;
-            backdrop-filter: blur(8px) saturate(120%) !important;
-            -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
+            backdrop-filter: blur(${bgBlur}px) saturate(120%) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) saturate(120%) !important;
         }
         #right-side-wrapper {
-            /* backdrop-filter: blur(10px) !important; */
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%);
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%);
             border-radius: 5px;
+        }
+        /* Recent feedback lives in #right-side. The dark-mode CSS
+           (darkmodecss.js) recolors its text, but those rules are dark-mode-
+           only — so in light mode + custom background the sub-text (context,
+           grade, quote) keeps Canvas's default gray on the now-translucent
+           panel and becomes hard to read. Recolor to the theme text color so
+           it stays readable in both modes whenever a background is active.
+           Mirrors the dark-mode selectors; redundant (same value) in dark mode. */
+        .recent_feedback .event-details {
+            background: none !important;
+        }
+        #right-side .event-details .event-details__context,
+        #right-side .event-details .event-details__context *,
+        #right-side .recent_feedback .event-details p,
+        #right-side .recent_feedback .event-details span {
+            color: var(--bctext-0) !important;
+        }
+        .event-details strong {
+            color: var(--bctext-0) !important;
+        }
+        /* Native global nav sidebar. color-mix only accepts a solid color, so
+           gradient/image sidebars keep their existing look (rule is invalid and
+           ignored). At 100% opacity this is equivalent to var(--bcsidebar).
+           Sidebar blur only shows when sidebar opacity < 100.
+           The icon/text colors are recolored to var(--bcsidebar-text) to match
+           the background we just set — without this, light mode (where
+           --bcsidebar is the light default #e3e3e3) would leave institution-
+           themed light icons on a now-light background = white-on-white.
+           Mirrors the dark-mode rules in css/darkmodecss.js. */
+        .ic-app-header {
+            background: color-mix(in srgb, var(--bcsidebar), transparent ${sidebarTransparent}%) !important;
+            backdrop-filter: blur(${sidebarBlur}px) !important;
+            -webkit-backdrop-filter: blur(${sidebarBlur}px) !important;
+        }
+        .ic-app-header__menu-list-link svg,
+        .ic-app-header__menu-list-item.ic-app-header__menu-list-item--active svg {
+            fill: var(--bcsidebar-text) !important;
+        }
+        .menu-item-icon-container,
+        .ic-app-header__menu-list-link .menu-item__text,
+        .ic-app-header__menu-list-item.ic-app-header__menu-list-item--active .menu-item__text {
+            color: var(--bcsidebar-text) !important;
+        }
+        .ic-app-header__menu-list-item.ic-app-header__menu-list-item--active .ic-app-header__menu-list-link,
+        .ic-app-header__menu-list-link:hover {
+            background: #0000004f !important;
+        }
+        /* Better sidebar. The inline background-color is var(--bcsidebar), so the
+           !important here is required to override it. The same sidebar_opacity /
+           sidebar_blur sliders drive both surfaces, so whichever sidebar is
+           active (Better Sidebar when enabled, otherwise the native nav) picks
+           up the value. */
+        #better-sidebar-container {
+            background-color: color-mix(in srgb, var(--bcsidebar), transparent ${sidebarTransparent}%) !important;
+            backdrop-filter: blur(${sidebarBlur}px) !important;
+            -webkit-backdrop-filter: blur(${sidebarBlur}px) !important;
         }
         .header-bar {
             background: none !important;
@@ -842,8 +1020,8 @@ async function applyCustomBackground() {
         .item-group-condensed,
         .item-group-container {
             background: transparent !important;
-            /* backdrop-filter: blur(14px) saturate(120%) !important;
-               -webkit-backdrop-filter: blur(14px) saturate(120%) !important; */
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 12px !important;
             border: 1px solid color-mix(in srgb, var(--bcborders) 75%, transparent) !important;
             /* box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important; */
@@ -869,7 +1047,9 @@ async function applyCustomBackground() {
             border-radius: 0 !important;
         }
         #assignments.ui-tabs-panel {
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
         }
         #assignments {
@@ -882,7 +1062,9 @@ async function applyCustomBackground() {
         #content {
             margin: 36px 48px 48px !important;
             padding: 10px !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
             box-sizing: border-box !important;
         }
@@ -891,14 +1073,35 @@ async function applyCustomBackground() {
         #content {
             margin: 36px 48px 48px !important;
             padding: 10px !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
             box-sizing: border-box !important;
         }
         ` : ""}
+        /* Course content pages (sidebar layout "course": /courses/:id/* and
+           /profile): tint the #content.ic-Layout-contentMain panel so the
+           bg_opacity/bg_blur sliders have a surface to control even without Better
+           Sidebar. setupBetterSidebar only adds this panel when Better Sidebar is
+           on; this mirrors its inline values so the panel shows regardless. When
+           Better Sidebar is on, its inline !important overrides these (same values),
+           so this rule is inert in that case. */
+        ${getSidebarLayoutMode() === "course" ? `
+        .ic-Layout-contentMain {
+            margin: 26px 38px 38px !important;
+            padding: 10px !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            border-radius: 10px !important;
+        }
+        ` : ""}
         ${isConversationsPage() ? `
         .css-1nh4pc4-view-flexItem {
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent 35%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
             box-sizing: border-box !important;
         }
@@ -949,20 +1152,25 @@ async function applyCustomBackground() {
             padding-top: 0 !important;
         }
 
-        /* Apply backdrop blur only to module panels, not to all headers */
+        /* Module panels keep the slider blur on hover (previously a fixed 5px). */
         .item-group-condensed.context_module,
         .item-group-condensed.context_module_item,
+        .item-group-condensed[class~="context_module"],
         .item-group-condensed.context_module:hover,
         .item-group-condensed.context_module_item:hover,
         .item-group-condensed.context_module.context_module_item_hover,
         .item-group-condensed.context_module_item.context_module_item_hover {
-            backdrop-filter: blur(5px) !important;
-            -webkit-backdrop-filter: blur(5px) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
         }
         .canvasrefined-gpa-card,
         .canvasrefined-gpa,
         .ic-DashboardCard {
-            background: var(--bcbackground-0) !important;
+            ${cardTransparency
+                ? `background: color-mix(in srgb, var(--bcbackground-0), transparent ${cardTransparent}%) !important;
+            backdrop-filter: blur(${cardBlur}px) saturate(120%) !important;
+            -webkit-backdrop-filter: blur(${cardBlur}px) saturate(120%) !important;`
+                : `background: var(--bcbackground-0) !important;`}
         }
         tr.student_assignment.assignment_graded.editable > * {
             border:none!important
@@ -1004,22 +1212,55 @@ function resetTimer() {
 }
 
 function checkDashboardReady() {
+    const isDashboard = () => current_page == "/" || current_page == "" || /^\/courses\/(\d+)(?:\/|$)/.test(current_page);
+
     const callback = (mutationList) => {
+        // Ignore attribute-only mutations; only structural (childList) changes matter here.
+        let hasChildList = false;
         for (const mutation of mutationList) {
-            if (mutation.type !== "childList") continue;
-            if (current_page == "/" || current_page == "" || current_page.match(/^\/courses\/(\d+)(?:\/|$)/)) {
-                if (dashboardReadyTimer) continue;
+            if (mutation.type === "childList") { hasChildList = true; break; }
+        }
+        if (!hasChildList) return;
 
-                const dashboardCards = document.querySelector("#DashboardCard_Container");
-                if (dashboardCards) {
-                }
+        if (isDashboard()) {
+            // Debounce: a single setup pass per burst of mutations.
+            if (dashboardReadyTimer) return;
+            dashboardReadyTimer = setTimeout(() => {
+                dashboardReadyTimer = null;
 
-                dashboardReadyTimer = setTimeout(() => {
-                    dashboardReadyTimer = null;
-
-                    const c = document.querySelector("#DashboardCard_Container");
-                    if (c) {
-                        let cards = document.querySelectorAll(".ic-DashboardCard");
+                const c = document.querySelector("#DashboardCard_Container");
+                if (c) {
+                    let cards = document.querySelectorAll(".ic-DashboardCard");
+                    // Build a cheap signature of the current card set. The setup
+                    // pass below mutates the cards' internals (assignment rows,
+                    // grades, etc.) but never adds/removes the .ic-DashboardCard
+                    // elements themselves, so the signature stays stable across
+                    // our own mutations. It only changes when Canvas re-renders the
+                    // dashboard (cards added/removed/reordered/replaced). Skipping
+                    // when it's unchanged breaks the self-retriggering reflow loop.
+                    let signature = cards.length + "";
+                    for (let i = 0; i < cards.length; i++) {
+                        const link = cards[i].querySelector(".ic-DashboardCard__link");
+                        signature += "|" + (link ? link.getAttribute("href") : "");
+                    }
+                    // Canvas often re-renders the dashboard on a hard reload and
+                    // replaces the .ic-DashboardCard nodes with fresh ones that have
+                    // the same courses/links (so the signature is unchanged) but no
+                    // longer carry our .canvasrefined-card-assignment marker. The
+                    // signature guard alone would skip re-setup in that case, leaving
+                    // card assignments empty until a popup toggle forces a reload.
+                    // Re-run whenever any card is missing its marker too. This is safe
+                    // from the self-retriggering reflow loop: after the pass every
+                    // card has the marker, so our own subsequent mutation bursts skip.
+                    let missingMarker = false;
+                    for (let i = 0; i < cards.length; i++) {
+                        if (!cards[i].querySelector(".canvasrefined-card-assignment")) {
+                            missingMarker = true;
+                            break;
+                        }
+                    }
+                    if (signature !== lastDashboardCardSignature || missingMarker) {
+                        lastDashboardCardSignature = signature;
                         changeGradientCards();
                         setupCardAssignments();
                         loadCardAssignments();
@@ -1030,28 +1271,31 @@ function checkDashboardReady() {
                         showUpdateMsg();
                         createNasaInfoOverlay();
                     }
+                }
 
-                    const rightSide = document.querySelector("#right-side");
-                    if (rightSide && !rightSide.querySelector(".canvasrefined-todosidebar")) {
-                        setupBetterTodo();
-                        setupBetterSidebar(getSidebarLayoutMode());
-                    }
+                const rightSide = document.querySelector("#right-side");
+                if (rightSide && !rightSide.querySelector(".canvasrefined-todosidebar")) {
+                    setupBetterTodo();
+                    setupBetterSidebar(getSidebarLayoutMode());
+                }
 
-                    if (options.better_sidebar) {
-                        ensureBetterSidebar();
-                    }
-                }, 0);
-            } else {
-                console.log("I am outside", current_page);
                 if (options.better_sidebar) {
                     ensureBetterSidebar();
                 }
-            }
+            }, 0);
+        } else if (options.better_sidebar) {
+            // Throttle sidebar setup checks on non-dashboard (course) pages instead
+            // of calling ensureBetterSidebar() on every mutation burst.
+            if (sidebarReadyTimer) return;
+            sidebarReadyTimer = setTimeout(() => {
+                sidebarReadyTimer = null;
+                ensureBetterSidebar();
+            }, 100);
         }
     };
 
     const observer = new MutationObserver(callback);
-    observer.observe(document.querySelector('html'), { childList: true, subtree: true });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
 }
 
 function recieveMessage(request, sender, sendResponse) {
@@ -1324,7 +1568,37 @@ function updateIndicator(element) {
 }
 // better todo html
 betterTodoFilter = "tasks";
+// Timeframe filter for the upcoming Tasks tab. "all" = no limit; otherwise
+// items are limited to those due on/before now+range (which also keeps
+// overdue items). Only affects the Tasks (upcoming) tab; announcements and
+// completed are unaffected because their dates are in the past.
+let betterTodoTimeframe = "all";
+const BETTER_TODO_TIMEFRAME_DAYS = {
+	"1week": 7,
+	"2week": 14,
+	"month": 30,
+	"2month": 60,
+};
+// null = show every class; a string courseId = only that class's tasks.
+let betterTodoProgressFilter = null;
 let domContainers = {};
+
+// true when `courseId` is the dimmed-out class because another class is selected.
+function progressFilterDim(courseId) {
+    return betterTodoProgressFilter != null && String(courseId) !== String(betterTodoProgressFilter);
+}
+// Make an element filter the todo list to one class on click. A no-op on
+// course pages (where only one class is in scope anyway); toggles off when the
+// active class is clicked again.
+function attachProgressFilterClick(el, courseId) {
+    if (getCurrentCourseId() != null) { el.style.cursor = ''; el.onclick = null; return; }
+    el.style.cursor = 'pointer';
+    el.onclick = () => {
+        betterTodoProgressFilter = (String(betterTodoProgressFilter) === String(courseId)) ? null : String(courseId);
+        const loc = document.querySelector("#canvasrefined-todo-list");
+        if (loc) { clearTodoList(); createTodoSections(loc); }
+    };
+}
 
 function formatDateForInput(date) {
     const year = date.getFullYear();
@@ -1339,161 +1613,95 @@ function formatTimeForInput(date) {
     return `${hours}:${minutes}`;
 }
 
-function renderProgressRings(container, scopedData) {
-    const allAssignments = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note"));
+/* Progress display mode, stored in options.todo_progress_rings.
+   Modes: "none", "rings", "rainbow", "lines", "line".
+   Legacy booleans normalize: true/undefined -> rings, false -> none. */
+function getProgressRingMode() {
+    const v = options.todo_progress_rings;
+    if (v === false) return "none";
+    if (v === true || v === undefined || v === null) return "rings";
+    const allowed = ["none", "rings", "rainbow", "lines", "line"];
+    if (allowed.includes(v)) return v;
+    // migrate unreleased string values from the prior experimental set
+    if (v === "per_course") return "rings";
+    if (v === "combined" || v === "segmented") return "line";
+    return "rings";
+}
 
-    // exclude items older than one month
-    const oneMonthAgo = Date.now() - 1000 * 60 * 60 * 24 * 30;
-    const recentAssignments = allAssignments.filter(item => {
-        const dateStr = item.plannable_date || item.todo_date || item.plannable?.due_at || item.plannable?.plannable_date;
-        if (!dateStr) return true; // keep items without a date
-        const ts = Date.parse(dateStr);
-        if (Number.isNaN(ts)) return true;
-        return ts >= oneMonthAgo;
-    });
-    const groups = {};
-    allAssignments.forEach(item => {
-        const cid = String(item.course_id || item.context_id || item.plannable?.course_id || "personal");
-        groups[cid] = groups[cid] || [];
-        groups[cid].push(item);
-    });
+function progressRingsEnabled() {
+    return getProgressRingMode() !== "none";
+}
 
-    const entries = Object.keys(groups).map(cid => {
-        const arr = groups[cid];
-        const completed = arr.filter(it => (it.submissions?.submitted || it.planner_override?.marked_complete)).length;
-        return { courseId: cid, total: arr.length, completed };
-    }).filter(e => e.total > 0);
+function courseRingColor(courseId, idx) {
+    return options.custom_cards_3?.[String(courseId)]?.color
+        || options.custom_cards_3?.[courseId]?.color
+        || `hsl(${(idx * 60) % 360} 70% 50%)`;
+}
 
-    if (!entries.length) {
-        container.innerHTML = "";
-        return;
-    }
+function courseRingLabel(courseId) {
+    const card = options.custom_cards?.[String(courseId)] || options.custom_cards?.[courseId];
+    return card?.default || `Course ${courseId}`;
+}
 
-    // sort by total desc and limit rings to 6
-    entries.sort((a, b) => b.total - a.total);
-    const shown = entries.slice(0, 6);
-
-    const totalAll = shown.reduce((s, e) => s + e.total, 0);
-    const completedAll = shown.reduce((s, e) => s + e.completed, 0);
-    const percent = totalAll === 0 ? 0 : Math.round((completedAll / totalAll) * 100);
-
-    // build SVG rings with visible gaps and a larger central hole.
-    // calculate available width from the container so the outer ring is slightly inset
-    const containerWidth = (container.clientWidth || 240);
-    const maxSize = Math.min(280, Math.floor(containerWidth * 0.99));
-    const size = maxSize; // svg square size
+// Mode "rings": concentric rings, one per course, each filled by completion.
+function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent) {
+    const containerWidth = wrapper.clientWidth || 240;
+    const size = Math.min(280, Math.floor(containerWidth * 0.99));
     const cx = size / 2;
     const cy = size / 2;
-    let svgInner = "";
-
-    const ringCount = shown.length;
-    const stroke = 8; // ring thickness (thinner)
-    const gap = 4; // visible gap between rings (reduced)
-    const decrement = stroke + gap; // radius difference per ring ensures gap
-
-    // make outer ring extend closer to container edges by using a small padding
     const padding = 2;
-    const startRadius = Math.floor((size / 2) - padding - (stroke / 2));
+    const outerRadius = Math.floor((size / 2) - padding);
 
-    // ensure radii stay positive; if too small, reduce stroke/gap
-    const minCenterRadius = 28; // minimum desired central hole radius
-    const requiredSpace = (ringCount - 1) * decrement + stroke / 2 + minCenterRadius;
-    let adjustFactor = 1;
-    if (requiredSpace > startRadius) {
-        // scale down decrement to fit
-        adjustFactor = (startRadius - minCenterRadius - stroke / 2) / Math.max(1, (ringCount - 1) * decrement);
-    }
-
-    shown.forEach((entry, idx) => {
-        const effectiveDecrement = Math.max(1, Math.floor(decrement * adjustFactor));
-        const radius = startRadius - idx * effectiveDecrement;
-        if (radius <= 0) return;
-        const circumference = 2 * Math.PI * radius;
-        const prog = entry.total === 0 ? 0 : (entry.completed / entry.total);
-        const color = options.custom_cards_3?.[String(entry.courseId)]?.color || options.custom_cards_3?.[entry.courseId]?.color || `hsl(${(idx * 60) % 360} 70% 50%)`;
-
-        // background ring (faded course color)
-        svgInner += `<circle cx='${cx}' cy='${cy}' r='${radius}' stroke='${color}' stroke-opacity='0.25' stroke-width='${stroke}' fill='none'></circle>`;
-        // progress ring (rotate -90 to start at top) - initialize empty and animate to target
-        const dasharrayVal = circumference.toFixed(3);
-        const dashoffsetTarget = (circumference * (1 - prog)).toFixed(3);
-        // start with full offset (empty) and store target in data attribute; we'll animate after inserting into DOM
-        svgInner += `<circle class='canvasrefined-progress-ring' cx='${cx}' cy='${cy}' r='${radius}' stroke='${color}' stroke-width='${stroke}' fill='none' stroke-linecap='round' transform='rotate(-90 ${cx} ${cy})' stroke-dasharray='${dasharrayVal}' stroke-dashoffset='${dasharrayVal}' data-target='${dashoffsetTarget}' style='transition: stroke-dashoffset .8s cubic-bezier(.2,.9,.2,1), opacity .3s ease;'></circle>`;
-    });
-
-    // center overlay text positioned inside the hole
-    // Reuse existing elements when possible to avoid DOM replacement flicker
-    let wrapper = container.querySelector('.canvasrefined-progress-wrapper');
-    if (!wrapper) {
-        wrapper = document.createElement('div');
-        wrapper.className = 'canvasrefined-progress-wrapper';
-        wrapper.style.display = 'flex';
-        wrapper.style.flexDirection = 'column';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.position = 'relative';
-        container.appendChild(wrapper);
-    }
-
-    // svg container
     let svg = wrapper.querySelector('svg.canvasrefined-progress-svg');
     if (!svg) {
         svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'canvasrefined-progress-svg');
-        svg.setAttribute('width', String(size));
-        svg.setAttribute('height', String(size));
-        svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
         svg.style.display = 'block';
         wrapper.appendChild(svg);
-    } else {
-        svg.setAttribute('width', String(size));
-        svg.setAttribute('height', String(size));
-        svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
     }
+    svg.setAttribute('width', String(size));
+    svg.setAttribute('height', String(size));
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
 
-    // ensure overlay text exists
     let overlay = wrapper.querySelector('.canvasrefined-progress-overlay');
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.className = 'canvasrefined-progress-overlay';
-        overlay.style.position = 'absolute';
-        overlay.style.left = '0';
-        overlay.style.top = '0';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
-        overlay.style.display = 'flex';
-        overlay.style.alignItems = 'center';
-        overlay.style.justifyContent = 'center';
-        overlay.style.pointerEvents = 'none';
+        overlay.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;';
         const textWrap = document.createElement('div');
-        textWrap.style.textAlign = 'center';
-        textWrap.style.color = 'var(--bctext-0)';
-        textWrap.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;'>${percent}%</div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:4px;'>${completedAll}/${totalAll} done</div>`;
+        textWrap.style.cssText = 'text-align:center;color:var(--bctext-0);';
+        textWrap.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;'></div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:4px;'></div>`;
         overlay.appendChild(textWrap);
         wrapper.appendChild(overlay);
-    } else {
-        const pc = overlay.querySelector('.canvasrefined-progress-percent');
-        const cnt = overlay.querySelector('.canvasrefined-progress-count');
-        if (pc) pc.textContent = `${percent}%`;
-        if (cnt) cnt.textContent = `${completedAll}/${totalAll} done`;
+    }
+    overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
+    overlay.querySelector('.canvasrefined-progress-count').textContent = `${completedAll}/${totalAll} done`;
+
+    const stroke = 8;
+    const gap = 4;
+    const decrement = stroke + gap;
+    const ringCount = shown.length;
+    const startRadius = outerRadius - stroke / 2;
+    const minCenterRadius = 28;
+    const requiredSpace = (ringCount - 1) * decrement + stroke / 2 + minCenterRadius;
+    let adjustFactor = 1;
+    if (requiredSpace > startRadius) {
+        adjustFactor = (startRadius - minCenterRadius - stroke / 2) / Math.max(1, (ringCount - 1) * decrement);
     }
 
-    // Update or create rings in-place
-    const existingBg = svg.querySelectorAll('circle.canvasrefined-ring-bg');
-    const existingFg = svg.querySelectorAll('circle.canvasrefined-progress-ring');
-
-    // reuse or create circles per shown entry
     shown.forEach((entry, idx) => {
         const radius = startRadius - idx * Math.max(1, Math.floor(decrement * adjustFactor));
+        if (radius <= 0) return;
         const circumference = 2 * Math.PI * radius;
-        const prog = entry.total === 0 ? 0 : (entry.completed / entry.total);
-        const color = options.custom_cards_3?.[String(entry.courseId)]?.color || options.custom_cards_3?.[entry.courseId]?.color || `hsl(${(idx * 60) % 360} 70% 50%)`;
+        const prog = entry.total === 0 ? 0 : entry.completed / entry.total;
+        const color = courseRingColor(entry.courseId, idx);
 
-        // background circle
-        let bg = svg.querySelector(`circle.canvasrefined-ring-bg[data-idx='${idx}']`);
+        let bg = svg.querySelector(`circle[data-idx='${idx}'][data-role='bg']`);
         if (!bg) {
             bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            bg.classList.add('canvasrefined-ring-bg');
             bg.setAttribute('data-idx', String(idx));
+            bg.setAttribute('data-role', 'bg');
+            bg.classList.add('canvasrefined-ring-bg');
             svg.appendChild(bg);
         }
         bg.setAttribute('cx', String(cx));
@@ -1503,15 +1711,18 @@ function renderProgressRings(container, scopedData) {
         bg.setAttribute('stroke-opacity', '0.25');
         bg.setAttribute('stroke-width', String(stroke));
         bg.setAttribute('fill', 'none');
+        bg.removeAttribute('stroke-dasharray');
+        bg.removeAttribute('stroke-dashoffset');
+        bg.removeAttribute('transform');
 
-        // foreground (progress) circle
-        let fg = svg.querySelector(`circle.canvasrefined-progress-ring[data-idx='${idx}']`);
+        let fg = svg.querySelector(`circle[data-idx='${idx}'][data-role='fg']`);
         const dasharrayVal = circumference.toFixed(3);
-        const dashoffsetTarget = (circumference * (1 - prog)).toFixed(3);
+        const target = (circumference * (1 - prog)).toFixed(3);
         if (!fg) {
             fg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            fg.classList.add('canvasrefined-progress-ring');
             fg.setAttribute('data-idx', String(idx));
+            fg.setAttribute('data-role', 'fg');
+            fg.classList.add('canvasrefined-progress-ring');
             fg.setAttribute('stroke-linecap', 'round');
             fg.setAttribute('transform', `rotate(-90 ${cx} ${cy})`);
             fg.setAttribute('stroke-dasharray', dasharrayVal);
@@ -1526,22 +1737,365 @@ function renderProgressRings(container, scopedData) {
         fg.setAttribute('stroke-width', String(stroke));
         fg.setAttribute('fill', 'none');
         fg.setAttribute('stroke-dasharray', dasharrayVal);
-        fg.setAttribute('data-target', dashoffsetTarget);
-
-        // request animation frame to set dashoffset to target (triggers transition)
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                fg.setAttribute('stroke-dashoffset', dashoffsetTarget);
-            });
-        });
+        const dim = progressFilterDim(entry.courseId);
+        bg.style.transition = 'opacity .3s ease';
+        bg.style.opacity = dim ? '0.25' : '';
+        fg.style.opacity = dim ? '0.3' : '';
+        requestAnimationFrame(() => requestAnimationFrame(() => fg.setAttribute('stroke-dashoffset', target)));
+        // transparent hit band on top so the whole ring is easy to click;
+        // width tracks the ring spacing so adjacent bands don't overlap.
+        const step = Math.max(1, Math.floor(decrement * adjustFactor));
+        let hit = svg.querySelector(`circle[data-idx='${idx}'][data-role='hit']`);
+        if (!hit) {
+            hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            hit.setAttribute('data-idx', String(idx));
+            hit.setAttribute('data-role', 'hit');
+            hit.setAttribute('fill', 'none');
+            hit.setAttribute('stroke', 'transparent');
+            hit.setAttribute('pointer-events', 'stroke');
+            svg.appendChild(hit);
+        }
+        hit.setAttribute('cx', String(cx));
+        hit.setAttribute('cy', String(cy));
+        hit.setAttribute('r', String(radius));
+        hit.setAttribute('stroke-width', String(Math.max(stroke, step)));
+        attachProgressFilterClick(hit, entry.courseId);
+        hit.onmouseenter = () => { bg.style.opacity = '0.8'; fg.style.opacity = '0.8'; };
+        hit.onmouseleave = () => {
+            const d = progressFilterDim(entry.courseId);
+            bg.style.opacity = d ? '0.25' : '';
+            fg.style.opacity = d ? '0.3' : '';
+        };
     });
 
-    // remove any extra existing circles
     const maxIdx = shown.length - 1;
-    svg.querySelectorAll('circle.canvasrefined-ring-bg, circle.canvasrefined-progress-ring').forEach(c => {
+    svg.querySelectorAll('circle').forEach(c => {
         const idx = parseInt(c.getAttribute('data-idx'));
         if (Number.isNaN(idx) || idx > maxIdx) c.remove();
     });
+}
+
+// Mode "rainbow": like "rings" (one arc per class) but condensed into a top
+// half-circle and colored with a rainbow palette instead of course colors.
+function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) {
+    const containerWidth = wrapper.clientWidth || 240;
+    const size = Math.min(280, Math.floor(containerWidth * 0.99));
+    const cx = size / 2;
+    const stroke = 8;
+    const gap = 4;
+    const decrement = stroke + gap;
+    const ringCount = shown.length;
+    const pad = 2;
+    const outerRadius = Math.max(20, Math.floor(size / 2) - stroke / 2 - pad);
+    // diameter line; arcs bulge UPWARD from here (into y < baseY)
+    const baseY = outerRadius + stroke / 2 + pad;
+    const svgHeight = Math.ceil(baseY + stroke / 2 + 2);
+
+    let svg = wrapper.querySelector('svg.canvasrefined-progress-svg');
+    if (!svg) {
+        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'canvasrefined-progress-svg');
+        svg.style.display = 'block';
+        wrapper.appendChild(svg);
+    }
+    svg.setAttribute('width', String(size));
+    svg.setAttribute('height', String(svgHeight));
+    svg.setAttribute('viewBox', `0 0 ${size} ${svgHeight}`);
+
+    // shrink spacing if too many classes would overflow the inner radius
+    const minInnerRadius = 14;
+    const requiredSpace = (ringCount - 1) * decrement;
+    let adjustFactor = 1;
+    if (requiredSpace > outerRadius - minInnerRadius) {
+        adjustFactor = (outerRadius - minInnerRadius) / Math.max(1, (ringCount - 1) * decrement);
+    }
+
+    shown.forEach((entry, idx) => {
+        const radius = outerRadius - idx * Math.max(1, Math.floor(decrement * adjustFactor));
+        if (radius <= 0) return;
+        // sweep-flag 1 => arc bulges UPWARD (top semicircle), drawn left -> right
+        const arcPath = `M ${cx - radius} ${baseY} A ${radius} ${radius} 0 0 1 ${cx + radius} ${baseY}`;
+        const prog = entry.total === 0 ? 0 : entry.completed / entry.total;
+        const color = courseRingColor(entry.courseId, idx);
+
+        // track: full semicircle, faded class color
+        let track = svg.querySelector(`path[data-idx='${idx}'][data-role='bg']`);
+        if (!track) {
+            track = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            track.setAttribute('data-idx', String(idx));
+            track.setAttribute('data-role', 'bg');
+            track.setAttribute('fill', 'none');
+            track.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(track);
+        }
+        track.setAttribute('d', arcPath);
+        track.setAttribute('stroke', color);
+        track.setAttribute('stroke-opacity', '0.25');
+        track.setAttribute('stroke-width', String(stroke));
+        track.removeAttribute('stroke-dasharray');
+        track.removeAttribute('stroke-dashoffset');
+
+        // progress arc: completed portion drawn from the left, via pathLength=100
+        let progArc = svg.querySelector(`path[data-idx='${idx}'][data-role='fg']`);
+        const targetOff = (100 * (1 - prog)).toFixed(3);
+        if (!progArc) {
+            progArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            progArc.setAttribute('data-idx', String(idx));
+            progArc.setAttribute('data-role', 'fg');
+            progArc.setAttribute('fill', 'none');
+            progArc.setAttribute('stroke-linecap', 'round');
+            progArc.setAttribute('pathLength', '100');
+            progArc.setAttribute('stroke-dasharray', '100 100');
+            progArc.setAttribute('stroke-dashoffset', '100'); // start empty
+            progArc.style.transition = 'stroke-dashoffset .8s cubic-bezier(.2,.9,.2,1), opacity .3s ease';
+            svg.appendChild(progArc);
+        }
+        progArc.setAttribute('d', arcPath);
+        progArc.setAttribute('stroke', color);
+        progArc.setAttribute('stroke-width', String(stroke));
+        progArc.setAttribute('stroke-dasharray', '100 100');
+        const dim = progressFilterDim(entry.courseId);
+        track.style.transition = 'opacity .3s ease';
+        track.style.opacity = dim ? '0.25' : '';
+        progArc.style.opacity = dim ? '0.3' : '';
+        requestAnimationFrame(() => requestAnimationFrame(() => progArc.setAttribute('stroke-dashoffset', targetOff)));
+        // transparent hit arc on top so the whole arc is easy to click.
+        let hit = svg.querySelector(`path[data-idx='${idx}'][data-role='hit']`);
+        if (!hit) {
+            hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            hit.setAttribute('data-idx', String(idx));
+            hit.setAttribute('data-role', 'hit');
+            hit.setAttribute('fill', 'none');
+            hit.setAttribute('stroke', 'transparent');
+            hit.setAttribute('stroke-linecap', 'round');
+            hit.setAttribute('pointer-events', 'stroke');
+            svg.appendChild(hit);
+        }
+        hit.setAttribute('d', arcPath);
+        hit.setAttribute('stroke-width', String(stroke + 6));
+        attachProgressFilterClick(hit, entry.courseId);
+        hit.onmouseenter = () => { track.style.opacity = '0.8'; progArc.style.opacity = '0.8'; };
+        hit.onmouseleave = () => {
+            const d = progressFilterDim(entry.courseId);
+            track.style.opacity = d ? '0.25' : '';
+            progArc.style.opacity = d ? '0.3' : '';
+        };
+    });
+
+    // drop arcs for classes no longer shown
+    const maxIdx = shown.length - 1;
+    svg.querySelectorAll('path').forEach(p => {
+        const idx = parseInt(p.getAttribute('data-idx'));
+        if (Number.isNaN(idx) || idx > maxIdx) p.remove();
+    });
+
+    // Overlay the percent/count text INSIDE the rainbow's semicircle hole
+    // (the empty bowl bounded by the INNERMOST arc) instead of beneath it or
+    // up among the arcs. The SVG is centered in the wrapper, so an absolutely-
+    // positioned overlay covering the wrapper with flex centering aligns the
+    // text to the SVG's horizontal center. Vertically we target the centroid of
+    // the innermost semicircle (a touch above the diameter line) so the text
+    // sits in the arc-free pocket near the bottom rather than near the apexes
+    // of the inner arcs, where it would overlap the rainbow strokes.
+    const step = Math.max(1, Math.floor(decrement * adjustFactor));
+    const innerRadius = ringCount > 0 ? Math.max(1, outerRadius - (ringCount - 1) * step) : outerRadius;
+    const holeCenterY = baseY - (4 * innerRadius) / (3 * Math.PI) + 6;
+    const nudge = Math.round(holeCenterY - svgHeight / 2);
+    let overlay = wrapper.querySelector('.canvasrefined-progress-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'canvasrefined-progress-overlay';
+        overlay.style.cssText = `position:absolute;left:0;top:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;transform:translateY(${nudge}px);`;
+        overlay.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;color:var(--bctext-0);'></div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:3px;color:var(--bctext-0);'></div>`;
+        wrapper.appendChild(overlay);
+    } else {
+        overlay.style.transform = `translateY(${nudge}px)`;
+    }
+    overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
+    overlay.querySelector('.canvasrefined-progress-count').textContent = `${completedAll}/${totalAll} done`;
+}
+
+// Mode "lines": one horizontal bar per course, each with its own %.
+function renderProgressLines(wrapper, shown) {
+    let list = wrapper.querySelector('.canvasrefined-progress-lines');
+    if (!list) {
+        list = document.createElement('div');
+        list.className = 'canvasrefined-progress-lines';
+        list.style.cssText = 'display:flex;flex-direction:column;gap:8px;width:100%;box-sizing:border-box;';
+        wrapper.appendChild(list);
+    }
+    while (list.children.length > shown.length) list.lastChild.remove();
+
+    shown.forEach((entry, idx) => {
+        const prog = entry.total === 0 ? 0 : entry.completed / entry.total;
+        const pct = Math.round(prog * 100);
+        const color = courseRingColor(entry.courseId, idx);
+
+        let row = list.children[idx];
+        if (!row) {
+            row = document.createElement('div');
+            row.className = 'canvasrefined-progress-line';
+            row.style.cssText = 'display:flex;flex-direction:column;gap:3px;width:100%;';
+            row.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;"><span class="cr-pl-label" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;"></span><span class="cr-pl-pct" style="flex-shrink:0;font-weight:600;color:var(--bctext-0);"></span></div><div style="position:relative;height:8px;border-radius:999px;overflow:hidden;"><div class="cr-pl-fill" style="height:100%;border-radius:999px;width:0%;transition:width .8s cubic-bezier(.2,.9,.2,1);"></div></div>`;
+            list.appendChild(row);
+        }
+        const labelEl = row.querySelector('.cr-pl-label');
+        labelEl.textContent = courseRingLabel(entry.courseId);
+        labelEl.style.color = color;
+        row.querySelector('.cr-pl-pct').textContent = `${pct}% (${entry.completed}/${entry.total})`;
+        const track = row.children[1];
+        track.style.background = `color-mix(in srgb, ${color} 25%, transparent)`;
+        const fill = row.querySelector('.cr-pl-fill');
+        fill.style.background = color;
+        if (!fill.dataset.init) {
+            fill.dataset.init = '1';
+            requestAnimationFrame(() => requestAnimationFrame(() => fill.style.width = `${pct}%`));
+        } else {
+            fill.style.width = `${pct}%`;
+        }
+        row.style.transition = 'opacity .3s ease';
+        row.style.opacity = progressFilterDim(entry.courseId) ? '0.4' : '';
+        attachProgressFilterClick(row, entry.courseId);
+        row.onmouseenter = () => { row.style.opacity = '0.8'; };
+        row.onmouseleave = () => { row.style.opacity = progressFilterDim(entry.courseId) ? '0.4' : ''; };
+    });
+}
+
+// Mode "line": one horizontal bar where each class's COMPLETED portion is packed
+// to the left (full course color) and its UNCOMPLETED portion to the right
+// (faded course color), with no gaps between segments. Overall % shown above.
+function renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent) {
+    let box = wrapper.querySelector('.canvasrefined-progress-oneline');
+    if (!box) {
+        box = document.createElement('div');
+        box.className = 'canvasrefined-progress-oneline';
+        box.style.cssText = 'display:flex;flex-direction:column;gap:5px;width:100%;box-sizing:border-box;';
+        wrapper.appendChild(box);
+    }
+
+    let head = box.querySelector('.cr-ol-head');
+    if (!head) {
+        head = document.createElement('div');
+        head.className = 'cr-ol-head';
+        head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--bctext-0);';
+        head.innerHTML = `<span>Overall</span><span class="cr-ol-pct" style="font-weight:700;"></span>`;
+        box.appendChild(head);
+    }
+    box.querySelector('.cr-ol-pct').textContent = `${percent}% (${completedAll}/${totalAll})`;
+    // Clicking the "Overall" header clears the active class filter.
+    if (getCurrentCourseId() == null) {
+        head.style.cursor = betterTodoProgressFilter != null ? 'pointer' : '';
+        head.onclick = () => {
+            if (betterTodoProgressFilter == null) return;
+            betterTodoProgressFilter = null;
+            const loc = document.querySelector("#canvasrefined-todo-list");
+            if (loc) { clearTodoList(); createTodoSections(loc); }
+        };
+    } else {
+        head.style.cursor = '';
+        head.onclick = null;
+    }
+
+    let bar = box.querySelector('.cr-ol-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'cr-ol-bar';
+        // position:relative so absolutely-positioned segments anchor to it
+        bar.style.cssText = 'position:relative;width:100%;height:14px;border-radius:999px;overflow:hidden;background:var(--bcbackground-1);';
+        box.appendChild(bar);
+    }
+
+    // Build the segment list left -> right: ALL completed blocks first (each
+    // class's full course color), then ALL remaining blocks (each class's faded
+    // course color). This keeps every completed segment on the left and every
+    // remaining segment on the right. Consecutive segments share edges, so
+    // there are no gaps between them.
+    const segs = [];
+    let left = 0;
+    // First pass: completed blocks for every class (left side).
+    shown.forEach((entry, idx) => {
+        const color = courseRingColor(entry.courseId, idx);
+        const doneW = totalAll === 0 ? 0 : (entry.completed / totalAll) * 100;
+        if (doneW > 0) { segs.push({ left, w: doneW, bg: color, courseId: entry.courseId }); left += doneW; }              // completed: full color
+    });
+    // Second pass: remaining blocks for every class (right side).
+    shown.forEach((entry, idx) => {
+        const color = courseRingColor(entry.courseId, idx);
+        const remW = totalAll === 0 ? 0 : ((entry.total - entry.completed) / totalAll) * 100;
+        if (remW > 0) { segs.push({ left, w: remW, bg: `color-mix(in srgb, ${color} 25%, transparent)`, courseId: entry.courseId }); left += remW; } // remaining: faded
+    });
+
+    while (bar.children.length > segs.length) bar.lastChild.remove();
+
+    segs.forEach((seg, idx) => {
+        let el = bar.children[idx];
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'cr-ol-seg';
+            el.style.cssText = 'position:absolute;top:0;height:100%;transition:left .6s ease,width .6s ease,background .3s ease,opacity .3s ease;';
+            bar.appendChild(el);
+        }
+        el.style.left = `${seg.left}%`;
+        el.style.width = `${seg.w}%`;
+        el.style.background = seg.bg;
+        el.style.opacity = progressFilterDim(seg.courseId) ? '0.35' : '';
+        attachProgressFilterClick(el, seg.courseId);
+        el.onmouseenter = () => { el.style.opacity = '0.8'; };
+        el.onmouseleave = () => { el.style.opacity = progressFilterDim(seg.courseId) ? '0.35' : ''; };
+    });
+}
+
+function renderProgressRings(container, scopedData) {
+    const mode = getProgressRingMode();
+    if (mode === "none") { container.innerHTML = ""; return; }
+
+    const allAssignments = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note"));
+
+    const groups = {};
+    allAssignments.forEach(item => {
+        const cid = String(item.course_id || item.context_id || item.plannable?.course_id || "personal");
+        groups[cid] = groups[cid] || [];
+        groups[cid].push(item);
+    });
+
+    const entries = Object.keys(groups).map(cid => {
+        const arr = groups[cid];
+        const completed = arr.filter(it => (it.submissions?.submitted || it.planner_override?.marked_complete)).length;
+        return { courseId: cid, total: arr.length, completed };
+    }).filter(e => e.total > 0);
+
+    if (!entries.length) { container.innerHTML = ""; return; }
+
+    // sort by total desc and limit to 6 courses
+    entries.sort((a, b) => b.total - a.total);
+    const shown = entries.slice(0, 6);
+
+    const totalAll = shown.reduce((s, e) => s + e.total, 0);
+    const completedAll = shown.reduce((s, e) => s + e.completed, 0);
+    const percent = totalAll === 0 ? 0 : Math.round((completedAll / totalAll) * 100);
+
+    // wrapper reused across renders; clear on mode switch so each mode rebuilds fresh DOM
+    let wrapper = container.querySelector('.canvasrefined-progress-wrapper');
+    if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'canvasrefined-progress-wrapper';
+        wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:center;position:relative;width:100%;box-sizing:border-box;';
+        container.appendChild(wrapper);
+    }
+    if (wrapper.dataset.mode !== mode) {
+        wrapper.innerHTML = '';
+        wrapper.dataset.mode = mode;
+    }
+
+    if (mode === "rings") {
+        renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent);
+    } else if (mode === "rainbow") {
+        renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent);
+    } else if (mode === "lines") {
+        renderProgressLines(wrapper, shown);
+    } else if (mode === "line") {
+        renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent);
+    }
 }
 
 function buildPlannerNotePayload(form) {
@@ -1699,13 +2253,18 @@ function deleteCustomTaskLink(noteId) {
 async function updateCanvasPlannerNote(id, payload) {
     if (!id) throw new Error("Missing task id.");
     const csrfToken = CSRFtoken();
+    // Canvas's planner_notes update endpoint permits FLAT parameters
+    // (title, details, course_id, todo_date) — NOT nested under planner_note.
+    // Sending nested params is silently ignored, so note.update({}) runs and
+    // returns 200 with the unchanged note, making edits appear to "not save".
+    // Always include details (even empty) so the field can be cleared.
     const plannerNote = {
         title: payload.title,
         todo_date: payload.todoDate,
+        details: payload.details || "",
+        // Sending course_id as empty string disassociates the note from its course.
+        course_id: payload.courseId || "",
     };
-    if (payload.details) plannerNote.details = payload.details;
-    // Sending course_id as empty string disassociates the note from its course.
-    plannerNote.course_id = payload.courseId || "";
 
     const attempts = [
         {
@@ -1714,7 +2273,7 @@ async function updateCanvasPlannerNote(id, payload) {
                 "accept": "application/json",
                 "X-CSRF-Token": csrfToken,
             },
-            body: JSON.stringify({ planner_note: plannerNote }),
+            body: JSON.stringify(plannerNote),
         },
         {
             headers: {
@@ -1724,10 +2283,10 @@ async function updateCanvasPlannerNote(id, payload) {
             },
             body: (() => {
                 const formBody = new URLSearchParams();
-                formBody.set("planner_note[title]", plannerNote.title);
-                formBody.set("planner_note[todo_date]", plannerNote.todo_date);
-                if (plannerNote.details) formBody.set("planner_note[details]", plannerNote.details);
-                formBody.set("planner_note[course_id]", plannerNote.course_id);
+                formBody.set("title", plannerNote.title);
+                formBody.set("todo_date", plannerNote.todo_date);
+                formBody.set("details", plannerNote.details);
+                formBody.set("course_id", plannerNote.course_id);
                 return formBody.toString();
             })(),
         },
@@ -1810,7 +2369,9 @@ function fillTaskCourseOptions(courseSelect) {
     const cards = options.custom_cards || {};
     const courseColors = options.custom_cards_3 || {};
     const currentCourseId = getCurrentCourseId();
+    // Hidden courses should not be offered as a target for custom tasks.
     const entries = Object.entries(cards)
+        .filter(([, card]) => card?.hidden !== true)
         .map(([id, card]) => ({
             id,
             label: card?.default || `Course ${id}`,
@@ -2136,9 +2697,29 @@ async function createTodoSections(location) {
             })
             : data;
 
-        announcements = scopedData.filter(item => item.plannable_type == "announcement");
-        assignmentsDue = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && !item.submissions?.submitted && !item.planner_override?.marked_complete);
-        completed = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && (item.submissions?.submitted || item.planner_override?.marked_complete));
+        // Clicking a color in the progress display filters the list to that
+        // one class. The filter only makes sense where multiple classes show
+        // (dashboard/profile), so it is cleared on course pages.
+        if (courseId) betterTodoProgressFilter = null;
+        const displayData = (betterTodoProgressFilter == null)
+            ? scopedData
+            : scopedData.filter(item => {
+                const cid = String(item.course_id || item.context_id || item.plannable?.course_id || "personal");
+                return cid === String(betterTodoProgressFilter);
+            });
+
+        announcements = displayData.filter(item => item.plannable_type == "announcement");
+        assignmentsDue = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && !item.submissions?.submitted && !item.planner_override?.marked_complete);
+        completed = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && (item.submissions?.submitted || item.planner_override?.marked_complete));
+        // The timeframe is a persisted Better Todo List sub-option set in the
+        // popup. Read the current value each render so popup changes apply on
+        // the next render. Keeps items due on/before now+range (overdue items
+        // are before now, so they are kept too). Only the Tasks tab is affected.
+        betterTodoTimeframe = (options.todo_timeframe && Object.prototype.hasOwnProperty.call(BETTER_TODO_TIMEFRAME_DAYS, options.todo_timeframe)) ? options.todo_timeframe : "all";
+        if (betterTodoTimeframe !== "all") {
+            const cutoff = Date.now() + (BETTER_TODO_TIMEFRAME_DAYS[betterTodoTimeframe] * 24 * 60 * 60 * 1000);
+            assignmentsDue = assignmentsDue.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
+        }
 		// console.log("assignments", assignmentsDue);
 		// console.log("announcements", announcements);
 		// console.log("completed", completed);
@@ -2172,7 +2753,7 @@ async function createTodoSections(location) {
             if (key == "Later") label = "Due <strong>Later</strong>";
             if (key == "-1") label = "<strong>Overdue</strong>";
             else if (key == "0") label = "Due <strong>Today</strong>";
-            else if (key == "1") label = "Due <strong>Tommorow</strong>";
+            else if (key == "1") label = "Due <strong>Tomorrow</strong>";
             else if (key >= 2 && key < 7) label = "Due <strong>" + key + " days</strong>";
             else if (key >= 7 && key < 30) label = "Due <strong>" + key/7 + " weeks</strong>";
             else if (key == "30") label = "Due <strong>1 month</strong>";
@@ -2204,7 +2785,7 @@ async function createTodoSections(location) {
         // populate progress rings placeholder (respect user toggle)
         const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
         if (progressPlaceholder) {
-            if (options.todo_progress_rings === undefined || options.todo_progress_rings === true) {
+            if (progressRingsEnabled()) {
                 renderProgressRings(progressPlaceholder, scopedData);
             } else {
                 progressPlaceholder.innerHTML = "";
@@ -2280,6 +2861,146 @@ function clearTodoList() {
 	document.querySelectorAll(".better-todo-dueheader").forEach(header => {
 		header.remove();
 	});
+}
+
+// "Alternate colors" (Better Todo List, light mode only): recolors the main
+// todo-list icon fill to white instead of the default --bctext-0, so icons
+// stay visible on lighter course-color strips. Implemented through a CSS
+// variable so toggling the option or dark mode recolors existing icons live
+// without a re-render.
+const TODO_ALT_ICON_COLOR = "#ffffff";
+let todoAltStyleEl = null;
+function applyTodoAlternateColors() {
+    const altOn = options.todo_alternate_colors === true && options.dark_mode !== true;
+    const color = altOn ? TODO_ALT_ICON_COLOR : "var(--bctext-0)";
+    if (!todoAltStyleEl) {
+        todoAltStyleEl = document.createElement("style");
+        todoAltStyleEl.id = "crtodoaltcss";
+        document.documentElement.append(todoAltStyleEl);
+    }
+    todoAltStyleEl.textContent = `:root{--cr-todo-icon:${color};}`;
+}
+
+// --- Hover preview (Better Todo List: "Previews on hover") ---
+// The todo list is rendered by createTodoSections -> populateAssignments /
+// populateAnnouncements (the old loadBetterTodo renderer is no longer called).
+// A single shared, body-level tooltip is reused across items so it is never
+// clipped by the sidebar's scroll/overflow containers. It reuses the
+// .canvasrefined-hover-preview class so existing light/dark styling applies.
+let todoPreviewDelay = null;
+let todoPreviewToken = 0;
+const todoPreviewCache = new Map();
+
+function stripHtmlPreview(html) {
+    if (!html) return "";
+    return String(html).replace(/<\/?[^>]+(>|$)/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getTodoPreviewEl() {
+    let el = document.getElementById("canvasrefined-todo-preview");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "canvasrefined-todo-preview";
+    el.className = "canvasrefined-hover-preview";
+    el.innerHTML = '<p class="canvasrefined-preview-title"></p><p class="canvasrefined-preview-text"></p>';
+    el.style.position = "fixed";
+    el.style.zIndex = "100001";
+    el.style.width = "300px";
+    el.style.maxWidth = "90vw";
+    el.style.maxHeight = "260px";
+    document.body.append(el);
+    return el;
+}
+
+function positionTodoPreview(el, anchor) {
+    const r = anchor.getBoundingClientRect();
+    const gap = 10;
+    const pw = el.offsetWidth || 300;
+    const ph = el.offsetHeight || 160;
+    let left = r.left - pw - gap;
+    let top = r.top;
+    if (left < gap) {
+        left = r.right + gap;
+        if (left + pw > window.innerWidth - gap) left = Math.max(gap, window.innerWidth - pw - gap);
+    }
+    if (top + ph > window.innerHeight - gap) top = Math.max(gap, window.innerHeight - ph - gap);
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+}
+
+async function getTodoPreviewText(item) {
+    const type = item.plannable_type;
+    const id = item.plannable_id;
+    const key = type + ":" + id;
+    if (todoPreviewCache.has(key)) return todoPreviewCache.get(key);
+    // Custom task (planner note): the description is already on the planner
+    // item as item.plannable.details, so no API call is needed.
+    if (type === "planner_note" || (item.planner_override && item.planner_override.custom === true)) {
+        const raw = item.plannable && item.plannable.details ? item.plannable.details : "";
+        const text = stripHtmlPreview(raw) || "No details given";
+        todoPreviewCache.set(key, text);
+        return text;
+    }
+    let url = null;
+    let field = "description";
+    if (type === "assignment") {
+        url = `${domain}/api/v1/courses/${item.course_id}/assignments/${id}`;
+    } else if (type === "quiz") {
+        url = `${domain}/api/v1/courses/${item.course_id}/quizzes/${id}`;
+    } else if (type === "discussion_topic" || type === "announcement") {
+        url = `${domain}/api/v1/courses/${item.course_id}/discussion_topics/${id}`;
+        field = "message";
+    }
+    if (!url) {
+        const text = "No preview available";
+        todoPreviewCache.set(key, text);
+        return text;
+    }
+    try {
+        const data = await getData(url);
+        const raw = data && data[field] ? data[field] : "";
+        const text = stripHtmlPreview(raw) || "No details given";
+        todoPreviewCache.set(key, text);
+        return text;
+    } catch (e) {
+        return "Couldn't load preview";
+    }
+}
+
+function hideTodoPreview() {
+    todoPreviewToken++; // cancel any pending async text update
+    const el = document.getElementById("canvasrefined-todo-preview");
+    if (el) el.style.display = "none";
+}
+
+async function showTodoPreview(anchor, item) {
+    const token = ++todoPreviewToken;
+    const el = getTodoPreviewEl();
+    const title = el.querySelector(".canvasrefined-preview-title");
+    const text = el.querySelector(".canvasrefined-preview-text");
+    title.textContent = item.plannable && item.plannable.title ? item.plannable.title : "";
+    text.textContent = "Loading…";
+    el.style.display = "block";
+    positionTodoPreview(el, anchor);
+    const content = await getTodoPreviewText(item);
+    if (token !== todoPreviewToken) return; // a newer hover (or hide) superseded this one
+    if (el.style.display !== "block") return; // user already moved away
+    text.textContent = content;
+    positionTodoPreview(el, anchor); // reposition now that the height is known
+}
+
+function attachTodoHoverPreview(anchor, item) {
+    if (options.hover_preview !== true) return;
+    anchor.addEventListener("mouseenter", () => {
+        clearTimeout(todoPreviewDelay);
+        todoPreviewDelay = setTimeout(() => {
+            if (anchor.matches(":hover")) showTodoPreview(anchor, item);
+        }, 250);
+    });
+    anchor.addEventListener("mouseleave", () => {
+        clearTimeout(todoPreviewDelay);
+        hideTodoPreview();
+    });
 }
 
 function populateAssignments(iscompleted = false) {
@@ -2360,9 +3081,9 @@ function populateAssignments(iscompleted = false) {
         const iconLeftOffset = isCustomTask ? 2 : 5;
         const taskIcon = isCustomTask
             ? `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
-                <path d="M19.8201 14H15.6001C15.04 14 14.76 14 14.5461 14.109C14.3579 14.2049 14.2049 14.3578 14.1091 14.546C14.0001 14.7599 14.0001 15.0399 14.0001 15.6V19.82M20 12.7269V7.2C20 6.0799 20 5.51984 19.782 5.09202C19.5903 4.71569 19.2843 4.40973 18.908 4.21799C18.4802 4 17.9201 4 16.8 4H7.2C6.0799 4 5.51984 4 5.09202 4.21799C4.71569 4.40973 4.40973 4.71569 4.21799 5.09202C4 5.51984 4 6.0799 4 7.2V16.8C4 17.9201 4 18.4802 4.21799 18.908C4.40973 19.2843 4.71569 19.5903 5.09202 19.782C5.51984 20 6.0799 20 7.2 20H12.9496C13.4578 20 13.7118 20 13.9498 19.9407C14.1608 19.8882 14.3618 19.8016 14.5449 19.6844C14.7515 19.5522 14.926 19.3675 15.2751 18.9983L19.1254 14.9252C19.4486 14.5833 19.6101 14.4124 19.7255 14.2156C19.8278 14.041 19.903 13.8519 19.9486 13.6548C20 13.4325 20 13.1973 20 12.7269Z" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M19.8201 14H15.6001C15.04 14 14.76 14 14.5461 14.109C14.3579 14.2049 14.2049 14.3578 14.1091 14.546C14.0001 14.7599 14.0001 15.0399 14.0001 15.6V19.82M20 12.7269V7.2C20 6.0799 20 5.51984 19.782 5.09202C19.5903 4.71569 19.2843 4.40973 18.908 4.21799C18.4802 4 17.9201 4 16.8 4H7.2C6.0799 4 5.51984 4 5.09202 4.21799C4.71569 4.40973 4.40973 4.71569 4.21799 5.09202C4 5.51984 4 6.0799 4 7.2V16.8C4 17.9201 4 18.4802 4.21799 18.908C4.40973 19.2843 4.71569 19.5903 5.09202 19.782C5.51984 20 6.0799 20 7.2 20H12.9496C13.4578 20 13.7118 20 13.9498 19.9407C14.1608 19.8882 14.3618 19.8016 14.5449 19.6844C14.7515 19.5522 14.926 19.3675 15.2751 18.9983L19.1254 14.9252C19.4486 14.5833 19.6101 14.4124 19.7255 14.2156C19.8278 14.041 19.903 13.8519 19.9486 13.6548C20 13.4325 20 13.1973 20 12.7269Z" stroke="var(--cr-todo-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>`
-            : `<svg fill="var(--bctext-0)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
+            : `<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
                 <g id="SVGRepo_bgCarrier" stroke-width="1"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
                 <g id="SVGRepo_iconCarrier">
                     <path d="M1468.214 0v551.145L840.27 1179.089c-31.623 31.623-49.693 74.54-49.693 119.715v395.289h395.288c45.176 0 88.093-18.07 119.716-49.694l162.633-162.633v438.206H0V0h1468.214Zm129.428 581.3c22.137-22.136 57.825-22.136 79.962 0l225.879 225.879c22.023 22.023 22.023 57.712 0 79.848l-677.638 677.637c-10.616 10.503-24.96 16.49-39.98 16.49H903.516v-282.35c0-15.02 5.986-29.364 16.49-39.867Zm-920.005 548.095H338.82v112.94h338.818v-112.94Zm225.88-225.879H338.818v112.94h564.697v-112.94Zm734.106-202.5-89.561 89.56 146.03 146.031 89.562-89.56-146.031-146.031Zm-508.228-362.197H338.82v338.818h790.576V338.82Z" fill-rule="evenodd"></path>
@@ -2379,7 +3100,7 @@ function populateAssignments(iscompleted = false) {
 			</div>
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;position:relative;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
-					<span style="color:${courseColor};font-size:12px;margin-top:-2px;">${item.context_name}</span>
+					<span style="color:${courseColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
 					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${item.plannable.title}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
@@ -2406,6 +3127,7 @@ function populateAssignments(iscompleted = false) {
 				openTaskForEdit(item);
 			});
 		}
+		attachTodoHoverPreview(assignment, item);
 	});
 
 	if (document.getElementById("better-todo-see-more")) {
@@ -2468,7 +3190,7 @@ function populateAnnouncements() {
 		<div style="display:flex;align-items:center;gap:5px;width:100%;height:60px;background:var(--bcbackground-2);border-radius:5px;${filter}">
 			<div style="width:40px;display:flex;align-items:center;justify-content:center;background-color:${courseColor};height:100%;border-radius:5px 0 0 5px;">
 				<div style="width:23px;height:23px;display:flex;margin-left:0px;">
-					<svg fill="var(--bctext-0)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="transition:all .3s ease;">
+					<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="transition:all .3s ease;">
 						<g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
 						<g id="SVGRepo_iconCarrier">
 							<path d="M1587.162 31.278c11.52-23.491 37.27-35.689 63.473-29.816 25.525 6.099 43.483 28.8 43.483 55.002V570.46C1822.87 596.662 1920 710.733 1920 847.053c0 136.32-97.13 250.503-225.882 276.705v513.883c0 26.202-17.958 49.016-43.483 55.002a57.279 57.279 0 0 1-12.988 1.468c-21.12 0-40.772-11.745-50.485-31.171C1379.238 1247.203 964.18 1242.347 960 1242.347H564.706v564.706h87.755c-11.859-90.127-17.506-247.003 63.473-350.683 52.405-67.087 129.657-101.082 229.948-101.082v112.941c-64.49 0-110.57 18.861-140.837 57.487-68.781 87.868-45.064 263.83-30.269 324.254 4.18 16.828.34 34.673-10.277 48.34-10.73 13.665-27.219 21.684-44.499 21.684H508.235c-31.171 0-56.47-25.186-56.47-56.47v-621.177h-56.47c-155.747 0-282.354-126.607-282.354-282.353v-56.47h-56.47C25.299 903.523 0 878.336 0 847.052c0-31.172 25.299-56.471 56.47-56.471h56.471v-56.47c0-155.634 126.607-282.354 282.353-282.354h564.593c16.941-.112 420.48-7.002 627.275-420.48Zm-5.986 218.429c-194.71 242.371-452.216 298.164-564.705 311.04v572.724c112.489 12.876 369.995 68.556 564.705 311.04ZM903.53 564.7H395.294c-93.402 0-169.412 76.01-169.412 169.411v225.883c0 93.402 76.01 169.412 169.412 169.412H903.53V564.7Zm790.589 123.444v317.93c65.618-23.379 112.94-85.497 112.94-159.021 0-73.525-47.322-135.53-112.94-158.909Z" fill-rule="evenodd"></path>
@@ -2478,13 +3200,14 @@ function populateAnnouncements() {
 			</div>
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
-					<span style="color:${courseColor};font-size:12px;margin-top:-2px;">${item.context_name}</span>
+					<span style="color:${courseColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
 					<a href="${domain + item.html_url}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${item.plannable.title}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
 			</div>
 		</div>
 		`;
+		attachTodoHoverPreview(announcement, item);
 	});
 }
 
@@ -2606,66 +3329,85 @@ function createConfettiBurst(targetElement, opts = {}) {
 function markAs(item, element) {
 	const csrfToken = CSRFtoken();
 	const completeState = item.planner_override ? !item.planner_override.marked_complete : true;
-    fetch(domain + "/api/v1/planner/overrides" + (item.planner_override ? "/" + item.planner_override.id : ""), {
-		method: item.planner_override ? "PUT" : "POST",
-		headers: {
-			"content-type":"application/json",
-			"accept":"application/json",
-			"X-CSRF-Token": csrfToken
-		},
-		body: JSON.stringify({
-			id: item.planner_override ? item.planner_override.id : null,
-			marked_complete: completeState,
-			plannable_id: item.plannable_id,
-			plannable_type: item.plannable_type
-		})
-	})
-	.then(resp => {
-        if (resp.status == 200 || resp.status == 201 || resp.status == 204) {
-			console.log("marked as complete");
-			item.planner_override = item.planner_override || {};
-			item.planner_override.marked_complete = completeState;
-			element.style.transform = "translate(100%)";
-			element.style.opacity = "0";
 
-            // fire confetti only when marking complete (not when unmarking)
-            if (completeState) {
-                try { createConfettiBurst(element); } catch (e) { console.error('confetti trigger error', e); }
+    // --- Optimistic UI ---
+    // Canvas's /planner/overrides endpoint occasionally returns 400 (Bad
+    // Request) for both custom tasks and normal tasks, even though the action
+    // is actually applied server-side shortly after. When that happens the
+    // item would neither visually mark nor animate, and would later appear
+    // "secretly complete" on reload. To avoid that confusing UX, we update the
+    // UI as if the request succeeded immediately, and fire the actual API
+    // call in the background for persistence.
+    item.planner_override = item.planner_override || {};
+    item.planner_override.marked_complete = completeState;
+    element.style.transform = "translate(100%)";
+    element.style.opacity = "0";
+
+    // fire confetti only when marking complete (not when unmarking)
+    if (completeState) {
+        try { createConfettiBurst(element); } catch (e) { console.error('confetti trigger error', e); }
+    }
+
+    // update progress rings immediately so they animate while the item slides/fades
+    const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
+    if (progressPlaceholder && typeof assignments?.then === 'function' && progressRingsEnabled()) {
+        assignments.then(data => {
+            const courseId = getCurrentCourseId();
+            const scopedData = courseId
+                ? data.map(d => Object.assign({}, d)) // shallow copy
+                    .filter(d => {
+                        const itemCourseId = parseInt(d.course_id || d.context_id || d?.plannable?.course_id);
+                        return itemCourseId === courseId;
+                    })
+                : data.map(d => Object.assign({}, d));
+
+            // reflect the updated state for this item in the snapshot
+            for (let i = 0; i < scopedData.length; i++) {
+                if (scopedData[i].plannable_id === item.plannable_id && scopedData[i].plannable_type === item.plannable_type) {
+                    scopedData[i].planner_override = scopedData[i].planner_override || {};
+                    scopedData[i].planner_override.marked_complete = item.planner_override.marked_complete;
+                    break;
+                }
             }
 
-        // update progress rings immediately so they animate while the item slides/fades
-        const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
-        if (progressPlaceholder && typeof assignments?.then === 'function' && (options.todo_progress_rings === undefined || options.todo_progress_rings === true)) {
-            assignments.then(data => {
-                const courseId = getCurrentCourseId();
-                const scopedData = courseId
-                    ? data.map(d => Object.assign({}, d)) // shallow copy
-                        .filter(d => {
-                            const itemCourseId = parseInt(d.course_id || d.context_id || d?.plannable?.course_id);
-                            return itemCourseId === courseId;
-                        })
-                    : data.map(d => Object.assign({}, d));
+            renderProgressRings(progressPlaceholder, scopedData);
+        });
+    }
 
-                // reflect the updated state for this item in the snapshot
-                for (let i = 0; i < scopedData.length; i++) {
-                    if (scopedData[i].plannable_id === item.plannable_id && scopedData[i].plannable_type === item.plannable_type) {
-                        scopedData[i].planner_override = scopedData[i].planner_override || {};
-                        scopedData[i].planner_override.marked_complete = item.planner_override.marked_complete;
-                        break;
-                    }
-                }
+    setTimeout(() => {
+        clearTodoList();
+        createTodoSections(document.querySelector("#canvasrefined-todo-list"));
+    }, 400);
 
-                renderProgressRings(progressPlaceholder, scopedData);
-            });
+    // --- Persistence (background, best-effort) ---
+    // A 400/non-OK response is treated as a soft success because Canvas often
+    // completes the override server-side anyway; we already reflected the
+    // change in the UI, so just log it.
+    fetch(domain + "/api/v1/planner/overrides" + (item.planner_override && item.planner_override.id ? "/" + item.planner_override.id : ""), {
+        method: item.planner_override && item.planner_override.id ? "PUT" : "POST",
+        headers: {
+            "content-type":"application/json",
+            "accept":"application/json",
+            "X-CSRF-Token": csrfToken
+        },
+        body: JSON.stringify({
+            id: item.planner_override && item.planner_override.id ? item.planner_override.id : null,
+            marked_complete: completeState,
+            plannable_id: item.plannable_id,
+            plannable_type: item.plannable_type
+        })
+    })
+    .then(resp => {
+        if (resp.ok) {
+            console.log("marked as complete");
+        } else {
+            // Non-OK (e.g. 400) is logged but not surfaced: the UI already
+            // reflects the intended state, and Canvas typically applies the
+            // override server-side regardless.
+            console.warn("planner override request returned", resp.status, "— UI already updated optimistically");
         }
-
-        setTimeout(() => {
-            clearTodoList();
-            createTodoSections(document.querySelector("#canvasrefined-todo-list"));
-        }, 400);
-		}
-	})
-	.catch(err => console.error("error marking as complete", err));
+    })
+    .catch(err => console.error("error marking as complete", err));
 
 }
 
@@ -2685,6 +3427,8 @@ function createTodoViewMore(location, type) {
 
 // better todo init
 function setupBetterTodo() {
+    // Better Todo list is removed from quizzes (it interferes with the quiz page).
+    if (isQuizPage()) return;
     if (options.better_todo !== true || isGradesPage()) return;
     if (document.querySelector('#canvasrefined-todo-list')) return;
     let list = document.querySelector("#right-side");
@@ -2717,6 +3461,22 @@ function applySidebarScaleStyles(sidebarList) {
     sidebarList.style.setProperty("--bc-sidebar-btn-height", `${Math.round(30 * scale)}px`);
     sidebarList.style.setProperty("--bc-sidebar-btn-gap", `${Math.round(8 * scale)}px`);
     sidebarList.style.setProperty("--bc-sidebar-label-size", `${Math.round(14 * scale)}px`);
+}
+
+// Re-apply the tinted course-content panel when the background opacity slider
+// changes. Only the better sidebar (course mode) gives .ic-Layout-contentMain a
+// tinted panel in the first place (see setupBetterSidebar). Re-applies both the
+// opacity and blur sliders so changing either updates the panel live.
+function applyBetterSidebarContentPanel() {
+    if (!options.better_sidebar) return;
+    if (getSidebarLayoutMode() !== "course") return;
+    const contentMain = document.querySelector(".ic-Layout-contentMain");
+    if (!contentMain) return;
+    const bgOpacity = Math.max(0, Math.min(100, Number(options.bg_opacity ?? 65)));
+    const bgBlur = Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)));
+    contentMain.style.setProperty("background", `color-mix(in srgb, var(--bcbackground-0) ${bgOpacity}%, transparent)`, "important");
+    contentMain.style.setProperty("backdrop-filter", `blur(${bgBlur}px)`, "important");
+    contentMain.style.setProperty("-webkit-backdrop-filter", `blur(${bgBlur}px)`, "important");
 }
 
 async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
@@ -2777,9 +3537,9 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
             contentMain?.style.setProperty("margin", "26px 38px 38px", "important");
             contentMain?.style.setProperty("padding", "10px", "important");
             contentMain?.style.setProperty("border-radius", "10px", "important");
-            contentMain?.style.setProperty("background", "color-mix(in srgb, var(--bcbackground-0) 45%, transparent)", "important");
-            contentMain?.style.setProperty("backdrop-filter", "blur(5px)", "important");
-            contentMain?.style.setProperty("-webkit-backdrop-filter", "blur(5px)", "important");
+            contentMain?.style.setProperty("background", `color-mix(in srgb, var(--bcbackground-0) ${Math.max(0, Math.min(100, Number(options.bg_opacity ?? 65)))}%, transparent)`, "important");
+            contentMain?.style.setProperty("backdrop-filter", `blur(${Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)))}px)`, "important");
+            contentMain?.style.setProperty("-webkit-backdrop-filter", `blur(${Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)))}px)`, "important");
         }
         const sidebarParent = layoutMode === "course" && leftSide ? leftSide : mainWrapper;
         if (layoutMode === "course" && leftSide) {
@@ -2826,6 +3586,7 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
         requestAnimationFrame(() => {
             populateSidebarFromNav(sidebarContent);
             updateSidebar(expanded, sidebarList, expander);
+            watchSidebarBadges();
         });
 
         expander.addEventListener("click", () => {
@@ -2859,13 +3620,51 @@ function getNavBadgeCount(item) {
 }
 
 function addSidebarButtonBadge(button, count) {
-    if (!button || !count) return;
+    if (!button) return;
+    // Always clear any existing badge first so a drop to 0 unread removes it.
     button.querySelector(".better-sidebar-badge")?.remove();
+    if (!count) return;
     makeElement("div", button, {
         className: "better-sidebar-badge",
         style: "position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background-color:#ff0000;color:white;font-size:11px;line-height:16px;display:flex;justify-content:center;align-items:center;box-sizing:border-box;pointer-events:none;",
         textContent: String(count),
     });
+}
+
+// Re-read the global nav badge for each better-sidebar button and update its dot.
+// Canvas loads the unread counts (Inbox/announcements) asynchronously after the
+// page renders, so the dot captured at build time is often missing or stale.
+function syncSidebarBadges() {
+    document.querySelectorAll(".better-sidebar-btn").forEach(button => {
+        const navId = button.dataset.navItemId;
+        if (!navId) return;
+        const navItem = document.getElementById(navId);
+        if (!navItem) return;
+        addSidebarButtonBadge(button, getNavBadgeCount(navItem));
+    });
+}
+
+function scheduleSidebarBadgeSync() {
+    if (sidebarBadgeSyncTimer) clearTimeout(sidebarBadgeSyncTimer);
+    sidebarBadgeSyncTimer = setTimeout(() => {
+        sidebarBadgeSyncTimer = null;
+        syncSidebarBadges();
+    }, 100);
+}
+
+// Watch the global nav for badge changes (late load, new mail, read/unread)
+// and keep the better-sidebar dots in sync.
+function watchSidebarBadges() {
+    const navMenu = document.getElementById("menu");
+    if (!navMenu) {
+        if (sidebarBadgeWatchRetries++ < 20) setTimeout(watchSidebarBadges, 500);
+        return;
+    }
+    sidebarBadgeWatchRetries = 0;
+    if (sidebarBadgeObserver) sidebarBadgeObserver.disconnect();
+    sidebarBadgeObserver = new MutationObserver(scheduleSidebarBadgeSync);
+    sidebarBadgeObserver.observe(navMenu, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "style"] });
+    scheduleSidebarBadgeSync();
 }
 function populateSidebarFromNav(sidebarContent) {
 	const excludeIds = ["global_nav_help_link", "global_nav_history_link"];
@@ -2944,6 +3743,7 @@ function populateSidebarFromNav(sidebarContent) {
 
             if (itemId === "global_nav_dashboard_link") hasDashboardButton = true;
             const button = createSidebarButton(text, href, sidebarContent, icon);
+            if (itemId) button.dataset.navItemId = itemId;
             addSidebarButtonBadge(button, getNavBadgeCount(item));
         });
     }
@@ -3114,9 +3914,10 @@ async function loadBetterTodo() {
                             delay = setTimeout(async () => {
                                 if (listItem.classList.contains("canvasrefined-todo-hover")) {
                                     previewTitle.textContent = item.plannable.title;
-                                    // custom assignment
+                                    // custom assignment (planner note): preview its description/details
                                     if (customItem) {
-                                        previewText.textContent = "Custom assignment";
+                                        const details = item.plannable && item.plannable.details ? item.plannable.details : "";
+                                        previewText.textContent = details === "" ? "No details given" : details.replace(/<\/?[^>]+(>|$)/g, " ");
                                     } else {
                                         console.log(item);
                                         let found = false;
@@ -3396,22 +4197,23 @@ let darkStyleInserted = false;
 function toggleDarkMode() {
     const css = generateDarkModeCSS();
     const darkOn = options.dark_mode === true || options.device_dark === true;
-    if (!darkStyleInserted) {
-        let style = document.createElement('style');
-        style.textContent = css;
-        document.documentElement.append(style);
+    // Reuse the existing #darkcss style if present (never create a duplicate), so a
+    // document_start dark-mode bootstrap and later updates stay on one element.
+    let style = document.querySelector("#darkcss");
+    if (!style) {
+        style = document.createElement('style');
         style.id = 'darkcss';
-        style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
-        darkStyleInserted = true;
-    } else {
-        let style = document.querySelector("#darkcss");
-        style.textContent = css;
-        style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
+        document.documentElement.append(style);
     }
+    style.textContent = css;
+    style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
+    darkStyleInserted = true;
     runiframeChecker();
 }
 
 function runDarkModeFixer(override = false) {
+    // Quiz safe mode: never auto-run the dark mode fixer on quiz pages.
+    if (quizSafeModeActive()) return { "path": "canvasrefined-none", "time": "" };
     if (options.dark_mode !== true) return { "path": "canvasrefined-darkmode_off", "time": "" };
     if (override === false && !options["dark_mode_fix"].includes(window.location.pathname)) return { "path": "canvasrefined-none", "time": "" };
     let output = inspectDarkMode();
@@ -3438,6 +4240,9 @@ function autoDarkModeCheck() {
         status = currentHour > startHour && currentHour < endHour;
     }
     if (options.auto_dark === true) {
+        // Skip the write (and the storage.onChanged cascade it would trigger) when the
+        // computed state already matches dark_mode, so the 60s timer is a cheap no-op.
+        if (status === options.dark_mode) return;
         options.dark_mode = status;
         chrome.storage.sync.set({ "dark_mode": status }, toggleDarkMode);
     }
@@ -3471,19 +4276,27 @@ function runiframeChecker() {
 
     const callback = (mutationList) => {
         for (const mutation of mutationList) {
-            if (mutation.type === 'childList' && mutation.addedNodes.length > 0 && mutation.addedNodes[0].nodeName == "IFRAME") {
-                const frame = mutation.addedNodes[0];
-                const new_style_element = document.createElement("style");
-                new_style_element.textContent = generateDarkModeCSS();
-                new_style_element.id = "darkcss";
-                frame.contentDocument.body.classList.add("canvasrefined--darkmode--enabled");
-                frame.contentDocument.documentElement.prepend(new_style_element);
+            if (mutation.type !== 'childList' || !mutation.addedNodes.length) continue;
+            for (const node of mutation.addedNodes) {
+                if (node.nodeName !== 'IFRAME') continue;
+                // Cross-origin iframes expose no contentDocument; access it safely so we
+                // don't throw a TypeError into the console on every added iframe.
+                let doc;
+                try { doc = node.contentDocument; } catch (_) { continue; }
+                if (!doc || !doc.documentElement || !doc.body) continue;
+                try {
+                    const new_style_element = document.createElement("style");
+                    new_style_element.textContent = generateDarkModeCSS();
+                    new_style_element.id = "darkcss";
+                    doc.body.classList.add("canvasrefined--darkmode--enabled");
+                    doc.documentElement.prepend(new_style_element);
+                } catch (_) { /* cross-origin or detached frame: ignore */ }
             }
         }
     };
 
     iframeObserver = new MutationObserver(callback);
-    iframeObserver.observe(document.querySelector('html'), { childList: true, subtree: true });
+    iframeObserver.observe(document.documentElement, { childList: true, subtree: true });
 }
 
 /* 
@@ -4268,7 +5081,7 @@ const DASHBOARD_NOTES_HTML = `
     </div>
     <div class="canvasrefined-notes-surface">
         <div class="canvasrefined-notes-rendered" tabindex="0" aria-label="Dashboard notes — click to edit" title="Click to edit"></div>
-        <textarea class="canvasrefined-notes-editor" placeholder="Type Markdown — click away to render" spellcheck="false"></textarea>
+        <textarea class="canvasrefined-notes-editor" placeholder="Type away!" spellcheck="false"></textarea>
     </div>
 `;
 
@@ -4374,6 +5187,8 @@ Custom font
 */
 
 function loadCustomFont() {
+    // Quiz safe mode: don't override fonts on quiz pages.
+    if (quizSafeModeActive()) return;
     let link = document.querySelector("#custom_font_link");
     let style = document.querySelector("#custom_font");
 
@@ -4413,7 +5228,21 @@ function loadCustomFont() {
 Smaller features
 */
 
+// Debounced wrapper around applyAestheticChanges for card-style options that
+// can fire many storage onChanged events in quick succession (number inputs).
+// See the "cardPadding"/"imageSize"/etc. cases in applyOptionsChanges.
+let aestheticDebounceTimer = null;
+function debouncedApplyAestheticChanges(delay = 150) {
+    if (aestheticDebounceTimer) clearTimeout(aestheticDebounceTimer);
+    aestheticDebounceTimer = setTimeout(() => {
+        aestheticDebounceTimer = null;
+        applyAestheticChanges();
+    }, delay);
+}
+
 function applyAestheticChanges() {
+    // Quiz safe mode: don't inject custom layout/aesthetic CSS on quiz pages.
+    if (quizSafeModeActive()) return;
     let style = document.querySelector("#canvasrefined-aesthetics") || document.createElement('style');
     style.id = "canvasrefined-aesthetics";
     style.textContent = "";
@@ -4423,18 +5252,122 @@ function applyAestheticChanges() {
     if (options.hide_feedback === true) style.textContent += ".recent_feedback {display: none}";
     if (options.full_width === true) style.textContent += "#wrapper,.ic-Layout-wrapper{max-width:100%!important}";
     if (options.center_cards === true) style.textContent += ".ic-DashboardCard__box__container{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:flex-start!important}";
-
     if (options.customCardStyles === true) {
         if (options.imageSize !== undefined && options.imageSize !== 100) style.textContent += `.ic-DashboardCard__header_image {transform: scale(${options.imageSize / 100})!important; }`;
         if (options.cardRoundness !== undefined && options.cardRoundness !== 5) style.textContent += `.ic-DashboardCard {border-radius: ${options.cardRoundness}px!important;}`;
         if (options.cardSpacing !== undefined && options.cardSpacing !== 0) style.textContent += `.ic-DashboardCard {margin-right: ${options.cardSpacing / 2}px!important; margin-bottom: ${options.cardSpacing / 2}px!important;}`;
         if (options.cardWidth !== undefined && options.cardWidth !== 262) style.textContent += `.ic-DashboardCard {width: ${options.cardWidth}px!important;}`;
-        if (options.cardHeight !== undefined && options.cardHeight !== 250) style.textContent += `.ic-DashboardCard {height: ${options.cardHeight}px!important;}`;
+        // Always emit a fixed card height when custom card styles are on. The old
+        // `!== 250` guard silently dropped the height rule when cardHeight matched
+        // the default, which is exactly what happens after importing a theme that
+        // carries the default cardHeight (250) — leaving cards content-sized.
+        // Content-sized cards plus the dashboard reflow loop trigger Firefox scroll
+        // anchoring to yank the viewport back up while scrolling. A fixed height
+        // (even the default 250px) keeps layout stable.
+        if (options.cardHeight !== undefined && options.cardHeight !== null && options.cardHeight !== "") {
+            style.textContent += `.ic-DashboardCard {height: ${options.cardHeight}px!important;}`;
+            // Canvas sets overflow:hidden on .ic-DashboardCard. With a fixed
+            // height that clips the appended .canvasrefined-card-assignment area
+            // (the assignment rows live at the bottom of the card), making the
+            // .canvasrefined-assignment-link anchors unclickable for users with
+            // custom card styles enabled. Allow overflow so those rows stay
+            // visible and interactive when card assignments are shown.
+            if (options.assignments_due === true) style.textContent += `.ic-DashboardCard {overflow: visible!important;}`;
+        }
+        // Inner card padding. Applied to the whole .ic-DashboardCard box (the
+        // element that holds the hero header, title, and action buttons) so the
+        // colored hero header and its content all get consistent breathing room
+        // from the card's edges. Guarded by !== 0 (default).
+        if (options.cardPadding !== undefined && Number(options.cardPadding) > 0) {
+            style.textContent += `.ic-DashboardCard {padding: ${options.cardPadding}px!important;}`;
+        }
     }
 
     style.textContent += ".ic-app-nav-toggle-and-crumbs{display:none!important}";
     if (options.custom_styles !== "") style.textContent += options.custom_styles;
     document.documentElement.appendChild(style);
+}
+
+/*
+Quiz safe mode banner (pre-quiz pages only).
+Shows an info box explaining the extension hasn't been approved by all teachers,
+with a toggle for Quiz Safe Mode and a "Don't show again" button.
+*/
+function setupQuizSafeModeBanner() {
+    if (!isQuizPreTakePage()) return;
+    if (document.getElementById("canvasrefined-quiz-safe-banner")) return;
+
+    chrome.storage.local.get("quiz_safe_mode_reminder_dismissed", local => {
+        if (local && local.quiz_safe_mode_reminder_dismissed === true) return;
+        chrome.storage.sync.get("quiz_safe_mode", sync => {
+            const safeModeOn = sync && sync.quiz_safe_mode === true;
+            injectQuizSafeModeBanner(safeModeOn);
+        });
+    });
+}
+
+function injectQuizSafeModeBanner(safeModeOn) {
+    // Only inject into a real Canvas content container — never <body>, which
+    // would place the banner outside the content area if it renders too early.
+    const findContainer = () =>
+        document.querySelector(".ic-Layout-contentMain") ||
+        document.querySelector("#content") ||
+        document.querySelector("#main");
+
+    const insertInto = (container) => {
+        if (!container) return false;
+        if (document.getElementById("canvasrefined-quiz-safe-banner")) return true;
+
+        const banner = makeElement("div", container, {
+            id: "canvasrefined-quiz-safe-banner",
+            className: "canvasrefined-quiz-safe-banner",
+        }, true);
+
+        makeElement("div", banner, {
+            className: "canvasrefined-quiz-safe-title",
+            textContent: "Canvas Refined — Quiz Safe Mode",
+        });
+
+        makeElement("p", banner, {
+            className: "canvasrefined-quiz-safe-info",
+            textContent: "This extension hasn't been 100% approved by all teachers. Quiz Safe Mode turns off most Canvas Refined features that could interfere with this quiz page, giving you the default Canvas quiz experience.",
+        });
+
+        const toggleRow = makeElement("div", banner, { className: "canvasrefined-quiz-safe-row" });
+        const toggleWrap = makeElement("label", toggleRow, { className: "canvasrefined-quiz-safe-toggle" });
+        const checkbox = makeElement("input", toggleWrap, { type: "checkbox" });
+        checkbox.checked = !!safeModeOn;
+        checkbox.addEventListener("change", () => {
+            chrome.storage.sync.set({ quiz_safe_mode: checkbox.checked });
+            // The storage.onChanged listener (applyOptionsChanges) reloads quiz pages.
+        });
+        makeElement("span", toggleWrap, {
+            className: "canvasrefined-quiz-safe-toggle-label",
+            textContent: "Enable Quiz Safe Mode",
+        });
+
+        const dismissBtn = makeElement("button", toggleRow, {
+            className: "canvasrefined-quiz-safe-dismiss",
+ type: "button",
+            textContent: "Don't show again",
+            title: "Hides this reminder permanently. You can still toggle Quiz Safe Mode in the extension popup.",
+        });
+        dismissBtn.addEventListener("click", () => {
+            chrome.storage.local.set({ quiz_safe_mode_reminder_dismissed: true });
+            banner.remove();
+        });
+
+        return true;
+    };
+
+    if (insertInto(findContainer())) return;
+
+    // Content container not ready yet; wait for it (never fall back to <body>).
+    const obs = new MutationObserver(() => {
+        if (insertInto(findContainer())) obs.disconnect();
+    });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(() => obs.disconnect(), 15000);
 }
 
 

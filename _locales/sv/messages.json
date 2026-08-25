@@ -54,7 +54,7 @@
     "message": "Max artiklar: "
   },
   "hover_preview": {
-    "message": "Håll muspekaren för att förhandsgranska detaljer"
+    "message": "Förhandsgranskning vid hover"
   },
   "hide_completed": {
     "message": "Göm slutförd"
