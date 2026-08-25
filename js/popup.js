@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'center_cards'];
+const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'center_cards', 'quiz_safe_mode'];
 const syncedSubOptions = [
 	"todo_hide_feedback",
 	"todo_full_height",
@@ -54,7 +54,7 @@ const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_c
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
 // no personal productivity features).
-const exportToggles = ["dark_mode"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
+const exportToggles = ["dark_mode", "quiz_safe_mode"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
 const fontsDropdownStateKey = "fonts_dropdown_open";
 
 const apiurl = "none";
@@ -140,6 +140,7 @@ const defaultOptions = {
         "equal_height_cards": false,
         "hide_feedback": false,
         "hide_new_canvas": true,
+        "quiz_safe_mode": false,
         "dark_mode_fix": [],
         "assignment_states": {},
         "tab_icons": false,

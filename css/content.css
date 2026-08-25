@@ -218,3 +218,51 @@
 .canvasrefined-dashboard-notes:not(.is-editing) .canvasrefined-notes-toolbar {display:none;}
 .canvasrefined-dashboard-notes.is-editing .canvasrefined-notes-rendered {display:none;}
 .canvasrefined-dashboard-notes:not(.is-editing) .canvasrefined-notes-editor {display:none;}
+/* Quiz safe mode banner (pre-quiz pages) */
+.canvasrefined-quiz-safe-banner {
+    box-sizing: border-box;
+    margin: 16px 0;
+    padding: 14px 16px;
+    border: 1px solid #d4a017;
+    border-left: 4px solid #d4a017;
+    border-radius: 6px;
+    background: #fff8e1;
+    color: #333;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.45;
+    max-width: 760px;
+}
+.canvasrefined-quiz-safe-title {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 6px;
+    color: #7a5a00;
+}
+.canvasrefined-quiz-safe-info { margin: 0 0 10px; }
+.canvasrefined-quiz-safe-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+.canvasrefined-quiz-safe-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+.canvasrefined-quiz-safe-toggle input { width: 16px; height: 16px; cursor: pointer; }
+.canvasrefined-quiz-safe-toggle-label { font-weight: 600; }
+.canvasrefined-quiz-safe-dismiss {
+    margin-left: auto;
+    background: #f5f5f5;
+    border: 1px solid #c7cdd1;
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #000 !important;
+}
+.canvasrefined-quiz-safe-dismiss:hover { background: #ececec; }

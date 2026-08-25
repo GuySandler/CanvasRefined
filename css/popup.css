@@ -288,3 +288,43 @@ input[type="checkbox"]:checked {background: #8dd28d;}
 .search-result.empty:hover { background: none; }
 .search-highlight { outline: 2px solid #56Caf0; outline-offset: 2px; border-radius: 8px; animation: search-pulse 1.8s ease-out; }
 @keyframes search-pulse { 0% { box-shadow: 0 0 0 0 #56Caf099; } 40% { box-shadow: 0 0 0 6px #56Caf000; } 100% { box-shadow: 0 0 0 0 #56Caf000; } }
+/* ===== Quiz Safe Mode info bubble ===== */
+.cr-info-bubble {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    width: 16px;
+    height: 16px;
+    color: #8d8d8d;
+    cursor: help;
+    position: relative;
+    vertical-align: middle;
+}
+.cr-info-bubble:hover,
+.cr-info-bubble:focus { color: #56Caf0; }
+.cr-info-bubble-text {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 220px;
+    background: #0e0e0ef0;
+    color: #e2e2e2;
+    border: 1px solid #ffffff1a;
+    border-radius: 8px;
+    padding: 8px 11px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    box-shadow: 0 8px 24px rgba(0,0,0,.45);
+    transition: opacity .15s ease, visibility .15s ease;
+    z-index: 1000;
+    text-align: left;
+}
+.cr-info-bubble:hover .cr-info-bubble-text,
+.cr-info-bubble:focus .cr-info-bubble-text { visibility: visible; opacity: 1; }

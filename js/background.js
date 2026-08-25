@@ -76,6 +76,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "equal_height_cards": false,
             "hide_feedback": false,
             "hide_new_canvas": true,
+            "quiz_safe_mode": false,
             "dark_mode_fix": [],
             "assignment_states": {},
             "tab_icons": false,

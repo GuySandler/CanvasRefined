@@ -56,6 +56,12 @@
 	"better_sidebar": {
 		"message": "Better Sidebar"
 	},
+	"quiz_safe_mode": {
+		"message": "Quiz Safe Mode"
+	},
+	"quiz_safe_mode_desc": {
+		"message": "Turns off most Canvas Refined features on quiz pages so you get the default Canvas quiz experience."
+	},
 	"opacity_options": {
 		"message": "Opacity & Blur"
 	},

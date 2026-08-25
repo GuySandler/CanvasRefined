@@ -38,6 +38,23 @@ function isProfilePage() {
     return /^\/profile(?:\/|$)/.test(current_page);
 }
 
+// Quiz pages: /courses/123/quizzes/456 (pre-take/intro) and
+// /courses/123/quizzes/456/take (the actual quiz).
+function isQuizPage() {
+    return /^\/courses\/\d+\/quizzes\/\d+(?:\/|$)/.test(current_page);
+}
+function isQuizTakePage() {
+    return /^\/courses\/\d+\/quizzes\/\d+\/take(?:\/|$)/.test(current_page);
+}
+function isQuizPreTakePage() {
+    return isQuizPage() && !isQuizTakePage();
+}
+// "Quiz safe mode" disables features that interfere with the default Canvas
+// quiz experience. Only active on quiz pages when the user has opted in.
+function quizSafeModeActive() {
+    return isQuizPage() && options.quiz_safe_mode === true;
+}
+
 function getSubmissionAssignmentLink() {
     const match = current_page.match(/^\/courses\/(\d+)\/assignments\/(\d+)\/submissions\/(\d+)(?:\/|$)/);
     if (!match) return null;
@@ -584,6 +601,8 @@ function startExtension() {
         watchSubmissionPageButton();
         watchProfileLogoutPageButton();
 
+        setupQuizSafeModeBanner();
+
         
         setTimeout(() => runDarkModeFixer(false), 800);
         setTimeout(() => runDarkModeFixer(false), 4500);
@@ -780,6 +799,11 @@ function applyOptionsChanges(changes) {
                     resetBetterSidebarLayout();
                 }
 				break;
+            case "quiz_safe_mode":
+                // Toggling safe mode changes which features run on quiz pages; reload
+                // so the gating is applied cleanly.
+                if (isQuizPage()) window.location.reload();
+                break;
             case "sidebar_scale": {
                 const existingSidebar = document.getElementById("better-sidebar-container");
                 if (existingSidebar) {
@@ -826,12 +850,16 @@ function resetBetterSidebarLayout() {
 
 function ensureBetterSidebar() {
     if (!options.better_sidebar) return;
+    // Quiz safe mode: don't replace the Canvas sidebar on quiz pages.
+    if (quizSafeModeActive()) return;
     if (document.querySelector("#better-sidebar-container")) return;
     if (!document.querySelector("#wrapper") || !document.querySelector(".ic-Layout-contentWrapper")) return;
     setupBetterSidebar(getSidebarLayoutMode());
 }
 
 async function applyCustomBackground() {
+    // Quiz safe mode: leave the quiz page background untouched.
+    if (quizSafeModeActive()) return;
     // let style = document.querySelector("#DashboardCard_Container")
     let style = document.querySelector("#canvasrefined-background") || document.createElement('style');
     style.id = "canvasrefined-background";
@@ -1710,7 +1738,7 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
         // sweep-flag 1 => arc bulges UPWARD (top semicircle), drawn left -> right
         const arcPath = `M ${cx - radius} ${baseY} A ${radius} ${radius} 0 0 1 ${cx + radius} ${baseY}`;
         const prog = entry.total === 0 ? 0 : entry.completed / entry.total;
-        const color = `hsl(${Math.round((idx * 360) / Math.max(1, ringCount))},70%,55%)`;
+        const color = courseRingColor(entry.courseId, idx);
 
         // track: full semicircle, faded class color
         let track = svg.querySelector(`path[data-idx='${idx}'][data-role='bg']`);
@@ -3214,66 +3242,85 @@ function createConfettiBurst(targetElement, opts = {}) {
 function markAs(item, element) {
 	const csrfToken = CSRFtoken();
 	const completeState = item.planner_override ? !item.planner_override.marked_complete : true;
-    fetch(domain + "/api/v1/planner/overrides" + (item.planner_override ? "/" + item.planner_override.id : ""), {
-		method: item.planner_override ? "PUT" : "POST",
-		headers: {
-			"content-type":"application/json",
-			"accept":"application/json",
-			"X-CSRF-Token": csrfToken
-		},
-		body: JSON.stringify({
-			id: item.planner_override ? item.planner_override.id : null,
-			marked_complete: completeState,
-			plannable_id: item.plannable_id,
-			plannable_type: item.plannable_type
-		})
-	})
-	.then(resp => {
-        if (resp.status == 200 || resp.status == 201 || resp.status == 204) {
-			console.log("marked as complete");
-			item.planner_override = item.planner_override || {};
-			item.planner_override.marked_complete = completeState;
-			element.style.transform = "translate(100%)";
-			element.style.opacity = "0";
 
-            // fire confetti only when marking complete (not when unmarking)
-            if (completeState) {
-                try { createConfettiBurst(element); } catch (e) { console.error('confetti trigger error', e); }
+    // --- Optimistic UI ---
+    // Canvas's /planner/overrides endpoint occasionally returns 400 (Bad
+    // Request) for both custom tasks and normal tasks, even though the action
+    // is actually applied server-side shortly after. When that happens the
+    // item would neither visually mark nor animate, and would later appear
+    // "secretly complete" on reload. To avoid that confusing UX, we update the
+    // UI as if the request succeeded immediately, and fire the actual API
+    // call in the background for persistence.
+    item.planner_override = item.planner_override || {};
+    item.planner_override.marked_complete = completeState;
+    element.style.transform = "translate(100%)";
+    element.style.opacity = "0";
+
+    // fire confetti only when marking complete (not when unmarking)
+    if (completeState) {
+        try { createConfettiBurst(element); } catch (e) { console.error('confetti trigger error', e); }
+    }
+
+    // update progress rings immediately so they animate while the item slides/fades
+    const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
+    if (progressPlaceholder && typeof assignments?.then === 'function' && progressRingsEnabled()) {
+        assignments.then(data => {
+            const courseId = getCurrentCourseId();
+            const scopedData = courseId
+                ? data.map(d => Object.assign({}, d)) // shallow copy
+                    .filter(d => {
+                        const itemCourseId = parseInt(d.course_id || d.context_id || d?.plannable?.course_id);
+                        return itemCourseId === courseId;
+                    })
+                : data.map(d => Object.assign({}, d));
+
+            // reflect the updated state for this item in the snapshot
+            for (let i = 0; i < scopedData.length; i++) {
+                if (scopedData[i].plannable_id === item.plannable_id && scopedData[i].plannable_type === item.plannable_type) {
+                    scopedData[i].planner_override = scopedData[i].planner_override || {};
+                    scopedData[i].planner_override.marked_complete = item.planner_override.marked_complete;
+                    break;
+                }
             }
 
-        // update progress rings immediately so they animate while the item slides/fades
-        const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
-        if (progressPlaceholder && typeof assignments?.then === 'function' && progressRingsEnabled()) {
-            assignments.then(data => {
-                const courseId = getCurrentCourseId();
-                const scopedData = courseId
-                    ? data.map(d => Object.assign({}, d)) // shallow copy
-                        .filter(d => {
-                            const itemCourseId = parseInt(d.course_id || d.context_id || d?.plannable?.course_id);
-                            return itemCourseId === courseId;
-                        })
-                    : data.map(d => Object.assign({}, d));
+            renderProgressRings(progressPlaceholder, scopedData);
+        });
+    }
 
-                // reflect the updated state for this item in the snapshot
-                for (let i = 0; i < scopedData.length; i++) {
-                    if (scopedData[i].plannable_id === item.plannable_id && scopedData[i].plannable_type === item.plannable_type) {
-                        scopedData[i].planner_override = scopedData[i].planner_override || {};
-                        scopedData[i].planner_override.marked_complete = item.planner_override.marked_complete;
-                        break;
-                    }
-                }
+    setTimeout(() => {
+        clearTodoList();
+        createTodoSections(document.querySelector("#canvasrefined-todo-list"));
+    }, 400);
 
-                renderProgressRings(progressPlaceholder, scopedData);
-            });
+    // --- Persistence (background, best-effort) ---
+    // A 400/non-OK response is treated as a soft success because Canvas often
+    // completes the override server-side anyway; we already reflected the
+    // change in the UI, so just log it.
+    fetch(domain + "/api/v1/planner/overrides" + (item.planner_override && item.planner_override.id ? "/" + item.planner_override.id : ""), {
+        method: item.planner_override && item.planner_override.id ? "PUT" : "POST",
+        headers: {
+            "content-type":"application/json",
+            "accept":"application/json",
+            "X-CSRF-Token": csrfToken
+        },
+        body: JSON.stringify({
+            id: item.planner_override && item.planner_override.id ? item.planner_override.id : null,
+            marked_complete: completeState,
+            plannable_id: item.plannable_id,
+            plannable_type: item.plannable_type
+        })
+    })
+    .then(resp => {
+        if (resp.ok) {
+            console.log("marked as complete");
+        } else {
+            // Non-OK (e.g. 400) is logged but not surfaced: the UI already
+            // reflects the intended state, and Canvas typically applies the
+            // override server-side regardless.
+            console.warn("planner override request returned", resp.status, "— UI already updated optimistically");
         }
-
-        setTimeout(() => {
-            clearTodoList();
-            createTodoSections(document.querySelector("#canvasrefined-todo-list"));
-        }, 400);
-		}
-	})
-	.catch(err => console.error("error marking as complete", err));
+    })
+    .catch(err => console.error("error marking as complete", err));
 
 }
 
@@ -3293,6 +3340,8 @@ function createTodoViewMore(location, type) {
 
 // better todo init
 function setupBetterTodo() {
+    // Better Todo list is removed from quizzes (it interferes with the quiz page).
+    if (isQuizPage()) return;
     if (options.better_todo !== true || isGradesPage()) return;
     if (document.querySelector('#canvasrefined-todo-list')) return;
     let list = document.querySelector("#right-side");
@@ -4076,6 +4125,8 @@ function toggleDarkMode() {
 }
 
 function runDarkModeFixer(override = false) {
+    // Quiz safe mode: never auto-run the dark mode fixer on quiz pages.
+    if (quizSafeModeActive()) return { "path": "canvasrefined-none", "time": "" };
     if (options.dark_mode !== true) return { "path": "canvasrefined-darkmode_off", "time": "" };
     if (override === false && !options["dark_mode_fix"].includes(window.location.pathname)) return { "path": "canvasrefined-none", "time": "" };
     let output = inspectDarkMode();
@@ -5049,6 +5100,8 @@ Custom font
 */
 
 function loadCustomFont() {
+    // Quiz safe mode: don't override fonts on quiz pages.
+    if (quizSafeModeActive()) return;
     let link = document.querySelector("#custom_font_link");
     let style = document.querySelector("#custom_font");
 
@@ -5089,6 +5142,8 @@ Smaller features
 */
 
 function applyAestheticChanges() {
+    // Quiz safe mode: don't inject custom layout/aesthetic CSS on quiz pages.
+    if (quizSafeModeActive()) return;
     let style = document.querySelector("#canvasrefined-aesthetics") || document.createElement('style');
     style.id = "canvasrefined-aesthetics";
     style.textContent = "";
@@ -5109,6 +5164,88 @@ function applyAestheticChanges() {
     style.textContent += ".ic-app-nav-toggle-and-crumbs{display:none!important}";
     if (options.custom_styles !== "") style.textContent += options.custom_styles;
     document.documentElement.appendChild(style);
+}
+
+/*
+Quiz safe mode banner (pre-quiz pages only).
+Shows an info box explaining the extension hasn't been approved by all teachers,
+with a toggle for Quiz Safe Mode and a "Don't show again" button.
+*/
+function setupQuizSafeModeBanner() {
+    if (!isQuizPreTakePage()) return;
+    if (document.getElementById("canvasrefined-quiz-safe-banner")) return;
+
+    chrome.storage.local.get("quiz_safe_mode_reminder_dismissed", local => {
+        if (local && local.quiz_safe_mode_reminder_dismissed === true) return;
+        chrome.storage.sync.get("quiz_safe_mode", sync => {
+            const safeModeOn = sync && sync.quiz_safe_mode === true;
+            injectQuizSafeModeBanner(safeModeOn);
+        });
+    });
+}
+
+function injectQuizSafeModeBanner(safeModeOn) {
+    // Only inject into a real Canvas content container — never <body>, which
+    // would place the banner outside the content area if it renders too early.
+    const findContainer = () =>
+        document.querySelector(".ic-Layout-contentMain") ||
+        document.querySelector("#content") ||
+        document.querySelector("#main");
+
+    const insertInto = (container) => {
+        if (!container) return false;
+        if (document.getElementById("canvasrefined-quiz-safe-banner")) return true;
+
+        const banner = makeElement("div", container, {
+            id: "canvasrefined-quiz-safe-banner",
+            className: "canvasrefined-quiz-safe-banner",
+        }, true);
+
+        makeElement("div", banner, {
+            className: "canvasrefined-quiz-safe-title",
+            textContent: "Canvas Refined — Quiz Safe Mode",
+        });
+
+        makeElement("p", banner, {
+            className: "canvasrefined-quiz-safe-info",
+            textContent: "This extension hasn't been 100% approved by all teachers. Quiz Safe Mode turns off most Canvas Refined features that could interfere with this quiz page, giving you the default Canvas quiz experience.",
+        });
+
+        const toggleRow = makeElement("div", banner, { className: "canvasrefined-quiz-safe-row" });
+        const toggleWrap = makeElement("label", toggleRow, { className: "canvasrefined-quiz-safe-toggle" });
+        const checkbox = makeElement("input", toggleWrap, { type: "checkbox" });
+        checkbox.checked = !!safeModeOn;
+        checkbox.addEventListener("change", () => {
+            chrome.storage.sync.set({ quiz_safe_mode: checkbox.checked });
+            // The storage.onChanged listener (applyOptionsChanges) reloads quiz pages.
+        });
+        makeElement("span", toggleWrap, {
+            className: "canvasrefined-quiz-safe-toggle-label",
+            textContent: "Enable Quiz Safe Mode",
+        });
+
+        const dismissBtn = makeElement("button", toggleRow, {
+            className: "canvasrefined-quiz-safe-dismiss",
+ type: "button",
+            textContent: "Don't show again",
+            title: "Hides this reminder permanently. You can still toggle Quiz Safe Mode in the extension popup.",
+        });
+        dismissBtn.addEventListener("click", () => {
+            chrome.storage.local.set({ quiz_safe_mode_reminder_dismissed: true });
+            banner.remove();
+        });
+
+        return true;
+    };
+
+    if (insertInto(findContainer())) return;
+
+    // Content container not ready yet; wait for it (never fall back to <body>).
+    const obs = new MutationObserver(() => {
+        if (insertInto(findContainer())) obs.disconnect();
+    });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(() => obs.disconnect(), 15000);
 }
 
 
