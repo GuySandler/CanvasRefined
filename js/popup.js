@@ -31,6 +31,7 @@ const syncedSubOptions = [
 	"cardSpacing",
 	"cardWidth",
 	"cardHeight",
+	"cardPadding",
 	"customBackgroundLink",
     "customBackgroundScale",
     "customBackgroundDaily",
@@ -41,18 +42,20 @@ const syncedSubOptions = [
     "sidebar_opacity",
     "bg_blur",
     "sidebar_blur",
+    "card_opacity",
+    "card_blur",
 ];
 const localSwitches = [];
 
 // Theme export only carries visual settings, never personal productivity data.
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
-const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight"];
+const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_feedback", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
-const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur"];
+const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
 // no personal productivity features).
 const exportToggles = ["dark_mode", "quiz_safe_mode"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
@@ -103,6 +106,9 @@ const defaultOptions = {
         "sidebar_opacity": 100,
         "bg_blur": 8,
         "sidebar_blur": 0,
+        "card_transparency": false,
+        "card_opacity": 80,
+        "card_blur": 8,
         "todo_hr24": false,
 		"todo_separate_scrollbar": false,
 		"todo_alternate_colors": false,
@@ -161,6 +167,7 @@ const defaultOptions = {
         "cardSpacing": 0,
         "cardWidth": 262,
         "cardHeight": 250,
+        "cardPadding": 0,
         "customCardStyles": false,
         "customBackgroundLink": "",
         "customBackgroundScale": 100,
@@ -354,11 +361,26 @@ function setupDashboardMethod(initial) {
     });
 }
 
+// Custom card style inputs (image size, roundness, spacing, width, height,
+// padding) fire `chrome.storage.sync.set` on every keystroke/arrow press.
+// chrome.storage.sync caps writes at MAX_WRITE_OPERATIONS_PER_MINUTE (120/min),
+// so rapidly adjusting these number inputs used to hit the quota and surface
+// a "quota exceeded" error. Coalesce rapid edits into a single write with a
+// short (200ms) debounce — barely noticeable to the user, but stays well
+// under the write quota even when dragging arrows or typing fast.
+const cardStyleSetTimers = {};
+function debouncedCardStyleSet(key, value, delay = 200) {
+    if (cardStyleSetTimers[key]) clearTimeout(cardStyleSetTimers[key]);
+    cardStyleSetTimers[key] = setTimeout(() => {
+        chrome.storage.sync.set({ [key]: value });
+    }, delay);
+}
+
 function setupImageSizeInput(initial) {
     let el = document.querySelector("#imageSize");
     el.value = initial;
     el.addEventListener("input", (e) => {
-        chrome.storage.sync.set({ "imageSize": e.target.value });
+        debouncedCardStyleSet("imageSize", e.target.value);
     });
 }
 
@@ -366,7 +388,7 @@ function setupCardRoundnessInput(initial) {
     let el = document.querySelector("#cardRoundness");
     el.value = initial;
     el.addEventListener("input", (e) => {
-        chrome.storage.sync.set({ "cardRoundness": e.target.value });
+        debouncedCardStyleSet("cardRoundness", e.target.value);
     });
 }
 
@@ -374,7 +396,7 @@ function setupCardSpacingInput(initial) {
     let el = document.querySelector("#cardSpacing");
     el.value = initial;
     el.addEventListener("input", (e) => {
-        chrome.storage.sync.set({ "cardSpacing": e.target.value });
+        debouncedCardStyleSet("cardSpacing", e.target.value);
     });
 }
 
@@ -382,7 +404,7 @@ function setupCardWidthInput(initial) {
     let el = document.querySelector("#cardWidth");
     el.value = initial;
     el.addEventListener("input", (e) => {
-        chrome.storage.sync.set({ "cardWidth": e.target.value });
+        debouncedCardStyleSet("cardWidth", e.target.value);
     });
 }
 
@@ -390,8 +412,16 @@ function setupCardHeightInput(initial) {
 	let el = document.querySelector("#cardHeight");
 	el.value = initial;
 	el.addEventListener("input", (e) => {
-		chrome.storage.sync.set({ "cardHeight": e.target.value });
+		debouncedCardStyleSet("cardHeight", e.target.value);
 	});
+}
+
+function setupCardPaddingInput(initial) {
+    let el = document.querySelector("#cardPadding");
+    el.value = initial;
+    el.addEventListener("input", (e) => {
+        debouncedCardStyleSet("cardPadding", e.target.value);
+    });
 }
 
 function setupCustomBackgroundLink(initial) {
@@ -514,6 +544,17 @@ function customBackgroundActive() {
 function toggleOpacityOptions() {
     const el = document.getElementById("opacity-options");
     if (el) el.style.display = customBackgroundActive() ? "" : "none";
+    toggleCardTransparencyOptions();
+}
+
+// Card opacity/blur sliders only show when both a custom background is active
+// (so #opacity-options is visible) and the "Card transparency" checkbox is on.
+function toggleCardTransparencyOptions() {
+    const on = document.getElementById("card_transparency")?.checked === true;
+    const opacityRow = document.getElementById("card-transparency-options");
+    const blurRow = document.getElementById("card-transparency-blur-row");
+    if (opacityRow) opacityRow.style.display = on ? "" : "none";
+    if (blurRow) blurRow.style.display = on ? "" : "none";
 }
 
 // Hide the standalone feedback toggle when Better Todo's own sub-option replaces it.
@@ -865,6 +906,7 @@ function setup() {
             "customBackgroundDaily",
             "customBackgroundNasaDaily",
             "fitImageToScreen",
+            "card_transparency",
 			"customCardStyles",
 		],
 		tabs: {
@@ -934,6 +976,14 @@ function setup() {
                 identifier: "sidebar_blur",
                 setup: (initial) => setupRangeSlider("sidebar_blur", "sidebarBlurSlider", "sidebarBlurValue", "sidebarBlurReset", 0, 30, "px", initial),
             },
+            {
+                identifier: "card_opacity",
+                setup: (initial) => setupRangeSlider("card_opacity", "cardOpacitySlider", "cardOpacityValue", "cardOpacityReset", 80, 100, "%", initial),
+            },
+            {
+                identifier: "card_blur",
+                setup: (initial) => setupRangeSlider("card_blur", "cardBlurSlider", "cardBlurValue", "cardBlurReset", 8, 30, "px", initial),
+            },
 			{
 				identifier: "card_limit",
 				setup: (initial) => setupCardLimitSlider(initial),
@@ -965,6 +1015,10 @@ function setup() {
 			{
 				identifier: "cardHeight",
 				setup: (initial) => setupCardHeightInput(initial),
+			},
+			{
+				identifier: "cardPadding",
+				setup: (initial) => setupCardPaddingInput(initial),
 			},
 			{
 				identifier: "customBackgroundLink",
@@ -1445,32 +1499,13 @@ function setup() {
             "F": { "cutoff": 0, "gpa": 0 }
         });
     });
-    
-    document.getElementById("imageSize").addEventListener("input", (e) => {
-        const value = e.target.value;
-        chrome.storage.sync.set({ "imageSize": value });
-        document.querySelector("#imageSizeValue").textContent = value + "%";
-    })
-    document.getElementById("cardRoundness").addEventListener("input", (e) => {
-        const value = e.target.value;
-        chrome.storage.sync.set({ "cardRoundness": value });
-        document.querySelector("#cardRoundnessValue").textContent = value + "px";
-    })
-    document.getElementById("cardSpacing").addEventListener("input", (e) => {
-        const value = e.target.value;
-        chrome.storage.sync.set({ "cardSpacing": value });
-        document.querySelector("#cardSpacingValue").textContent = value + "px";
-    })
-    document.getElementById("cardWidth").addEventListener("input", (e) => {
-        const value = e.target.value;
-        chrome.storage.sync.set({ "cardWidth": value });
-        document.querySelector("#cardWidthValue").textContent = value + "%";
-    });
-    document.getElementById("cardHeight").addEventListener("input", (e) => {
-		const value = e.target.value;
-		chrome.storage.sync.set({ "cardHeight": value });
-		document.querySelector("#cardHeightValue").textContent = value + "%";
-	});
+
+    // Note: the card-style number inputs (imageSize, cardRoundness, cardSpacing,
+    // cardWidth, cardHeight, cardPadding) are wired via their setup*Input
+    // handlers in menu.special above, which debounce the storage writes. The
+    // duplicate listeners that used to live here referenced nonexistent
+    // #*Value spans (threw on every input) and double-wrote to storage, which
+    // is what blew the sync write quota when adjusting card styles quickly.
 
     document.getElementById("clearCustomBackground").addEventListener("click", () => {
                 chrome.storage.sync.set({ "customBackgroundLink": "", "customBackgroundScale": 100 });

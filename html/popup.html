@@ -592,7 +592,7 @@
                     </div>
 					<div class="sub-option">
                         <input type="checkbox" id="export-background" />
-                        <span>Background image</span>
+                        <span>Background &amp; opacity</span>
                     </div>
                 </div>
                 <div style="flex: 1">
@@ -851,6 +851,13 @@
                         <span class="sub-text">px</span>
                     </div>
                 </div>
+                <div class="sub-option">
+                    <div style="margin-top: 5px;display: flex;gap: 8px;align-items: center">
+                        <span class="sub-text" style="width:75px;">Card Padding</span>
+                        <input type="number" id="cardPadding" class="card-input" min="0" max="100" value="0" style="width: 80px;">
+                        <span class="sub-text">px</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1051,6 +1058,10 @@
                 <input type="checkbox" id="fitImageToScreen" name="fitImageToScreen">
                 <label for="fitImageToScreen" class="sub-text">Fit image to screen</label>
             </div>
+            <div class="sub-option" style="margin-top:8px;">
+                <input type="checkbox" id="card_transparency" name="card_transparency">
+                <label for="card_transparency" class="sub-text" data-i18n="card_transparency">Card transparency</label>
+            </div>
         </div>
         <div class="option-container" id="opacity-options" style="display:none;">
             <h3 class="header-small" data-i18n="opacity_options">Opacity &amp; Blur</h3>
@@ -1094,6 +1105,26 @@
                     </div>
                 </div>
                 <input type="range" min="0" max="30" step="1" id="sidebarBlurSlider">
+            </div>
+            <div class="opacity-slider-row" id="card-transparency-options" style="display:none;">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="card_opacity">Card opacity</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="cardOpacityReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="cardOpacityValue">80%</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" step="1" id="cardOpacitySlider">
+            </div>
+            <div class="opacity-slider-row" id="card-transparency-blur-row" style="display:none;">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
+                    <span class="sub-text" style="font-weight:600;color:#e2e2e2;" data-i18n="card_blur">Card blur</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="opacity-reset-btn" id="cardBlurReset" type="button" title="Reset to default" data-i18n-title="reset_default"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <span class="sub-text" id="cardBlurValue">8px</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="30" step="1" id="cardBlurSlider">
             </div>
         </div>
 

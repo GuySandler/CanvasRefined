@@ -758,8 +758,14 @@ function applyOptionsChanges(changes) {
 			case "cardSpacing":
 			case "cardWidth":
 			case "cardHeight":
+			case "cardPadding":
 			case "customCardStyles":
-				applyAestheticChanges();
+				// Coalesce rapid card-style edits (e.g. holding the arrow keys on a
+			// number input) into a single applyAestheticChanges() call. Each
+			// storage onChanged event would otherwise re-run the dashboard style
+			// pass immediately; a ~150ms cooldown is barely noticeable but keeps
+			// the page from thrashing while the user is still adjusting values.
+				debouncedApplyAestheticChanges();
 				break;
 			case "customBackgroundLink":
 				applyCustomBackground();
@@ -774,6 +780,11 @@ function applyOptionsChanges(changes) {
                 break;
             case "sidebar_opacity":
             case "sidebar_blur":
+                applyCustomBackground();
+                break;
+            case "card_transparency":
+            case "card_opacity":
+            case "card_blur":
                 applyCustomBackground();
                 break;
 			case "better_todo":
@@ -899,6 +910,14 @@ async function applyCustomBackground() {
     // the previous dashboard-header glass look; sidebar defaults to none.
     const bgBlur = Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)));
     const sidebarBlur = Math.max(0, Math.min(30, Number(options.sidebar_blur ?? 0)));
+    // Card transparency mirrors the content-panel glass effect (bg_opacity/
+    // bg_blur) but applies it to dashboard course cards (.ic-DashboardCard).
+    // Only active when the user explicitly enables it, since transparent cards
+    // over a busy background can hurt legibility.
+    const cardTransparency = options.card_transparency === true;
+    const cardOpacity = Math.max(0, Math.min(100, Number(options.card_opacity ?? 80)));
+    const cardBlur = Math.max(0, Math.min(30, Number(options.card_blur ?? 8)));
+    const cardTransparent = 100 - cardOpacity;
     style.textContent = `
         #wrapper {
             background-image: url(${backgroundUrl}) !important;
@@ -1147,7 +1166,11 @@ async function applyCustomBackground() {
         .canvasrefined-gpa-card,
         .canvasrefined-gpa,
         .ic-DashboardCard {
-            background: var(--bcbackground-0) !important;
+            ${cardTransparency
+                ? `background: color-mix(in srgb, var(--bcbackground-0), transparent ${cardTransparent}%) !important;
+            backdrop-filter: blur(${cardBlur}px) saturate(120%) !important;
+            -webkit-backdrop-filter: blur(${cardBlur}px) saturate(120%) !important;`
+                : `background: var(--bcbackground-0) !important;`}
         }
         tr.student_assignment.assignment_graded.editable > * {
             border:none!important
@@ -5205,6 +5228,18 @@ function loadCustomFont() {
 Smaller features
 */
 
+// Debounced wrapper around applyAestheticChanges for card-style options that
+// can fire many storage onChanged events in quick succession (number inputs).
+// See the "cardPadding"/"imageSize"/etc. cases in applyOptionsChanges.
+let aestheticDebounceTimer = null;
+function debouncedApplyAestheticChanges(delay = 150) {
+    if (aestheticDebounceTimer) clearTimeout(aestheticDebounceTimer);
+    aestheticDebounceTimer = setTimeout(() => {
+        aestheticDebounceTimer = null;
+        applyAestheticChanges();
+    }, delay);
+}
+
 function applyAestheticChanges() {
     // Quiz safe mode: don't inject custom layout/aesthetic CSS on quiz pages.
     if (quizSafeModeActive()) return;
@@ -5238,6 +5273,13 @@ function applyAestheticChanges() {
             // custom card styles enabled. Allow overflow so those rows stay
             // visible and interactive when card assignments are shown.
             if (options.assignments_due === true) style.textContent += `.ic-DashboardCard {overflow: visible!important;}`;
+        }
+        // Inner card padding. Applied to the whole .ic-DashboardCard box (the
+        // element that holds the hero header, title, and action buttons) so the
+        // colored hero header and its content all get consistent breathing room
+        // from the card's edges. Guarded by !== 0 (default).
+        if (options.cardPadding !== undefined && Number(options.cardPadding) > 0) {
+            style.textContent += `.ic-DashboardCard {padding: ${options.cardPadding}px!important;}`;
         }
     }
 
