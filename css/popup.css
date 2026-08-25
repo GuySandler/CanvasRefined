@@ -69,6 +69,10 @@ h2 {margin-top: 20px;font-weight:600}
 #todo_progress_rings option {background:#1e1e1e;color:#e2e2e2;}
 #todo_progress_rings option:checked,
 #todo_progress_rings option:hover {background:#2e2e2e;color:#fff;}
+#todo_timeframe {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
+#todo_timeframe option {background:#1e1e1e;color:#e2e2e2;}
+#todo_timeframe option:checked,
+#todo_timeframe option:hover {background:#2e2e2e;color:#fff;}
 #advanced-settings, #gpa-bounds-btn, #custom-font-btn, #customize-dark-btn, #card-colors-btn {width: 100%;}
 .back-btn {width: 120px;height:100%;margin-top:0}
 .big-button {border: none;border-radius: 7px;background: var(--containerbg);color: #fff;font-family: inherit;padding: 12px 10px;font-weight:600}

@@ -671,6 +671,10 @@ function applyOptionsChanges(changes) {
 				)
 					setupCardAssignments();
 				loadCardAssignments();
+				// The card overflow fix in applyAestheticChanges() depends on
+				// assignments_due, so re-run it when that option toggles to keep
+				// the overflow rule in sync without a page reload.
+				applyAestheticChanges();
 				break;
 			case "custom_assignments":
 			case "assignment_date_format":
@@ -692,6 +696,7 @@ function applyOptionsChanges(changes) {
 			case "todo_separate_scrollbar":
 			case "num_todo_items":
 			case "hover_preview":
+			case "todo_timeframe":
 			// case "todo_overdues":
 			case "todo_hide_feedback":
 			case "todo_full_height":
@@ -1524,6 +1529,17 @@ function updateIndicator(element) {
 }
 // better todo html
 betterTodoFilter = "tasks";
+// Timeframe filter for the upcoming Tasks tab. "all" = no limit; otherwise
+// items are limited to those due on/before now+range (which also keeps
+// overdue items). Only affects the Tasks (upcoming) tab; announcements and
+// completed are unaffected because their dates are in the past.
+let betterTodoTimeframe = "all";
+const BETTER_TODO_TIMEFRAME_DAYS = {
+	"1week": 7,
+	"2week": 14,
+	"month": 30,
+	"2month": 60,
+};
 // null = show every class; a string courseId = only that class's tasks.
 let betterTodoProgressFilter = null;
 let domContainers = {};
@@ -2656,6 +2672,15 @@ async function createTodoSections(location) {
         announcements = displayData.filter(item => item.plannable_type == "announcement");
         assignmentsDue = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && !item.submissions?.submitted && !item.planner_override?.marked_complete);
         completed = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && (item.submissions?.submitted || item.planner_override?.marked_complete));
+        // The timeframe is a persisted Better Todo List sub-option set in the
+        // popup. Read the current value each render so popup changes apply on
+        // the next render. Keeps items due on/before now+range (overdue items
+        // are before now, so they are kept too). Only the Tasks tab is affected.
+        betterTodoTimeframe = (options.todo_timeframe && Object.prototype.hasOwnProperty.call(BETTER_TODO_TIMEFRAME_DAYS, options.todo_timeframe)) ? options.todo_timeframe : "all";
+        if (betterTodoTimeframe !== "all") {
+            const cutoff = Date.now() + (BETTER_TODO_TIMEFRAME_DAYS[betterTodoTimeframe] * 24 * 60 * 60 * 1000);
+            assignmentsDue = assignmentsDue.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
+        }
 		// console.log("assignments", assignmentsDue);
 		// console.log("announcements", announcements);
 		// console.log("completed", completed);
@@ -5188,7 +5213,16 @@ function applyAestheticChanges() {
         // Content-sized cards plus the dashboard reflow loop trigger Firefox scroll
         // anchoring to yank the viewport back up while scrolling. A fixed height
         // (even the default 250px) keeps layout stable.
-        if (options.cardHeight !== undefined && options.cardHeight !== null && options.cardHeight !== "") style.textContent += `.ic-DashboardCard {height: ${options.cardHeight}px!important;}`;
+        if (options.cardHeight !== undefined && options.cardHeight !== null && options.cardHeight !== "") {
+            style.textContent += `.ic-DashboardCard {height: ${options.cardHeight}px!important;}`;
+            // Canvas sets overflow:hidden on .ic-DashboardCard. With a fixed
+            // height that clips the appended .canvasrefined-card-assignment area
+            // (the assignment rows live at the bottom of the card), making the
+            // .canvasrefined-assignment-link anchors unclickable for users with
+            // custom card styles enabled. Allow overflow so those rows stay
+            // visible and interactive when card assignments are shown.
+            if (options.assignments_due === true) style.textContent += `.ic-DashboardCard {overflow: visible!important;}`;
+        }
     }
 
     style.textContent += ".ic-app-nav-toggle-and-crumbs{display:none!important}";

@@ -4,6 +4,7 @@ const syncedSubOptions = [
 	"todo_full_height",
     "todo_confetti",
     "todo_progress_rings",
+    "todo_timeframe",
 	"device_dark",
 	"relative_dues",
 	"card_overdues",
@@ -49,7 +50,7 @@ const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_feedback", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
-const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "hover_preview"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
@@ -147,6 +148,7 @@ const defaultOptions = {
         "todo_hide_feedback": false,
 		"todo_full_height": false,
         "todo_progress_rings": "rings",
+		"todo_timeframe": "all",
 		"todo_confetti": true,
         "device_dark": false,
         "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
@@ -305,6 +307,19 @@ function setupProgressRingsSelect(initial) {
     el.value = value;
     el.addEventListener("change", function () {
         chrome.storage.sync.set({ "todo_progress_rings": this.value });
+    });
+}
+
+// Timeframe dropdown for the upcoming Tasks tab. Persisted so the Better Todo
+// List remembers the selected range across sessions.
+function setupTimeframeSelect(initial) {
+    const el = document.querySelector("#todo_timeframe");
+    if (!el) return;
+    const allowed = ["all", "1week", "2week", "month", "2month"];
+    let value = allowed.includes(initial) ? initial : "all";
+    el.value = value;
+    el.addEventListener("change", function () {
+        chrome.storage.sync.set({ "todo_timeframe": this.value });
     });
 }
 
@@ -962,6 +977,10 @@ function setup() {
 			{
 				identifier: "todo_progress_rings",
 				setup: (initial) => setupProgressRingsSelect(initial),
+			},
+			{
+				identifier: "todo_timeframe",
+				setup: (initial) => setupTimeframeSelect(initial),
 			},
 		],
 	};
@@ -1658,6 +1677,7 @@ function saveCurrentTheme() {
                 "todo_full_height": current["todo_full_height"],
                 "todo_confetti": current["todo_confetti"],
                 "todo_progress_rings": current["todo_progress_rings"],
+                "todo_timeframe": current["todo_timeframe"],
                 "todo_hr24": current["todo_hr24"],
                 "todo_separate_scrollbar": current["todo_separate_scrollbar"],
                 "better_sidebar": current["better_sidebar"],
