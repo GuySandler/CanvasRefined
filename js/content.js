@@ -1220,7 +1220,23 @@ function checkDashboardReady() {
                         const link = cards[i].querySelector(".ic-DashboardCard__link");
                         signature += "|" + (link ? link.getAttribute("href") : "");
                     }
-                    if (signature !== lastDashboardCardSignature) {
+                    // Canvas often re-renders the dashboard on a hard reload and
+                    // replaces the .ic-DashboardCard nodes with fresh ones that have
+                    // the same courses/links (so the signature is unchanged) but no
+                    // longer carry our .canvasrefined-card-assignment marker. The
+                    // signature guard alone would skip re-setup in that case, leaving
+                    // card assignments empty until a popup toggle forces a reload.
+                    // Re-run whenever any card is missing its marker too. This is safe
+                    // from the self-retriggering reflow loop: after the pass every
+                    // card has the marker, so our own subsequent mutation bursts skip.
+                    let missingMarker = false;
+                    for (let i = 0; i < cards.length; i++) {
+                        if (!cards[i].querySelector(".canvasrefined-card-assignment")) {
+                            missingMarker = true;
+                            break;
+                        }
+                    }
+                    if (signature !== lastDashboardCardSignature || missingMarker) {
                         lastDashboardCardSignature = signature;
                         changeGradientCards();
                         setupCardAssignments();
@@ -3061,7 +3077,7 @@ function populateAssignments(iscompleted = false) {
 			</div>
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;position:relative;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
-					<span style="color:${courseColor};font-size:12px;margin-top:-2px;">${item.context_name}</span>
+					<span style="color:${courseColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
 					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${item.plannable.title}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
@@ -3161,7 +3177,7 @@ function populateAnnouncements() {
 			</div>
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
-					<span style="color:${courseColor};font-size:12px;margin-top:-2px;">${item.context_name}</span>
+					<span style="color:${courseColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
 					<a href="${domain + item.html_url}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${item.plannable.title}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
