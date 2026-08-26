@@ -53,7 +53,7 @@ Canvas Refined adds more with more to come!
 
 - GPA presets
 - backend stuff:
-	- Searching themes (the original didn't actually impliment that)
+	- Searching themes (the original didn't actually implement that)
 	- made the dark mode into a css file instead of a reallllllly long string
 - Card Styles (image size, card roundness, card spacing, width, height, theme compatible)
 - Custom Background
@@ -70,10 +70,10 @@ Canvas Refined adds more with more to come!
 - Smaller additions:
   - Equal height cards for card assignments
   - Center cards
-  - Hide new dashbaord button
+  - Hide new dashboard button
 
 ## Planned Features
-- mail assistent + ui revamp
+- mail assistant + ui revamp
 - better calender (+ calender sync)
 - better what if grade
 - global canvas search
@@ -93,7 +93,6 @@ Canvas Refined adds more with more to come!
 - preview font
 - button to remove all card images and undo
 - auto dark mode based on background
-- potential gemini nano features (local AI on your computer) if it would be able to run on more devices
 
 ## Community suggestions (maybe will be done at some point)
 - when opening assignments it will show you "if you get a 0 on this your grade will be _"
