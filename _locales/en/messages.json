@@ -304,5 +304,8 @@
 	},
 	"hide_new_canvas": {
 		"message": "Hide New Dashboard"
+	},
+	"global_search": {
+		"message": "Global Canvas Search"
 	}
 }

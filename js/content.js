@@ -685,6 +685,8 @@ function startExtension() {
 
         setupQuizSafeModeBanner();
 
+        setupGlobalSearch();
+
         
         setTimeout(() => runDarkModeFixer(false), 800);
         setTimeout(() => runDarkModeFixer(false), 4500);
@@ -822,6 +824,13 @@ function applyOptionsChanges(changes) {
 				break;
 			case "hide_new_canvas":
 				watchNewCanvasButton();
+				break;
+			case "global_search":
+				if (options.global_search) {
+					setupGlobalSearch();
+				} else {
+					removeGlobalSearch();
+				}
 				break;
             case "customBackgroundScale":
                 applyCustomBackground();
@@ -5521,6 +5530,526 @@ function injectQuizSafeModeBanner(safeModeOn) {
     setTimeout(() => obs.disconnect(), 15000);
 }
 
+
+
+// =============================================================================
+// Global Canvas Search
+// Search across all of the user's courses for modules, module items, and
+// assignments, then jump straight to them. Triggered by a floating search
+// button (bottom-right) or Ctrl/Cmd+K.
+// =============================================================================
+
+let globalSearchIndex = null;            // [{type,title,course,courseId,url}]
+let globalSearchIndexPromise = null;     // in-flight build so concurrent opens share one fetch
+let globalSearchIndexAt = 0;             // ms timestamp of last successful build
+const GLOBAL_SEARCH_INDEX_TTL = 10 * 60 * 1000; // 10 minutes
+const GLOBAL_SEARCH_STORAGE_KEY = "canvasrefined_global_search_index";
+let _gsShortcutBound = false;
+
+function setupGlobalSearch() {
+    if (options.global_search !== true) return;
+    // Rebuild the index fresh on every page load so newly-concluded/hidden
+    // courses never linger from a previous session's cache.
+    invalidateGlobalSearchIndex();
+    ensureGlobalSearchButton();
+    ensureGlobalSearchShortcut();
+}
+
+function removeGlobalSearch() {
+    document.getElementById("canvasrefined-global-search-btn")?.remove();
+    document.getElementById("canvasrefined-global-search-header-btn")?.remove();
+    closeGlobalSearchModal();
+    if (_gsPlacementObserver) { _gsPlacementObserver.disconnect(); _gsPlacementObserver = null; }
+    if (_gsShortcutBound) {
+        document.removeEventListener("keydown", onGlobalSearchShortcut, true);
+        _gsShortcutBound = false;
+    }
+}
+
+// Placement: on the dashboard the trigger lives in the header (between the
+// "Dashboard" heading and the options menu, right-aligned). Everywhere else it
+// falls back to a floating action button. A rAF-debounced MutationObserver
+// re-evaluates placement as Canvas renders/SPA-navigates.
+let _gsPlacementObserver = null;
+let _gsPlacementScheduled = false;
+function ensureGlobalSearchButton() {
+    placeGlobalSearchTrigger();
+    if (_gsPlacementObserver) return;
+    _gsPlacementObserver = new MutationObserver(() => {
+        if (_gsPlacementScheduled) return;
+        _gsPlacementScheduled = true;
+        requestAnimationFrame(() => {
+            _gsPlacementScheduled = false;
+            placeGlobalSearchTrigger();
+        });
+    });
+    _gsPlacementObserver.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+function placeGlobalSearchTrigger() {
+    if (options.global_search !== true) return;
+    const headerActions = document.querySelector(".ic-Dashboard-header__actions");
+    if (isDashboardPage() && headerActions) {
+        ensureGlobalSearchHeaderButton(headerActions);
+        document.getElementById("canvasrefined-global-search-btn")?.remove();
+    } else {
+        document.getElementById("canvasrefined-global-search-header-btn")?.remove();
+        ensureGlobalSearchFab();
+    }
+}
+
+function ensureGlobalSearchFab() {
+    if (document.getElementById("canvasrefined-global-search-btn")) return;
+    const btn = document.createElement("button");
+    btn.id = "canvasrefined-global-search-btn";
+    btn.type = "button";
+    btn.className = "canvasrefined-gs-fab";
+    btn.title = "Search Canvas (Ctrl+K)";
+    btn.setAttribute("aria-label", "Search Canvas");
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+    btn.addEventListener("click", openGlobalSearchModal);
+    if (document.body) {
+        document.body.appendChild(btn);
+    } else {
+        const wait = new MutationObserver(() => {
+            if (document.body) { document.body.appendChild(btn); wait.disconnect(); }
+        });
+        wait.observe(document.documentElement, { childList: true });
+    }
+}
+
+function ensureGlobalSearchHeaderButton(headerActions) {
+    if (headerActions.querySelector("#canvasrefined-global-search-header-btn")) return;
+    const btn = document.createElement("button");
+    btn.id = "canvasrefined-global-search-header-btn";
+    btn.type = "button";
+    btn.className = "canvasrefined-gs-header-btn";
+    btn.title = "Search Canvas (Ctrl+K)";
+    btn.setAttribute("aria-label", "Search Canvas");
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="canvasrefined-gs-header-btn-label">Search</span>`;
+    btn.addEventListener("click", openGlobalSearchModal);
+    // Insert as the first child of the actions row so it sits just to the left
+    // of the "Dashboard Options" (⋯) button, right-aligned with it.
+    headerActions.insertBefore(btn, headerActions.firstChild);
+}
+
+function ensureGlobalSearchShortcut() {
+    if (_gsShortcutBound) return;
+    document.addEventListener("keydown", onGlobalSearchShortcut, true);
+    _gsShortcutBound = true;
+}
+
+function onGlobalSearchShortcut(e) {
+    // Ctrl/Cmd+K toggles the search modal. Ignore when a modal is already open
+    // and the user is typing in its input (handled by the modal's own listener).
+    if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+        const modal = document.getElementById("canvasrefined-global-search-modal");
+        if (modal && modal.dataset.open === "true") {
+            closeGlobalSearchModal();
+        } else {
+            e.preventDefault();
+            openGlobalSearchModal();
+        }
+    }
+}
+
+function openGlobalSearchModal() {
+    if (document.getElementById("canvasrefined-global-search-modal")) return;
+
+    const modal = document.createElement("div");
+    modal.id = "canvasrefined-global-search-modal";
+    modal.className = "canvasrefined-gs-modal";
+    modal.dataset.open = "true";
+    modal.innerHTML = `
+        <div class="canvasrefined-gs-card" role="dialog" aria-modal="true" aria-label="Search Canvas">
+            <div class="canvasrefined-gs-input-row">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" class="canvasrefined-gs-input-icon"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <input id="canvasrefined-gs-input" class="canvasrefined-gs-input" type="text" placeholder="Search modules & assignments\u2026" autocomplete="off" spellcheck="false" />
+                <button id="canvasrefined-gs-close" class="canvasrefined-gs-close" type="button" title="Close (Esc)">Esc</button>
+            </div>
+            <div id="canvasrefined-gs-results" class="canvasrefined-gs-results"></div>
+            <div class="canvasrefined-gs-footer">
+                <span><kbd>\u2191</kbd><kbd>\u2193</kbd> navigate</span>
+                <span><kbd>Enter</kbd> open</span>
+                <span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> new tab</span>
+                <span><kbd>Esc</kbd> close</span>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    const input = modal.querySelector("#canvasrefined-gs-input");
+    const resultsEl = modal.querySelector("#canvasrefined-gs-results");
+    const closeBtn = modal.querySelector("#canvasrefined-gs-close");
+    let selected = -1;
+    let currentResults = [];
+
+    closeBtn.addEventListener("click", closeGlobalSearchModal);
+    modal.addEventListener("mousedown", (e) => { if (e.target === modal) closeGlobalSearchModal(); });
+
+    // Escape closes; arrows + enter navigate. Bound on capture so we win over
+    // the global Ctrl+K toggle.
+    modal.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeGlobalSearchModal(); return; }
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            selected = Math.min(selected + 1, currentResults.length - 1);
+            renderGlobalSearchSelection(resultsEl, selected);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            selected = Math.max(selected - 1, 0);
+            renderGlobalSearchSelection(resultsEl, selected);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            const item = currentResults[selected];
+            if (item) openGlobalSearchResult(item, e.ctrlKey || e.metaKey);
+        }
+    });
+    // Stop the global Ctrl+K handler from closing the modal while typing.
+    input.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) e.stopPropagation();
+    });
+
+    let debounce = null;
+    input.addEventListener("input", () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(() => runGlobalSearch(input.value.trim(), resultsEl).then(res => {
+            currentResults = res;
+            selected = res.length ? 0 : -1;
+            renderGlobalSearchSelection(resultsEl, selected);
+        }), 120);
+    });
+
+    // Block the page scroll while the modal is open.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    modal._restoreOverflow = () => { document.body.style.overflow = prevOverflow; };
+
+    requestAnimationFrame(() => input.focus());
+    // Kick off indexing immediately so the first keystroke is fast.
+    ensureGlobalSearchIndex();
+    // Render an initial hint.
+    resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments.</div>`;
+}
+
+function closeGlobalSearchModal() {
+    const modal = document.getElementById("canvasrefined-global-search-modal");
+    if (!modal) return;
+    if (typeof modal._restoreOverflow === "function") modal._restoreOverflow();
+    modal.remove();
+}
+
+function openGlobalSearchResult(item, newTab) {
+    if (!item || !item.url) return;
+    if (newTab) {
+        // Opening in a new tab keeps the search menu open so the user can keep
+        // searching. Refocus the input for the next keystroke.
+        window.open(item.url, "_blank", "noopener");
+        const input = document.getElementById("canvasrefined-gs-input");
+        if (input) input.focus();
+    } else {
+        closeGlobalSearchModal();
+        window.location.href = item.url;
+    }
+}
+
+function renderGlobalSearchSelection(resultsEl, selected) {
+    const rows = resultsEl.querySelectorAll(".canvasrefined-gs-row");
+    rows.forEach((row, i) => {
+        if (i === selected) { row.classList.add("canvasrefined-gs-selected"); row.scrollIntoView({ block: "nearest" }); }
+        else row.classList.remove("canvasrefined-gs-selected");
+    });
+}
+
+// --- Indexing ---------------------------------------------------------------
+
+// Drop any cached index so the next access rebuilds it from the API. Called
+// at setup time so every page load starts fresh.
+function invalidateGlobalSearchIndex() {
+    globalSearchIndex = null;
+    globalSearchIndexAt = 0;
+    globalSearchIndexPromise = null;
+    try { chrome.storage.local.remove(GLOBAL_SEARCH_STORAGE_KEY); } catch (_) { /* ignore */ }
+}
+
+async function ensureGlobalSearchIndex() {
+    // A per-session in-memory build is shared across opens so we don't refetch
+    // on every keystroke, but we never serve a persisted cache across reloads.
+    if (globalSearchIndex && (Date.now() - globalSearchIndexAt) < GLOBAL_SEARCH_INDEX_TTL) {
+        return globalSearchIndex;
+    }
+    if (globalSearchIndexPromise) return globalSearchIndexPromise;
+
+    globalSearchIndexPromise = (async () => {
+        const index = await buildGlobalSearchIndex();
+        globalSearchIndex = index;
+        globalSearchIndexAt = Date.now();
+        return index;
+    })();
+
+    try {
+        return await globalSearchIndexPromise;
+    } finally {
+        globalSearchIndexPromise = null;
+    }
+}
+
+async function buildGlobalSearchIndex() {
+    let courses = [];
+    try {
+        // enrollment_state=active excludes concluded/inactive enrollments at the
+        // source so we never index (or waste requests on) past-term courses.
+        courses = await getData(`${domain}/api/v1/courses?enrollment_state=active&per_page=100`);
+    } catch (e) {
+        console.warn("[CanvasRefined] global search: failed to load courses", e);
+        return [];
+    }
+    if (!Array.isArray(courses) || !courses.length) return [];
+
+    // Skip inactive/concluded/hidden courses. `enrollment_state=active`
+    // already filters at the source, but some institutions return past-term
+    // courses as "active", so we double-check here:
+    //   - access_restricted_by_date (locked courses)
+    //   - concluded === true (Canvas marks concluded courses)
+    //   - term end_date in the past (when the API exposes it)
+    //   - courses the user hid from their dashboard (custom_cards.hidden)
+    const now = Date.now();
+    courses = courses.filter(c => {
+        if (!c || !c.name) return false;
+        if (c.access_restricted_by_date === true) return false;
+        if (c.concluded === true) return false;
+        // term end date check (API may return term.end_at)
+        const endAt = c?.term?.end_at || c?.end_at;
+        if (endAt) {
+            const end = new Date(endAt).getTime();
+            if (!isNaN(end) && end < now) return false;
+        }
+        if (isCourseHidden(c.id)) return false;
+        return true;
+    });
+    // Cap to keep request volume sane.
+    courses = courses.slice(0, 60);
+
+    // Canvas can return the same course more than once (multi-role enrollments,
+    // cross-listed sections). Dedupe by id so we don't double-index or double-fetch.
+    const seenCourseIds = new Set();
+    courses = courses.filter(c => {
+        if (seenCourseIds.has(c.id)) return false;
+        seenCourseIds.add(c.id);
+        return true;
+    });
+
+    const index = [];
+    // Shared dedup state. Keys identify a piece of *content* regardless of where
+    // it surfaced, so the same assignment (which Canvas exposes both as a module
+    // item AND a standalone assignment) collapses to a single result.
+    //   - standalone assignment:  `asn:<courseId>:<assignmentId>`
+    //   - module item with content_id: `<type>:<courseId>:<contentId>`
+    //       (for type "assignment" this becomes `asn:<courseId>:<contentId>` —
+    //        the SAME key as the standalone assignment, so whichever is added
+    //        first wins; we add assignments first to keep the direct URL)
+    //   - module item without content_id (external url/tool): `url:<normalizedUrl>`
+    //   - module itself: `module:<courseId>:<moduleId>`
+    const seenContent = new Set();
+
+    await Promise.all(courses.map(async (course) => {
+        const courseId = course.id;
+        const courseName = course.name;
+        const courseCode = course.course_code || courseName;
+
+        // Assignments first so their direct URLs win over the module-item
+        // versions of the same assignment.
+        try {
+            const assignments = await getData(`${domain}/api/v1/courses/${courseId}/assignments?per_page=100`);
+            if (Array.isArray(assignments)) {
+                for (const a of assignments) {
+                    if (!a || !a.name || !a.html_url) continue;
+                    const key = `asn:${courseId}:${a.id}`;
+                    if (seenContent.has(key)) continue;
+                    seenContent.add(key);
+                    index.push({
+                        type: "Assignment",
+                        title: a.name,
+                        course: courseName,
+                        courseCode,
+                        courseId,
+                        url: a.html_url
+                    });
+                }
+            }
+        } catch (_) { /* non-fatal */ }
+
+        // Modules + their items.
+        try {
+            const modules = await getData(`${domain}/api/v1/courses/${courseId}/modules?per_page=100`);
+            if (Array.isArray(modules)) {
+                for (const m of modules) {
+                    if (!m || !m.name) continue;
+                    const modKey = `module:${courseId}:${m.id}`;
+                    if (!seenContent.has(modKey)) {
+                        seenContent.add(modKey);
+                        index.push({
+                            type: "Module",
+                            title: m.name,
+                            course: courseName,
+                            courseCode,
+                            courseId,
+                            url: `${domain}/courses/${courseId}/modules`
+                        });
+                    }
+                    try {
+                        const items = await getData(`${domain}/api/v1/courses/${courseId}/modules/${m.id}/items?per_page=100`);
+                        if (Array.isArray(items)) {
+                            for (const it of items) {
+                                if (!it || !it.title) continue;
+                                // Skip text headers / dividers — no destination page.
+                                const itype = (it.type || "").toLowerCase();
+                                if (itype === "subheader") continue;
+                                // Prefer the real page link (html_url). External
+                                // URL items expose external_url instead; the bare
+                                // `url` field is the API endpoint, never use it.
+                                const url = it.html_url || it.external_url;
+                                if (!url) continue;
+
+                                // Build a content-identity key so the same item
+                                // appearing in multiple modules (or mirroring a
+                                // standalone assignment) only produces one result.
+                                let key;
+                                if (itype === "assignment" && it.content_id) {
+                                    key = `asn:${courseId}:${it.content_id}`;
+                                } else if (it.content_id) {
+                                    key = `${itype}:${courseId}:${it.content_id}`;
+                                } else {
+                                    key = `url:${normalizeGlobalSearchUrl(url)}`;
+                                }
+                                if (seenContent.has(key)) continue;
+                                seenContent.add(key);
+
+                                index.push({
+                                    type: prettyModuleItemType(it.type),
+                                    title: it.title,
+                                    course: courseName,
+                                    courseCode,
+                                    courseId,
+                                    url
+                                });
+                            }
+                        }
+                    } catch (_) { /* per-module failure is non-fatal */ }
+                }
+            }
+        } catch (_) { /* per-course failure is non-fatal */ }
+    }));
+
+    // Final safety net: collapse any remaining normalized-URL duplicates (e.g.
+    // external links whose content_id differed but resolve to the same page).
+    const seen = new Set();
+    return index.filter(item => {
+        const key = normalizeGlobalSearchUrl(item.url);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function normalizeGlobalSearchUrl(url) {
+    if (!url) return "";
+    try {
+        const u = new URL(url, domain);
+        let path = u.pathname.replace(/\/+$/, ""); // strip trailing slashes
+        // Ignore case + fragment/query for matching purposes.
+        return (u.host.toLowerCase() + path).toLowerCase();
+    } catch (_) {
+        // Non-absolute (shouldn't happen, but be safe) — normalize as-is.
+        return String(url).replace(/\/+$/, "").toLowerCase();
+    }
+}
+
+function prettyModuleItemType(type) {
+    switch ((type || "").toLowerCase()) {
+        case "assignment": return "Assignment";
+        case "quiz": return "Quiz";
+        case "discussion": case "discussion_topic": return "Discussion";
+        case "externalurl": return "Link";
+        case "externaltool": return "External Tool";
+        case "file": return "File";
+        case "page": return "Page";
+        case "subheader": return "Section";
+        default: return type || "Item";
+    }
+}
+
+// --- Searching --------------------------------------------------------------
+
+async function runGlobalSearch(query, resultsEl) {
+    if (!globalSearchIndex && globalSearchIndexPromise) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-loading">Building search index\u2026</div>`;
+    }
+    const index = await ensureGlobalSearchIndex();
+    if (!query) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments.</div>`;
+        return [];
+    }
+    if (!index || !index.length) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No modules or assignments found. Open the search again later if your courses are still loading.</div>`;
+        return [];
+    }
+
+    const q = query.toLowerCase();
+    const matches = [];
+    for (const item of index) {
+        // Re-check hidden status at search time so a card hidden after the index
+        // was cached (10-min TTL) never surfaces in results.
+        if (isCourseHidden(item.courseId)) continue;
+        const t = (item.title || "").toLowerCase();
+        const c = (item.course || "").toLowerCase();
+        let score = -1;
+        if (t.startsWith(q)) score = 100 - t.indexOf(q);
+        else if (t.includes(q)) score = 60 - t.indexOf(q);
+        else if (c.includes(q)) score = 20;
+        if (score >= 0) { item._score = score + (t === q ? 50 : 0); matches.push(item); }
+    }
+    matches.sort((a, b) => b._score - a._score);
+    const top = matches.slice(0, 50);
+
+    if (!top.length) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No results for \u201c${escapeGlobalSearchHtml(query)}\u201d.</div>`;
+        return [];
+    }
+
+    resultsEl.innerHTML = top.map((item, i) => `
+        <div class="canvasrefined-gs-row" data-i="${i}" data-url="${escapeGlobalSearchAttr(item.url)}">
+            <div class="canvasrefined-gs-row-main">
+                <span class="canvasrefined-gs-type canvasrefined-gs-type-${escapeGlobalSearchAttr((item.type || "").toLowerCase().replace(/\s+/g, "-"))}">${escapeGlobalSearchHtml(item.type || "")}</span>
+                <span class="canvasrefined-gs-title">${escapeGlobalSearchHtml(item.title || "")}</span>
+            </div>
+            <span class="canvasrefined-gs-course">${escapeGlobalSearchHtml(item.course || "")}</span>
+        </div>`).join("");
+
+    resultsEl.querySelectorAll(".canvasrefined-gs-row").forEach((row) => {
+        // Plain click / Ctrl+click: honor modifier for new-tab behavior.
+        row.addEventListener("click", (e) => {
+            const url = row.getAttribute("data-url");
+            const item = top.find(x => x.url === url);
+            if (item) openGlobalSearchResult(item, e.ctrlKey || e.metaKey || (e.button === 1));
+        });
+        // Middle-click opens in a new tab without closing the search.
+        row.addEventListener("auxclick", (e) => {
+            if (e.button !== 1) return;
+            e.preventDefault();
+            const url = row.getAttribute("data-url");
+            const item = top.find(x => x.url === url);
+            if (item) openGlobalSearchResult(item, true);
+        });
+    });
+    return top;
+}
+
+function escapeGlobalSearchHtml(s) {
+    return String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+function escapeGlobalSearchAttr(s) {
+    return escapeGlobalSearchHtml(s).replace(/`/g, "&#96;");
+}
 
 function changeGradientCards() {
     if (options.gradient_cards === true) {

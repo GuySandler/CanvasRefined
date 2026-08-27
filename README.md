@@ -63,6 +63,7 @@ Canvas Refined adds more with more to come!
 - Popup UI revamp
 - NEW Better todo list
 - Better sidebar
+- Global Canvas Search (search modules & assignments across all courses; Ctrl/Cmd+K)
 - Simplified UI
   - Some options won't show up when not needed
 - Markdown in dashboard notes
@@ -76,7 +77,6 @@ Canvas Refined adds more with more to come!
 - mail assistant + ui revamp
 - better calender (+ calender sync)
 - better what if grade
-- global canvas search
 - fix darkmode fixer (and automatic)
 - grade history with graph
 

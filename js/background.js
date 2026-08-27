@@ -115,6 +115,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "sidebar_opacity": 100,
             "bg_blur": 8,
             "sidebar_blur": 0,
+            "global_search": false,
         }
     };
 
