@@ -81,29 +81,60 @@ function quizSafeModeActive() {
     return isQuizPage() && options.quiz_safe_mode === true;
 }
 
+// Read the URL live: Canvas' "New Canvas" UI navigates client-side via
+// history.pushState/replaceState, and current_page (captured at document_start)
+// can be stale when the user clicks into a submission page. Reading
+// window.location.pathname at check time makes this correct regardless.
 function getSubmissionAssignmentLink() {
-    const match = current_page.match(/^\/courses\/(\d+)\/assignments\/(\d+)\/submissions\/(\d+)(?:\/|$)/);
+    const match = window.location.pathname.match(/^\/courses\/(\d+)\/assignments\/(\d+)\/submissions\/(\d+)(?:\/|$)/);
     if (!match) return null;
     return `${domain}/courses/${match[1]}/assignments/${match[2]}/`;
 }
 
+// The content container isn't always #content on every Canvas layout (submission
+// pages in particular may render into .ic-Layout-contentMain or #main). Match the
+// quiz-safe-mode banner's container finder so the button lands in the visible
+// content area; fall back to <body> so injection never silently no-ops.
+function findContentContainer() {
+    return document.querySelector(".ic-Layout-contentMain")
+        || document.getElementById("content")
+        || document.querySelector("#main")
+        || document.body;
+}
+
 let submissionPageButtonObserver = null;
+let submissionButtonScheduled = false;
 let profileLogoutButtonObserver = null;
 let newCanvasButtonObserver = null;
 
 function addSubmissionPageButton() {
     const assignmentLink = getSubmissionAssignmentLink();
     if (!assignmentLink) return;
-    const content = document.getElementById("content");
-    if (!content || content.querySelector("#canvasrefined-assignment-return")) return;
+    // Place the button inline with the "Submission Details" heading and the
+    // grade-values table, inside the .submission-details-header__heading-and-grades
+    // flex row (appended so it sits to the right of the grade summary). Only inject
+    // once that row exists; if it's not there yet the persistent MutationObserver
+    // re-tries on the next DOM change so we never fall back to body/#content
+    // (which would put the button at the bottom of the page).
+    const row = document.querySelector(".submission-details-header__heading-and-grades")
+        || document.querySelector(".submission-details-header")
+        || document.querySelector(".submission_details");
+    if (!row || row.querySelector("#canvasrefined-assignment-return")) return;
 
-    makeElement("a", content, {
+    // Insert between the h1 heading and the grade-summary div so it reads
+    // [Heading] [Back to Assignment] [Grade]. Falls back to appending if the
+    // grade-summary div isn't found for some reason.
+    const gradeSummary = row.querySelector(".submission-details-header__grade-summary");
+    const btn = makeElement("a", row, {
         id: "canvasrefined-assignment-return",
         className: "canvasrefined-custom-btn",
         href: assignmentLink,
         textContent: "Back to Assignment",
-        style: "display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;margin:0 0 12px 0;padding:10px 14px;text-decoration:none;font-weight:700;",
-    }, true);
+        style: "display:inline-flex;align-items:center;justify-content:center;align-self:center;margin-left:auto;margin-right:12px;padding:6px 12px;text-decoration:none;font-weight:700;color:inherit!important;",
+    });
+    if (gradeSummary && gradeSummary.parentNode === row) {
+        row.insertBefore(btn, gradeSummary);
+    }
 }
 
 function addProfileLogoutPageButton() {
@@ -153,19 +184,26 @@ function watchProfileLogoutPageButton() {
     }, 10000);
 }
 
-function ensureSubmissionPageButton() {
-    const assignmentLink = getSubmissionAssignmentLink();
-    if (!assignmentLink) return false;
-    const content = document.getElementById("content");
-    if (!content) return false;
-    const existing = content.querySelector("#canvasrefined-assignment-return");
-    if (existing) {
-        // Keep the href in sync when navigating between submission pages via SPA routing.
-        existing.href = assignmentLink;
-        return true;
-    }
-    addSubmissionPageButton();
-    return Boolean(content.querySelector("#canvasrefined-assignment-return"));
+// Reconcile the button against the current page on a rAF-throttled schedule.
+// Canvas (React-based "New Canvas" UI) re-renders the content area on SPA
+// navigation and can wipe our injected node; a persistent observer re-adds it.
+function maintainSubmissionPageButton() {
+    if (submissionButtonScheduled) return;
+    submissionButtonScheduled = true;
+    requestAnimationFrame(() => {
+        submissionButtonScheduled = false;
+        const link = getSubmissionAssignmentLink();
+        const existing = document.getElementById("canvasrefined-assignment-return");
+        if (!link) {
+            existing?.remove();
+            return;
+        }
+        if (existing) {
+            if (existing.href !== link) existing.href = link;
+            return;
+        }
+        addSubmissionPageButton();
+    });
 }
 
 function isAssignmentPage() {
@@ -201,29 +239,19 @@ function watchSequenceFooter() {
     }, 10000);
 }
 
+// One persistent, rAF-throttled observer that keeps the button present whenever
+// we're on a submission page. Unlike the old 10s-disconnecting observer, this
+// survives Canvas' post-navigation re-renders that remove injected nodes. The
+// extra delayed checks cover React hydration that wipes the button after our
+// first add without emitting any later mutation for the observer to catch.
 function watchSubmissionPageButton() {
-    if (!getSubmissionAssignmentLink()) {
-        // Navigated away from a submission page; remove any stale button left in #content.
-        document.getElementById("canvasrefined-assignment-return")?.remove();
-        return;
-    }
-    if (ensureSubmissionPageButton()) return;
     if (submissionPageButtonObserver) return;
-
-    submissionPageButtonObserver = new MutationObserver(() => {
-        if (ensureSubmissionPageButton() && submissionPageButtonObserver) {
-            submissionPageButtonObserver.disconnect();
-            submissionPageButtonObserver = null;
-        }
-    });
-
+    maintainSubmissionPageButton();
+    submissionPageButtonObserver = new MutationObserver(maintainSubmissionPageButton);
     submissionPageButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => {
-        if (submissionPageButtonObserver) {
-            submissionPageButtonObserver.disconnect();
-            submissionPageButtonObserver = null;
-        }
-    }, 10000);
+    for (const ms of [300, 800, 1600, 3000, 5000]) {
+        setTimeout(maintainSubmissionPageButton, ms);
+    }
 }
 
 function removeNewCanvasButton() {
@@ -619,6 +647,15 @@ function startExtension() {
     });
     footerObserver.observe(document.documentElement, { childList: true, subtree: true });
 
+    // Start the submission-page "Back to Assignment" button watcher and the SPA
+    // navigation hook immediately, before the async storage callbacks below.
+    // These don't depend on `options`, and running them first means a throw in
+    // any later init step can't prevent the button from appearing. The watcher
+    // reads window.location.pathname live and uses a persistent MutationObserver
+    // to (re)inject the button once the content container exists.
+    setupNavigationListener();
+    watchSubmissionPageButton();
+
     toggleDarkMode();
 
     // Include bg_opacity/bg_blur so setupBetterSidebar (called below) tints the
@@ -644,9 +681,7 @@ function startExtension() {
         applyCustomBackground();
         ensureBetterSidebar();
         watchSequenceFooter();
-        watchSubmissionPageButton();
         watchProfileLogoutPageButton();
-        setupNavigationListener();
 
         setupQuizSafeModeBanner();
 
