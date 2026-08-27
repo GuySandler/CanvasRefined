@@ -79,13 +79,11 @@ Canvas Refined adds more with more to come!
 - global canvas search
 - fix darkmode fixer (and automatic)
 - grade history with graph
-- more shapes for the better todo ring thing
 
 ## Extra features that might be added:
 - card grade position, card outline
 - streaks
 - maybe find a way for faster loading
-- liquid glass theme?
 - rotating background, time/weather background overlay
 - custom side logo
 - goals
@@ -96,10 +94,8 @@ Canvas Refined adds more with more to come!
 
 ## Community suggestions (maybe will be done at some point)
 - when opening assignments it will show you "if you get a 0 on this your grade will be _"
-- quick modules button on cards
 - module sorting (newest, oldest) (maybe grid view)
 - grade leaderboard per class (opt in)
-- GPA preset by school name maybe
 - sticky notes
 
 ## Dev Installation

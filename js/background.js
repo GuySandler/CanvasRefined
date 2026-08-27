@@ -74,7 +74,6 @@ chrome.runtime.onInstalled.addListener(function () {
             "card_overdues": false,
             "relative_dues": false,
             "equal_height_cards": false,
-            "hide_feedback": false,
             "hide_new_canvas": true,
             "quiz_safe_mode": false,
             "dark_mode_fix": [],

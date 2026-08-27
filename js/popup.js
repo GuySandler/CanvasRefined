@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'hide_feedback', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'center_cards', 'quiz_safe_mode'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'center_cards', 'quiz_safe_mode'];
 const syncedSubOptions = [
 	"todo_hide_feedback",
 	"todo_full_height",
@@ -21,6 +21,8 @@ const syncedSubOptions = [
 	"todo_hr24",
 	"todo_separate_scrollbar",
 	"todo_alternate_colors",
+	"todo_ignore_card_colors",
+	"todo_remove_icons",
 	"grade_hover",
 	// "hide_completed",
 	"num_todo_items",
@@ -51,9 +53,9 @@ const localSwitches = [];
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding"];
-const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_feedback", "tab_icons"];
+const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
-const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "hover_preview"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
@@ -112,6 +114,8 @@ const defaultOptions = {
         "todo_hr24": false,
 		"todo_separate_scrollbar": false,
 		"todo_alternate_colors": false,
+		"todo_ignore_card_colors": false,
+		"todo_remove_icons": false,
         "condensed_cards": false,
         "center_cards": false,
         "custom_cards": {},
@@ -145,7 +149,6 @@ const defaultOptions = {
         "card_overdues": false,
         "relative_dues": false,
         "equal_height_cards": false,
-        "hide_feedback": false,
         "hide_new_canvas": true,
         "quiz_safe_mode": false,
         "dark_mode_fix": [],
@@ -557,14 +560,6 @@ function toggleCardTransparencyOptions() {
     if (blurRow) blurRow.style.display = on ? "" : "none";
 }
 
-// Hide the standalone feedback toggle when Better Todo's own sub-option replaces it.
-function toggleBetterTodoSubOptions(betterTodoOn) {
-    const hideFeedbackEl = document.getElementById("hide_feedback");
-    if (hideFeedbackEl) {
-        hideFeedbackEl.style.display = betterTodoOn ? "none" : "flex";
-    }
-}
-
 // "Alternate colors" (Better Todo List sub-option) only makes sense in light
 // mode, so hide its checkbox whenever dark mode is on.
 function toggleAlternateColorsVisibility(darkModeOn) {
@@ -619,6 +614,9 @@ function setupFeatureSearch(menu) {
         if (label) return label.textContent.trim();
         const st = sub.querySelector(".sub-text");
         if (st) return st.textContent.trim();
+        // Bare <span> label (e.g. Export Settings checkboxes have no label/.sub-text).
+        const span = sub.querySelector("span");
+        if (span) return span.textContent.trim();
         return "";
     }
 
@@ -769,6 +767,50 @@ function setupFeatureSearch(menu) {
             add({ key: "color:" + (btnId || "?") + ":" + text, text, el: h, action: () => goToTabElement(h) });
         });
 
+        // Tab: range sliders that live in dedicated rows (Opacity & Blur, Image scale).
+        // These aren't .sub-option, so the generic blocks above miss them.
+        document.querySelectorAll(".tab .opacity-slider-row, .tab .background-scale-row").forEach(row => {
+            if (shouldSkip(row)) return;
+            const label = row.querySelector(".sub-text");
+            const input = row.querySelector("input[type='range']");
+            if (!label || !input) return;
+            const text = label.textContent.trim();
+            if (!text) return;
+            const btnId = tabElToBtnId.get(row.closest(".tab"));
+            add({ key: "slider:" + (btnId || "?") + ":" + (input.id || text), text, el: row, action: () => goToTabElement(row) });
+        });
+
+        // Tab: preset buttons (dark mode presets + popular color palettes).
+        document.querySelectorAll(".tab .preset-button").forEach(btn => {
+            if (shouldSkip(btn)) return;
+            const text = btn.textContent.trim().replace(/\s+/g, " ");
+            if (!text || text === "placeholder") return;
+            const btnId = tabElToBtnId.get(btn.closest(".tab"));
+            add({ key: "preset:" + (btnId || "?") + ":" + (btn.id || text), text, el: btn, action: () => goToTabElement(btn) });
+        });
+
+        // Tab: standalone action buttons with distinct labels (GPA scale presets, revert colors).
+        ["gpa-plus-minus", "gpa-by-letter", "revert-colors", "clearCustomBackground"].forEach(id => {
+            const btn = document.getElementById(id);
+            if (!btn || shouldSkip(btn)) return;
+            const text = btn.textContent.trim();
+            if (!text) return;
+            add({ key: "action:" + id, text, el: btn, action: () => goToTabElement(btn) });
+        });
+
+        // Tab: checkbox/radio controls whose label is a bare sibling span and that
+        // aren't wrapped in .sub-option (e.g. "Get Active Cards From Dashboard",
+        // sidebar background "Solid/Gradient/Image").
+        document.querySelectorAll(".tab input[type='checkbox'], .tab input[type='radio']").forEach(input => {
+            if (!input.id) return;
+            if (input.closest(".sub-option") || input.closest(".option")) return;
+            if (shouldSkip(input)) return;
+            const text = (input.parentElement && input.parentElement.textContent.trim()) || "";
+            if (!text) return;
+            const btnId = tabElToBtnId.get(input.closest(".tab"));
+            add({ key: "control:" + (btnId || "?") + ":" + input.id, text, el: input, action: () => goToTabElement(input) });
+        });
+
         return index;
     }
 
@@ -900,6 +942,8 @@ function setup() {
 			"todo_hr24",
 			"todo_separate_scrollbar",
 			"todo_alternate_colors",
+			"todo_ignore_card_colors",
+			"todo_remove_icons",
 			"grade_hover",
 			// "hide_completed",
 			"hover_preview",
@@ -1058,9 +1102,6 @@ function setup() {
                 if (option === "better_sidebar") {
                     toggleBetterSidebarSubOptions(status);
                 }
-                if (option === "better_todo") {
-                    toggleBetterTodoSubOptions(status);
-                }
                 if (option === "dark_mode") {
                     toggleAlternateColorsVisibility(status);
                 }
@@ -1068,7 +1109,6 @@ function setup() {
             });
         });
         toggleBetterSidebarSubOptions(sync["better_sidebar"] === true);
-        toggleBetterTodoSubOptions(sync["better_todo"] === true);
         ["gpa_calc", "assignments_due", "better_todo", "auto_dark"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
@@ -1715,6 +1755,9 @@ function saveCurrentTheme() {
                 "todo_timeframe": current["todo_timeframe"],
                 "todo_hr24": current["todo_hr24"],
                 "todo_separate_scrollbar": current["todo_separate_scrollbar"],
+                "todo_alternate_colors": current["todo_alternate_colors"],
+                "todo_ignore_card_colors": current["todo_ignore_card_colors"],
+                "todo_remove_icons": current["todo_remove_icons"],
                 "better_sidebar": current["better_sidebar"],
                 "sidebar_scale": current["sidebar_scale"],
 				"imageSize": current["imageSize"],
@@ -1983,8 +2026,18 @@ function setCustomImage(key, val) {
     updateCards(key, { "img": val });
 }
 
-function displayAdvancedCards() {
-    sendFromPopup("getCards");
+async function displayAdvancedCards() {
+    // Sync from Canvas only when needed: when there are no cards yet (fresh
+    // install) or when older cards predate the stored fullName field. Once
+    // every card has a fullName this is a no-op and the grid renders instantly.
+    const needsSync = await new Promise(resolve => {
+        chrome.storage.sync.get("custom_cards", s => {
+            const c = s.custom_cards || {};
+            const ids = Object.keys(c);
+            resolve(!ids.length || ids.some(id => !c[id].fullName));
+        });
+    });
+    if (needsSync) await sendFromPopup("getCards");
     chrome.storage.sync.get(["custom_cards", "custom_cards_2"], storage => {
 
 
@@ -2024,12 +2077,14 @@ function displayAdvancedCards() {
             }
         });
 
+        // showCardEditMenu sets an inline display:none on the grid; clear it
+        // so reopening the menu shows the cards again (CSS default = grid).
+        cardGrid.style.display = "";
         const editMenu = document.getElementById("card-edit-menu");
         if (editMenu) {
             editMenu.style.display = "none";
         }
     });
-	sendFromPopup("getCards");
 }
 
 function createCourseButton(courseId, courseData) {
@@ -2037,6 +2092,7 @@ function createCourseButton(courseId, courseData) {
 	button.className = "course-card-button";
 	const displayName =
 		courseData.name ||
+		courseData.fullName ||
 		courseData.default ||
 		courseData.code ||
 		`Course ${courseId}`;
@@ -2064,6 +2120,7 @@ function showCardEditMenu(courseId, courseData) {
 
 	const displayName =
 		courseData.name ||
+		courseData.fullName ||
 		courseData.default ||
 		courseData.code ||
 		`Course ${courseId}`;
