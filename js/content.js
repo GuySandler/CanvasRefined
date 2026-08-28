@@ -5556,8 +5556,9 @@ function setupGlobalSearch() {
 }
 
 function removeGlobalSearch() {
-    document.getElementById("canvasrefined-global-search-btn")?.remove();
     document.getElementById("canvasrefined-global-search-header-btn")?.remove();
+    removeGlobalSearchBetterSidebarButton();
+    removeGlobalSearchNativeSidebarButton();
     closeGlobalSearchModal();
     if (_gsPlacementObserver) { _gsPlacementObserver.disconnect(); _gsPlacementObserver = null; }
     if (_gsShortcutBound) {
@@ -5566,10 +5567,14 @@ function removeGlobalSearch() {
     }
 }
 
-// Placement: on the dashboard the trigger lives in the header (between the
-// "Dashboard" heading and the options menu, right-aligned). Everywhere else it
-// falls back to a floating action button. A rAF-debounced MutationObserver
-// re-evaluates placement as Canvas renders/SPA-navigates.
+// Shared search icon used by the sidebar + header triggers.
+const GLOBAL_SEARCH_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20px" height="20px"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><circle cx="11" cy="11" r="7" stroke="var(--bcsidebar-text)" stroke-width="2" fill="none"/><path d="m20 20-3.2-3.2" stroke="var(--bcsidebar-text)" stroke-width="2" stroke-linecap="round"/></g></svg>`;
+
+// Placement: a search trigger is injected into whichever left sidebar is
+// active — the Better Sidebar (when enabled) or Canvas' native global nav —
+// and, on the dashboard, a button is also placed in the header actions row.
+// There is no floating button. A rAF-debounced MutationObserver re-evaluates
+// placement as Canvas renders/SPA-navigates/rebuilds the sidebar.
 let _gsPlacementObserver = null;
 let _gsPlacementScheduled = false;
 function ensureGlobalSearchButton() {
@@ -5588,35 +5593,97 @@ function ensureGlobalSearchButton() {
 
 function placeGlobalSearchTrigger() {
     if (options.global_search !== true) return;
+
+    // Native global nav (the slim icon bar) — always present, so always add.
+    ensureGlobalSearchNativeSidebarButton();
+
+    // Better Sidebar (extra column when the option is enabled) — add when present.
+    const betterSidebar = document.getElementById("better-sidebar-container");
+    if (betterSidebar) {
+        ensureGlobalSearchBetterSidebarButton(betterSidebar);
+    } else {
+        removeGlobalSearchBetterSidebarButton();
+    }
+
+    // Dashboard header button (in addition to the sidebar triggers).
     const headerActions = document.querySelector(".ic-Dashboard-header__actions");
     if (isDashboardPage() && headerActions) {
         ensureGlobalSearchHeaderButton(headerActions);
-        document.getElementById("canvasrefined-global-search-btn")?.remove();
     } else {
         document.getElementById("canvasrefined-global-search-header-btn")?.remove();
-        ensureGlobalSearchFab();
     }
 }
 
-function ensureGlobalSearchFab() {
-    if (document.getElementById("canvasrefined-global-search-btn")) return;
-    const btn = document.createElement("button");
-    btn.id = "canvasrefined-global-search-btn";
-    btn.type = "button";
-    btn.className = "canvasrefined-gs-fab";
+// --- Better Sidebar trigger --------------------------------------------------
+
+function ensureGlobalSearchBetterSidebarButton(betterSidebar) {
+    // The first child of #better-sidebar-container is the button list.
+    const sidebarContent = betterSidebar.querySelector("div");
+    if (!sidebarContent) return;
+    if (sidebarContent.querySelector("#canvasrefined-gs-sidebar-btn")) return;
+    const btn = document.createElement("a");
+    btn.id = "canvasrefined-gs-sidebar-btn";
+    btn.className = "canvasrefined-custom-btn better-sidebar-btn canvasrefined-gs-sidebar-btn";
+    btn.href = "#";
     btn.title = "Search Canvas (Ctrl+K)";
+    btn.setAttribute("role", "button");
     btn.setAttribute("aria-label", "Search Canvas");
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
-    btn.addEventListener("click", openGlobalSearchModal);
-    if (document.body) {
-        document.body.appendChild(btn);
-    } else {
-        const wait = new MutationObserver(() => {
-            if (document.body) { document.body.appendChild(btn); wait.disconnect(); }
-        });
-        wait.observe(document.documentElement, { childList: true });
-    }
+    btn.style.cssText = "width:40%;height:var(--bc-sidebar-btn-height,30px);cursor:pointer;text-align:center;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:var(--bc-sidebar-btn-gap,8px);color:var(--bcsidebar-text) !important;font-weight:bold;position:relative;";
+    btn.innerHTML = `${GLOBAL_SEARCH_ICON_SVG}<span class="better-sidebar-label" style="font-size:var(--bc-sidebar-label-size,14px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">Search</span>`;
+    btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openGlobalSearchModal(); });
+    // Append so it sits at the bottom of the sidebar item list.
+    sidebarContent.appendChild(btn);
+    // Match the sidebar's current expanded/collapsed mode immediately so the
+    // button doesn't briefly render in the wrong state (e.g. label visible while
+    // collapsed) until the next toggle calls updateSidebar().
+    applyGlobalSearchSidebarButtonMode(btn, betterSidebar.dataset.expanded === "true");
 }
+
+function removeGlobalSearchBetterSidebarButton() {
+    document.getElementById("canvasrefined-gs-sidebar-btn")?.remove();
+}
+
+// Apply the Better Sidebar's current expanded/collapsed styling to the search
+// button, mirroring updateSidebar()'s button/label/svg rules so the button is
+// correct the moment it's inserted (and whenever the sidebar re-renders).
+function applyGlobalSearchSidebarButtonMode(btn, expanded) {
+    if (!btn) return;
+    btn.style.width = expanded ? "80%" : "40%";
+    const label = btn.querySelector(".better-sidebar-label");
+    if (label) label.style.display = expanded ? "block" : "none";
+    btn.querySelectorAll("svg").forEach(svg => {
+        svg.style.width = "var(--bc-sidebar-icon-size,20px)";
+        svg.style.height = "var(--bc-sidebar-icon-size,20px)";
+    });
+}
+
+// --- Native global-nav trigger ----------------------------------------------
+
+function ensureGlobalSearchNativeSidebarButton() {
+    const navMenu = document.getElementById("menu");
+    if (!navMenu) return;
+    if (navMenu.querySelector("#canvasrefined-gs-nav-item")) return;
+    const li = document.createElement("li");
+    li.id = "canvasrefined-gs-nav-item";
+    li.className = "ic-app-header__menu-list-item canvasrefined-gs-nav-item";
+    const link = document.createElement("a");
+    link.className = "ic-app-header__menu-list-link";
+    link.href = "#";
+    link.setAttribute("role", "button");
+    link.title = "Search Canvas (Ctrl+K)";
+    link.setAttribute("aria-label", "Search Canvas");
+    link.innerHTML = `<span class="menu-item-icon-container" aria-hidden="true">${GLOBAL_SEARCH_ICON_SVG}</span><span class="menu-item__text">Search</span>`;
+    link.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openGlobalSearchModal(); });
+    li.appendChild(link);
+    // Append so the search item appears at the bottom of the global nav.
+    navMenu.appendChild(li);
+}
+
+function removeGlobalSearchNativeSidebarButton() {
+    document.getElementById("canvasrefined-gs-nav-item")?.remove();
+}
+
+// --- Dashboard header trigger -----------------------------------------------
 
 function ensureGlobalSearchHeaderButton(headerActions) {
     if (headerActions.querySelector("#canvasrefined-global-search-header-btn")) return;
@@ -5642,14 +5709,19 @@ function ensureGlobalSearchShortcut() {
 function onGlobalSearchShortcut(e) {
     // Ctrl/Cmd+K toggles the search modal. Ignore when a modal is already open
     // and the user is typing in its input (handled by the modal's own listener).
-    if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
-        const modal = document.getElementById("canvasrefined-global-search-modal");
-        if (modal && modal.dataset.open === "true") {
-            closeGlobalSearchModal();
-        } else {
-            e.preventDefault();
-            openGlobalSearchModal();
-        }
+    if (!(e.ctrlKey || e.metaKey) || !(e.key === "k" || e.key === "K")) return;
+
+    // Never activate on quiz pages (intro or take) so we don't interfere with
+    // the quiz experience or the browser's native Ctrl+K. Read the URL live
+    // because current_page can be stale after Canvas' client-side navigation.
+    if (/^\/courses\/\d+\/quizzes\/\d+(?:\/|$)/.test(window.location.pathname)) return;
+
+    const modal = document.getElementById("canvasrefined-global-search-modal");
+    if (modal && modal.dataset.open === "true") {
+        closeGlobalSearchModal();
+    } else {
+        e.preventDefault();
+        openGlobalSearchModal();
     }
 }
 
@@ -5719,11 +5791,6 @@ function openGlobalSearchModal() {
         }), 120);
     });
 
-    // Block the page scroll while the modal is open.
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    modal._restoreOverflow = () => { document.body.style.overflow = prevOverflow; };
-
     requestAnimationFrame(() => input.focus());
     // Kick off indexing immediately so the first keystroke is fast.
     ensureGlobalSearchIndex();
@@ -5734,7 +5801,6 @@ function openGlobalSearchModal() {
 function closeGlobalSearchModal() {
     const modal = document.getElementById("canvasrefined-global-search-modal");
     if (!modal) return;
-    if (typeof modal._restoreOverflow === "function") modal._restoreOverflow();
     modal.remove();
 }
 

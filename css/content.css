@@ -268,16 +268,12 @@
 .canvasrefined-quiz-safe-dismiss:hover { background: #ececec; }
 
 /* ===== Global Canvas Search ===== */
-.canvasrefined-gs-fab {
-    position: fixed; right: 18px; bottom: 18px; z-index: 2147483000;
-    width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer;
-    display: inline-flex; align-items: center; justify-content: center;
-    color: #fff; background: var(--bclinks, #0072b5);
-    box-shadow: 0 4px 14px rgba(0,0,0,.28);
-    transition: transform .12s ease, filter .12s ease;
-}
-.canvasrefined-gs-fab:hover { transform: translateY(-2px) scale(1.04); filter: brightness(1.08); }
-.canvasrefined-gs-fab:active { transform: translateY(0) scale(0.97); }
+/* Native global-nav search item — matches Canvas' own nav links. */
+.canvasrefined-gs-nav-item { list-style: none; }
+.canvasrefined-gs-nav-item .ic-app-header__menu-list-link { cursor: pointer; }
+.canvasrefined-gs-nav-item .menu-item-icon-container svg { width: 26px; height: 26px; }
+.canvasrefined-gs-nav-item:hover .ic-app-header__menu-list-link { background: #0000004f !important; }
+.canvasrefined-gs-nav-item .menu-item__text { font-size: 12px; }
 
 /* Dashboard header trigger — sits just left of the \u22ee options button. */
 .canvasrefined-gs-header-btn {
