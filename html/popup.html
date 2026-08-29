@@ -76,7 +76,7 @@
                         </div>
                         <span class="option-name" data-i18n="dark_mode">Dark mode</span>
                     </div>
-                    <div class="option" id="auto_dark" style="margin-top:10px">
+                    <div class="option" id="auto_dark">
                         <input type="radio" id="off" name="auto_dark">
                         <input type="radio" id="on" name="auto_dark">
                         <div class="slider">
@@ -203,6 +203,14 @@
                             <span class="cr-info-bubble-text" data-i18n="quiz_safe_mode_desc">Turns off most Canvas Refined features on quiz pages so you get the default Canvas quiz experience.</span>
                         </span>
                     </div>
+                    <div class="option" id="dashboard_notes">
+                        <input type="radio" id="off" name="dashboard_notes">
+                        <input type="radio" id="on" name="dashboard_notes">
+                        <div class="slider">
+                            <div class="sliderknob"></div>
+                            <div class="sliderbg"></div>
+                        </div><span class="option-name" data-i18n="dashboard_notes">Dashboard Notes</span>
+                    </div>
                     <div class="option" id="global_search">
                         <input type="radio" id="off" name="global_search">
                         <input type="radio" id="on" name="global_search">
@@ -210,6 +218,18 @@
                             <div class="sliderknob"></div>
                             <div class="sliderbg"></div>
                         </div><span class="option-name" data-i18n="global_search">Global Canvas Search</span>
+                    </div>
+                    <div class="option" id="grade_analytics">
+                        <input type="radio" id="off" name="grade_analytics">
+                        <input type="radio" id="on" name="grade_analytics">
+                        <div class="slider">
+                            <div class="sliderknob"></div>
+                            <div class="sliderbg"></div>
+                        </div><span class="option-name" data-i18n="grade_analytics">Grade Analytics</span>
+                        <span class="cr-info-bubble" tabindex="0" role="button" aria-label="Grade Analytics info">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                            <span class="cr-info-bubble-text" data-i18n="grade_analytics_desc">Adds an Analytics toggle to the left side of course grade pages with a score-distribution chart and your overall grade over time.</span>
+                        </span>
                     </div>
                 </div>
                 <div class="social-buttons">
@@ -326,7 +346,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="option-container" style="display:flex;flex-direction:column;gap:6px;">
+                <div class="option-container">
                     <div class="option" id="center_cards">
                         <input type="radio" id="off" name="center_cards">
                         <input type="radio" id="on" name="center_cards">
@@ -335,14 +355,6 @@
                             <div class="sliderbg"></div>
                         </div>
                         <span class="option-name" data-i18n="center_cards">Center Cards</span>
-                    </div>
-                    <div class="option" id="dashboard_notes">
-                        <input type="radio" id="off" name="dashboard_notes">
-                        <input type="radio" id="on" name="dashboard_notes">
-                        <div class="slider">
-                            <div class="sliderknob"></div>
-                            <div class="sliderbg"></div>
-                        </div><span class="option-name" data-i18n="dashboard_notes">Dashboard Notes</span>
                     </div>
                     <div class="option" id="gradient_cards">
                         <input type="radio" id="off" name="gradient_cards">
@@ -393,6 +405,14 @@
                             <div class="sliderknob"></div>
                             <div class="sliderbg"></div>
                         </div><span class="option-name" data-i18n="hide_new_canvas">Hide New Dashboard</span>
+                    </div>
+                    <div class="option" id="hide_sequence_footer">
+                        <input type="radio" id="off" name="hide_sequence_footer">
+                        <input type="radio" id="on" name="hide_sequence_footer">
+                        <div class="slider">
+                            <div class="sliderknob"></div>
+                            <div class="sliderbg"></div>
+                        </div><span class="option-name" data-i18n="hide_sequence_footer">Hide Next/Previous Buttons</span>
                     </div>
                 </div>
                 <div class="option-container">

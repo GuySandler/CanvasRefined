@@ -15,6 +15,7 @@ function setupNavigationListener() {
         watchSequenceFooter();
         watchSubmissionPageButton();
         watchProfileLogoutPageButton();
+        watchGradeAnalytics();
     };
     for (const method of ["pushState", "replaceState"]) {
         const orig = history[method];
@@ -106,6 +107,7 @@ let submissionPageButtonObserver = null;
 let submissionButtonScheduled = false;
 let profileLogoutButtonObserver = null;
 let newCanvasButtonObserver = null;
+let sequenceFooterObserver = null;
 
 function addSubmissionPageButton() {
     const assignmentLink = getSubmissionAssignmentLink();
@@ -211,6 +213,7 @@ function isAssignmentPage() {
 }
 
 function removeSequenceFooter() {
+    if (options.hide_sequence_footer !== true) return false;
     if (!isAssignmentPage()) return false;
     const sequenceFooter = document.getElementById("sequence_footer");
     if (!sequenceFooter) return false;
@@ -218,11 +221,39 @@ function removeSequenceFooter() {
     return true;
 }
 
+// CSS-based hiding is the primary mechanism: the style element persists across
+// Canvas re-renders and full reloads, so the footer can never flash back after
+// the JS observer has removed it (or timed out) once.
+function applyHideSequenceFooter() {
+    let style = document.getElementById("canvasrefined-hide-sequence-footer");
+    if (options.hide_sequence_footer === true) {
+        if (!style) {
+            style = document.createElement("style");
+            style.id = "canvasrefined-hide-sequence-footer";
+            style.textContent = "#sequence_footer{display:none!important}";
+            (document.head || document.documentElement).appendChild(style);
+        }
+    } else if (style) {
+        style.remove();
+    }
+}
+
 function watchSequenceFooter() {
+    applyHideSequenceFooter();
+    if (options.hide_sequence_footer !== true) {
+        if (sequenceFooterObserver) {
+            sequenceFooterObserver.disconnect();
+            sequenceFooterObserver = null;
+        }
+        return;
+    }
     if (!isAssignmentPage()) return;
     if (removeSequenceFooter()) return;
     if (sequenceFooterObserver) return;
 
+    // The observer strips the footer from the DOM (no leftover gap), and
+    // disconnects once removed — after that (or after the 10s timeout below)
+    // the CSS rule above is what keeps it hidden across Canvas re-renders.
     sequenceFooterObserver = new MutationObserver(() => {
         if (removeSequenceFooter() && sequenceFooterObserver) {
             sequenceFooterObserver.disconnect();
@@ -682,6 +713,7 @@ function startExtension() {
         ensureBetterSidebar();
         watchSequenceFooter();
         watchProfileLogoutPageButton();
+        watchGradeAnalytics();
 
         setupQuizSafeModeBanner();
 
@@ -825,6 +857,9 @@ function applyOptionsChanges(changes) {
 			case "hide_new_canvas":
 				watchNewCanvasButton();
 				break;
+			case "hide_sequence_footer":
+				watchSequenceFooter();
+				break;
 			case "global_search":
 				if (options.global_search) {
 					setupGlobalSearch();
@@ -918,6 +953,9 @@ function applyOptionsChanges(changes) {
                     resetBetterSidebarLayout();
                 }
 				break;
+            case "grade_analytics":
+                watchGradeAnalytics();
+                break;
             case "quiz_safe_mode":
                 // Toggling safe mode changes which features run on quiz pages; reload
                 // so the gating is applied cleanly.
@@ -6273,6 +6311,621 @@ function getAssignments() {
         cardAssignments = preloadAssignmentEls();
     }
 }
+
+// ===================== Grade Analytics =====================
+// On course grades pages, adds an "Analytics" toggle on the left side (in the
+// Better Sidebar when enabled, otherwise in the native course nav) that shows
+// a panel with a score-distribution doughnut and an overall-grade-over-time
+// line chart. Data comes from the Canvas API with the user's session, so it
+// matches the numbers on the page. Charts are hand-drawn on <canvas> so the
+// extension needs no CDN/library and no chart library dependency.
+
+const GA_BUCKETS = [
+    { label: "90+",   min: 90, max: Infinity, color: "#16a34a" },
+    { label: "80-89", min: 80, max: 90,       color: "#4ade80" },
+    { label: "70-79", min: 70, max: 80,       color: "#a3e635" },
+    { label: "60-69", min: 60, max: 70,       color: "#facc15" },
+    { label: "50-59", min: 50, max: 60,       color: "#fb923c" },
+    { label: "40-49", min: 40, max: 50,       color: "#f87171" },
+    { label: "30-39", min: 30, max: 40,       color: "#ef4444" },
+    { label: "20-29", min: 20, max: 30,       color: "#dc2626" },
+    { label: "10-19", min: 10, max: 20,       color: "#b91c1c" },
+    { label: "0-9",   min: 0,  max: 10,       color: "#7f1d1d" },
+];
+const GA_UNGRADED_COLOR = "#6b7280";
+const GA_OPEN_KEY = "grade_analytics_open";
+
+async function getGradeAnalyticsOpenState() {
+    const result = await chrome.storage.local.get(GA_OPEN_KEY);
+    return result[GA_OPEN_KEY] ?? true;
+}
+
+function setGradeAnalyticsOpenState(open) {
+    chrome.storage.local.set({ [GA_OPEN_KEY]: open });
+}
+
+const GA_FIT_Y_KEY = "grade_analytics_fit_y";
+
+async function getGradeAnalyticsFitY() {
+    const result = await chrome.storage.local.get(GA_FIT_Y_KEY);
+    return result[GA_FIT_Y_KEY] ?? false;
+}
+
+function setGradeAnalyticsFitY(fit) {
+    chrome.storage.local.set({ [GA_FIT_Y_KEY]: fit });
+}
+
+let gaObserver = null;
+let gaOpen = false;          // panel open on this page view
+let gaFitY = false;         // scale the line chart Y axis to fit the data
+let gaCourseId = null;       // course whose data is cached
+let gaData = null;           // computed data for the current course
+let gaLoading = false;
+
+function gradeAnalyticsActive() {
+    return options.grade_analytics === true && isGradesPage() && !quizSafeModeActive();
+}
+
+// Paginated Canvas API GET using the user's session. Unwraps Firefox Xray
+// proxies like getData() does. The first page is fetched serially to learn the
+// total page count from its Link header; every remaining page is then fetched
+// concurrently, so courses with many assignments don't pay one round trip per
+// page.
+async function gaFetchAll(path) {
+    const fetchPage = async (url) => {
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        if (!res.ok) throw new Error("Canvas API " + res.status + " for " + url.pathname);
+        return { data: JSON.parse(JSON.stringify(await res.json())), link: res.headers.get("Link") || "" };
+    };
+    const firstUrl = new URL(path, domain);
+    firstUrl.searchParams.set("per_page", "100");
+    const { data: first, link } = await fetchPage(firstUrl);
+    const out = Array.isArray(first) ? first.slice() : [];
+    const lastMatch = link.match(/<([^>]+)>;\s*rel="last"/);
+    if (lastMatch) {
+        const lastPage = parseInt(new URL(lastMatch[1]).searchParams.get("page") || "1", 10);
+        if (lastPage > 1) {
+            const pageUrls = [];
+            for (let p = 2; p <= lastPage; p++) {
+                const u = new URL(path, domain);
+                u.searchParams.set("per_page", "100");
+                u.searchParams.set("page", String(p));
+                pageUrls.push(u);
+            }
+            const rest = await Promise.all(pageUrls.map(u => fetchPage(u).then(r => r.data)));
+            for (const page of rest) if (Array.isArray(page)) out.push(...page);
+        }
+    }
+    return out;
+}
+
+// Entry point: called at init, on SPA navigation, and when the option changes.
+function watchGradeAnalytics() {
+    if (!gradeAnalyticsActive()) {
+        removeGradeAnalyticsPanel();
+        if (gaObserver) { gaObserver.disconnect(); gaObserver = null; }
+        return;
+    }
+    // SPA navigation between courses: drop cached data so the panel never
+    // shows the previous course's charts.
+    const courseId = getCurrentCourseId();
+    if (gaCourseId !== null && gaCourseId !== courseId) {
+        gaData = null;
+        gaCourseId = null;
+        removeGradeAnalyticsPanel();
+    }
+    if (!gaObserver) {
+        // Canvas re-renders the left nav and content area during SPA
+        // navigation; the observer keeps the panel placed.
+        gaObserver = new MutationObserver(() => scheduleGradeAnalyticsSync());
+        gaObserver.observe(document.documentElement, { childList: true, subtree: true });
+    }
+    scheduleGradeAnalyticsSync();
+    // Restore the open/closed state and Y-axis preference the user last
+    // chose, then inject the panel below the Print Grades header.
+    Promise.all([getGradeAnalyticsOpenState(), getGradeAnalyticsFitY()]).then(([open, fit]) => {
+        gaOpen = open;
+        gaFitY = fit;
+        ensureGradeAnalyticsPanel();
+        if (gaOpen && gaData) renderGradeAnalytics();
+    });
+    if (!gaData && !gaLoading) loadGradeAnalytics();
+}
+
+let gaSyncRaf = null;
+function scheduleGradeAnalyticsSync() {
+    if (gaSyncRaf) return;
+    gaSyncRaf = requestAnimationFrame(() => {
+        gaSyncRaf = null;
+        syncGradeAnalyticsUI();
+    });
+}
+
+function syncGradeAnalyticsUI() {
+    if (!gradeAnalyticsActive()) return;
+    const panel = ensureGradeAnalyticsPanel();
+    if (!panel) return;
+    // Self-heal: the one-shot render after data loads can be a no-op when the
+    // panel was created before Canvas finished laying out the page (zero-size
+    // canvases) or while the body was still hidden. gaSetupCanvas leaves the
+    // canvas backing store at width 0 in that case, so a 0-width canvas means
+    // "never drawn" — redraw now that layout is real.
+    if (gaOpen && gaData) {
+        const pie = panel.querySelector("#canvasrefined-ga-pie");
+        const line = panel.querySelector("#canvasrefined-ga-line");
+        if ((pie && pie.width === 0) || (line && line.width === 0)) {
+            renderGradeAnalytics();
+        }
+    }
+}
+
+function removeGradeAnalyticsPanel() {
+    gaOpen = false;
+    document.getElementById("canvasrefined-grade-analytics")?.remove();
+}
+
+// Applies the in-memory open/closed state (restored from storage) to the panel
+// DOM. Called both at panel creation and whenever an already-attached panel
+// is reused, so a stored preference is never lost to a creation race (the DOM
+// observer can build the panel before the storage read resolves).
+function applyGradeAnalyticsOpenState(panel) {
+    const body = panel.querySelector("#canvasrefined-ga-body");
+    const btn = panel.querySelector("#canvasrefined-ga-toggle");
+    if (!body || !btn) return;
+    body.style.display = gaOpen ? "" : "none";
+    const svg = btn.querySelector("svg");
+    if (svg) svg.style.transform = gaOpen ? "rotate(180deg)" : "rotate(0deg)";
+    btn.setAttribute("aria-expanded", String(gaOpen));
+}
+
+// Panel is injected directly below the "Print Grades" action header on the
+// grades page. Returns null (and retries via the DOM observer) if the anchor
+// hasn't rendered yet.
+function ensureGradeAnalyticsPanel() {
+    let panel = document.getElementById("canvasrefined-grade-analytics");
+    const anchor = document.getElementById("print-grades-container");
+    if (panel && panel.isConnected) {
+        // Canvas re-renders can shift the anchor or our position; keep the
+        // panel directly after #print-grades-container at all times.
+        if (anchor && panel.previousElementSibling !== anchor) {
+            anchor.insertAdjacentElement("afterend", panel);
+        }
+        // Re-apply the open/closed state in case it was restored from storage
+        // after this panel was first created.
+        applyGradeAnalyticsOpenState(panel);
+        return panel;
+    }
+    const container = anchor || findContentContainer();
+    if (!container) return null;
+    panel = document.createElement("div");
+    panel.id = "canvasrefined-grade-analytics";
+    if (anchor) {
+        anchor.insertAdjacentElement("afterend", panel);
+    } else {
+        // Fallback: top of the content container until the anchor renders.
+        container.insertBefore(panel, container.firstChild);
+    }
+    panel.style.cssText = `margin:18px 0;padding:16px;border:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);border-radius:10px;background-color:var(--bcbackground-0);color:var(--bctext-0);font-family:"Lato","Helvetica Neue",Helvetica,Arial,sans-serif;box-sizing:border-box;`;
+    panel.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;">
+            <h2 style="margin:0;font-size:18px;color:var(--bctext-0);">Grade Analytics</h2>
+            <button id="canvasrefined-ga-toggle" type="button" aria-expanded="true" title="Toggle Grade Analytics" style="margin-left:auto;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:8px;padding:4px 12px;font-size:14px;line-height:1.4;cursor:pointer;"><svg style="transform:rotate(180deg);display:block;" fill="currentColor" width="16px" height="16px" viewBox="-6.5 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.6"><g stroke-width="0"/><g stroke-linecap="round" stroke-linejoin="round"/><path d="M18.813 11.406l-7.906 9.906c-0.75 0.906-1.906 0.906-2.625 0l-7.906-9.906c-0.75-0.938-0.375-1.656 0.781-1.656h16.875c1.188 0 1.531 0.719 0.781 1.656z"/></svg></button>
+        </div>
+        <div id="canvasrefined-ga-body">
+        <p id="canvasrefined-ga-status" style="margin:0 0 10px;color:var(--bctext-1);font-size:13px;">Loading grade data…</p>
+        <div id="canvasrefined-ga-stats" style="display:none;flex-wrap:wrap;gap:10px;margin-bottom:14px;"></div>
+        <div id="canvasrefined-ga-charts" style="display:none;gap:24px;flex-wrap:wrap;">
+            <div id="canvasrefined-ga-box-pie" style="flex:1 1 calc(33.333% - 8px);min-width:0;">
+                <h3 style="margin:0 0 8px;font-size:14px;color:var(--bctext-0);">Score distribution (graded assignments)</h3>
+                <div style="position:relative;height:280px;"><canvas id="canvasrefined-ga-pie"></canvas><div id="canvasrefined-ga-pie-tip" style="position:absolute;display:none;pointer-events:none;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:6px;padding:6px 10px;font-size:12px;z-index:10;white-space:nowrap;"></div></div>
+            </div>
+            <div id="canvasrefined-ga-box-line" style="flex:1 1 calc(66.666% - 16px);min-width:0;">
+                <div style="display:flex;align-items:center;gap:10px;margin:0 0 8px;">
+                    <h3 style="margin:0;font-size:14px;color:var(--bctext-0);">Overall grade over time</h3>
+                    <label for="canvasrefined-ga-fity" style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--bctext-1);cursor:pointer;user-select:none;"><input type="checkbox" id="canvasrefined-ga-fity"> Fit Y axis</label>
+                </div>
+                <div style="position:relative;height:280px;"><canvas id="canvasrefined-ga-line"></canvas><div id="canvasrefined-ga-line-tip" style="position:absolute;display:none;pointer-events:none;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:6px;padding:8px 10px;font-size:12px;z-index:20;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,0.25);"></div></div>
+            </div>
+        </div>
+        </div>
+    `;
+    const toggleBtn = panel.querySelector("#canvasrefined-ga-toggle");
+    const fitYCheckbox = panel.querySelector("#canvasrefined-ga-fity");
+    const applyOpenState = () => applyGradeAnalyticsOpenState(panel);
+    toggleBtn.addEventListener("click", () => {
+        gaOpen = !gaOpen;
+        setGradeAnalyticsOpenState(gaOpen);
+        applyOpenState();
+        if (gaOpen && gaData) renderGradeAnalytics();
+    });
+    // "Fit Y axis" scales the line chart's Y axis to the data instead of a
+    // fixed 0-100; the choice is remembered across pages via chrome.storage.
+    fitYCheckbox.checked = gaFitY;
+    fitYCheckbox.addEventListener("change", () => {
+        gaFitY = fitYCheckbox.checked;
+        setGradeAnalyticsFitY(gaFitY);
+        if (gaData) {
+            gaDrawLine(panel.querySelector("#canvasrefined-ga-line"), panel.querySelector("#canvasrefined-ga-line-tip"));
+        }
+    });
+    applyOpenState();
+    // If the data finished loading before this panel was created (or before
+    // the stored open state was restored), the earlier render call found no
+    // panel — draw the charts now that it exists.
+    if (gaOpen && gaData) renderGradeAnalytics();
+    return panel;
+}
+
+async function loadGradeAnalytics() {
+    const courseId = getCurrentCourseId();
+    if (courseId == null) return;
+    gaLoading = true;
+    const status = document.getElementById("canvasrefined-ga-status");
+    if (status) status.textContent = "Loading grade data…";
+    try {
+        const [assignments, groups] = await Promise.all([
+            gaFetchAll(`/api/v1/courses/${courseId}/assignments?include[]=submission&order_by=due_at`),
+            gaFetchAll(`/api/v1/courses/${courseId}/assignment_groups`),
+        ]);
+        gaCourseId = courseId;
+        gaData = computeGradeAnalytics(assignments, groups);
+        gaLoading = false;
+        // renderGradeAnalytics self-guards on panel existence and canvas
+        // size; if the panel isn't ready yet, the retry below in
+        // ensureGradeAnalyticsPanel draws once it is.
+        renderGradeAnalytics();
+    } catch (err) {
+        logError(err);
+        const s = document.getElementById("canvasrefined-ga-status");
+        if (s) s.textContent = "Grade Analytics failed to load: " + (err && err.message ? err.message : err);
+    } finally {
+        gaLoading = false;
+    }
+}
+
+function gaIsGraded(a) {
+    return a.published !== false && a.points_possible > 0 &&
+        (a.submission_types || []).indexOf("not_graded") === -1 &&
+        a.submission && a.submission.score != null;
+}
+
+function gaIsUngraded(a) {
+    // Graded-type assignment with points possible but no score yet.
+    if (a.published === false || a.points_possible <= 0) return false;
+    if ((a.submission_types || []).includes("not_graded")) return false;
+    return !(a.submission && a.submission.score != null);
+}
+
+function computeGradeAnalytics(assignments, groups) {
+    const counts = GA_BUCKETS.map(() => 0);
+    let ungraded = 0, graded = 0;
+    for (const a of assignments) {
+        if (gaIsUngraded(a)) { ungraded++; continue; }
+        if (!gaIsGraded(a)) continue;
+        const pct = (a.submission.score / a.points_possible) * 100;
+        const idx = GA_BUCKETS.findIndex(b => pct >= b.min && pct < b.max);
+        counts[idx >= 0 ? idx : GA_BUCKETS.length - 1]++;
+    }
+
+    const groupName = {};
+    const weight = {};
+    for (const g of groups) {
+        groupName[g.id] = g.name;
+        weight[g.id] = g.group_weight || 0;
+    }
+    const totalWeight = Object.values(weight).reduce((s, w) => s + w, 0);
+
+    // Running weighted grade in due-date order, exactly like the user sees it
+    // accumulate over the term.
+    const timeline = assignments
+        .filter(gaIsGraded)
+        .sort((x, y) => new Date(x.due_at || 0) - new Date(y.due_at || 0));
+    const running = {};
+    const points = timeline.map(a => {
+        const r = (running[a.assignment_group_id] ||= { score: 0, pts: 0 });
+        r.score += a.submission.score;
+        r.pts += a.points_possible;
+        let weighted = 0, used = 0;
+        for (const gid of Object.keys(running)) {
+            const g = running[gid];
+            if (g.pts <= 0) continue;
+            if (totalWeight > 0) {
+                weighted += (g.score / g.pts) * (weight[gid] || 0);
+                used += (weight[gid] || 0);
+            } else {
+                weighted += g.score;
+                used += g.pts;
+            }
+        }
+        const grade = used > 0 ? (weighted / used) * 100 : null;
+        const pct = (a.submission.score / a.points_possible) * 100;
+        return {
+            title: a.name,
+            score: a.submission.score,
+            points: a.points_possible,
+            pct,
+            grade,
+            group: groupName[a.assignment_group_id] || "",
+            due: a.due_at ? new Date(a.due_at).toLocaleDateString() : "",
+        };
+    });
+
+    const pcts = timeline.map(a => (a.submission.score / a.points_possible) * 100);
+    // Trend: change in the running overall grade over the last 5 graded
+    // assignments (or since the first, if fewer). Positive = climbing.
+    let trend = null;
+    if (points.length >= 2) {
+        const from = points[Math.max(0, points.length - 1 - 5)].grade;
+        const to = points[points.length - 1].grade;
+        if (from != null && to != null) trend = to - from;
+    }
+    return {
+        counts,
+        ungraded,
+        graded: pcts.length,
+        avg: pcts.length ? pcts.reduce((s, p) => s + p, 0) / pcts.length : null,
+        current: points.length ? points[points.length - 1].grade : null,
+        trend,
+        points,
+    };
+}
+
+function renderGradeAnalytics() {
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (!panel || !gaData) return;
+    const status = panel.querySelector("#canvasrefined-ga-status");
+    if (status) status.style.display = "none";
+
+    const stats = panel.querySelector("#canvasrefined-ga-stats");
+    stats.style.display = "flex";
+    const stat = (cap, val, color) =>
+        `<div style="padding:8px 14px;border-radius:8px;background:var(--bcbackground-1);"><div style="font-size:18px;font-weight:700;color:${color || "var(--bctext-0)"};">${val}</div><div style="font-size:11px;text-transform:uppercase;color:var(--bctext-1);">${cap}</div></div>`;
+    // Trend card: arrow + colored delta of the overall grade over the last 5
+    // graded assignments (green climbing, red falling, grey steady).
+    let trendVal = "-", trendColor = "var(--bctext-0)";
+    if (gaData.trend != null) {
+        if (gaData.trend > 0.05) { trendVal = "\u25B2 +" + gaData.trend.toFixed(1) + "%"; trendColor = "#16a34a"; }
+        else if (gaData.trend < -0.05) { trendVal = "\u25BC " + gaData.trend.toFixed(1) + "%"; trendColor = "#dc2626"; }
+        else { trendVal = "\u25BA " + gaData.trend.toFixed(1) + "%"; trendColor = "var(--bctext-1)"; }
+    }
+    stats.innerHTML =
+        stat("Overall grade", gaData.current == null ? "-" : gaData.current.toFixed(1) + "%") +
+        stat("Grade trend (last 5)", trendVal, trendColor) +
+        stat("Graded assignments", gaData.graded) +
+        stat("Ungraded / no score", gaData.ungraded);
+
+    const charts = panel.querySelector("#canvasrefined-ga-charts");
+    charts.style.display = "flex";
+    const fitYBox = panel.querySelector("#canvasrefined-ga-fity");
+    if (fitYBox) fitYBox.checked = gaFitY;
+
+    gaDrawPie(panel.querySelector("#canvasrefined-ga-pie"), panel.querySelector("#canvasrefined-ga-pie-tip"));
+    gaDrawLine(panel.querySelector("#canvasrefined-ga-line"), panel.querySelector("#canvasrefined-ga-line-tip"));
+}
+
+// --- Canvas-drawn charts --------------------------------------------------
+
+function gaSetupCanvas(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.parentNode.clientWidth, h = canvas.parentNode.clientHeight;
+    // Zero size means the panel isn't visible/attached yet, so skip drawing;
+    // the DOM observer / resize handler redraws once it has real dimensions.
+    if (w <= 0 || h <= 0) return null;
+    canvas.width = Math.max(1, Math.round(w * dpr));
+    canvas.height = Math.max(1, Math.round(h * dpr));
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx, w, h };
+}
+
+function gaShowTooltip(el, x, y, html) {
+    el.innerHTML = html;
+    el.style.display = "block";
+    const parent = el.parentNode;
+    const tw = el.offsetWidth, th = el.offsetHeight;
+    // Place the tooltip beside the cursor/point so it never covers the chart
+    // underneath; flip to the left side when the right edge is tight.
+    let left = x + 14;
+    if (left + tw > parent.clientWidth) left = Math.max(0, x - tw - 14);
+    let top = y - th / 2;
+    top = Math.min(Math.max(0, top), Math.max(0, parent.clientHeight - th));
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+}
+
+function gaDrawPie(canvas, tooltip) {
+    const size = gaSetupCanvas(canvas);
+    if (!size || !gaData) return;
+    const { ctx, w, h } = size;
+    const cx = w / 2, cy = h / 2;
+    const r = Math.max(10, Math.min(w, h) / 2 - 10);
+    const slices = GA_BUCKETS.map((b, i) => ({ label: b.label, value: gaData.counts[i], color: b.color }))
+        .concat([{ label: "Ungraded", value: gaData.ungraded, color: GA_UNGRADED_COLOR }]);
+    const total = slices.reduce((s, x) => s + x.value, 0);
+    const arcs = [];
+    if (total === 0) {
+        ctx.strokeStyle = "#888";
+        ctx.lineWidth = r - r * 0.55;
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath(); ctx.arc(cx, cy, (r + r * 0.55) / 2, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#888"; ctx.textAlign = "center";
+        ctx.font = "13px Lato, sans-serif";
+        ctx.fillText("No graded assignments yet", cx, cy);
+    }
+    let start = -Math.PI / 2;
+    for (const s of slices) {
+        if (!s.value) continue;
+        const ang = (s.value / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, start, start + ang);
+        ctx.arc(cx, cy, r * 0.55, start + ang, start, true);
+        ctx.closePath();
+        ctx.fillStyle = s.color;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.9)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        arcs.push({ ...s, start, end: start + ang });
+        start += ang;
+    }
+    canvas._gaArcs = arcs;
+    canvas._gaCenter = { cx, cy, r };
+    if (canvas._gaHover) { canvas.removeEventListener("mousemove", canvas._gaHover); canvas.removeEventListener("mouseleave", canvas._gaLeave); }
+    canvas._gaHover = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left - canvas._gaCenter.cx;
+        const y = e.clientY - rect.top - canvas._gaCenter.cy;
+        const dist = Math.hypot(x, y);
+        const hit = canvas._gaArcs.find(a => {
+            let d = Math.atan2(y, x);
+            if (d < a.start) d += Math.PI * 2;
+            return dist <= canvas._gaCenter.r && dist >= canvas._gaCenter.r * 0.55 && d >= a.start && d <= a.end;
+        });
+        if (hit) gaShowTooltip(tooltip, e.clientX - rect.left, e.clientY - rect.top, `<b>${hit.label}</b>: ${hit.value} assignment${hit.value === 1 ? "" : "s"}`);
+        else tooltip.style.display = "none";
+    };
+    canvas._gaLeave = () => { tooltip.style.display = "none"; };
+    canvas.addEventListener("mousemove", canvas._gaHover);
+    canvas.addEventListener("mouseleave", canvas._gaLeave);
+}
+
+function gaDrawLine(canvas, tooltip) {
+    const size = gaSetupCanvas(canvas);
+    if (!size || !gaData) return;
+    const pts = gaData.points;
+    const { ctx, w, h } = size;
+    const pad = { l: 38, r: 12, t: 12, b: 26 };
+    const text = getComputedStyle(document.body).color || "#666";
+    ctx.font = "11px Lato, sans-serif";
+    // Y axis: fixed 0-100 by default, or scaled to fit the data when the user
+    // toggled "Fit Y axis" (persisted in chrome.storage.local).
+    let yMin = 0, yMax = 100;
+    if (gaFitY) {
+        const vals = pts.map(p => p.grade).filter(v => v != null);
+        if (vals.length) {
+            const lo = Math.min(...vals), hi = Math.max(...vals);
+            if (hi - lo < 1e-9) {
+                yMin = Math.max(0, lo - 5);
+                yMax = hi + 5;
+            } else {
+                const margin = (hi - lo) * 0.1;
+                yMin = Math.max(0, lo - margin);
+                yMax = hi + margin;
+            }
+            if (yMax - yMin < 1) yMax = yMin + 1;
+        }
+    }
+    // Y grid: 5 evenly spaced lines across the current range.
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    const decimals = (yMax - yMin) <= 10 ? 1 : 0;
+    for (let i = 0; i <= 5; i++) {
+        const v = yMin + (yMax - yMin) * (i / 5);
+        const y = pad.t + (1 - (v - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
+        ctx.strokeStyle = "rgba(128,128,128,0.25)";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+        ctx.fillStyle = text;
+        ctx.fillText(v.toFixed(decimals) + "%", pad.l - 6, y);
+    }
+    if (pts.length === 0) {
+        ctx.fillStyle = text; ctx.textAlign = "center";
+        ctx.fillText("No graded assignments yet", w / 2, h / 2);
+        return;
+    }
+    const X = (i) => pad.l + (pts.length === 1 ? (w - pad.l - pad.r) / 2 : (i / (pts.length - 1)) * (w - pad.l - pad.r));
+    const Y = (v) => pad.t + (1 - (Math.max(yMin, Math.min(yMax, v)) - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
+    // Full chart draw, parameterized by the hovered point index so mousemove
+    // can cheaply redraw with a highlight on the active dot.
+    const draw = (hover) => {
+        ctx.clearRect(0, 0, w, h);
+        // Y grid: 5 evenly spaced lines across the current range.
+        ctx.font = "11px Lato, sans-serif";
+        ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        for (let i = 0; i <= 5; i++) {
+            const v = yMin + (yMax - yMin) * (i / 5);
+            const y = pad.t + (1 - (v - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
+            ctx.strokeStyle = "rgba(128,128,128,0.25)";
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+            ctx.fillStyle = text;
+            ctx.fillText(v.toFixed(decimals) + "%", pad.l - 6, y);
+        }
+        // Line + area fill.
+        ctx.beginPath();
+        pts.forEach((p, i) => { const x = X(i), y = Y(p.grade); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+        ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+        ctx.lineTo(X(pts.length - 1), h - pad.b); ctx.lineTo(X(0), h - pad.b); ctx.closePath();
+        ctx.fillStyle = "rgba(37,99,235,0.12)"; ctx.fill();
+        // Points.
+        pts.forEach((p, i) => {
+            ctx.beginPath(); ctx.arc(X(i), Y(p.grade), 3, 0, Math.PI * 2);
+            ctx.fillStyle = "#2563eb"; ctx.fill();
+            ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+        });
+        // X labels: first, middle, last due dates.
+        ctx.textAlign = "center"; ctx.textBaseline = "top";
+        [[0], [Math.floor((pts.length - 1) / 2)], [pts.length - 1]].forEach(([i]) => {
+            if (pts.length > 1 && pts.length > 2 && i !== 0 && i !== pts.length - 1 && Math.abs(X(i) - X(0)) < 40) return;
+            const label = pts[i].due || "";
+            if (!label) return;
+            ctx.fillStyle = text;
+            ctx.fillText(label, X(i), h - pad.b + 6);
+        });
+        // Hover indicator: dashed vertical guide plus a halo ring around the
+        // hovered dot so it's obvious which point the tooltip describes.
+        if (hover != null && pts[hover]) {
+            const hx = X(hover), hy = Y(pts[hover].grade);
+            ctx.save();
+            ctx.strokeStyle = "rgba(37,99,235,0.55)";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, h - pad.b); ctx.stroke();
+            ctx.restore();
+            ctx.beginPath(); ctx.arc(hx, hy, 7, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(37,99,235,0.25)"; ctx.fill();
+            ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = "#2563eb"; ctx.fill();
+            ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+    };
+    draw(null);
+    canvas._gaHoverIdx = null; // stale hover index from a previous draw
+    canvas._gaPts = pts;
+    canvas._gaX = X; canvas._gaY = Y; canvas._gaPad = pad;
+    if (canvas._gaHover) { canvas.removeEventListener("mousemove", canvas._gaHover); canvas.removeEventListener("mouseleave", canvas._gaLeave); }
+    canvas._gaHover = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        let best = 0, bestD = Infinity;
+        pts.forEach((_, i) => { const d = Math.abs(X(i) - mx); if (d < bestD) { bestD = d; best = i; } });
+        if (best !== canvas._gaHoverIdx) {
+            canvas._gaHoverIdx = best;
+            draw(best);
+        }
+        const p = pts[best];
+        gaShowTooltip(tooltip, X(best), Y(p.grade),
+            `<b>${p.title}</b><br>Overall: ${p.grade == null ? "-" : p.grade.toFixed(1) + "%"}<br>This: ${p.score}/${p.points} (${p.pct.toFixed(1)}%)${p.due ? `<br>Due: ${p.due}` : ""}`);
+    };
+    canvas._gaLeave = () => {
+        tooltip.style.display = "none";
+        if (canvas._gaHoverIdx != null) {
+            canvas._gaHoverIdx = null;
+            draw(null);
+        }
+    };
+    canvas.addEventListener("mousemove", canvas._gaHover);
+    canvas.addEventListener("mouseleave", canvas._gaLeave);
+}
+
+// Redraw open charts when the window is resized.
+window.addEventListener("resize", () => {
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (panel && gaOpen && gaData) renderGradeAnalytics();
+});
 
 function getApiData() {
     if (current_page === "/" || current_page === "" || options.better_todo || options.better_sidebar) {

@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'center_cards', 'quiz_safe_mode', 'global_search'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics'];
 const syncedSubOptions = [
 	"todo_hide_feedback",
 	"todo_full_height",
@@ -150,6 +150,7 @@ const defaultOptions = {
         "relative_dues": false,
         "equal_height_cards": false,
         "hide_new_canvas": true,
+        "hide_sequence_footer": false,
         "quiz_safe_mode": false,
         "dark_mode_fix": [],
         "assignment_states": {},

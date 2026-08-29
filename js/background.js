@@ -75,6 +75,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "relative_dues": false,
             "equal_height_cards": false,
             "hide_new_canvas": true,
+            "hide_sequence_footer": false,
             "quiz_safe_mode": false,
             "dark_mode_fix": [],
             "assignment_states": {},
@@ -116,6 +117,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "bg_blur": 8,
             "sidebar_blur": 0,
             "global_search": false,
+            "grade_analytics": true,
         }
     };
 
