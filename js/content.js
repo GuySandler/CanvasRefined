@@ -6366,37 +6366,29 @@ function gradeAnalyticsActive() {
     return options.grade_analytics === true && isGradesPage() && !quizSafeModeActive();
 }
 
-// Paginated Canvas API GET using the user's session. Unwraps Firefox Xray
-// proxies like getData() does. The first page is fetched serially to learn the
-// total page count from its Link header; every remaining page is then fetched
-// concurrently, so courses with many assignments don't pay one round trip per
-// page.
-async function gaFetchAll(path) {
-    const fetchPage = async (url) => {
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
-        if (!res.ok) throw new Error("Canvas API " + res.status + " for " + url.pathname);
-        return { data: JSON.parse(JSON.stringify(await res.json())), link: res.headers.get("Link") || "" };
-    };
-    const firstUrl = new URL(path, domain);
-    firstUrl.searchParams.set("per_page", "100");
-    const { data: first, link } = await fetchPage(firstUrl);
-    const out = Array.isArray(first) ? first.slice() : [];
-    const lastMatch = link.match(/<([^>]+)>;\s*rel="last"/);
-    if (lastMatch) {
-        const lastPage = parseInt(new URL(lastMatch[1]).searchParams.get("page") || "1", 10);
-        if (lastPage > 1) {
-            const pageUrls = [];
-            for (let p = 2; p <= lastPage; p++) {
-                const u = new URL(path, domain);
-                u.searchParams.set("per_page", "100");
-                u.searchParams.set("page", String(p));
-                pageUrls.push(u);
+// Grades data is read straight from the #grades_summary table the page
+// already rendered — no API round trips, so even courses with hundreds of
+// assignments populate instantly, and the numbers always match what the user
+// sees (grading periods, unposted grades, etc.). Waits briefly for the table
+// to appear on SPA navigations.
+function gaWaitForGradesTable(timeoutMs = 15000) {
+    return new Promise((resolve, reject) => {
+        const ready = () => {
+            const table = document.querySelector("#grades_summary");
+            return table && table.querySelector("tr.student_assignment") ? table : null;
+        };
+        const found = ready();
+        if (found) { resolve(found); return; }
+        const started = Date.now();
+        const timer = setInterval(() => {
+            const table = ready();
+            if (table) { clearInterval(timer); resolve(table); }
+            else if (Date.now() - started > timeoutMs) {
+                clearInterval(timer);
+                reject(new Error("grades table not found on this page"));
             }
-            const rest = await Promise.all(pageUrls.map(u => fetchPage(u).then(r => r.data)));
-            for (const page of rest) if (Array.isArray(page)) out.push(...page);
-        }
-    }
-    return out;
+        }, 250);
+    });
 }
 
 // Entry point: called at init, on SPA navigation, and when the option changes.
@@ -6561,18 +6553,18 @@ async function loadGradeAnalytics() {
     if (courseId == null) return;
     gaLoading = true;
     const status = document.getElementById("canvasrefined-ga-status");
-    if (status) status.textContent = "Loading grade data…";
+    if (status) status.textContent = "Reading grade data…";
     try {
-        const [assignments, groups] = await Promise.all([
-            gaFetchAll(`/api/v1/courses/${courseId}/assignments?include[]=submission&order_by=due_at`),
-            gaFetchAll(`/api/v1/courses/${courseId}/assignment_groups`),
-        ]);
+        // Parse the grades table the page already rendered instead of hitting
+        // the paginated API — instant even for courses with hundreds of
+        // assignments, and always in sync with what the page shows.
+        const table = await gaWaitForGradesTable();
         gaCourseId = courseId;
-        gaData = computeGradeAnalytics(assignments, groups);
+        gaData = computeGradeAnalyticsFromPage(table);
         gaLoading = false;
         // renderGradeAnalytics self-guards on panel existence and canvas
-        // size; if the panel isn't ready yet, the retry below in
-        // ensureGradeAnalyticsPanel draws once it is.
+        // size; if the panel isn't ready yet, the retry in
+        // ensureGradeAnalyticsPanel / syncGradeAnalyticsUI draws once it is.
         renderGradeAnalytics();
     } catch (err) {
         logError(err);
@@ -6583,74 +6575,117 @@ async function loadGradeAnalytics() {
     }
 }
 
-function gaIsGraded(a) {
-    return a.published !== false && a.points_possible > 0 &&
-        (a.submission_types || []).indexOf("not_graded") === -1 &&
-        a.submission && a.submission.score != null;
+// Parses one assignment row of #grades_summary into a plain record. The row
+// stashes the original posted score in a hidden "original_score" span (the
+// "original_points" span holds points EARNED, not possible), while points
+// possible is only in the "/ 15" span displayed after the grade.
+function gaParseNum(t) {
+    if (!t) return null;
+    let s = String(t).replace(/\s+/g, "");
+    if (s === "" || !/\d/.test(s)) return null;
+    // Normalize "1,234.5" (thousands grouping) and "9,5" (comma decimal).
+    if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, "");
+    else if (/^-?\d+,\d+$/.test(s)) s = s.replace(",", ".");
+    const v = parseFloat(s);
+    return isFinite(v) ? v : null;
 }
 
-function gaIsUngraded(a) {
-    // Graded-type assignment with points possible but no score yet.
-    if (a.published === false || a.points_possible <= 0) return false;
-    if ((a.submission_types || []).includes("not_graded")) return false;
-    return !(a.submission && a.submission.score != null);
+function gaParseAssignmentRow(tr) {
+    const q = (sel) => tr.querySelector(sel);
+    const titleLink = q(".title a");
+    const possibleText = q(".tooltip .grade + span")?.textContent || "";
+    return {
+        title: (titleLink ? titleLink.textContent : (q("th.title")?.textContent || "")).trim(),
+        score: gaParseNum(q(".original_score")?.textContent),
+        points: gaParseNum(possibleText.replace(/^.*\//, "")),
+        // Rows the page lists as unsubmitted/unposted carry no score; only
+        // "graded" rows have one.
+        status: (q(".submission_status")?.textContent || "").trim(),
+        gid: (q(".assignment_group_id")?.textContent || "").trim(),
+        due: (q("td.due")?.textContent || "").replace(/\s+/g, " ").trim(),
+    };
 }
 
-function computeGradeAnalytics(assignments, groups) {
+function computeGradeAnalyticsFromPage(table) {
+    // Assignment group weights come from the "group total" summary rows
+    // (e.g. "Summative Assessment — 86.67%, weight 85").
+    const groupWeight = {};
+    for (const tr of table.querySelectorAll("tr.group_total")) {
+        const gid = tr.querySelector(".assignment_group_id")?.textContent.trim();
+        const w = parseFloat((tr.querySelector(".group_weight")?.textContent || "").trim());
+        if (gid) groupWeight[gid] = isFinite(w) ? w : 0;
+    }
+    const totalWeight = Object.values(groupWeight).reduce((s, w) => s + w, 0);
+
+    // The page's own computed Total (e.g. "91.1%") — use it directly so the
+    // "Overall grade" stat always matches the page.
+    let pageTotal = null;
+    const totalText = table.querySelector("tr.final_grade .grade")?.textContent || "";
+    const totalMatch = totalText.match(/-?\d+(?:\.\d+)?/);
+    if (totalMatch) pageTotal = parseFloat(totalMatch[0]);
+
+    // Rows are already listed in due-date order; skip the summary rows (they
+    // carry the student_assignment class too).
+    const rows = [...table.querySelectorAll("tr.student_assignment")]
+        .filter(tr => !tr.classList.contains("group_total") && !tr.classList.contains("final_grade"))
+        .map(gaParseAssignmentRow);
+
     const counts = GA_BUCKETS.map(() => 0);
-    let ungraded = 0, graded = 0;
-    for (const a of assignments) {
-        if (gaIsUngraded(a)) { ungraded++; continue; }
-        if (!gaIsGraded(a)) continue;
-        const pct = (a.submission.score / a.points_possible) * 100;
+    let ungraded = 0;
+    const graded = [];
+    for (const a of rows) {
+        if (a.points == null || a.points <= 0) continue; // no points possible
+        if (a.score == null) { ungraded++; continue; }    // unposted / unsubmitted
+        graded.push(a);
+        const pct = (a.score / a.points) * 100;
         const idx = GA_BUCKETS.findIndex(b => pct >= b.min && pct < b.max);
         counts[idx >= 0 ? idx : GA_BUCKETS.length - 1]++;
     }
 
-    const groupName = {};
-    const weight = {};
-    for (const g of groups) {
-        groupName[g.id] = g.name;
-        weight[g.id] = g.group_weight || 0;
-    }
-    const totalWeight = Object.values(weight).reduce((s, w) => s + w, 0);
-
-    // Running weighted grade in due-date order, exactly like the user sees it
-    // accumulate over the term.
-    const timeline = assignments
-        .filter(gaIsGraded)
-        .sort((x, y) => new Date(x.due_at || 0) - new Date(y.due_at || 0));
+    // Running overall grade, in the page's row order, using Canvas's own
+    // weighting algorithm (GradeCalculator): sum each group's pct × weight
+    // over groups that have graded work, then scale up to 100% only when
+    // those weights total less than 100 (weights over 100 are used raw and
+    // can push the grade past 100). Verified to reproduce the Total shown
+    // on the page. Point-based courses (no group weights) use points
+    // earned / points possible.
     const running = {};
-    const points = timeline.map(a => {
-        const r = (running[a.assignment_group_id] ||= { score: 0, pts: 0 });
-        r.score += a.submission.score;
-        r.pts += a.points_possible;
-        let weighted = 0, used = 0;
-        for (const gid of Object.keys(running)) {
-            const g = running[gid];
-            if (g.pts <= 0) continue;
-            if (totalWeight > 0) {
-                weighted += (g.score / g.pts) * (weight[gid] || 0);
-                used += (weight[gid] || 0);
-            } else {
-                weighted += g.score;
-                used += g.pts;
+    const pointsGrade = () => {
+        let s = 0, p = 0;
+        for (const g of Object.values(running)) { s += g.score; p += g.pts; }
+        return p > 0 ? (s / p) * 100 : null;
+    };
+    const points = graded.map(a => {
+        const r = (running[a.gid] ||= { score: 0, pts: 0 });
+        r.score += a.score;
+        r.pts += a.points;
+        let grade = null;
+        if (totalWeight > 0) {
+            let weighted = 0, fullWeight = 0;
+            for (const gid of Object.keys(running)) {
+                const g = running[gid];
+                if (g.pts <= 0) continue;
+                const w = groupWeight[gid] || 0;
+                weighted += (g.score / g.pts) * w;
+                fullWeight += w;
             }
+            // Only zero-weighted groups have graded work — fall back to
+            // points so the chart still has a line.
+            grade = fullWeight > 0 ? (fullWeight < 100 ? (weighted / fullWeight) * 100 : weighted) : pointsGrade();
+        } else {
+            grade = pointsGrade();
         }
-        const grade = used > 0 ? (weighted / used) * 100 : null;
-        const pct = (a.submission.score / a.points_possible) * 100;
         return {
-            title: a.name,
-            score: a.submission.score,
-            points: a.points_possible,
-            pct,
+            title: a.title,
+            score: a.score,
+            points: a.points,
+            pct: (a.score / a.points) * 100,
             grade,
-            group: groupName[a.assignment_group_id] || "",
-            due: a.due_at ? new Date(a.due_at).toLocaleDateString() : "",
+            due: a.due,
         };
     });
 
-    const pcts = timeline.map(a => (a.submission.score / a.points_possible) * 100);
+    const pcts = graded.map(a => (a.score / a.points) * 100);
     // Trend: change in the running overall grade over the last 5 graded
     // assignments (or since the first, if fewer). Positive = climbing.
     let trend = null;
@@ -6662,9 +6697,9 @@ function computeGradeAnalytics(assignments, groups) {
     return {
         counts,
         ungraded,
-        graded: pcts.length,
+        graded: graded.length,
         avg: pcts.length ? pcts.reduce((s, p) => s + p, 0) / pcts.length : null,
-        current: points.length ? points[points.length - 1].grade : null,
+        current: pageTotal != null ? pageTotal : (points.length ? points[points.length - 1].grade : null),
         trend,
         points,
     };
@@ -6866,14 +6901,34 @@ function gaDrawLine(canvas, tooltip) {
             ctx.fillStyle = "#2563eb"; ctx.fill();
             ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
         });
-        // X labels: first, middle, last due dates.
+        // X axis: tick marks plus one label per calendar month. Points are
+        // already in chronological order, so a walking month counter (wrapping
+        // across Dec -> Jan) maps each point to an absolute month; the first
+        // point of each month gets the tick + label.
         ctx.textAlign = "center"; ctx.textBaseline = "top";
-        [[0], [Math.floor((pts.length - 1) / 2)], [pts.length - 1]].forEach(([i]) => {
-            if (pts.length > 1 && pts.length > 2 && i !== 0 && i !== pts.length - 1 && Math.abs(X(i) - X(0)) < 40) return;
-            const label = pts[i].due || "";
-            if (!label) return;
+        ctx.strokeStyle = "rgba(128,128,128,0.55)";
+        ctx.lineWidth = 1;
+        const tick = (x) => {
+            ctx.beginPath(); ctx.moveTo(x, h - pad.b); ctx.lineTo(x, h - pad.b + 4); ctx.stroke();
+        };
+        // Subtle tick under every data point on sparse charts.
+        if (pts.length <= 25) pts.forEach((_, i) => tick(X(i)));
+        let prevM = null, absM = null;
+        let lastLabeled = null;
+        pts.forEach((p, i) => {
+            const m = months.indexOf((p.due || "").trim().slice(0, 3));
+            if (m < 0) return; // no due date on this point
+            if (absM == null) absM = m;
+            else if (m >= prevM) absM += m - prevM;
+            else absM += 12 - prevM + m; // wrapped to a new year
+            prevM = m;
+            if (absM === lastLabeled) return;
+            lastLabeled = absM;
+            tick(X(i));
+            // Anchor the edge labels inward so they don't clip.
+            ctx.textAlign = i === 0 ? "left" : (i === pts.length - 1 ? "right" : "center");
             ctx.fillStyle = text;
-            ctx.fillText(label, X(i), h - pad.b + 6);
+            ctx.fillText((p.due || "").trim().slice(0, 3), X(i), h - pad.b + 6);
         });
         // Hover indicator: dashed vertical guide plus a halo ring around the
         // hovered dot so it's obvious which point the tooltip describes.
