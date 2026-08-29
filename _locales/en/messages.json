@@ -316,5 +316,8 @@
     },
     "grade_analytics_desc": {
         "message": "Adds an Analytics toggle to the left side of course grade pages with a score-distribution chart and your overall grade over time."
+    },
+    "grade_analytics_zones": {
+        "message": "Colored grade zones"
     }
 }

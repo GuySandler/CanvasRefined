@@ -118,6 +118,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "sidebar_blur": 0,
             "global_search": false,
             "grade_analytics": true,
+            "grade_analytics_zones": false,
         }
     };
 

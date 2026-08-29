@@ -1,5 +1,6 @@
 const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics'];
 const syncedSubOptions = [
+	"grade_analytics_zones",
 	"todo_hide_feedback",
 	"todo_full_height",
     "todo_confetti",
@@ -151,6 +152,7 @@ const defaultOptions = {
         "equal_height_cards": false,
         "hide_new_canvas": true,
         "hide_sequence_footer": false,
+        "grade_analytics_zones": false,
         "quiz_safe_mode": false,
         "dark_mode_fix": [],
         "assignment_states": {},
@@ -570,7 +572,7 @@ function toggleAlternateColorsVisibility(darkModeOn) {
 
 // Hide a toggle's sub-options when it's off; auto_dark only hides its time clocks.
 function toggleSubOptionsVisibility(option, isOn) {
-    const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark"];
+    const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics"];
     if (!togglesWithSubOptions.includes(option)) return;
     const optionEl = document.getElementById(option);
     if (!optionEl) return;
@@ -953,6 +955,7 @@ function setup() {
             "fitImageToScreen",
             "card_transparency",
 			"customCardStyles",
+			"grade_analytics_zones",
 		],
 		tabs: {
 			"advanced-settings": {
@@ -1110,7 +1113,7 @@ function setup() {
             });
         });
         toggleBetterSidebarSubOptions(sync["better_sidebar"] === true);
-        ["gpa_calc", "assignments_due", "better_todo", "auto_dark"].forEach(opt => {
+        ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
         toggleAlternateColorsVisibility(sync["dark_mode"] === true);

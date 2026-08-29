@@ -366,3 +366,26 @@
     padding: 0 4px; color: var(--bctext-1, #5b6770);
 }
 
+/* ===== Grades table: scale down with narrow windows =====
+   Canvas lays out #grades_summary with content-driven auto sizing plus hard
+   min-widths (title 150px, details 80px) and nowrap cells (due, score,
+   details), giving it a ~780px floor below which the whole table overflows
+   the page instead of shrinking. Switch it to fixed layout with percentage
+   column widths (set on the header row, which drives fixed layout) and let
+   tight cells wrap, so the header, body and rows all scale with the
+   viewport. #assignments scrolls horizontally as a last resort (e.g. while a
+   what-if score input is open). */
+#grades_summary { table-layout: fixed; width: 100%; }
+#grades_summary thead th:nth-child(1) { width: 30%; } /* Name */
+#grades_summary thead th:nth-child(2) { width: 12%; } /* Due */
+#grades_summary thead th:nth-child(3) { width: 10%; } /* Submitted */
+#grades_summary thead th:nth-child(4) { width: 7%; }  /* Status */
+#grades_summary thead th:nth-child(5) { width: 11%; } /* Score */
+#grades_summary thead th:nth-child(6) { width: 3%; }  /* asset processors */
+#grades_summary thead th:nth-child(7) { width: 15%; } /* Details */
+#grades_summary thead th:nth-child(8) { width: 3%; }  /* progress */
+#grades_summary td.due,
+#grades_summary td.assignment_score,
+#grades_summary td.details { white-space: normal; }
+#assignments { overflow-x: auto; }
+

@@ -956,6 +956,10 @@ function applyOptionsChanges(changes) {
             case "grade_analytics":
                 watchGradeAnalytics();
                 break;
+            case "grade_analytics_zones":
+                // Colored 10% zones on the line chart — just redraw the charts.
+                if (gradeAnalyticsActive() && gaOpen && gaData) renderGradeAnalytics();
+                break;
             case "quiz_safe_mode":
                 // Toggling safe mode changes which features run on quiz pages; reload
                 // so the gating is applied cleanly.
@@ -1088,6 +1092,18 @@ async function applyCustomBackground() {
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%);
             border-radius: 5px;
+        }
+        /* Native left nav column: #left-side > #sticky-container.ic-sticky-frame
+           (the course/account/group menu links). Tint the whole #left-side column
+           rather than the inner .ic-sticky-frame, whose height only wraps its
+           links — the column spans the full viewport height like the other
+           sidebars, at the same bg_opacity/bg_blur as the Better Todo List
+           panel. Without this, a custom background (most visible in light mode)
+           shows through untinted behind the nav links. */
+        #left-side {
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
         }
         /* Recent feedback lives in #right-side. The dark-mode CSS
            (darkmodecss.js) recolors its text, but those rules are dark-mode-
@@ -1303,6 +1319,20 @@ async function applyCustomBackground() {
                 ? `background: color-mix(in srgb, var(--bcbackground-0), transparent ${cardTransparent}%) !important;
             backdrop-filter: blur(${cardBlur}px) saturate(120%) !important;
             -webkit-backdrop-filter: blur(${cardBlur}px) saturate(120%) !important;`
+                : `background: var(--bcbackground-0) !important;`}
+        }
+        /* Card header strip (the course-nickname bar under the hero). Canvas
+           paints it a solid light color ($ic-color-light) and nothing overrides
+           that in light mode, so with card transparency on it reads as a solid
+           band across an otherwise translucent card. Mirror the card surface:
+           transparent cards drop the strip's background so the card's glass
+           (tint + blur already applied to .ic-DashboardCard) shows through;
+           opaque cards paint it the same solid theme color as the card body.
+           Dark mode already flattens this strip via darkmodecss.js, so this
+           is inert there (same value). */
+        .ic-DashboardCard__header_content {
+            ${cardTransparency
+                ? `background: none !important;`
                 : `background: var(--bcbackground-0) !important;`}
         }
         tr.student_assignment.assignment_graded.editable > * {
@@ -3740,8 +3770,15 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
             contentMain?.style.setProperty("backdrop-filter", `blur(${Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)))}px)`, "important");
             contentMain?.style.setProperty("-webkit-backdrop-filter", `blur(${Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)))}px)`, "important");
         }
-        const sidebarParent = layoutMode === "course" && leftSide ? leftSide : mainWrapper;
-        if (layoutMode === "course" && leftSide) {
+        // The rail must always render leftmost. Course-layout pages already
+        // prepend it into #left-side; dash-layout pages that still have a
+        // native left nav (accounts, groups, etc.) must too — otherwise the
+        // native #left-side column (made position:static above) flows before
+        // #not_right_side and shows up to the LEFT of the Better Sidebar,
+        // looking like a competing sidebar once the custom background tints
+        // it. Prepending keeps the order: [Better Sidebar rail][native nav].
+        const sidebarParent = leftSide ? leftSide : mainWrapper;
+        if (leftSide) {
             leftSide.style.display = "flex";
             leftSide.style.flexDirection = "row";
             leftSide.style.alignItems = "stretch";
@@ -3749,9 +3786,6 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
             leftSide.style.gap = "0";
         }
         document.querySelector(".ic-app-nav-toggle-and-crumbs")?.style.setProperty("display", "none");
-        if (layoutMode !== "course") {
-            document.getElementById("left-side")?.style.removeProperty("display");
-        }
         if (layoutMode == "dash") {
             document.getElementById("header")?.style.setProperty("display", "none");
         }
@@ -6333,6 +6367,22 @@ const GA_BUCKETS = [
     { label: "0-9",   min: 0,  max: 10,       color: "#7f1d1d" },
 ];
 const GA_UNGRADED_COLOR = "#6b7280";
+// 5%-wide zone colors for the line chart background: the doughnut's bucket
+// colors interpolated at 5% steps (dark red at 0 → green at 100), so every
+// 5% band gets its own shade.
+const GA_ZONE_COLORS = (() => {
+    const stops = GA_BUCKETS.slice().reverse(); // 0-9 (dark red) → 90+ (green)
+    const rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+    const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+    return Array.from({ length: 20 }, (_, i) => {
+        const m = i * 5 + 2.5; // band midpoint
+        const k = Math.min(stops.length - 1, Math.floor(m / 10));
+        if (k >= stops.length - 1) return stops[stops.length - 1].color;
+        const t = (m - k * 10) / 10;
+        const c1 = rgb(stops[k].color), c2 = rgb(stops[k + 1].color);
+        return `rgb(${lerp(c1[0], c2[0], t)},${lerp(c1[1], c2[1], t)},${lerp(c1[2], c2[2], t)})`;
+    });
+})();
 const GA_OPEN_KEY = "grade_analytics_open";
 
 async function getGradeAnalyticsOpenState() {
@@ -6877,6 +6927,22 @@ function gaDrawLine(canvas, tooltip) {
     // can cheaply redraw with a highlight on the active dot.
     const draw = (hover) => {
         ctx.clearRect(0, 0, w, h);
+        // Optional colored 5% zones behind the plot ("Colored grade zones"
+        // popup option), tinted red→green. With Fit Y axis on, bands are
+        // clipped to the visible range.
+        if (options.grade_analytics_zones) {
+            GA_ZONE_COLORS.forEach((color, i) => {
+                const top = Math.min(yMax, (i + 1) * 5);
+                const bottom = Math.max(yMin, i * 5);
+                if (top <= bottom) return;
+                const y1 = pad.t + (1 - (top - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
+                const y2 = pad.t + (1 - (bottom - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = color;
+                ctx.fillRect(pad.l, y1, w - pad.l - pad.r, y2 - y1);
+                ctx.globalAlpha = 1;
+            });
+        }
         // Y grid: 5 evenly spaced lines across the current range.
         ctx.font = "11px Lato, sans-serif";
         ctx.textAlign = "right"; ctx.textBaseline = "middle";
@@ -6913,8 +6979,11 @@ function gaDrawLine(canvas, tooltip) {
         };
         // Subtle tick under every data point on sparse charts.
         if (pts.length <= 25) pts.forEach((_, i) => tick(X(i)));
+        // Month boundaries: the first point of each calendar month. Points are
+        // already in chronological order, so a walking month counter (wrapping
+        // across Dec → Jan) maps each point to an absolute month.
+        const boundaries = [];
         let prevM = null, absM = null;
-        let lastLabeled = null;
         pts.forEach((p, i) => {
             const m = months.indexOf((p.due || "").trim().slice(0, 3));
             if (m < 0) return; // no due date on this point
@@ -6922,13 +6991,38 @@ function gaDrawLine(canvas, tooltip) {
             else if (m >= prevM) absM += m - prevM;
             else absM += 12 - prevM + m; // wrapped to a new year
             prevM = m;
-            if (absM === lastLabeled) return;
-            lastLabeled = absM;
-            tick(X(i));
+            const last = boundaries[boundaries.length - 1];
+            if (!last || last.absM !== absM) {
+                boundaries.push({ i, absM, label: (p.due || "").trim().slice(0, 3) });
+            }
+        });
+        boundaries.forEach(b => tick(X(b.i)));
+        // Collision-aware labels: greedily keep a month label only if it fits
+        // after the previous kept one (labels are centered, so compare against
+        // half-widths plus a 6px gap). The first boundary always gets a label;
+        // so does the last — if it doesn't fit, earlier labels are dropped to
+        // make room, so the axis ends on a real month instead of mid-run.
+        const GAP = 6;
+        const kept = [];
+        boundaries.forEach((b, idx) => {
+            const x = X(b.i);
+            const w = ctx.measureText(b.label).width;
+            if (idx === 0 || x - w / 2 > kept[kept.length - 1].right + GAP) {
+                kept.push({ ...b, x, right: x + w / 2 });
+            }
+        });
+        const lastB = boundaries[boundaries.length - 1];
+        if (lastB && kept[kept.length - 1].i !== lastB.i) {
+            const x = X(lastB.i);
+            const w = ctx.measureText(lastB.label).width;
+            while (kept.length && kept[kept.length - 1].right + GAP > x - w / 2) kept.pop();
+            kept.push({ ...lastB, x, right: x + w / 2 });
+        }
+        kept.forEach((b, k) => {
             // Anchor the edge labels inward so they don't clip.
-            ctx.textAlign = i === 0 ? "left" : (i === pts.length - 1 ? "right" : "center");
+            ctx.textAlign = k === 0 ? "left" : (b.i === pts.length - 1 ? "right" : "center");
             ctx.fillStyle = text;
-            ctx.fillText((p.due || "").trim().slice(0, 3), X(i), h - pad.b + 6);
+            ctx.fillText(b.label, b.x, h - pad.b + 6);
         });
         // Hover indicator: dashed vertical guide plus a halo ring around the
         // hovered dot so it's obvious which point the tooltip describes.
