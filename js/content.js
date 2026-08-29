@@ -1757,6 +1757,17 @@ const BETTER_TODO_TIMEFRAME_DAYS = {
 let betterTodoProgressFilter = null;
 let domContainers = {};
 
+// Better Todo timeframe filter, shared by the task list and the progress
+// display so their counts always agree: keeps items due on/before now+range
+// (overdue items are before now, so they are kept too). "all" keeps
+// everything.
+function applyTodoTimeframe(items) {
+    betterTodoTimeframe = (options.todo_timeframe && Object.prototype.hasOwnProperty.call(BETTER_TODO_TIMEFRAME_DAYS, options.todo_timeframe)) ? options.todo_timeframe : "all";
+    if (betterTodoTimeframe === "all") return items;
+    const cutoff = Date.now() + (BETTER_TODO_TIMEFRAME_DAYS[betterTodoTimeframe] * 24 * 60 * 60 * 1000);
+    return items.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
+}
+
 // true when `courseId` is the dimmed-out class because another class is selected.
 function progressFilterDim(courseId) {
     return betterTodoProgressFilter != null && String(courseId) !== String(betterTodoProgressFilter);
@@ -2263,7 +2274,9 @@ function renderProgressRings(container, scopedData) {
     const mode = getProgressRingMode();
     if (mode === "none") { container.innerHTML = ""; return; }
 
-    const allAssignments = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note"));
+    // Apply the same timeframe filter the list uses so the counts in the
+    // display match what's shown below it.
+    const allAssignments = applyTodoTimeframe(scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note")));
 
     const groups = {};
     allAssignments.forEach(item => {
@@ -2931,13 +2944,9 @@ async function createTodoSections(location) {
         completed = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && (item.submissions?.submitted || item.planner_override?.marked_complete));
         // The timeframe is a persisted Better Todo List sub-option set in the
         // popup. Read the current value each render so popup changes apply on
-        // the next render. Keeps items due on/before now+range (overdue items
-        // are before now, so they are kept too). Only the Tasks tab is affected.
-        betterTodoTimeframe = (options.todo_timeframe && Object.prototype.hasOwnProperty.call(BETTER_TODO_TIMEFRAME_DAYS, options.todo_timeframe)) ? options.todo_timeframe : "all";
-        if (betterTodoTimeframe !== "all") {
-            const cutoff = Date.now() + (BETTER_TODO_TIMEFRAME_DAYS[betterTodoTimeframe] * 24 * 60 * 60 * 1000);
-            assignmentsDue = assignmentsDue.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
-        }
+        // the next render. Only the Tasks tab is affected (announcements and
+        // the completed tab always show everything).
+        assignmentsDue = applyTodoTimeframe(assignmentsDue);
 		// console.log("assignments", assignmentsDue);
 		// console.log("announcements", announcements);
 		// console.log("completed", completed);
@@ -6776,8 +6785,8 @@ function renderGradeAnalytics() {
     stats.innerHTML =
         stat("Overall grade", gaData.current == null ? "-" : gaData.current.toFixed(1) + "%") +
         stat("Grade trend (last 5)", trendVal, trendColor) +
-        stat("Graded assignments", gaData.graded) +
-        stat("Ungraded / no score", gaData.ungraded);
+        stat("Graded", gaData.graded) +
+        stat("Ungraded", gaData.ungraded);
 
     const charts = panel.querySelector("#canvasrefined-ga-charts");
     charts.style.display = "flex";

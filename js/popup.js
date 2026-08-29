@@ -60,8 +60,9 @@ const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "to
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
-// no personal productivity features).
-const exportToggles = ["dark_mode", "quiz_safe_mode"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
+// no personal productivity features). Includes the former separate Layout and
+// Sidebar groups, plus Grade Analytics and its colored-zones sub-toggle.
+const exportToggles = ["dark_mode", "quiz_safe_mode", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
 const fontsDropdownStateKey = "fonts_dropdown_open";
 
 const apiurl = "none";
@@ -1314,12 +1315,6 @@ function setup() {
                                 break;
                             case "export-background":
                                 final = { ...final, ...(await getExport(storage, exportBackground)) };
-                                break;
-                            case "export-layout":
-                                final = { ...final, ...(await getExport(storage, exportLayout)) };
-                                break;
-                            case "export-sidebar":
-                                final = { ...final, ...(await getExport(storage, exportSidebar)) };
                                 break;
                             case "export-todo":
                                 final = { ...final, ...(await getExport(storage, exportTodo)) };
