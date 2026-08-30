@@ -389,3 +389,19 @@
 #grades_summary td.details { white-space: normal; }
 #assignments { overflow-x: auto; }
 
+
+/* Big strikethrough on checked-off tasks (dashboard list view). Canvas keeps
+   completed planner items looking identical to unfinished ones — the only cue
+   is the checkbox itself — so when a task's checkbox is checked, strike its
+   title through with a thick line and dim the row. :has() matches the
+   checkbox state reactively, so this also applies live at the moment a task
+   is checked, before Canvas collapses it into the completed-items section. */
+.planner-item:has(input[data-testid="planner-item-completed-checkbox"]:checked) {
+    opacity: 0.7;
+}
+.planner-item:has(input[data-testid="planner-item-completed-checkbox"]:checked) .PlannerItem-styles__details a,
+.planner-item:has(input[data-testid="planner-item-completed-checkbox"]:checked) .PlannerItem-styles__title a,
+.planner-item:has(input[data-testid="planner-item-completed-checkbox"]:checked) .PlannerItem-styles__title button {
+    text-decoration: line-through !important;
+    text-decoration-thickness: 2.5px !important;
+}

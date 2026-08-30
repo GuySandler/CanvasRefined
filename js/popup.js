@@ -1388,8 +1388,11 @@ function setup() {
     // activate revert to original card colors button
     document.querySelector("#revert-colors").addEventListener("click", () => {
         chrome.storage.local.get("previous_colors", local => {
-            if (local["previous_colors"] !== null) {
-                sendFromPopup("setcolors", local["previous_colors"].colors);
+            const prev = local["previous_colors"];
+            // Guard against unset/expired-shape entries and the empty lists
+            // old list-mode runs stored — sending [] would be a silent no-op.
+            if (prev && Array.isArray(prev.colors) && prev.colors.length > 0) {
+                sendFromPopup("setcolors", prev.colors);
             }
         })
     })

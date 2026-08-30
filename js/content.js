@@ -1505,7 +1505,7 @@ function recieveMessage(request, sender, sendResponse) {
             }
             return true; // keep the message channel open for async sendResponse
         case ("setcolors"): changeColorPreset(request.options); sendResponse(true); break;
-        case ("getcolors"): sendResponse(getCardColors()); break;
+        case ("getcolors"): getCardColors().then(colors => sendResponse(colors)); return true; // keep the message channel open for async sendResponse
         case ("inspect"): sendResponse(inspectDarkMode(true)); break;
         case ("fixdm"): sendResponse(runDarkModeFixer(true)); break;
 		case ("updateBackground"): applyCustomBackground(); sendResponse(true); break;
@@ -1577,16 +1577,15 @@ function inspectDarkMode(withOutput = false) {
     return { "selectors": output === "" ? "no gaps determined" : output, "time": performance.now() - time };
 }
 
-function getCardColors() {
-    let cards = document.querySelectorAll(".ic-DashboardCard__header");
-    let colors = [];
-    cards.forEach(card => {
-        let rgbColor = card.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor;
-        colors.push({ "href": card.querySelector(".ic-DashboardCard__link").href, "color": rgbToHex(rgbColor) });
-    });
-    colors.sort((a, b) => a.href > b.href ? 1 : -1);
-    colors = colors.map(x => x.color);
-    return colors;
+async function getCardColors() {
+    // Same display order changeColorPreset uses to APPLY palettes, so an
+    // exported theme's color list maps back onto the same courses when
+    // applied. Works in list mode too (API fallback inside getPaletteCards).
+    const { cards, apiColors } = await getPaletteCards();
+    if (cards.length === 0) return [];
+    return cards.map(card => card.el
+        ? rgbToHex(card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor)
+        : (apiColors["course_" + card.href.split("courses/")[1]] || "#ffffff"));
 }
 
 function getCardsFromDashboard() {
@@ -4339,6 +4338,48 @@ Card color palettes
 
 let changeColorInterval = null;
 let colorChanges = [];
+
+// Course list for palette operations, in DISPLAY order (first shown to
+// last) so palette colors land on courses in the order the user sees them.
+// Card view: dashboard cards are already in the DOM in display order.
+// List mode: there are no .ic-DashboardCard elements (which used to make the
+// palette silently do nothing), so fall back to the dashboard_cards API —
+// ordered by where each course's planner grouping first appears top-to-
+// bottom, with any courses not currently displayed (no items in the loaded
+// date range) at the end in API order. Also returns the user's current
+// course colors from the users/self/colors API (used for "revert colors"
+// when no DOM cards exist to read inline styles from).
+async function getPaletteCards() {
+    let cards = [];
+    let apiColors = {};
+    document.querySelectorAll(".ic-DashboardCard__header").forEach(card => {
+        cards.push({ "href": card.querySelector(".ic-DashboardCard__link").href, "el": card });
+    });
+    if (cards.length > 0) return { cards, apiColors };
+    try {
+        const [cardsRes, colorsRes] = await Promise.all([
+            fetch(domain + "/api/v1/dashboard/dashboard_cards", { headers: { "accept": "application/json" } }),
+            fetch(domain + "/api/v1/users/self/colors", { headers: { "accept": "application/json" } })
+        ]);
+        const apiCards = await cardsRes.json();
+        apiColors = (await colorsRes.json())?.custom_colors || {};
+        const seen = new Set();
+        const orderedIds = [];
+        document.querySelectorAll("a.Grouping-styles__hero").forEach(hero => {
+            const m = (hero.getAttribute("href") || "").match(/\/courses\/(\d+)/);
+            if (m && !seen.has(m[1])) { seen.add(m[1]); orderedIds.push(m[1]); }
+        });
+        apiCards.forEach(card => {
+            const id = String(card.id);
+            if (!seen.has(id)) { seen.add(id); orderedIds.push(id); }
+        });
+        orderedIds.forEach(id => cards.push({ "href": domain + "/courses/" + id, "el": null }));
+    } catch (e) {
+        logError(e);
+    }
+    return { cards, apiColors };
+}
+
 async function changeColorPreset(colors) {
 
     if (colors.length === 0) return;
@@ -4352,25 +4393,44 @@ async function changeColorPreset(colors) {
     colorChanges = [];
 
     // sort cards
-    let cards = document.querySelectorAll(".ic-DashboardCard__header");
-    let sortedCards = [];
-    cards.forEach(card => {
-        sortedCards.push({ "href": card.querySelector(".ic-DashboardCard__link").href, "el": card });
-    });
-    sortedCards.sort((a, b) => a.href > b.href ? 1 : -1);
+    // (display order — see getPaletteCards; no re-sorting here so palette
+    // colors apply from the first course on screen to the last)
+    const { cards: sortedCards, apiColors } = await getPaletteCards();
 
     // push each color change into a queue
     try {
         sortedCards.forEach((card, i) => {
-            let previousColor = rgbToHex(card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor);
+            let course_id = card.href.split("courses/")[1];
+            let previousColor = card.el
+                ? rgbToHex(card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor)
+                : (apiColors["course_" + course_id] || "#ffffff");
             previous.push(previousColor);
 
-            // Object.keys(res.custom_colors).forEach(item => {
-            //let item_id = item.split("_")[1];
-            let course_id = card.href.split("courses/")[1];
-
-            //if (card.href.includes(item_id)) {
             let cnum = i % colors.length;
+
+            // Apply the new color to whatever surface is rendered: dashboard
+            // card elements (card view) or planner item avatars (list view),
+            // so the change is visible immediately instead of only after a
+            // reload.
+            let applyColor = () => {
+                if (card.el) {
+                    card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor = colors[cnum];
+                    card.el.querySelector(".ic-DashboardCard__header-title span").style.color = colors[cnum];
+                    card.el.querySelector(".ic-DashboardCard__header-button-bg").style.backgroundColor = colors[cnum];
+                } else {
+                    const coursePrefix = "/courses/" + course_id;
+                    document.querySelectorAll(".planner-item").forEach(item => {
+                        const titleLink = item.querySelector(".PlannerItem-styles__title a");
+                        const heroLink = item.closest(".Grouping-styles__root")?.querySelector("a.Grouping-styles__hero");
+                        const inCourse = (titleLink && (titleLink.getAttribute("href") || "").startsWith(coursePrefix)) ||
+                            (heroLink && (heroLink.getAttribute("href") || "").startsWith(coursePrefix));
+                        if (inCourse) {
+                            const avatar = item.querySelector(".PlannerItem-styles__avatar, .PlannerItem-styles__icon");
+                            if (avatar) avatar.style.color = colors[cnum];
+                        }
+                    });
+                }
+            };
 
             let changeCardColor = () => {
                 fetch(domain + "/api/v1/users/self/colors/courses_" + course_id,
@@ -4382,20 +4442,12 @@ async function changeColorPreset(colors) {
                             'X-CSRF-Token': csrfToken,
                         },
                         body: JSON.stringify({ "hexcode": colors[cnum] })
-                    }).then(() => {
-                        card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor = colors[cnum];
-                        card.el.querySelector(".ic-DashboardCard__header-title span").style.color = colors[cnum];
-                        card.el.querySelector(".ic-DashboardCard__header-button-bg").style.backgroundColor = colors[cnum];
-                    });
+                    }).then(() => applyColor());
             }
 
             colorChanges.push(changeCardColor);
 
-            card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor = colors[cnum];
-            card.el.querySelector(".ic-DashboardCard__header-title span").style.color = colors[cnum];
-            card.el.querySelector(".ic-DashboardCard__header-button-bg").style.backgroundColor = colors[cnum];
-            //}
-            // });
+            applyColor();
         });
     } catch (e) {
         logError(e);
@@ -4417,7 +4469,13 @@ async function changeColorPreset(colors) {
     // set colors to revert back to
     chrome.storage.local.get("previous_colors", local => {
         const now = Date.now();
-        if (local["previous_colors"] === null || now >= local["previous_colors"].expire) {
+        const prev = local["previous_colors"];
+        // Overwrite when missing or expired — and when an old list-mode run
+        // (which found no dashboard cards) stored an empty list, which made
+        // revert a silent no-op. Never store an empty capture (nothing to
+        // revert to). chrome.storage.local.get yields undefined (not null)
+        // for an unset key, so the old `=== null` check never matched it.
+        if (previous.length > 0 && (!prev || now >= prev.expire || !Array.isArray(prev.colors) || prev.colors.length === 0)) {
             chrome.storage.local.set({ "previous_colors": { "colors": previous, "expire": now + 86400000 } });
         }
     });

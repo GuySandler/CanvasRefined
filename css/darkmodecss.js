@@ -1207,4 +1207,33 @@ hr {
     color-scheme: dark !important;
     color: var(--bctext-0) !important;
 }
+/* Dashboard list view header (Today / Add To Do / Show My Grades /
+   opportunities): Canvas paints the icon glyphs a dark ink color that
+   disappears on the dark glass header bar. Recolor the header text and
+   its icon SVGs to the theme text color. */
+.PlannerHeader-styles__root {
+    color: var(--bctext-0) !important;
+}
+.PlannerHeader-styles__root svg {
+    fill: var(--bctext-0) !important;
+}
+/* Flash alert toasts (.flashalert-message, e.g. "Nothing planned today.
+   Selecting next item."): Canvas renders them as white cards with dark
+   text, unthemed in dark mode. Paint them with the theme background and
+   text color; the inner div[open] is the alert card itself. The close X
+   glyph inherits currentColor from the button. */
+.flashalert-message > div {
+    background: var(--bcbackground-0) !important;
+    color: var(--bctext-0) !important;
+    border-color: var(--bcborders) !important;
+}
+.flashalert-message > div p {
+    color: var(--bctext-0) !important;
+}
+.flashalert-message > div button {
+    color: var(--bctext-0) !important;
+}
+.flashalert-message > div button svg {
+    fill: var(--bctext-0) !important;
+}
 `;
