@@ -1087,6 +1087,40 @@ async function applyCustomBackground() {
             backdrop-filter: blur(${bgBlur}px) saturate(120%) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) saturate(120%) !important;
         }
+        /* Dashboard list view (planner). Canvas paints each day block an
+           opaque theme color, so with a background image the whole list reads
+           as one solid slab that hides the image — unlike card view, where
+           the glass header and (optionally) translucent cards let it show
+           through. Give each day group the same glass treatment as the module
+           panels (color-mix tint + slider blur + rounded border) so the
+           background peeks through between the day cards. */
+        #dashboard-planner .planner-day,
+        #dashboard-planner .planner-empty-days {
+            background: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            border-radius: 12px !important;
+            border: 1px solid color-mix(in srgb, var(--bcborders) 75%, transparent) !important;
+            padding: 8px 12px !important;
+            box-sizing: border-box !important;
+        }
+        /* Inner surfaces Canvas keeps opaque (course-grouping title strip,
+           "Show N completed item" facade, "Nothing Planned" filler, and the
+           Today/Add To Do header cluster that sits on the glass dashboard
+           header bar): flatten them so the glass behind shows through. */
+        #dashboard-planner .Grouping-styles__title,
+        #dashboard-planner .CompletedItemsFacade-styles__root,
+        #dashboard-planner .EmptyDays-styles__nothingPlanned,
+        #dashboard-planner-header .PlannerHeader-styles__root {
+            background: transparent !important;
+        }
+        /* Item-row hover: subtle tint on the glass instead of Canvas's flat
+           gray, so rows feel alive on the translucent day cards. */
+        #dashboard-planner .planner-item:hover,
+        #dashboard-planner .Grouping-styles__heroHover:hover {
+            background: color-mix(in srgb, var(--bctext-0) 5%, transparent) !important;
+            border-radius: 8px !important;
+        }
         #right-side-wrapper {
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
