@@ -6640,25 +6640,27 @@ function getAssignments() {
 const GA_BUCKETS = [
     { label: "90+",   min: 90, max: Infinity, color: "#16a34a" },
     { label: "80-89", min: 80, max: 90,       color: "#4ade80" },
-    { label: "70-79", min: 70, max: 80,       color: "#a3e635" },
-    { label: "60-69", min: 60, max: 70,       color: "#facc15" },
-    { label: "50-59", min: 50, max: 60,       color: "#fb923c" },
-    { label: "40-49", min: 40, max: 50,       color: "#f87171" },
-    { label: "30-39", min: 30, max: 40,       color: "#ef4444" },
-    { label: "20-29", min: 20, max: 30,       color: "#dc2626" },
-    { label: "10-19", min: 10, max: 20,       color: "#b91c1c" },
+    { label: "70-79", min: 70, max: 80,       color: "#facc15" },
+    { label: "60-69", min: 60, max: 70,       color: "#fb923c" },
+    { label: "50-59", min: 50, max: 60,       color: "#f87171" },
+    { label: "40-49", min: 40, max: 50,       color: "#ef4444" },
+    { label: "30-39", min: 30, max: 40,       color: "#dc2626" },
+    { label: "20-29", min: 20, max: 30,       color: "#b91c1c" },
+    { label: "10-19", min: 10, max: 20,       color: "#991b1b" },
     { label: "0-9",   min: 0,  max: 10,       color: "#7f1d1d" },
 ];
 const GA_UNGRADED_COLOR = "#6b7280";
 // 5%-wide zone colors for the line chart background: the doughnut's bucket
 // colors interpolated at 5% steps (dark red at 0 → green at 100), so every
-// 5% band gets its own shade.
+// 5% band gets its own shade. Each band is sampled at its LOWER edge so
+// every decade starts on its pure bucket color — a 70 is exactly yellow,
+// not a yellow-green blend.
 const GA_ZONE_COLORS = (() => {
     const stops = GA_BUCKETS.slice().reverse(); // 0-9 (dark red) → 90+ (green)
     const rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
     const lerp = (a, b, t) => Math.round(a + (b - a) * t);
     return Array.from({ length: 20 }, (_, i) => {
-        const m = i * 5 + 2.5; // band midpoint
+        const m = i * 5; // band's lower edge (70, 75, …) — see comment above
         const k = Math.min(stops.length - 1, Math.floor(m / 10));
         if (k >= stops.length - 1) return stops[stops.length - 1].color;
         const t = (m - k * 10) / 10;
@@ -6688,9 +6690,36 @@ function setGradeAnalyticsFitY(fit) {
     chrome.storage.local.set({ [GA_FIT_Y_KEY]: fit });
 }
 
+// Final-grade calculator settings, stored per course so each course's final
+// weight and goal survive reloads: { weight, target, show }. The needed
+// score itself is never stored — it's always recomputed against the live
+// current grade.
+const GA_CALC_PREFIX = "grade_analytics_final_";
+
+function gaCalcStorageKey(courseId) {
+    return GA_CALC_PREFIX + courseId;
+}
+
+async function getGaCalcSettings(courseId) {
+    const empty = { weight: null, target: null, show: false };
+    if (courseId == null) return empty;
+    const key = gaCalcStorageKey(courseId);
+    const result = await chrome.storage.local.get(key);
+    const v = result[key];
+    return v && typeof v === "object" ? v : empty;
+}
+
+function saveGaCalcSettings() {
+    const courseId = getCurrentCourseId();
+    if (courseId == null || !gaCalc) return;
+    chrome.storage.local.set({ [gaCalcStorageKey(courseId)]: gaCalc });
+}
+
 let gaObserver = null;
 let gaOpen = false;          // panel open on this page view
 let gaFitY = false;         // scale the line chart Y axis to fit the data
+let gaTab = "overview";     // active panel tab: "overview" | "calc"
+let gaCalc = null;           // final-grade calculator settings for this course
 let gaCourseId = null;       // course whose data is cached
 let gaData = null;           // computed data for the current course
 let gaLoading = false;
@@ -6737,6 +6766,7 @@ function watchGradeAnalytics() {
     if (gaCourseId !== null && gaCourseId !== courseId) {
         gaData = null;
         gaCourseId = null;
+        gaCalc = null; // per-course final-calculator settings
         removeGradeAnalyticsPanel();
     }
     if (!gaObserver) {
@@ -6748,10 +6778,12 @@ function watchGradeAnalytics() {
     scheduleGradeAnalyticsSync();
     // Restore the open/closed state and Y-axis preference the user last
     // chose, then inject the panel below the Print Grades header.
-    Promise.all([getGradeAnalyticsOpenState(), getGradeAnalyticsFitY()]).then(([open, fit]) => {
+    Promise.all([getGradeAnalyticsOpenState(), getGradeAnalyticsFitY(), getGaCalcSettings(courseId)]).then(([open, fit, calc]) => {
         gaOpen = open;
         gaFitY = fit;
-        ensureGradeAnalyticsPanel();
+        gaCalc = calc;
+        const panel = ensureGradeAnalyticsPanel();
+        if (panel) applyGaCalcState(panel);
         if (gaOpen && gaData) renderGradeAnalytics();
     });
     if (!gaData && !gaLoading) loadGradeAnalytics();
@@ -6838,6 +6870,11 @@ function ensureGradeAnalyticsPanel() {
         </div>
         <div id="canvasrefined-ga-body">
         <p id="canvasrefined-ga-status" style="margin:0 0 10px;color:var(--bctext-1);font-size:13px;">Loading grade data…</p>
+        <div id="canvasrefined-ga-tabs" style="display:flex;gap:4px;border-bottom:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);margin-bottom:14px;">
+            <button type="button" data-ga-tab="overview" style="${gaTabStyle(true)}">Overview</button>
+            <button type="button" data-ga-tab="calc" style="${gaTabStyle(false)}">Final Calculator</button>
+        </div>
+        <div id="canvasrefined-ga-tab-overview">
         <div id="canvasrefined-ga-stats" style="display:none;flex-wrap:wrap;gap:10px;margin-bottom:14px;"></div>
         <div id="canvasrefined-ga-charts" style="display:none;gap:24px;flex-wrap:wrap;">
             <div id="canvasrefined-ga-box-pie" style="flex:1 1 calc(33.333% - 8px);min-width:0;">
@@ -6850,6 +6887,22 @@ function ensureGradeAnalyticsPanel() {
                     <label for="canvasrefined-ga-fity" style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--bctext-1);cursor:pointer;user-select:none;"><input type="checkbox" id="canvasrefined-ga-fity"> Fit Y axis</label>
                 </div>
                 <div style="position:relative;height:280px;"><canvas id="canvasrefined-ga-line"></canvas><div id="canvasrefined-ga-line-tip" style="position:absolute;display:none;pointer-events:none;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:6px;padding:8px 10px;font-size:12px;z-index:20;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,0.25);"></div></div>
+            </div>
+        </div>
+        </div>
+        <div id="canvasrefined-ga-tab-calc" style="display:none;">
+            <div style="max-width:620px;">
+                <p style="margin:0 0 14px;color:var(--bctext-1);font-size:13px;">Enter how much your final is worth and the overall grade you want to show see what grade you need on the final.</p>
+                <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+                    <label style="flex:1 1 200px;font-size:12px;color:var(--bctext-1);">Final exam weight (% of grade)
+                        <input id="canvasrefined-ga-calc-weight" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="20" style="display:block;width:100%;margin-top:4px;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--bcborders);background:var(--bcbackground-1);color:var(--bctext-0);font-size:15px;">
+                    </label>
+                    <label style="flex:1 1 200px;font-size:12px;color:var(--bctext-1);">Target overall grade (%)
+                        <input id="canvasrefined-ga-calc-target" type="number" min="0" step="0.1" inputmode="decimal" placeholder="90" style="display:block;width:100%;margin-top:4px;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--bcborders);background:var(--bcbackground-1);color:var(--bctext-0);font-size:15px;">
+                    </label>
+                </div>
+                <label for="canvasrefined-ga-calc-show" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--bctext-0);cursor:pointer;user-select:none;margin-bottom:14px;"><input type="checkbox" id="canvasrefined-ga-calc-show"> Show grade goal on the overview</label>
+                <div id="canvasrefined-ga-calc-result" style="padding:12px 16px;border-radius:8px;background:var(--bcbackground-1);border:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);font-size:14px;"></div>
             </div>
         </div>
         </div>
@@ -6873,6 +6926,30 @@ function ensureGradeAnalyticsPanel() {
             gaDrawLine(panel.querySelector("#canvasrefined-ga-line"), panel.querySelector("#canvasrefined-ga-line-tip"));
         }
     });
+    // Tab switching between the charts overview and the final calculator.
+    panel.querySelectorAll("[data-ga-tab]").forEach(btn => {
+        btn.addEventListener("click", () => gaSetTab(btn.dataset.gaTab));
+    });
+    // Final-grade calculator inputs persist per course; every change re-saves
+    // and recomputes the result against the live current grade.
+    const calcWeight = panel.querySelector("#canvasrefined-ga-calc-weight");
+    const calcTarget = panel.querySelector("#canvasrefined-ga-calc-target");
+    const calcShow = panel.querySelector("#canvasrefined-ga-calc-show");
+    const onCalcInput = () => {
+        gaCalc = gaCalc || { weight: null, target: null, show: false };
+        const w = parseFloat(calcWeight.value);
+        const t = parseFloat(calcTarget.value);
+        gaCalc.weight = isFinite(w) ? Math.min(100, Math.max(0, w)) : null;
+        gaCalc.target = isFinite(t) ? Math.max(0, t) : null;
+        gaCalc.show = calcShow.checked;
+        saveGaCalcSettings();
+        renderGaCalculator();
+        renderGaStats();
+    };
+    calcWeight.addEventListener("input", onCalcInput);
+    calcTarget.addEventListener("input", onCalcInput);
+    calcShow.addEventListener("change", onCalcInput);
+    applyGaCalcState(panel);
     applyOpenState();
     // If the data finished loading before this panel was created (or before
     // the stored open state was restored), the earlier render call found no
@@ -7038,13 +7115,14 @@ function computeGradeAnalyticsFromPage(table) {
     };
 }
 
-function renderGradeAnalytics() {
+// Stat cards row on the Overview tab. The optional "Grade goal" card appears
+// when the final calculator's "show" checkbox is on; it recomputes against
+// the live current grade so it stays accurate as new grades come in.
+function renderGaStats() {
     const panel = document.getElementById("canvasrefined-grade-analytics");
     if (!panel || !gaData) return;
-    const status = panel.querySelector("#canvasrefined-ga-status");
-    if (status) status.style.display = "none";
-
     const stats = panel.querySelector("#canvasrefined-ga-stats");
+    if (!stats) return;
     stats.style.display = "flex";
     const stat = (cap, val, color) =>
         `<div style="padding:8px 14px;border-radius:8px;background:var(--bcbackground-1);"><div style="font-size:18px;font-weight:700;color:${color || "var(--bctext-0)"};">${val}</div><div style="font-size:11px;text-transform:uppercase;color:var(--bctext-1);">${cap}</div></div>`;
@@ -7056,11 +7134,33 @@ function renderGradeAnalytics() {
         else if (gaData.trend < -0.05) { trendVal = "\u25BC " + gaData.trend.toFixed(1) + "%"; trendColor = "#dc2626"; }
         else { trendVal = "\u25BA " + gaData.trend.toFixed(1) + "%"; trendColor = "var(--bctext-1)"; }
     }
+    // Grade goal card from the Final Calculator tab: the score needed on the
+    // final to hit the stored target grade.
+    let goalStat = "";
+    if (gaCalc && gaCalc.show && gaCalc.weight > 0 && gaCalc.target != null && gaData.current != null) {
+        const w = gaCalc.weight / 100;
+        const needed = (gaCalc.target - gaData.current * (1 - w)) / w;
+        let val, color;
+        if (needed <= 0) { val = "\u2713 Secured"; color = "#16a34a"; }
+        else if (needed > 100) { val = "Out of reach"; color = "#dc2626"; }
+        else { val = "\u2265 " + needed.toFixed(1) + "%"; color = gaNeededColor(needed); }
+        goalStat = stat("Grade goal", val, color);
+    }
     stats.innerHTML =
         stat("Overall grade", gaData.current == null ? "-" : gaData.current.toFixed(1) + "%") +
         stat("Grade trend (last 5)", trendVal, trendColor) +
         stat("Graded", gaData.graded) +
-        stat("Ungraded", gaData.ungraded);
+        stat("Ungraded", gaData.ungraded) +
+        goalStat;
+}
+
+function renderGradeAnalytics() {
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (!panel || !gaData) return;
+    const status = panel.querySelector("#canvasrefined-ga-status");
+    if (status) status.style.display = "none";
+
+    renderGaStats();
 
     const charts = panel.querySelector("#canvasrefined-ga-charts");
     charts.style.display = "flex";
@@ -7069,6 +7169,110 @@ function renderGradeAnalytics() {
 
     gaDrawPie(panel.querySelector("#canvasrefined-ga-pie"), panel.querySelector("#canvasrefined-ga-pie-tip"));
     gaDrawLine(panel.querySelector("#canvasrefined-ga-line"), panel.querySelector("#canvasrefined-ga-line-tip"));
+    renderGaCalculator();
+}
+
+// --- Final Calculator tab --------------------------------------------------
+
+// Inline style for one panel tab button; the active tab gets the accent
+// underline, matching how the rest of the panel is styled inline.
+function gaTabStyle(active) {
+    return `background:transparent;border:none;padding:6px 14px;font-size:14px;font-weight:600;cursor:pointer;color:${active ? "var(--bctext-0)" : "var(--bctext-1)"};border-bottom:2px solid ${active ? "#2563eb" : "transparent"};`;
+}
+
+function gaSetTab(tab) {
+    gaTab = tab;
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (!panel) return;
+    const overview = panel.querySelector("#canvasrefined-ga-tab-overview");
+    const calc = panel.querySelector("#canvasrefined-ga-tab-calc");
+    if (overview) overview.style.display = tab === "overview" ? "" : "none";
+    if (calc) calc.style.display = tab === "calc" ? "" : "none";
+    panel.querySelectorAll("[data-ga-tab]").forEach(btn => {
+        const active = btn.dataset.gaTab === tab;
+        btn.style.color = active ? "var(--bctext-0)" : "var(--bctext-1)";
+        btn.style.borderBottomColor = active ? "#2563eb" : "transparent";
+    });
+    if (tab === "overview") {
+        // The canvases were zero-size while the tab was hidden; redraw now
+        // that it's visible again.
+        if (gaOpen && gaData) renderGradeAnalytics();
+    } else {
+        renderGaCalculator();
+    }
+}
+
+// Severity color for an arbitrary score percentage — the same palette the
+// doughnut / zone charts use, so a 70 renders yellow, an 85 green, etc.
+function gaSeverityColor(pct) {
+    if (pct == null || !isFinite(pct)) return "var(--bctext-0)";
+    const b = GA_BUCKETS.find(b => pct >= b.min && pct < b.max);
+    return (b || GA_BUCKETS[GA_BUCKETS.length - 1]).color;
+}
+
+// Inverted severity for the final calculator: a LOW required score is good
+// (needing only 10% on the final is comfortably green), a high one is bad.
+// Own scale, independent of the grade chart palette: needing ≥95% on the
+// final is red, 75–94% yellow, and ≤74% green.
+const GA_NEEDED_COLORS = [
+    { min: 95, color: "#dc2626" },
+    { min: 75, color: "#facc15" },
+    { min: 0,  color: "#16a34a" },
+];
+
+function gaNeededColor(needed) {
+    if (needed == null || !isFinite(needed)) return "var(--bctext-0)";
+    const b = GA_NEEDED_COLORS.find(b => needed >= b.min);
+    return (b || GA_NEEDED_COLORS[GA_NEEDED_COLORS.length - 1]).color;
+}
+
+// Pushes the stored calculator settings into the tab's inputs without
+// clobbering a field the user is actively typing in.
+function applyGaCalcState(panel) {
+    const w = panel.querySelector("#canvasrefined-ga-calc-weight");
+    const t = panel.querySelector("#canvasrefined-ga-calc-target");
+    const s = panel.querySelector("#canvasrefined-ga-calc-show");
+    if (!w || !t || !s) return;
+    if (document.activeElement !== w) w.value = gaCalc && gaCalc.weight != null ? gaCalc.weight : "";
+    if (document.activeElement !== t) t.value = gaCalc && gaCalc.target != null ? gaCalc.target : "";
+    s.checked = !!(gaCalc && gaCalc.show);
+    renderGaCalculator();
+}
+
+// Renders the calculator result: needed = (target − current·(1−w)) / w, where
+// w is the final's weight. Always recomputed from the live current grade so
+// stored goals stay accurate after reloads and as new grades post.
+function renderGaCalculator() {
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (!panel) return;
+    const box = panel.querySelector("#canvasrefined-ga-calc-result");
+    if (!box) return;
+    if (!gaCalc || gaCalc.weight == null || !(gaCalc.weight > 0) || gaCalc.target == null) {
+        box.innerHTML = `<span style="color:var(--bctext-1);">Enter your final's weight and your target grade to see what you need on the final.</span>`;
+        return;
+    }
+    const w = gaCalc.weight / 100;
+    const target = gaCalc.target;
+    const current = gaData ? gaData.current : null;
+    if (current == null) {
+        box.innerHTML = `<span style="color:var(--bctext-1);">Waiting for grade data…</span>`;
+        return;
+    }
+    const needed = (target - current * (1 - w)) / w;
+    const withZero = current * (1 - w);
+    const withPerfect = withZero + 100 * w;
+    let head, sub;
+    if (needed <= 0) {
+        head = `<span style="font-size:20px;font-weight:700;color:#16a34a;">You're already there!</span>`;
+        sub = `Even a 0 on the final leaves you at <b>${withZero.toFixed(1)}%</b>, which is above your <b>${target}%</b> goal.`;
+    } else if (needed > 100) {
+        head = `<span style="font-size:20px;font-weight:700;color:#dc2626;">Out of reach</span>`;
+        sub = `Even a perfect final only gets you to <b>${withPerfect.toFixed(1)}%</b>, which is below your <b>${target}%</b> goal.`;
+    } else {
+        head = `<span style="font-size:20px;font-weight:700;color:${gaNeededColor(needed)};">You need ≥ ${needed.toFixed(1)}% on the final</span>`;
+        sub = `You got this!`;
+    }
+    box.innerHTML = head + `<div style="margin-top:6px;color:var(--bctext-1);font-size:13px;">${sub}</div>`;
 }
 
 // --- Canvas-drawn charts --------------------------------------------------
