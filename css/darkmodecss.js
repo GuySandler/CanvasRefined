@@ -1239,6 +1239,18 @@ hr {
 #planner-today-btn:hover {
     background: var(--bcbackground-2) !important;
 }
+/* The "Today" button keeps its filled surface (from the rule above) but
+   gets no outline. Two borders were boxing it in: the themed border the
+   rule above paints on the button itself, and — the sneaky one —
+   Instructure's Button variant draws its own light-gray border
+   (rgb(232,234,236)) on the inner [class$="-baseButton__content"] span,
+   which reads as a bright 1px ring on the dark chip. The icon buttons'
+   content spans carry no border, so only Today needs this. Transparent
+   (instead of border: none) keeps the button's exact dimensions. */
+#planner-today-btn,
+#planner-today-btn [class$="-baseButton__content"] {
+    border-color: transparent !important;
+}
 /* Instructure's Button variant paints its inner content span white (and a
    light gray on hover / white + inset shadow on active). That span covers
    the themed button background painted above, so the "Today" button still
@@ -1249,6 +1261,98 @@ hr {
 .PlannerHeader-styles__root button:active [class$="-baseButton__content"] {
     background: transparent !important;
     box-shadow: none !important;
+}
+/* Dashboard list-view trays ("Add To Do" / "My Grades" opened from the
+   header buttons): Instructure UI renders Tray panels as body-level
+   portals — body > span > span[...-tray] — with a hardcoded white
+   background. Paint the tray panel with the theme background; the tray
+   contents already pick up the theme text color. */
+body > span > span[class*="-tray"] {
+    background: var(--bcbackground-0) !important;
+}
+/* The Add To Do form ships its own <style> tag hardcoding background
+   #FFFFFF on its root. */
+.UpdateItemTray-styles__root {
+    background: var(--bcbackground-0) !important;
+}
+/* InstUI TextInput / Select facades (Title, Date, Time, Course fields):
+   white surface, dark ink, gray border. Repaint with the theme surface,
+   text, and border colors — the calendar / arrow icons inside use
+   currentColor, so they follow. Attribute-contains matching because
+   emotion appends animation-state classes (e.g. transition--*) after the
+   component class. */
+[class*="-textInput__facade"] {
+    background: var(--bcbackground-1) !important;
+    border-color: var(--bcborders) !important;
+    color: var(--bctext-0) !important;
+}
+/* Field labels (Title / Date / Time / Course / Details) and the date-time
+   summary message keep Canvas's dark ink. */
+[class$="-formFieldLayout__label"],
+[class$="-formFieldMessage"] {
+    color: var(--bctext-1) !important;
+}
+/* InstUI ContextView popovers — the opportunities popup behind "Show My
+   Grades" and the date-picker calendar behind the Date field: white card
+   with dark text. Theme the card; descendants without their own ink
+   color (weekday headers, month label) inherit from here. */
+[class*="-contextView__content"] {
+    background: var(--bcbackground-0) !important;
+    color: var(--bctext-0) !important;
+}
+/* The opportunities popup's tab labels carry their own dark ink. */
+[class*="-contextView__content"] [class$="-view-tab"] {
+    color: var(--bctext-0) !important;
+}
+/* Flatten the white InstUI View surfaces nested inside those popovers
+   (the calendar body, the opportunities tab strip, the panel content) so
+   the themed card shows through. */
+[class*="-contextView__content"] [class*="-view--inlineBlock"],
+[class*="-contextView__content"] [class*="-view--block"],
+[class*="-contextView__content"] [class*="-view-tabs__container"],
+[class*="-contextView__content"] [class*="-view-panel__content"],
+[class*="-contextView__content"] [class*="-calendar__navigation"] {
+    background: transparent !important;
+}
+/* Calendar day chips: white squares with dark numbers. Flatten them and
+   recolor; the selected day keeps a filled chip (matched structurally via
+   aria-selected, since the chip's emotion class is a content hash). */
+[class*="-calendarDay__day"] {
+    background: transparent !important;
+    color: var(--bctext-0) !important;
+}
+button[aria-selected="true"] > [class*="-calendarDay__day"] {
+    background: var(--bclinks) !important;
+    color: #ffffff !important;
+}
+/* InstUI Select dropdowns (Time / Course) open body-level popover portals
+   with white View wrappers and white option rows around the options list.
+   Theme the list, flatten the wrappers and rows; the wrappers' emotion
+   classes carry no semantic suffix, so they are matched structurally with
+   :has() on the options list they contain (portal pattern: body > span). */
+[class*="-options__list"] {
+    background: var(--bcbackground-0) !important;
+    color: var(--bctext-0) !important;
+    border-color: var(--bcborders) !important;
+}
+[class*="-options__list"] [class$="-optionItem__container"] {
+    color: var(--bctext-0) !important;
+}
+[class$="-optionItem"] {
+    background: transparent !important;
+}
+[class$="-optionItem"]:hover,
+[class$="-optionItem"][aria-selected="true"] {
+    background: var(--bcbackground-2) !important;
+}
+body > span span:has([class*="-options__list"]) {
+    background: transparent !important;
+}
+/* Planner "Submitted" pill in the completed-items row: InstUI renders it
+   as a white chip with gray text. */
+.BadgeList-styles__item [class*="-pill"] {
+    background: var(--bcbackground-2) !important;
+    color: var(--bctext-1) !important;
 }
 /* Flash alert toasts (.flashalert-message, e.g. "Nothing planned today.
    Selecting next item."): Canvas renders them as white cards with dark

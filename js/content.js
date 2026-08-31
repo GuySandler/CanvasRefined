@@ -105,9 +105,43 @@ function findContentContainer() {
 
 let submissionPageButtonObserver = null;
 let submissionButtonScheduled = false;
+let assignmentButtonScheduled = false;
 let profileLogoutButtonObserver = null;
 let newCanvasButtonObserver = null;
 let sequenceFooterObserver = null;
+
+// Current user id, needed to build "Go to Grades" links on assignment pages.
+// The page's ENV global isn't visible to content scripts (isolated world), so
+// ask the Canvas API once and cache the result.
+// undefined = not fetched yet, null = fetch failed, number = ok.
+let currentUserIdCache;
+let currentUserIdPromise = null;
+function ensureCurrentUserId() {
+    if (currentUserIdCache !== undefined) return Promise.resolve(currentUserIdCache);
+    if (!currentUserIdPromise) {
+        currentUserIdPromise = getData(`${domain}/api/v1/users/self`)
+            .then(user => {
+                currentUserIdCache = (user && user.id) || null;
+            })
+            .catch(() => {
+                currentUserIdCache = null;
+            })
+            .then(() => {
+                currentUserIdPromise = null;
+                return currentUserIdCache;
+            });
+    }
+    return currentUserIdPromise;
+}
+
+// Assignment pages (/courses/123/assignments/456) link to the current user's
+// submission ("grades") page for that assignment. The lookahead keeps this
+// from matching the submission pages themselves (/.../submissions/678).
+function getAssignmentGradesLink() {
+    const match = window.location.pathname.match(/^\/courses\/(\d+)\/assignments\/(\d+)(?!\/submissions)(?:\/|$)/);
+    if (!match || currentUserIdCache == null) return null;
+    return `${domain}/courses/${match[1]}/assignments/${match[2]}/submissions/${currentUserIdCache}`;
+}
 
 function addSubmissionPageButton() {
     const assignmentLink = getSubmissionAssignmentLink();
@@ -137,6 +171,31 @@ function addSubmissionPageButton() {
     if (gradeSummary && gradeSummary.parentNode === row) {
         row.insertBefore(btn, gradeSummary);
     }
+}
+
+// Assignment pages: /courses/123/assignments/456 — add a "Go to Grades" button
+// to the right edge of the title row.
+function addAssignmentPageButton() {
+    const link = getAssignmentGradesLink();
+    if (!link) return;
+    // Place the button inside the assignment header's .title-content block,
+    // pinned to its right edge on the title's line. .title-content is a plain
+    // block wrapping the <h1>, so switch it to a flex row (h1 left, button
+    // right); the h1 still wraps its text when long.
+    const titleContent = document.querySelector(".assignment-title .title-content")
+        || document.querySelector(".title-content");
+    if (!titleContent || titleContent.querySelector("#canvasrefined-assignment-grades")) return;
+
+    titleContent.style.display = "flex";
+    titleContent.style.alignItems = "center";
+    titleContent.style.gap = "12px";
+    makeElement("a", titleContent, {
+        id: "canvasrefined-assignment-grades",
+        className: "canvasrefined-custom-btn",
+        href: link,
+        textContent: "Go to Grades",
+        style: "display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;padding:6px 12px;text-decoration:none;font-weight:700;font-size:16px;color:inherit!important;white-space:nowrap;",
+    });
 }
 
 function addProfileLogoutPageButton() {
@@ -208,6 +267,44 @@ function maintainSubmissionPageButton() {
     });
 }
 
+// Same reconciliation pattern as maintainSubmissionPageButton, but for the
+// "Go to Grades" button on assignment pages. The grades link needs the
+// current user id, so on the first assignment page visit we kick off the API
+// fetch and re-run once it resolves.
+function maintainAssignmentPageButton() {
+    if (assignmentButtonScheduled) return;
+    assignmentButtonScheduled = true;
+    requestAnimationFrame(() => {
+        assignmentButtonScheduled = false;
+        const isAssignmentPage = /^\/courses\/\d+\/assignments\/\d+(?!\/submissions)(?:\/|$)/.test(window.location.pathname);
+        const existing = document.getElementById("canvasrefined-assignment-grades");
+        if (!isAssignmentPage) {
+            if (existing) {
+                const titleContent = existing.closest(".title-content");
+                existing.remove();
+                // Undo the flex-row layout we applied to the title block.
+                if (titleContent) {
+                    titleContent.style.display = "";
+                    titleContent.style.alignItems = "";
+                    titleContent.style.gap = "";
+                }
+            }
+            return;
+        }
+        if (currentUserIdCache === undefined) {
+            ensureCurrentUserId().then(() => maintainAssignmentPageButton());
+            return;
+        }
+        const link = getAssignmentGradesLink();
+        if (!link) return;
+        if (existing) {
+            if (existing.href !== link) existing.href = link;
+            return;
+        }
+        addAssignmentPageButton();
+    });
+}
+
 function isAssignmentPage() {
     return /^\/courses\/\d+\/assignments(?:\/\d+)?(?:\/|$)/.test(current_page);
 }
@@ -270,18 +367,25 @@ function watchSequenceFooter() {
     }, 10000);
 }
 
-// One persistent, rAF-throttled observer that keeps the button present whenever
-// we're on a submission page. Unlike the old 10s-disconnecting observer, this
-// survives Canvas' post-navigation re-renders that remove injected nodes. The
-// extra delayed checks cover React hydration that wipes the button after our
-// first add without emitting any later mutation for the observer to catch.
+// One persistent, rAF-throttled observer that keeps both assignment-page
+// navigation buttons present: the "Back to Assignment" button on submission
+// pages and the "Go to Grades" button on assignment pages. Unlike the old
+// 10s-disconnecting observer, this survives Canvas' post-navigation re-renders
+// that remove injected nodes. The extra delayed checks cover React hydration
+// that wipes the button after our first add without emitting any later mutation
+// for the observer to catch.
+function maintainAssignmentNavButtons() {
+    maintainSubmissionPageButton();
+    maintainAssignmentPageButton();
+}
+
 function watchSubmissionPageButton() {
     if (submissionPageButtonObserver) return;
-    maintainSubmissionPageButton();
-    submissionPageButtonObserver = new MutationObserver(maintainSubmissionPageButton);
+    maintainAssignmentNavButtons();
+    submissionPageButtonObserver = new MutationObserver(maintainAssignmentNavButtons);
     submissionPageButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
     for (const ms of [300, 800, 1600, 3000, 5000]) {
-        setTimeout(maintainSubmissionPageButton, ms);
+        setTimeout(maintainAssignmentNavButtons, ms);
     }
 }
 
@@ -1907,6 +2011,49 @@ function getDashboardCourseOrder() {
     return order;
 }
 
+// Keep the centered % / count text clear of the progress graphics (the rings'
+// center hole and the rainbow's bowl). The text block is measured after each
+// render; if it would cross into the strokes its fonts are scaled down, and
+// when the hole is really tight the count line is dropped before the % is
+// allowed to shrink below readable size. Font sizes reset to the defaults on
+// every render so the text grows back when there is room again.
+// `neededRadius(hw, hh)` returns the distance from the hole's center to the
+// farthest text corner; the text fits when that is <= availableRadius.
+function fitProgressOverlayText(overlay, neededRadius, availableRadius) {
+    const textWrap = overlay?.firstElementChild;
+    const pct = overlay?.querySelector('.canvasrefined-progress-percent');
+    const cnt = overlay?.querySelector('.canvasrefined-progress-count');
+    if (!textWrap || !pct || !cnt || textWrap === pct || textWrap === cnt) return;
+    // Undo any shrink applied by a previous render before measuring (these
+    // are the default sizes the overlays are created with).
+    pct.style.fontSize = '20px';
+    cnt.style.fontSize = '12px';
+    cnt.style.display = '';
+    if (!availableRadius || availableRadius <= 0) return;
+    let w = textWrap.offsetWidth;
+    let h = textWrap.offsetHeight;
+    if (!w || !h) return;
+    let needed = neededRadius(w / 2, h / 2);
+    if (needed <= availableRadius) return;
+    let scale = availableRadius / needed;
+    if (20 * scale < 11) {
+        // Too tight for both lines: drop the count and re-fit the % alone.
+        cnt.style.display = 'none';
+        w = textWrap.offsetWidth;
+        h = textWrap.offsetHeight;
+        needed = neededRadius(w / 2, h / 2);
+        if (needed <= availableRadius) return;
+        scale = availableRadius / needed;
+    }
+    pct.style.fontSize = `${Math.max(10, Math.round(20 * scale))}px`;
+    if (cnt.style.display !== 'none') cnt.style.fontSize = `${Math.max(9, Math.round(12 * scale))}px`;
+    // Final safety: if the readable-size floors above still don't fit, drop
+    // the count line so the % is guaranteed to clear the strokes.
+    if (neededRadius(textWrap.offsetWidth / 2, textWrap.offsetHeight / 2) > availableRadius) {
+        cnt.style.display = 'none';
+    }
+}
+
 // Mode "rings": concentric rings, one per course, each filled by completion.
 function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent) {
     const containerWidth = wrapper.clientWidth || 240;
@@ -1946,16 +2093,21 @@ function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent
     const decrement = stroke + gap;
     const ringCount = shown.length;
     const startRadius = outerRadius - stroke / 2;
-    const minCenterRadius = 28;
+    // Keep the center hole big enough for the % / count text so the numbers
+    // never sit on top of the ring strokes (fitProgressOverlayText shrinks the
+    // text as a safety net for unusually wide labels).
+    const minCenterRadius = 44;
     const requiredSpace = (ringCount - 1) * decrement + stroke / 2 + minCenterRadius;
     let adjustFactor = 1;
     if (requiredSpace > startRadius) {
         adjustFactor = (startRadius - minCenterRadius - stroke / 2) / Math.max(1, (ringCount - 1) * decrement);
     }
 
+    let innerEdge = startRadius - stroke / 2;
     shown.forEach((entry, idx) => {
         const radius = startRadius - idx * Math.max(1, Math.floor(decrement * adjustFactor));
         if (radius <= 0) return;
+        innerEdge = Math.min(innerEdge, radius - stroke / 2);
         const circumference = 2 * Math.PI * radius;
         const prog = entry.total === 0 ? 0 : entry.completed / entry.total;
         const color = courseRingColor(entry.courseId, idx);
@@ -2032,6 +2184,9 @@ function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent
         };
     });
 
+    // Shrink the % / count text if it would reach the innermost ring.
+    fitProgressOverlayText(overlay, (hw, hh) => Math.hypot(hw, hh), Math.max(0, innerEdge - 2));
+
     const maxIdx = shown.length - 1;
     svg.querySelectorAll('circle').forEach(c => {
         const idx = parseInt(c.getAttribute('data-idx'));
@@ -2066,8 +2221,11 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
     svg.setAttribute('height', String(svgHeight));
     svg.setAttribute('viewBox', `0 0 ${size} ${svgHeight}`);
 
-    // shrink spacing if too many classes would overflow the inner radius
-    const minInnerRadius = 14;
+    // shrink spacing if too many classes would overflow the inner radius;
+    // keep the inner bowl big enough for the % / count text so the numbers
+    // never sit on top of the arcs (fitProgressOverlayText shrinks the text
+    // as a safety net for unusually wide labels).
+    const minInnerRadius = 56;
     const requiredSpace = (ringCount - 1) * decrement;
     let adjustFactor = 1;
     if (requiredSpace > outerRadius - minInnerRadius) {
@@ -2170,13 +2328,31 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
         overlay = document.createElement('div');
         overlay.className = 'canvasrefined-progress-overlay';
         overlay.style.cssText = `position:absolute;left:0;top:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;transform:translateY(${nudge}px);`;
-        overlay.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;color:var(--bctext-0);'></div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:3px;color:var(--bctext-0);'></div>`;
+        // Same textWrap structure as rings mode so fitProgressOverlayText
+        // measures the whole percent+count block, not just one line.
+        const textWrap = document.createElement('div');
+        textWrap.style.cssText = 'text-align:center;color:var(--bctext-0);';
+        textWrap.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;'></div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:3px;'></div>`;
+        overlay.appendChild(textWrap);
         wrapper.appendChild(overlay);
     } else {
         overlay.style.transform = `translateY(${nudge}px)`;
     }
     overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
     overlay.querySelector('.canvasrefined-progress-count').textContent = `${completedAll}/${totalAll} done`;
+
+    // Shrink the % / count text if any corner would cross the innermost arc.
+    // The text is centered at (cx, holeCenterY); the bowl is the semicircle
+    // of innerRadius around (cx, baseY), so check the farthest text corner
+    // against the bowl's inner edge.
+    const bowlRadius = Math.max(0, innerRadius - stroke / 2 - 2);
+    fitProgressOverlayText(overlay, (hw, hh) => {
+        const dv = Math.max(
+            Math.abs(baseY - holeCenterY + hh),
+            Math.abs(baseY - holeCenterY - hh)
+        );
+        return Math.hypot(hw, dv);
+    }, bowlRadius);
 }
 
 // Mode "lines": one horizontal bar per course, each with its own %.
