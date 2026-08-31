@@ -1269,4 +1269,66 @@ hr {
 .flashalert-message > div button svg {
     fill: var(--bctext-0) !important;
 }
+/* Global Announcements page (…/account_notifications): the Current/Recent
+   tabs come from Instructure UI. Canvas paints the tab labels ("Current" /
+   "Recent") and the panel caption ("Announcements from the past four
+   months") with its dark ink, and the active tab panel's content wrapper
+   (the direct div child of #currentTab/#pastTab) gets a white surface —
+   all unreadable in dark mode. The panel ids and aria-controls values are
+   stable; the emotion class hashes are not, so they are not used.
+   The white surface actually comes from the outer tabs container
+   (.css-gpxu0l-view-tabs__container, style background:#fff) that wraps
+   both the tab strip (.css-1baf0tq-view-tabs) and the panels — it is
+   themed via the stable "view-tabs__container" class fragment, scoped
+   to this page's panels with :has() so other Instructure UI tabs
+   elsewhere in Canvas are untouched.
+   .notification_account_content is the account notification card used on
+   this page and in the dashboard announcement banner: Canvas sets dark
+   ink on the card chain (.ic-notification down through
+   .notification_message and .notification_account_content_text), leaving
+   the announcement body and the "This is an announcement from…" line
+   invisible on the themed dark card background. Recolor the body text to
+   the theme text color, keep the h2 title at the brighter heading color
+   (an ancestor rule below would otherwise dim it), and mute the meta
+   line. These class rules also fix the same markup in the dashboard
+   banner. */
+div[class*='view-tabs__container']:has(#currentTab, #pastTab),
+#currentTab>div,
+#pastTab>div {
+    background: var(--bcbackground-0) !important;
+}
+[aria-controls=currentTab],
+[aria-controls=pastTab] {
+    color: var(--bctext-1) !important;
+}
+#currentTab>div>span,
+#pastTab>div>span {
+    color: var(--bctext-2) !important;
+}
+.notification_account_content,
+.notification_account_content .ic-notification__content,
+.notification_account_content .ic-notification__message,
+.notification_message,
+.notification_message p,
+.notification_message span,
+.notification_message strong,
+.notification_message b,
+.notification_message em,
+.notification_message li,
+.notification_message td,
+.notification_message th {
+    color: var(--bctext-1) !important;
+}
+.notification_account_content .ic-notification__title {
+    color: var(--bctext-0) !important;
+}
+.notification_account_content_text,
+.notification_account_content_text b,
+.notification_account_content_text strong {
+    color: var(--bctext-2) !important;
+}
+.notification_message a,
+.notification_account_content a {
+    color: var(--bclinks) !important;
+}
 `;
