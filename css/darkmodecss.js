@@ -1217,6 +1217,39 @@ hr {
 .PlannerHeader-styles__root svg {
     fill: var(--bctext-0) !important;
 }
+/* The "Today" button's label span carries Canvas's dark ink color from its
+   emotion class, which beats the inherited root color above — dark text on
+   the dark header bar. Force the whole button chain to the theme text color. */
+.PlannerHeader-styles__root button,
+.PlannerHeader-styles__root button span {
+    color: var(--bctext-0) !important;
+}
+/* Solid themed surfaces for the header buttons. Canvas leaves the icon
+   buttons (Add To Do / Show My Grades / opportunities) fully transparent
+   and paints the Today button an unthemed color — on the dark header bar
+   they need solid backgrounds to read as buttons. #planner-today-btn:hover
+   is listed separately because the ID selector on the base background rule
+   above would otherwise out-specify the class-only :hover rule. */
+.PlannerHeader-styles__root button {
+    background: var(--bcbackground-1) !important;
+    border: 1px solid var(--bcborders) !important;
+    border-radius: 4px !important;
+}
+.PlannerHeader-styles__root button:hover,
+#planner-today-btn:hover {
+    background: var(--bcbackground-2) !important;
+}
+/* Instructure's Button variant paints its inner content span white (and a
+   light gray on hover / white + inset shadow on active). That span covers
+   the themed button background painted above, so the "Today" button still
+   rendered as a white box. Flatten the content span in every state so the
+   button's own surface shows through. */
+.PlannerHeader-styles__root button [class$="-baseButton__content"],
+.PlannerHeader-styles__root button:hover [class$="-baseButton__content"],
+.PlannerHeader-styles__root button:active [class$="-baseButton__content"] {
+    background: transparent !important;
+    box-shadow: none !important;
+}
 /* Flash alert toasts (.flashalert-message, e.g. "Nothing planned today.
    Selecting next item."): Canvas renders them as white cards with dark
    text, unthemed in dark mode. Paint them with the theme background and

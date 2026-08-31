@@ -1104,15 +1104,21 @@ async function applyCustomBackground() {
             padding: 8px 12px !important;
             box-sizing: border-box !important;
         }
-        /* Inner surfaces Canvas keeps opaque (course-grouping title strip,
-           "Show N completed item" facade, "Nothing Planned" filler, and the
-           Today/Add To Do header cluster that sits on the glass dashboard
-           header bar): flatten them so the glass behind shows through. */
-        #dashboard-planner .Grouping-styles__title,
+        /* Inner surfaces Canvas keeps opaque (the "Show N completed
+           item" facade, "Nothing Planned" filler, and the Today/Add To Do
+           header cluster that sits on the glass dashboard header bar):
+           flatten them so the glass behind shows through. The course-
+           grouping label instead gets a subtle chip behind the course name —
+           it sits over the course hero image, so without a backdrop the
+           text can be hard to read on busy images. */
         #dashboard-planner .CompletedItemsFacade-styles__root,
         #dashboard-planner .EmptyDays-styles__nothingPlanned,
         #dashboard-planner-header .PlannerHeader-styles__root {
             background: transparent !important;
+        }
+        #dashboard-planner .Grouping-styles__title {
+            background: var(--bcbackground-1) !important;
+            border-radius: 6px !important;
         }
         /* Item-row hover: subtle tint on the glass instead of Canvas's flat
            gray, so rows feel alive on the translucent day cards. */
