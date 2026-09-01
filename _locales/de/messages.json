@@ -74,6 +74,9 @@
   "grade_hover": {
     "message": "Nur beim Hover anzeigen"
   },
+  "card_letter": {
+      "message": "Notenbuchstaben anzeigen"
+  },
   "due": {
     "message": "Fällig"
   },

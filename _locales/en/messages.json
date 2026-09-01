@@ -119,6 +119,9 @@
     "grade_hover": {
         "message": "Show Only On Hover"
     },
+    "card_letter": {
+        "message": "Show letter grade"
+    },
     "due": {
         "message": "Due"
     },

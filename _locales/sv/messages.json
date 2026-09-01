@@ -74,6 +74,9 @@
   "grade_hover": {
     "message": "Visa endast vid svävning"
   },
+  "card_letter": {
+      "message": "Visa bokstavsbetyg"
+  },
   "due": {
     "message": "Förfaller"
   },

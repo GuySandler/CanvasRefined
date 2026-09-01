@@ -877,6 +877,7 @@ function applyOptionsChanges(changes) {
 				break;
 			case "dashboard_grades":
 			case "grade_hover":
+			case "card_letter":
 				if (!grades) getGrades();
 				insertGrades();
 				break;
@@ -4156,6 +4157,20 @@ function populateSidebarFromNav(sidebarContent) {
 	const navMenu = document.getElementById("menu");
     let hasDashboardButton = false;
 
+    // Keep the global-search trigger last in the sidebar. The search button's
+    // placement pass and this populate pass run on independent rAF callbacks,
+    // so either can execute first. If the search button was appended before
+    // the nav buttons exist, slot the nav buttons in ahead of it so Search
+    // always stays at the bottom of the sidebar.
+    const searchBtn = sidebarContent.querySelector("#canvasrefined-gs-sidebar-btn");
+    const insertNavButton = (text, href, icon) => {
+        const button = createSidebarButton(text, href, sidebarContent, icon);
+        if (searchBtn && searchBtn.parentNode === sidebarContent) {
+            sidebarContent.insertBefore(button, searchBtn);
+        }
+        return button;
+    };
+
     if (navMenu) {
         const menuItems = navMenu.querySelectorAll("a[id^='global_nav'], .globalNavExternalTool a");
         menuItems.forEach(item => {
@@ -4217,14 +4232,14 @@ function populateSidebarFromNav(sidebarContent) {
             }
 
             if (itemId === "global_nav_dashboard_link") hasDashboardButton = true;
-            const button = createSidebarButton(text, href, sidebarContent, icon);
+            const button = insertNavButton(text, href, icon);
             if (itemId) button.dataset.navItemId = itemId;
             addSidebarButtonBadge(button, getNavBadgeCount(item));
         });
     }
 
     if (!hasDashboardButton) {
-        createSidebarButton("Dashboard", `${domain}/`, sidebarContent, customIcons["global_nav_dashboard_link"]);
+        insertNavButton("Dashboard", `${domain}/`, customIcons["global_nav_dashboard_link"]);
     }
 }
 function updateSidebar(expanded, sidebarList, expander) {
@@ -4837,6 +4852,18 @@ function runiframeChecker() {
 Dashboard grades 
 */
 
+// Map a percentage to a letter grade using the user's configurable GPA
+// calculator cutoffs (A+ down to F). Returns null when no grade is present.
+function percentToLetterGrade(percent) {
+    const bounds = options.gpa_calc_bounds;
+    if (!bounds || typeof percent !== "number") return null;
+    for (const letter of Object.keys(bounds)) {
+        const cutoff = bounds[letter]?.cutoff;
+        if (typeof cutoff === "number" && percent >= cutoff) return letter;
+    }
+    return null;
+}
+
 function insertGrades() {
     if (options.dashboard_grades === true) {
         grades.then(data => {
@@ -4850,7 +4877,12 @@ function insertGrades() {
                             let gradepercent = grade.enrollments[0].has_grading_periods === true ? grade.enrollments[0].current_period_computed_current_score : grade.enrollments[0].computed_current_score;
                             //let gradepercent = grade.enrollments[0].computed_current_score;
                             let percent = (gradepercent || "--") + "%";
-                            let gradeContainer = cards[i].querySelector(".canvasrefined-card-grade") || makeElement("a", cards[i].querySelector(".ic-DashboardCard__header"), { "className": "canvasrefined-card-grade", "textContent": percent });
+                            if (options.card_letter === true) {
+                                const letter = percentToLetterGrade(gradepercent);
+                                if (letter) percent = `${letter} ${percent}`;
+                            }
+                            let gradeContainer = cards[i].querySelector(".canvasrefined-card-grade") || makeElement("a", cards[i].querySelector(".ic-DashboardCard__header"), { "className": "canvasrefined-card-grade" });
+                            gradeContainer.textContent = percent;
                             if (options.grade_hover === true) {
                                 gradeContainer.classList.add("canvasrefined-hover-only");
                             } else {
@@ -6101,6 +6133,8 @@ function onGlobalSearchShortcut(e) {
 function openGlobalSearchModal() {
     if (document.getElementById("canvasrefined-global-search-modal")) return;
 
+    // Show the platform-appropriate modifier in keybind hints (⌘ on Mac).
+    const modKey = /Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl";
     const modal = document.createElement("div");
     modal.id = "canvasrefined-global-search-modal";
     modal.className = "canvasrefined-gs-modal";
@@ -6116,7 +6150,8 @@ function openGlobalSearchModal() {
             <div class="canvasrefined-gs-footer">
                 <span><kbd>\u2191</kbd><kbd>\u2193</kbd> navigate</span>
                 <span><kbd>Enter</kbd> open</span>
-                <span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> new tab</span>
+                <span><kbd>${modKey}</kbd>+<kbd>Enter</kbd> new tab</span>
+                <span><kbd>${modKey}</kbd>+<kbd>K</kbd> toggle search</span>
                 <span><kbd>Esc</kbd> close</span>
             </div>
         </div>`;
