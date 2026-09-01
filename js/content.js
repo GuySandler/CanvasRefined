@@ -1915,6 +1915,17 @@ function applyTodoTimeframe(items) {
 function progressFilterDim(courseId) {
     return betterTodoProgressFilter != null && String(courseId) !== String(betterTodoProgressFilter);
 }
+// Canvas serves gradable work as several plannable types: assignments, quizzes,
+// and graded discussions (plus extension-created planner notes/custom tasks).
+// All of these are "tasks" for the Better Todo list; announcements are
+// handled separately.
+function isTodoTaskType(item) {
+    return item.plannable_type == "assignment"
+        || item.plannable_type == "planner_note"
+        || item.plannable_type == "quiz"
+        || item.plannable_type == "discussion_topic";
+}
+
 // Make an element filter the todo list to one class on click. A no-op on
 // course pages (where only one class is in scope anyway); toggles off when the
 // active class is clicked again.
@@ -2491,7 +2502,7 @@ function renderProgressRings(container, scopedData) {
 
     // Apply the same timeframe filter the list uses so the counts in the
     // display match what's shown below it.
-    const allAssignments = applyTodoTimeframe(scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note")));
+    const allAssignments = applyTodoTimeframe(scopedData.filter(item => isTodoTaskType(item)));
 
     const groups = {};
     allAssignments.forEach(item => {
@@ -3155,8 +3166,8 @@ async function createTodoSections(location) {
             });
 
         announcements = displayData.filter(item => item.plannable_type == "announcement");
-        assignmentsDue = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && !item.submissions?.submitted && !item.planner_override?.marked_complete);
-        completed = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && (item.submissions?.submitted || item.planner_override?.marked_complete));
+        assignmentsDue = displayData.filter(item => isTodoTaskType(item) && !item.submissions?.submitted && !item.planner_override?.marked_complete);
+        completed = displayData.filter(item => isTodoTaskType(item) && (item.submissions?.submitted || item.planner_override?.marked_complete));
         // The timeframe is a persisted Better Todo List sub-option set in the
         // popup. Read the current value each render so popup changes apply on
         // the next render. Only the Tasks tab is affected (announcements and
@@ -3445,6 +3456,13 @@ function attachTodoHoverPreview(anchor, item) {
     });
 }
 
+// Task-type icons for the Better Todo task rows (quiz / graded discussion),
+// adapted from the legacy todo renderer so quizzes and discussions get a
+// recognizable icon instead of the generic assignment one. Same fill
+// variable as the assignment icon so "Remove icons"/theme tweaks apply.
+const TODO_QUIZ_ICON_SVG = '<svg fill="var(--cr-todo-icon)" label="Quiz" name="IconQuiz" viewBox="0 0 1920 1920" rotate="0" aria-hidden="true" role="presentation" focusable="false"  ><g role="presentation"><g fill-rule="evenodd" stroke="none" stroke-width="1"><path d="M746.255375,1466.76417 L826.739372,1547.47616 L577.99138,1796.11015 L497.507383,1715.51216 L746.255375,1466.76417 Z M580.35118,1300.92837 L660.949178,1381.52637 L329.323189,1713.15236 L248.725192,1632.55436 L580.35118,1300.92837 Z M414.503986,1135.20658 L495.101983,1215.80457 L80.5979973,1630.30856 L0,1549.71056 L414.503986,1135.20658 Z M1119.32036,264.600006 C1475.79835,-91.8779816 1844.58834,86.3040124 1848.35034,88.1280123 L1848.35034,88.1280123 L1865.45034,96.564012 L1873.88634,113.664011 C1875.71034,117.312011 2053.89233,486.101999 1697.30034,842.693987 L1697.30034,842.693987 L1550.69635,989.297982 L1548.07435,1655.17196 L1325.43235,1877.81395 L993.806366,1546.30196 L415.712386,968.207982 L84.0863971,636.467994 L306.72839,413.826001 L972.602367,411.318001 Z M1436.24035,1103.75398 L1074.40436,1465.70397 L1325.43235,1716.61796 L1434.30235,1607.74796 L1436.24035,1103.75398 Z M1779.26634,182.406009 C1710.18234,156.41401 1457.90035,87.1020124 1199.91836,345.198004 L1199.91836,345.198004 L576.90838,968.207982 L993.806366,1385.10597 L1616.70235,762.095989 C1873.65834,505.139998 1804.68834,250.920007 1779.26634,182.406009 Z M858.146371,525.773997 L354.152388,527.597997 L245.282392,636.467994 L496.310383,887.609985 L858.146371,525.773997 Z"></path><path d="M1534.98715,372.558003 C1483.91515,371.190003 1403.31715,385.326002 1321.69316,466.949999 L1281.22316,507.305998 L1454.61715,680.585992 L1494.97315,640.343994 C1577.16715,558.035996 1591.87315,479.033999 1589.82115,427.164001 L1587.65515,374.610003 L1534.98715,372.558003 Z"></path></g></g></svg>';
+const TODO_DISCUSSION_ICON_SVG = '<svg fill="var(--cr-todo-icon)" name="IconDiscussion" viewBox="0 0 1920 1920" rotate="0" aria-hidden="true" role="presentation" focusable="false"  ><g role="presentation"><path d="M677.647059,16 L677.647059,354.936471 L790.588235,354.936471 L790.588235,129.054118 L1807.05882,129.054118 L1807.05882,919.529412 L1581.06353,919.529412 L1581.06353,1179.29412 L1321.41176,919.529412 L1242.24,919.529412 L1242.24,467.877647 L677.647059,467.877647 L0,467.877647 L0,1484.34824 L338.710588,1484.34824 L338.710588,1903.24706 L756.705882,1484.34824 L1242.24,1484.34824 L1242.24,1032.47059 L1274.99294,1032.47059 L1694.11765,1451.59529 L1694.11765,1032.47059 L1920,1032.47059 L1920,16 L677.647059,16 Z M338.789647,919.563294 L903.495529,919.563294 L903.495529,806.622118 L338.789647,806.622118 L338.789647,919.563294 Z M338.789647,1145.44565 L677.726118,1145.44565 L677.726118,1032.39153 L338.789647,1032.39153 L338.789647,1145.44565 Z M112.941176,580.705882 L1129.41176,580.705882 L1129.41176,1371.40706 L710.4,1371.40706 L451.651765,1631.05882 L451.651765,1371.40706 L112.941176,1371.40706 L112.941176,580.705882 Z" fill-rule="evenodd" stroke="none" stroke-width="1"></path></g></svg>';
+
 function populateAssignments(iscompleted = false) {
 	const today = new Date();
 	today.setHours(0,0,0,0);
@@ -3535,12 +3553,12 @@ function populateAssignments(iscompleted = false) {
             ? `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
                 <path d="M19.8201 14H15.6001C15.04 14 14.76 14 14.5461 14.109C14.3579 14.2049 14.2049 14.3578 14.1091 14.546C14.0001 14.7599 14.0001 15.0399 14.0001 15.6V19.82M20 12.7269V7.2C20 6.0799 20 5.51984 19.782 5.09202C19.5903 4.71569 19.2843 4.40973 18.908 4.21799C18.4802 4 17.9201 4 16.8 4H7.2C6.0799 4 5.51984 4 5.09202 4.21799C4.71569 4.40973 4.40973 4.71569 4.21799 5.09202C4 5.51984 4 6.0799 4 7.2V16.8C4 17.9201 4 18.4802 4.21799 18.908C4.40973 19.2843 4.71569 19.5903 5.09202 19.782C5.51984 20 6.0799 20 7.2 20H12.9496C13.4578 20 13.7118 20 13.9498 19.9407C14.1608 19.8882 14.3618 19.8016 14.5449 19.6844C14.7515 19.5522 14.926 19.3675 15.2751 18.9983L19.1254 14.9252C19.4486 14.5833 19.6101 14.4124 19.7255 14.2156C19.8278 14.041 19.903 13.8519 19.9486 13.6548C20 13.4325 20 13.1973 20 12.7269Z" stroke="var(--cr-todo-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>`
-            : `<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
+            : (item.plannable_type == "quiz" ? TODO_QUIZ_ICON_SVG : item.plannable_type == "discussion_topic" ? TODO_DISCUSSION_ICON_SVG : `<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
                 <g id="SVGRepo_bgCarrier" stroke-width="1"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
                 <g id="SVGRepo_iconCarrier">
                     <path d="M1468.214 0v551.145L840.27 1179.089c-31.623 31.623-49.693 74.54-49.693 119.715v395.289h395.288c45.176 0 88.093-18.07 119.716-49.694l162.633-162.633v438.206H0V0h1468.214Zm129.428 581.3c22.137-22.136 57.825-22.136 79.962 0l225.879 225.879c22.023 22.023 22.023 57.712 0 79.848l-677.638 677.637c-10.616 10.503-24.96 16.49-39.98 16.49H903.516v-282.35c0-15.02 5.986-29.364 16.49-39.867Zm-920.005 548.095H338.82v112.94h338.818v-112.94Zm225.88-225.879H338.818v112.94h564.697v-112.94Zm734.106-202.5-89.561 89.56 146.03 146.031 89.562-89.56-146.031-146.031Zm-508.228-362.197H338.82v338.818h790.576V338.82Z" fill-rule="evenodd"></path>
                 </g>
-            </svg>`;
+            </svg>`);
 
 		assignment.style.overflowX = "hidden";
 		assignment.innerHTML = `
@@ -6622,11 +6640,65 @@ function changeFavicon() {
 
 function getAssignments() {
     if (options.assignments_due === true || options.better_todo === true) {
-        let weekAgo = new Date(new Date() - 604800000);
-        //let weekAgo = new Date(new Date() - (604800000 * 10));
-        assignments = getData(`${domain}/api/v1/planner/items?start_date=${weekAgo.toISOString()}&per_page=75`);
+        // Fetch planner items from as far back as possible so overdue tasks
+        // always appear, no matter how long ago they were due. The planner
+        // API defaults start_date to "now" (which would hide every overdue
+        // item), so a far-past start date is required. Canvas returns planner
+        // items oldest-first in pages, so every page must be followed — a
+        // single request would only return the oldest page and silently drop
+        // all recent items.
+        assignments = getAllPlannerItems();
         cardAssignments = preloadAssignmentEls();
     }
+}
+
+// Far-past start date for the planner items fetch. Concluded courses are
+// excluded by the API by default, so this only pulls history from the user's
+// currently active courses, which keeps the payload bounded.
+const PLANNER_START_DATE = "2000-01-01";
+// Hard cap on pages fetched (50 pages * 100 items = 5000 items) as a safety
+// net against a malformed/misbehaving next link.
+const PLANNER_MAX_PAGES = 50;
+
+// Fetches every page of /api/v1/planner/items since PLANNER_START_DATE.
+// Uses the same session/headers as getData but follows the Link "next"
+// headers until exhausted.
+async function getAllPlannerItems() {
+    const allItems = [];
+    let url = `${domain}/api/v1/planner/items?start_date=${PLANNER_START_DATE}&per_page=100`;
+    for (let page = 0; page < PLANNER_MAX_PAGES && url; page++) {
+        let response;
+        let data;
+        try {
+            response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+            data = await response.json();
+        } catch (e) {
+            break;
+        }
+        if (!response.ok || !Array.isArray(data)) break;
+        // Deep-clone via JSON to unwrap Firefox Xray objects so nested props
+        // are mutable (same as getData).
+        try {
+            data = JSON.parse(JSON.stringify(data));
+        } catch (_) { /* keep original */ }
+        allItems.push(...data);
+        url = getNextPageUrl(response.headers.get("Link"));
+    }
+    return allItems;
+}
+
+// Extracts the rel="next" URL from a Canvas pagination Link header, or
+// returns null when on the last page.
+function getNextPageUrl(linkHeader) {
+    if (!linkHeader) return null;
+    const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+    return match ? match[1] : null;
 }
 
 // ===================== Grade Analytics =====================
@@ -6691,6 +6763,18 @@ function setGradeAnalyticsFitY(fit) {
     chrome.storage.local.set({ [GA_FIT_Y_KEY]: fit });
 }
 
+// "Imagine-If mode" toggle state, remembered across page loads.
+const GA_IMAGINE_KEY = "grade_analytics_imagine_if";
+
+async function getGradeAnalyticsImagineIf() {
+    const result = await chrome.storage.local.get(GA_IMAGINE_KEY);
+    return result[GA_IMAGINE_KEY] ?? false;
+}
+
+function setGradeAnalyticsImagineIf(on) {
+    chrome.storage.local.set({ [GA_IMAGINE_KEY]: on });
+}
+
 // Final-grade calculator settings, stored per course so each course's final
 // weight and goal survive reloads: { weight, target, show }. The needed
 // score itself is never stored — it's always recomputed against the live
@@ -6719,6 +6803,7 @@ function saveGaCalcSettings() {
 let gaObserver = null;
 let gaOpen = false;          // panel open on this page view
 let gaFitY = false;         // scale the line chart Y axis to fit the data
+let gaImagineIf = false;    // "Imagine-If mode" enabled on this page view
 let gaTab = "overview";     // active panel tab: "overview" | "calc" | "heatmap"
 let gaCalc = null;           // final-grade calculator settings for this course
 let gaCourseId = null;       // course whose data is cached
@@ -6779,10 +6864,11 @@ function watchGradeAnalytics() {
     scheduleGradeAnalyticsSync();
     // Restore the open/closed state and Y-axis preference the user last
     // chose, then inject the panel below the Print Grades header.
-    Promise.all([getGradeAnalyticsOpenState(), getGradeAnalyticsFitY(), getGaCalcSettings(courseId)]).then(([open, fit, calc]) => {
+    Promise.all([getGradeAnalyticsOpenState(), getGradeAnalyticsFitY(), getGaCalcSettings(courseId), getGradeAnalyticsImagineIf()]).then(([open, fit, calc, imagine]) => {
         gaOpen = open;
         gaFitY = fit;
         gaCalc = calc;
+        gaImagineIf = imagine;
         const panel = ensureGradeAnalyticsPanel();
         if (panel) applyGaCalcState(panel);
         if (gaOpen && gaData) renderGradeAnalytics();
@@ -6836,6 +6922,18 @@ function applyGradeAnalyticsOpenState(panel) {
     btn.setAttribute("aria-expanded", String(gaOpen));
 }
 
+// Syncs the "Imagine-If mode" button's DOM to the in-memory (storage-backed)
+// state. Called at panel creation and whenever an already-attached panel is
+// reused, mirroring applyGradeAnalyticsOpenState.
+function applyGradeAnalyticsImagineState(panel) {
+    const btn = panel.querySelector("#canvasrefined-ga-imagine");
+    if (!btn) return;
+    btn.setAttribute("aria-pressed", String(gaImagineIf));
+    btn.style.borderColor = gaImagineIf ? "#2563eb" : "var(--bcborders)";
+    btn.style.color = gaImagineIf ? "#2563eb" : "var(--bctext-0)";
+    btn.style.fontWeight = gaImagineIf ? "600" : "";
+}
+
 // Panel is injected directly below the "Print Grades" action header on the
 // grades page. Returns null (and retries via the DOM observer) if the anchor
 // hasn't rendered yet.
@@ -6851,6 +6949,7 @@ function ensureGradeAnalyticsPanel() {
         // Re-apply the open/closed state in case it was restored from storage
         // after this panel was first created.
         applyGradeAnalyticsOpenState(panel);
+        applyGradeAnalyticsImagineState(panel);
         return panel;
     }
     const container = anchor || findContentContainer();
@@ -6867,7 +6966,8 @@ function ensureGradeAnalyticsPanel() {
     panel.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;">
             <h2 style="margin:0;font-size:18px;color:var(--bctext-0);">Grade Analytics</h2>
-            <button id="canvasrefined-ga-toggle" type="button" aria-expanded="true" title="Toggle Grade Analytics" style="margin-left:auto;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:8px;padding:4px 12px;font-size:14px;line-height:1.4;cursor:pointer;"><svg style="transform:rotate(180deg);display:block;" fill="currentColor" width="16px" height="16px" viewBox="-6.5 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.6"><g stroke-width="0"/><g stroke-linecap="round" stroke-linejoin="round"/><path d="M18.813 11.406l-7.906 9.906c-0.75 0.906-1.906 0.906-2.625 0l-7.906-9.906c-0.75-0.938-0.375-1.656 0.781-1.656h16.875c1.188 0 1.531 0.719 0.781 1.656z"/></svg></button>
+            <button id="canvasrefined-ga-imagine" type="button" aria-pressed="false" title="Toggle Imagine-If mode" style="margin-left:auto;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:8px;padding:4px 12px;font-size:14px;line-height:1.4;cursor:pointer;">Imagine-If mode</button>
+            <button id="canvasrefined-ga-toggle" type="button" aria-expanded="true" title="Toggle Grade Analytics" style="background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:8px;padding:4px 12px;font-size:14px;line-height:1.4;cursor:pointer;"><svg style="transform:rotate(180deg);display:block;" fill="currentColor" width="16px" height="16px" viewBox="-6.5 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.6"><g stroke-width="0"/><g stroke-linecap="round" stroke-linejoin="round"/><path d="M18.813 11.406l-7.906 9.906c-0.75 0.906-1.906 0.906-2.625 0l-7.906-9.906c-0.75-0.938-0.375-1.656 0.781-1.656h16.875c1.188 0 1.531 0.719 0.781 1.656z"/></svg></button>
         </div>
         <div id="canvasrefined-ga-body">
         <p id="canvasrefined-ga-status" style="margin:0 0 10px;color:var(--bctext-1);font-size:13px;">Loading grade data…</p>
@@ -6928,6 +7028,7 @@ function ensureGradeAnalyticsPanel() {
         </div>
     `;
     const toggleBtn = panel.querySelector("#canvasrefined-ga-toggle");
+    const imagineBtn = panel.querySelector("#canvasrefined-ga-imagine");
     const fitYCheckbox = panel.querySelector("#canvasrefined-ga-fity");
     const applyOpenState = () => applyGradeAnalyticsOpenState(panel);
     toggleBtn.addEventListener("click", () => {
@@ -6935,6 +7036,15 @@ function ensureGradeAnalyticsPanel() {
         setGradeAnalyticsOpenState(gaOpen);
         applyOpenState();
         if (gaOpen && gaData) renderGradeAnalytics();
+    });
+    // "Imagine-If mode" button on the right side of the panel header. The
+    // state is remembered across pages via chrome.storage; the active style
+    // highlights the button while the mode is on.
+    imagineBtn.addEventListener("click", () => {
+        gaImagineIf = !gaImagineIf;
+        setGradeAnalyticsImagineIf(gaImagineIf);
+        applyGradeAnalyticsImagineState(panel);
+        if (gaImagineIf && gaOpen && gaData) renderGradeAnalytics();
     });
     // "Fit Y axis" scales the line chart's Y axis to the data instead of a
     // fixed 0-100; the choice is remembered across pages via chrome.storage.
@@ -6970,6 +7080,7 @@ function ensureGradeAnalyticsPanel() {
     calcTarget.addEventListener("input", onCalcInput);
     calcShow.addEventListener("change", onCalcInput);
     applyGaCalcState(panel);
+    applyGradeAnalyticsImagineState(panel);
     applyOpenState();
     // If the data finished loading before this panel was created (or before
     // the stored open state was restored), the earlier render call found no
