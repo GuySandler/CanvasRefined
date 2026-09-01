@@ -6632,8 +6632,9 @@ function getAssignments() {
 // ===================== Grade Analytics =====================
 // On course grades pages, adds an "Analytics" toggle on the left side (in the
 // Better Sidebar when enabled, otherwise in the native course nav) that shows
-// a panel with a score-distribution doughnut and an overall-grade-over-time
-// line chart. Data comes from the Canvas API with the user's session, so it
+// a panel with a score-distribution doughnut, an overall-grade-over-time
+// line chart, a GitHub-style grade heatmap, and a final-grade calculator.
+// Data comes from the Canvas API with the user's session, so it
 // matches the numbers on the page. Charts are hand-drawn on <canvas> so the
 // extension needs no CDN/library and no chart library dependency.
 
@@ -6718,7 +6719,7 @@ function saveGaCalcSettings() {
 let gaObserver = null;
 let gaOpen = false;          // panel open on this page view
 let gaFitY = false;         // scale the line chart Y axis to fit the data
-let gaTab = "overview";     // active panel tab: "overview" | "calc"
+let gaTab = "overview";     // active panel tab: "overview" | "calc" | "heatmap"
 let gaCalc = null;           // final-grade calculator settings for this course
 let gaCourseId = null;       // course whose data is cached
 let gaData = null;           // computed data for the current course
@@ -6873,6 +6874,7 @@ function ensureGradeAnalyticsPanel() {
         <div id="canvasrefined-ga-tabs" style="display:flex;gap:4px;border-bottom:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);margin-bottom:14px;">
             <button type="button" data-ga-tab="overview" style="${gaTabStyle(true)}">Overview</button>
             <button type="button" data-ga-tab="calc" style="${gaTabStyle(false)}">Final Calculator</button>
+            <button type="button" data-ga-tab="heatmap" style="${gaTabStyle(false)}">Heatmap</button>
         </div>
         <div id="canvasrefined-ga-tab-overview">
         <div id="canvasrefined-ga-stats" style="display:none;flex-wrap:wrap;gap:10px;margin-bottom:14px;"></div>
@@ -6904,6 +6906,24 @@ function ensureGradeAnalyticsPanel() {
                 <label for="canvasrefined-ga-calc-show" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--bctext-0);cursor:pointer;user-select:none;margin-bottom:14px;"><input type="checkbox" id="canvasrefined-ga-calc-show"> Show grade goal on the overview</label>
                 <div id="canvasrefined-ga-calc-result" style="padding:12px 16px;border-radius:8px;background:var(--bcbackground-1);border:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);font-size:14px;"></div>
             </div>
+        </div>
+        <div id="canvasrefined-ga-tab-heatmap" style="display:none;position:relative;">
+            <div style="overflow-x:auto;max-width:100%;padding:2px 2px 6px;">
+                <div id="canvasrefined-ga-heatmap-grid" style="display:inline-flex;gap:4px;"></div>
+            </div>
+            <div id="canvasrefined-ga-heatmap-note" style="margin:0;color:var(--bctext-1);font-size:12px;"></div>
+            <div style="display:flex;align-items:center;gap:4px;margin-top:8px;font-size:11px;color:var(--bctext-1);">
+                <span>0%</span>
+                <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[0]};"></span>
+                <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[5]};"></span>
+                <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[10]};"></span>
+                <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[15]};"></span>
+                <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[19]};"></span>
+                <span>100%</span>
+                <span style="margin-left:12px;display:inline-flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:color-mix(in srgb, var(--bctext-1) 20%, transparent);"></span>no graded work due</span>
+            </div>
+            <style>#canvasrefined-grade-analytics .canvasrefined-ga-hcell:hover{outline:1px solid var(--bctext-0);outline-offset:1px;}</style>
+            <div id="canvasrefined-ga-heatmap-tip" style="position:absolute;display:none;pointer-events:none;z-index:100;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:6px;padding:6px 10px;font-size:12px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,0.25);"></div>
         </div>
         </div>
     `;
@@ -7144,7 +7164,7 @@ function renderGaStats() {
         if (needed <= 0) { val = "\u2713 Secured"; color = "#16a34a"; }
         else if (needed > 100) { val = "Out of reach"; color = "#dc2626"; }
         else { val = "\u2265 " + needed.toFixed(1) + "%"; color = gaNeededColor(needed); }
-        goalStat = stat("Grade goal", val, color);
+        goalStat = stat("Final Exam", val, color);
     }
     stats.innerHTML =
         stat("Overall grade", gaData.current == null ? "-" : gaData.current.toFixed(1) + "%") +
@@ -7169,6 +7189,7 @@ function renderGradeAnalytics() {
 
     gaDrawPie(panel.querySelector("#canvasrefined-ga-pie"), panel.querySelector("#canvasrefined-ga-pie-tip"));
     gaDrawLine(panel.querySelector("#canvasrefined-ga-line"), panel.querySelector("#canvasrefined-ga-line-tip"));
+    renderGaHeatmap();
     renderGaCalculator();
 }
 
@@ -7184,10 +7205,10 @@ function gaSetTab(tab) {
     gaTab = tab;
     const panel = document.getElementById("canvasrefined-grade-analytics");
     if (!panel) return;
-    const overview = panel.querySelector("#canvasrefined-ga-tab-overview");
-    const calc = panel.querySelector("#canvasrefined-ga-tab-calc");
-    if (overview) overview.style.display = tab === "overview" ? "" : "none";
-    if (calc) calc.style.display = tab === "calc" ? "" : "none";
+    for (const name of ["overview", "calc", "heatmap"]) {
+        const el = panel.querySelector(`#canvasrefined-ga-tab-${name}`);
+        if (el) el.style.display = name === tab ? "" : "none";
+    }
     panel.querySelectorAll("[data-ga-tab]").forEach(btn => {
         const active = btn.dataset.gaTab === tab;
         btn.style.color = active ? "var(--bctext-0)" : "var(--bctext-1)";
@@ -7197,6 +7218,8 @@ function gaSetTab(tab) {
         // The canvases were zero-size while the tab was hidden; redraw now
         // that it's visible again.
         if (gaOpen && gaData) renderGradeAnalytics();
+    } else if (tab === "heatmap") {
+        renderGaHeatmap();
     } else {
         renderGaCalculator();
     }
@@ -7273,6 +7296,208 @@ function renderGaCalculator() {
         sub = `You got this!`;
     }
     box.innerHTML = head + `<div style="margin-top:6px;color:var(--bctext-1);font-size:13px;">${sub}</div>`;
+}
+
+// --- Heatmap tab ----------------------------------------------------------
+
+// One week cell in the heatmap strip: one square per Sunday–Saturday week,
+// laid out left to right — 16px squares with 4px gaps. Weekly (not daily)
+// buckets keep a whole semester compact instead of a sparse daily grid.
+// One day cell in the calendar heatmap: 13px squares with 3px gaps,
+// GitHub-style columns of Sunday–Saturday weeks.
+const GA_HM_CELL = 13;
+const GA_HM_GAP = 3;
+const GA_HM_MONTH_H = 16; // vertical room for the month labels above the grid
+let gaHeatmapToken = null; // identifies the data the grid was last built from
+
+// Color for a day's average score — the same 5%-banded red→green palette
+// the line chart's zones use, so an 84% day matches an 84% zone.
+function gaHeatmapColor(avg) {
+    return GA_ZONE_COLORS[Math.max(0, Math.min(GA_ZONE_COLORS.length - 1, Math.floor(avg / 5)))];
+}
+
+// Minimal HTML escaping for assignment titles that go into tooltips.
+function gaEscHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+// Groups the graded assignments by due DATE. The grades table only renders
+// "Sep 23"-style due dates (no year), so years are reconstructed: the table
+// rows are in chronological order, so a month that steps backwards means the
+// calendar wrapped into a new year; the base year is then chosen so the last
+// due date isn't more than ~6 weeks in the future. Returns null when no
+// graded assignment has a parseable due date.
+function gaBuildHeatmapData() {
+    if (!gaData || !Array.isArray(gaData.points) || !gaData.points.length) return null;
+    const parsed = [];
+    for (const p of gaData.points) {
+        const m = /^([A-Za-z]{3})\s+(\d{1,2})/.exec((p.due || "").trim());
+        if (!m) continue;
+        const mo = months.findIndex(x => x.toLowerCase() === m[1].toLowerCase());
+        const day = parseInt(m[2], 10);
+        if (mo < 0 || day < 1 || day > 31) continue;
+        parsed.push({ p, mo, day });
+    }
+    if (!parsed.length) return null;
+    // Reconstruct years WITHOUT assuming the rows are in due-date order —
+    // the table isn't sorted by date when Canvas arranges it by assignment
+    // group, and the old "month stepped backwards ⇒ new year" detection
+    // snowballed on that, landing dates decades off. A course spans at most
+    // ~12 months, so instead: find the month rotation that packs every due
+    // month into the shortest window (months before the rotation wrap into
+    // the following year), then pick the base year whose window actually
+    // contains today — or, failing that, the latest window entirely in the
+    // past.
+    const present = [...new Set(parsed.map(e => e.mo))];
+    let rho = 0, bestSpan = 12;
+    for (let r = 0; r < 12; r++) {
+        let lo = 12, hi = -1;
+        for (const m of present) {
+            const u = (m - r + 12) % 12;
+            if (u < lo) lo = u;
+            if (u > hi) hi = u;
+        }
+        if (hi - lo < bestSpan) { bestSpan = hi - lo; rho = r; }
+    }
+    const thisYear = new Date().getFullYear();
+    const now = Date.now(), grace = 45 * 86400000;
+    const mkDate = (e, y) => new Date(y + (e.mo < rho ? 1 : 0), e.mo, e.day);
+    let base = null;
+    for (let y = thisYear + 1; y >= thisYear - 2 && base == null; y--) {
+        const ds = parsed.map(e => mkDate(e, y).getTime());
+        if (Math.min(...ds) <= now && now <= Math.max(...ds) + grace) base = y;
+    }
+    if (base == null) {
+        for (let y = thisYear; y >= thisYear - 3 && base == null; y--) {
+            if (parsed.every(e => mkDate(e, y).getTime() <= now + grace)) base = y;
+        }
+    }
+    if (base == null) base = thisYear;
+    const abs = (e) => mkDate(e, base);
+    // Bucket by calendar day; multiple assignments due the same day pool into
+    // one cell colored by their average score.
+    const byDay = new Map();
+    let min = null, max = null;
+    for (const e of parsed) {
+        const d = abs(e);
+        const key = d.getTime();
+        let cell = byDay.get(key);
+        if (!cell) {
+            cell = { date: d, sum: 0, items: [] };
+            byDay.set(key, cell);
+            if (min == null || d.getTime() < min.getTime()) min = d;
+            if (max == null || d.getTime() > max.getTime()) max = d;
+        }
+        cell.sum += e.p.pct;
+        cell.items.push(e.p);
+    }
+    return { byDay, min, max, undated: gaData.points.length - parsed.length };
+}
+
+// Tooltip anchored beside the hovered day cell. Positioning is relative to
+// the heatmap tab (the tip's offsetParent), NOT the viewport: position:fixed
+// is unreliable here because ancestors with transforms/backdrop-filters
+// (Better Sidebar's glass panels, Canvas layout) redefine the containing
+// block, which sent a fixed-position tooltip to the wrong part of the page.
+function gaHeatmapShowTip(tip, e, cell, avg) {
+    const d = cell.date;
+    const rows = cell.items.map(p =>
+        `<div style="margin-top:2px;color:var(--bctext-1);">${gaEscHtml(p.title)} — <b style="color:${gaHeatmapColor(p.pct)};">${p.pct.toFixed(1)}%</b></div>`).join("");
+    tip.innerHTML = `<b>${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}</b> — avg <b style="color:${gaHeatmapColor(avg)};">${avg.toFixed(1)}%</b><div style="margin-top:4px;font-size:11px;color:var(--bctext-1);">${cell.items.length} assignment${cell.items.length === 1 ? "" : "s"}:</div>${rows}`;
+    tip.style.display = "block";
+    const host = tip.offsetParent || tip.parentNode;
+    const hostRect = host.getBoundingClientRect();
+    const cellRect = e.target.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    // Beside the cell, vertically centered on it; flip to the left when the
+    // right edge is tight, and clamp inside the tab's box.
+    let left = cellRect.right - hostRect.left + 6;
+    if (left + tw > host.clientWidth - 4) left = Math.max(4, cellRect.left - hostRect.left - tw - 6);
+    let top = cellRect.top - hostRect.top + (cellRect.height - th) / 2;
+    top = Math.min(Math.max(4, top), Math.max(4, host.clientHeight - th - 4));
+    tip.style.left = left + "px";
+    tip.style.top = top + "px";
+}
+
+// Builds the GitHub-style calendar: weekday labels down the left (Mon/Wed/
+// Fri only), one column per Sunday–Saturday week, month labels across the
+// top, one colored square per day (that day's average score). Pure DOM (no
+// canvas) so it needs no redraw on resize; a token guards against rebuilds
+// when renderGradeAnalytics re-fires for the same data.
+function renderGaHeatmap() {
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (!panel) return;
+    const grid = panel.querySelector("#canvasrefined-ga-heatmap-grid");
+    const note = panel.querySelector("#canvasrefined-ga-heatmap-note");
+    const tip = panel.querySelector("#canvasrefined-ga-heatmap-tip");
+    if (!grid || !note || !tip) return;
+    const data = gaBuildHeatmapData();
+    const token = data ? `${gaCourseId}:${data.min.getTime()}:${data.max.getTime()}:${gaData.points.length}` : "none";
+    if (grid.childElementCount && gaHeatmapToken === token) return; // already built
+    gaHeatmapToken = token;
+    grid.textContent = "";
+    if (!data) {
+        note.textContent = "No graded assignments with due dates yet.";
+        return;
+    }
+    note.textContent = data.undated > 0
+        ? `${data.undated} graded assignment${data.undated === 1 ? "" : "s"} without a due date not shown.`
+        : "";
+    // Align the range out to full Sunday–Saturday weeks so columns never
+    // start mid-week.
+    const start = new Date(data.min);
+    start.setDate(start.getDate() - start.getDay());
+    const end = new Date(data.max);
+    end.setDate(end.getDate() + (6 - end.getDay()));
+    // Left weekday labels — sparse like GitHub's (Mon/Wed/Fri).
+    const labels = document.createElement("div");
+    labels.style.cssText = `display:flex;flex-direction:column;gap:${GA_HM_GAP}px;padding-top:${GA_HM_MONTH_H}px;`;
+    ["", "Mon", "", "Wed", "", "Fri", ""].forEach(t => {
+        const l = document.createElement("div");
+        l.style.cssText = `height:${GA_HM_CELL}px;font-size:9px;line-height:${GA_HM_CELL}px;color:var(--bctext-1);white-space:nowrap;`;
+        l.textContent = t;
+        labels.appendChild(l);
+    });
+    grid.appendChild(labels);
+    const wrap = document.createElement("div");
+    wrap.style.cssText = `position:relative;padding-top:${GA_HM_MONTH_H}px;`;
+    const cols = document.createElement("div");
+    cols.style.cssText = `display:flex;gap:${GA_HM_GAP}px;`;
+    wrap.appendChild(cols);
+    grid.appendChild(wrap);
+    const cursor = new Date(start);
+    let wk = 0, prevMonth = null;
+    while (cursor.getTime() <= end.getTime()) {
+        const col = document.createElement("div");
+        col.style.cssText = `display:flex;flex-direction:column;gap:${GA_HM_GAP}px;`;
+        // Month label across the top when this week's Thursday enters a new
+        // month (every month owns at least one Thursday, so none are
+        // skipped).
+        const thursday = new Date(cursor);
+        thursday.setDate(thursday.getDate() + 4);
+        if (prevMonth == null || thursday.getMonth() !== prevMonth) {
+            prevMonth = thursday.getMonth();
+            const lab = document.createElement("div");
+            lab.textContent = months[prevMonth];
+            lab.style.cssText = `position:absolute;top:0;left:${wk * (GA_HM_CELL + GA_HM_GAP)}px;font-size:10px;line-height:1;color:var(--bctext-1);white-space:nowrap;`;
+            wrap.appendChild(lab);
+        }
+        for (let d = 0; d < 7; d++) {
+            const cell = data.byDay.get(cursor.getTime());
+            const div = document.createElement("div");
+            div.className = "canvasrefined-ga-hcell";
+            div.style.cssText = `width:${GA_HM_CELL}px;height:${GA_HM_CELL}px;border-radius:3px;background:${cell ? gaHeatmapColor(cell.sum / cell.items.length) : "color-mix(in srgb, var(--bctext-1) 20%, transparent)"};`;
+            if (cell) {
+                const avg = cell.sum / cell.items.length;
+                div.addEventListener("mousemove", (e) => gaHeatmapShowTip(tip, e, cell, avg));
+                div.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+            }
+            col.appendChild(div);
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        cols.appendChild(col);
+        wk++;
+    }
 }
 
 // --- Canvas-drawn charts --------------------------------------------------
