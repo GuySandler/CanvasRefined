@@ -32,6 +32,7 @@ const syncedSubOptions = [
 	"customCardStyles",
 	"imageSize",
 	"cardRoundness",
+	"imageRoundness",
 	"cardSpacing",
 	"cardWidth",
 	"cardHeight",
@@ -54,7 +55,7 @@ const localSwitches = [];
 // Theme export only carries visual settings, never personal productivity data.
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
-const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding"];
+const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "hover_preview"];
@@ -135,7 +136,7 @@ const defaultOptions = {
         "full_width": null,
         "remlogo": null,
         "gpa_calc_bounds": {
-            "A+": { "cutoff": 97, "gpa": 4.3 },
+            "A+": { "cutoff": 97, "gpa": 4.0 },
             "A": { "cutoff": 93, "gpa": 4 },
             "A-": { "cutoff": 90, "gpa": 3.7 },
             "B+": { "cutoff": 87, "gpa": 3.3 },
@@ -173,9 +174,10 @@ const defaultOptions = {
         "card_limit": 25,
         "imageSize": 100,
         "cardRoundness": 5,
+        "imageRoundness": 0,
         "cardSpacing": 0,
         "cardWidth": 262,
-        "cardHeight": 250,
+        "cardHeight": 146,
         "cardPadding": 0,
         "customCardStyles": false,
         "customBackgroundLink": "",
@@ -398,6 +400,14 @@ function setupCardRoundnessInput(initial) {
     el.value = initial;
     el.addEventListener("input", (e) => {
         debouncedCardStyleSet("cardRoundness", e.target.value);
+    });
+}
+
+function setupImageRoundnessInput(initial) {
+    let el = document.querySelector("#imageRoundness");
+    el.value = initial;
+    el.addEventListener("input", (e) => {
+        debouncedCardStyleSet("imageRoundness", e.target.value);
     });
 }
 
@@ -1057,6 +1067,10 @@ function setup() {
 				setup: (initial) => setupCardRoundnessInput(initial),
 			},
 			{
+				identifier: "imageRoundness",
+				setup: (initial) => setupImageRoundnessInput(initial),
+			},
+			{
 				identifier: "cardSpacing",
 				setup: (initial) => setupCardSpacingInput(initial),
 			},
@@ -1534,7 +1548,7 @@ function setup() {
             "A-": { "cutoff": 90, "gpa": 4.0 },
             "B+": { "cutoff": 87, "gpa": 3.0 },
             "B": { "cutoff": 83, "gpa": 3.0 },
-            "B-": { "cutoff": 89, "gpa": 3.0 },
+            "B-": { "cutoff": 80, "gpa": 3.0 },
             "C+": { "cutoff": 77, "gpa": 2.0 },
             "C": { "cutoff": 73, "gpa": 2.0 },
             "C-": { "cutoff": 70, "gpa": 2.0 },
@@ -1545,8 +1559,9 @@ function setup() {
         });
     });
 
-    // Note: the card-style number inputs (imageSize, cardRoundness, cardSpacing,
-    // cardWidth, cardHeight, cardPadding) are wired via their setup*Input
+    // Note: the card-style number inputs (imageSize, cardRoundness,
+    // imageRoundness, cardSpacing, cardWidth, cardHeight, cardPadding) are wired
+    // via their setup*Input
     // handlers in menu.special above, which debounce the storage writes. The
     // duplicate listeners that used to live here referenced nonexistent
     // #*Value spans (threw on every input) and double-wrote to storage, which
@@ -1619,11 +1634,9 @@ async function getExport(storage, options) {
             case "custom_cards":
                 let arr = [];
                 Object.keys(storage["custom_cards"]).forEach(key => {
-                    if (storage["custom_cards"][key].img !== "") arr.push(storage["custom_cards"][key].img);
+                    const img = storage["custom_cards"][key].img;
+                    if (img && img !== "none" && img.trim() !== "") arr.push(img);
                 });
-                if (arr.length === 0) {
-                    arr = ["none"];
-                }
                 final["custom_cards"] = arr;
                 break;
             case "card_colors":
@@ -1767,6 +1780,7 @@ function saveCurrentTheme() {
                 "sidebar_scale": current["sidebar_scale"],
 				"imageSize": current["imageSize"],
 				"cardRoundness": current["cardRoundness"],
+				"imageRoundness": current["imageRoundness"],
 				"cardSpacing": current["cardSpacing"],
 				"cardWidth": current["cardWidth"],
 				"cardHeight": current["cardHeight"],
@@ -1867,7 +1881,7 @@ function displaySavedThemes() {
             let title = makeElement("p", btn, { "className": "theme-button-title", "textContent": `Theme ${index + 1}`});
             let date = makeElement("p", btn, { "className": "theme-button-creator", "textContent": `${getRelativeDate(created).time} ago` });
             let remove = makeElement("div", btn, { "className": "theme-button-remove", "textContent": "x" });
-            btn.style.backgroundImage = `linear-gradient(rgba(0, 0, 0, 0.44), rgba(0, 0, 0, 0.44)), url(${local["saved_themes"][key]["custom_cards"][0]})`;
+            btn.style.backgroundImage = `linear-gradient(rgba(0, 0, 0, 0.44), rgba(0, 0, 0, 0.44)), url(${local["saved_themes"][key]["custom_cards"]?.[0] || ""})`;
             btn.addEventListener("click", () => {
                 importTheme(local["saved_themes"][key]);
             });
@@ -1906,16 +1920,23 @@ function importTheme(theme) {
                     case "card_colors":
                         sendFromPopup("setcolors", theme["card_colors"]);
                         break;
-                    case "custom_cards":
+                    case "custom_cards": {
+                        // "none" is a legacy placeholder meaning "this theme has
+                        // no custom card images" — treat it as such instead of
+                        // writing the literal string into every card (which hides
+                        // the card image on the dashboard). Fall back to "" so
+                        // cards keep their default Canvas images.
+                        const themeImgs = (theme["custom_cards"] || []).filter(u => u && u !== "none" && u.trim() !== "");
                         if (theme["custom_cards"].length > 0) {
                             let pos = 0;
                             Object.keys(sync["custom_cards"]).forEach(key => {
-                                sync["custom_cards"][key].img = theme["custom_cards"][pos];
-                                pos = (pos === theme["custom_cards"].length - 1) ? 0 : pos + 1;
+                                sync["custom_cards"][key].img = themeImgs.length ? themeImgs[pos] : "";
+                                pos = (pos === themeImgs.length - 1) ? 0 : pos + 1;
                             });
+                            final["custom_cards"] = sync["custom_cards"];
                         }
-                        final["custom_cards"] = sync["custom_cards"];
                         break;
+                    }
                     default:
                         final[key] = theme[key];
                         break;

@@ -995,6 +995,7 @@ function applyOptionsChanges(changes) {
 				break;
 			case "imageSize":
 			case "cardRoundness":
+			case "imageRoundness":
 			case "cardSpacing":
 			case "cardWidth":
 			case "cardHeight":
@@ -3572,7 +3573,7 @@ function populateAssignments(iscompleted = false) {
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;position:relative;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
 					<span style="color:${classNameColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
-					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${item.plannable.title}</a>
+					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;padding-right:28px;margin-top:-5px;">${item.plannable.title}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
 				${editButtonSvg}
@@ -4854,14 +4855,24 @@ Dashboard grades
 
 // Map a percentage to a letter grade using the user's configurable GPA
 // calculator cutoffs (A+ down to F). Returns null when no grade is present.
+// Picks the letter with the HIGHEST cutoff the percent meets so the result
+// doesn't depend on the key order of the stored bounds object — theme imports
+// can reorder keys (e.g. alphabetically, where "A" precedes "A+"), which made
+// "+" grades unreachable and displayed e.g. 100% as "A". Cutoffs are coerced
+// with Number() so string values carried in by imported themes still match.
 function percentToLetterGrade(percent) {
     const bounds = options.gpa_calc_bounds;
     if (!bounds || typeof percent !== "number") return null;
+    let best = null;
+    let bestCutoff = -Infinity;
     for (const letter of Object.keys(bounds)) {
-        const cutoff = bounds[letter]?.cutoff;
-        if (typeof cutoff === "number" && percent >= cutoff) return letter;
+        const cutoff = Number(bounds[letter]?.cutoff);
+        if (Number.isFinite(cutoff) && percent >= cutoff && cutoff > bestCutoff) {
+            best = letter;
+            bestCutoff = cutoff;
+        }
     }
-    return null;
+    return best;
 }
 
 function insertGrades() {
@@ -5820,31 +5831,37 @@ function applyAestheticChanges() {
     if (options.customCardStyles === true) {
         if (options.imageSize !== undefined && options.imageSize !== 100) style.textContent += `.ic-DashboardCard__header_image {transform: scale(${options.imageSize / 100})!important; }`;
         if (options.cardRoundness !== undefined && options.cardRoundness !== 5) style.textContent += `.ic-DashboardCard {border-radius: ${options.cardRoundness}px!important;}`;
+        // Rounds the header image band. The photo is the background of
+        // .ic-DashboardCard__header_image, and .ic-DashboardCard__header_hero (a
+        // child that covers the full photo with its colored overlay + 1px
+        // border) sits on top of it. border-radius only clips the element it's
+        // on — rounding the parent alone leaves the hero's square overlay
+        // covering the corners, and rounding the hero alone leaves the photo's
+        // square corners behind it — so both elements need the same radius.
+        // Default 0; guard skips the default so stock cards keep square corners.
+        if (options.imageRoundness !== undefined && options.imageRoundness !== 0) style.textContent += `.ic-DashboardCard__header_image, .ic-DashboardCard__header_hero {border-radius: ${options.imageRoundness}px!important;}`;
         if (options.cardSpacing !== undefined && options.cardSpacing !== 0) style.textContent += `.ic-DashboardCard {margin-right: ${options.cardSpacing / 2}px!important; margin-bottom: ${options.cardSpacing / 2}px!important;}`;
         if (options.cardWidth !== undefined && options.cardWidth !== 262) style.textContent += `.ic-DashboardCard {width: ${options.cardWidth}px!important;}`;
-        // Always emit a fixed card height when custom card styles are on. The old
-        // `!== 250` guard silently dropped the height rule when cardHeight matched
-        // the default, which is exactly what happens after importing a theme that
-        // carries the default cardHeight (250) — leaving cards content-sized.
-        // Content-sized cards plus the dashboard reflow loop trigger Firefox scroll
-        // anchoring to yank the viewport back up while scrolling. A fixed height
-        // (even the default 250px) keeps layout stable.
-        if (options.cardHeight !== undefined && options.cardHeight !== null && options.cardHeight !== "") {
-            style.textContent += `.ic-DashboardCard {height: ${options.cardHeight}px!important;}`;
-            // Canvas sets overflow:hidden on .ic-DashboardCard. With a fixed
-            // height that clips the appended .canvasrefined-card-assignment area
-            // (the assignment rows live at the bottom of the card), making the
-            // .canvasrefined-assignment-link anchors unclickable for users with
-            // custom card styles enabled. Allow overflow so those rows stay
-            // visible and interactive when card assignments are shown.
-            if (options.assignments_due === true) style.textContent += `.ic-DashboardCard {overflow: visible!important;}`;
+        // Card height sizes the image band via .ic-DashboardCard__header_hero —
+        // the element Canvas pins at 146px that actually drives the header image
+        // height (both .ic-DashboardCard and .ic-DashboardCard__header are
+        // content-sized, so a height on either just clips or adds dead space).
+        // Everything else — title, actions, and the appended
+        // .canvasrefined-card-assignment rows — flows below the hero, so the card
+        // grows with the assignment list and nothing gets clipped. Skipped when
+        // condensed cards is on, since that mode pins the hero at 60px.
+        if (options.condensed_cards !== true && options.cardHeight !== undefined && options.cardHeight !== null && options.cardHeight !== "") {
+            style.textContent += `.ic-DashboardCard__header_hero {height: ${options.cardHeight}px!important;}`;
         }
-        // Inner card padding. Applied to the whole .ic-DashboardCard box (the
-        // element that holds the hero header, title, and action buttons) so the
-        // colored hero header and its content all get consistent breathing room
-        // from the card's edges. Guarded by !== 0 (default).
+        // Inner card padding. Applied to the whole .ic-DashboardCard box so the
+        // hero header, title, and action buttons all get breathing room from the
+        // card's edges. Canvas sizes the card with border-box + a fixed width,
+        // so padding alone squishes the content area (narrower image/rows)
+        // instead of expanding the card — switch to content-box so the padding
+        // grows the card outward and the content keeps its full width.
+        // Guarded by > 0 (default).
         if (options.cardPadding !== undefined && Number(options.cardPadding) > 0) {
-            style.textContent += `.ic-DashboardCard {padding: ${options.cardPadding}px!important;}`;
+            style.textContent += `.ic-DashboardCard {padding: ${options.cardPadding}px!important; box-sizing: content-box!important;}`;
         }
     }
 
