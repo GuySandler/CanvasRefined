@@ -1435,4 +1435,30 @@ div[class*='view-tabs__container']:has(#currentTab, #pastTab),
 .notification_account_content a {
     color: var(--bclinks) !important;
 }
+/* Grades page: opening the comment tray marks the row with
+   .selected-assignment, which Canvas paints light blue (#e0ebf5) with a
+   .3s background transition — reads as a white row in dark mode. Repaint
+   it as the theme's raised surface so the highlight stays visible but
+   dark. */
+#grades_summary tr.selected-assignment {
+    background-color: var(--bcbackground-2) !important;
+}
+/* Grades page (…/courses/:id/grades): the comment chip in each assignment
+   row (speech-bubble icon + count, .toggle_comments_link) keeps Canvas's
+   light-gray pill background and border in dark mode; repaint it as a
+   theme chip. */
+.toggle_comments_link,
+.toggle_comments_link:hover {
+    background: var(--bcbackground-2) !important;
+    border-color: var(--bcborders) !important;
+}
+/* Grades page "late"/"missing" status pills: InstUI renders the inner pill
+   as a white chip with colored text. The emotion class hashes change between
+   Canvas releases, so match the stable "-pill" fragment scoped under the
+   server-rendered status cell. */
+td.status [class*="-pill"],
+td.status [class*="-pill"]:hover {
+    background: var(--bcbackground-2) !important;
+    color: var(--bctext-1) !important;
+}
 `;

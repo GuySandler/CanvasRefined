@@ -4843,6 +4843,88 @@ function generateDarkModeCSS() {
 }
 
 let darkStyleInserted = false;
+// --- Submission tray dark-mode fixer ---------------------------------------
+// The comment chip on the grades page (…/grades) opens an InstUI
+// "Submission Comments Tray". Its "Attempt N Feedback" card, close-button
+// glyph, and some labels arrive with Canvas's light surface and dark ink
+// through emotion classes whose hashes change between Canvas releases, so
+// they can't be themed from the static dark stylesheet. Instead, watch for
+// the tray and recolor at runtime, scoped strictly to elements inside it.
+// Touched elements are tagged (data-crdarkfix) so turning dark mode off can
+// restore the original colors.
+let submissionTrayObserver = null;
+let submissionTrayFixScheduled = false;
+
+function crApplySubmissionTrayFix(el, props) {
+    const applied = el.dataset.crdarkfix ? el.dataset.crdarkfix.split(" ") : [];
+    for (const prop of Object.keys(props)) {
+        if (!applied.includes(prop)) applied.push(prop);
+        el.style.setProperty(prop, props[prop], "important");
+    }
+    el.dataset.crdarkfix = applied.join(" ");
+}
+
+function fixSubmissionTrayColors(root) {
+    const preset = options.dark_preset;
+    if (!preset) return;
+    const light = (r, g, b) => r >= 225 && g >= 225 && b >= 225;
+    const darkInk = (r, g, b) => r <= 70 && g <= 70 && b <= 70;
+    const rgb = (str) => { const m = str && str.match(/rgb\((\d+), ?(\d+), ?(\d+)/); return m ? [+m[1], +m[2], +m[3]] : null; };
+    root.querySelectorAll("*").forEach(el => {
+        if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement) return;
+        const cs = getComputedStyle(el);
+        const bg = rgb(cs.backgroundColor);
+        if (bg && light(bg[0], bg[1], bg[2])) {
+            // light card/surface -> theme surface with readable text
+            crApplySubmissionTrayFix(el, {
+                "background-color": preset["background-2"],
+                "color": preset["text-0"]
+            });
+        } else {
+            const c = rgb(cs.color);
+            if (c && darkInk(c[0], c[1], c[2])) {
+                // dark ink on dark tray (headings, icon glyphs)
+                crApplySubmissionTrayFix(el, { "color": preset["text-0"] });
+            }
+        }
+        const bc = rgb(cs.borderColor);
+        if (bc && light(bc[0], bc[1], bc[2])) {
+            crApplySubmissionTrayFix(el, { "border-color": preset["borders"] });
+        }
+    });
+}
+
+function setupSubmissionTrayWatcher() {
+    if (submissionTrayObserver) return;
+    const run = () => {
+        submissionTrayFixScheduled = false;
+        if (options.dark_mode !== true && options.device_dark !== true) return;
+        const tray = document.querySelector('[data-testid="submission-tray"]');
+        if (tray) fixSubmissionTrayColors(tray);
+    };
+    // Canvas mutates the DOM constantly; debounce to one run per frame (same
+    // pattern as the footer observer in startExtension). Comments load into
+    // the tray asynchronously, so re-run whenever the tray subtree changes.
+    submissionTrayObserver = new MutationObserver(() => {
+        if (submissionTrayFixScheduled) return;
+        submissionTrayFixScheduled = true;
+        requestAnimationFrame(run);
+    });
+    submissionTrayObserver.observe(document.documentElement, { childList: true, subtree: true });
+    run();
+}
+
+function teardownSubmissionTrayFixes() {
+    if (submissionTrayObserver) {
+        submissionTrayObserver.disconnect();
+        submissionTrayObserver = null;
+    }
+    document.querySelectorAll("[data-crdarkfix]").forEach(el => {
+        (el.dataset.crdarkfix || "").split(" ").forEach(prop => el.style.removeProperty(prop));
+        delete el.dataset.crdarkfix;
+    });
+}
+
 function toggleDarkMode() {
     const css = generateDarkModeCSS();
     const darkOn = options.dark_mode === true || options.device_dark === true;
@@ -4857,6 +4939,14 @@ function toggleDarkMode() {
     style.textContent = css;
     style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
     darkStyleInserted = true;
+    // The InstUI submission tray is themed at runtime (emotion class hashes
+    // change between Canvas releases); keep the watcher in sync with the
+    // current mode, and undo inline fixes when dark mode turns off.
+    if (darkOn) {
+        setupSubmissionTrayWatcher();
+    } else {
+        teardownSubmissionTrayFixes();
+    }
     runiframeChecker();
 }
 
