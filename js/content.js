@@ -2049,7 +2049,7 @@ function renderProgressRings(container, scopedData) {
     const mode = getProgressRingMode();
     if (mode === "none") { container.innerHTML = ""; return; }
 
-    const allAssignments = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note"));
+    const allAssignments = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note" || item.plannable_type == "quiz"));
 
     const groups = {};
     allAssignments.forEach(item => {
@@ -2709,8 +2709,8 @@ async function createTodoSections(location) {
             });
 
         announcements = displayData.filter(item => item.plannable_type == "announcement");
-        assignmentsDue = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && !item.submissions?.submitted && !item.planner_override?.marked_complete);
-        completed = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && (item.submissions?.submitted || item.planner_override?.marked_complete));
+        assignmentsDue = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note" || item.plannable_type == "quiz") && !item.submissions?.submitted && !item.planner_override?.marked_complete);
+        completed = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note" || item.plannable_type == "quiz") && (item.submissions?.submitted || item.planner_override?.marked_complete));
         // The timeframe is a persisted Better Todo List sub-option set in the
         // popup. Read the current value each render so popup changes apply on
         // the next render. Keeps items due on/before now+range (overdue items
