@@ -2515,7 +2515,7 @@ function renderProgressRings(container, scopedData) {
 
     const entries = Object.keys(groups).map(cid => {
         const arr = groups[cid];
-        const completed = arr.filter(it => (it.submissions?.submitted || it.planner_override?.marked_complete)).length;
+        const completed = arr.filter(it => (it.submissions?.submitted || it.planner_override?.marked_complete) && !isPinnedIncomplete(it)).length;
         return { courseId: cid, total: arr.length, completed };
     }).filter(e => e.total > 0);
 
@@ -3168,13 +3168,20 @@ async function createTodoSections(location) {
             });
 
         announcements = displayData.filter(item => item.plannable_type == "announcement");
-        assignmentsDue = displayData.filter(item => isTodoTaskType(item) && !item.submissions?.submitted && !item.planner_override?.marked_complete);
-        completed = displayData.filter(item => isTodoTaskType(item) && (item.submissions?.submitted || item.planner_override?.marked_complete));
+        // Pinned items (locally forced incomplete, e.g. a submitted assignment
+        // the user sent back to Tasks) always count as due; everything else is
+        // due only when neither submitted nor marked complete.
+        assignmentsDue = displayData.filter(item => isTodoTaskType(item) && ((!item.submissions?.submitted && !item.planner_override?.marked_complete) || isPinnedIncomplete(item)));
+        completed = displayData.filter(item => isTodoTaskType(item) && (item.submissions?.submitted || item.planner_override?.marked_complete) && !isPinnedIncomplete(item));
         // The timeframe is a persisted Better Todo List sub-option set in the
         // popup. Read the current value each render so popup changes apply on
         // the next render. Only the Tasks tab is affected (announcements and
         // the completed tab always show everything).
-        assignmentsDue = applyTodoTimeframe(assignmentsDue);
+        // The timeframe filter only applies to the Tasks tab, but a pinned item
+        // must never be dropped from both tabs: exclude pins from the cutoff
+        // filter so a "sent back" old item still shows up under Tasks.
+        const pinnedItems = assignmentsDue.filter(item => isPinnedIncomplete(item));
+        assignmentsDue = applyTodoTimeframe(assignmentsDue.filter(item => !isPinnedIncomplete(item))).concat(pinnedItems);
 		// console.log("assignments", assignmentsDue);
 		// console.log("announcements", announcements);
 		// console.log("completed", completed);
@@ -3478,6 +3485,11 @@ function populateAssignments(iscompleted = false) {
             }
             return new Date(b.plannable_date) - new Date(a.plannable_date);
         });
+    } else {
+        // Keep a stable chronological order (overdue first) so the visible
+        // item budget below counts from due today onward. The planner API
+        // normally returns ascending order already; this makes it guaranteed.
+        assignments.sort((a, b) => new Date(a.plannable_date) - new Date(b.plannable_date));
     }
 
 	let assignmentCount = 0;
@@ -3502,8 +3514,12 @@ function populateAssignments(iscompleted = false) {
 
 		let assignment
 		const targetContainer = domContainers[dueGroup];
-		assignmentCount++;
-		let isHidden = assignmentCount > maxElements;
+		// Overdue items are always shown and don't consume the visible-item
+		// budget: the count starts at items due today. (On the Completed tab,
+		// whose groups are Graded/Ungraded, every item still counts.)
+		const isOverdue = !iscompleted && dueGroup === -1;
+		if (!isOverdue) assignmentCount++;
+		let isHidden = !isOverdue && assignmentCount > maxElements;
 
 		if (targetContainer) {
 			if (!isHidden) {
@@ -3545,6 +3561,10 @@ function populateAssignments(iscompleted = false) {
         const removeIcons = options.todo_remove_icons === true;
 
         const isCustomTask = item.plannable_type == "planner_note" || item.planner_override?.custom === true;
+        // True when Canvas has a real submission for this item: the Completed
+        // list shows it regardless of the checkmark state, so the toggle is
+        // disabled for it (see the checkmark listener below).
+        const wasSubmitted = item.submissions?.submitted === true;
         const taskHref = isCustomTask ? customTaskHref(item) : (domain + item.html_url);
         const editButtonSvg = isCustomTask
             ? `<svg class="better-todo-assignment-edit" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:18px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="Edit this custom task"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
@@ -3577,7 +3597,7 @@ function populateAssignments(iscompleted = false) {
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
 				${editButtonSvg}
-				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">
+				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'"${(iscompleted && wasSubmitted) ? " title=\"Submitted to Canvas — clicking sends it back to Tasks (locally)\"" : ""}>
 					<g id="SVGRepo_bgCarrier" stroke-width="0"></g>
 					<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
 					<g id="SVGRepo_iconCarrier"> <g id="Interface / Checkbox_Check">
@@ -3587,9 +3607,13 @@ function populateAssignments(iscompleted = false) {
 			</div>
 		</div>
 		`;
+		// The checkmark reflects the tab it is rendered in: on the Tasks tab it
+		// marks the item complete; on the Completed tab it makes it incomplete
+		// again (for genuinely submitted items this sets a local pin, since
+		// Canvas has no way to un-submit).
 		assignment.querySelector(".better-todo-assignment-checkmark").addEventListener("click", () => {
-			console.log("marking ", item.plannable.title, " as complete");
-			markAs(item, assignment.firstElementChild);
+			console.log("marking ", item.plannable.title, iscompleted ? "as incomplete" : "as complete");
+			markAs(item, assignment.firstElementChild, !iscompleted);
 		});
 		const editBtn = assignment.querySelector(".better-todo-assignment-edit");
 		if (editBtn) {
@@ -3805,9 +3829,38 @@ function createConfettiBurst(targetElement, opts = {}) {
     }
 }
 
-function markAs(item, element) {
+// --- Local "incomplete" pins -----------------------------------------------
+// Canvas records real submissions server-side and offers no API to un-submit,
+// so an assignment the user actually handed in can never leave the Completed
+// list via the planner override. For those items the checkmark instead sets a
+// local pin that forces the item back into the Tasks list. The pin lives in
+// chrome.storage.sync and clears when the item is checked off again.
+function todoPinKey(item) {
+    return item.plannable_type + "_" + item.plannable_id;
+}
+function isPinnedIncomplete(item) {
+    return options.todo_force_incomplete?.[todoPinKey(item)] === true;
+}
+function setPinnedIncomplete(item, pinned) {
+    const pins = Object.assign({}, options.todo_force_incomplete || {});
+    if (pinned) pins[todoPinKey(item)] = true;
+    else delete pins[todoPinKey(item)];
+    options.todo_force_incomplete = pins;
+    chrome.storage.sync.set({ todo_force_incomplete: pins });
+}
+
+function markAs(item, element, makeComplete) {
 	const csrfToken = CSRFtoken();
-	const completeState = item.planner_override ? !item.planner_override.marked_complete : true;
+	const completeState = makeComplete;
+
+    // Checking an item off clears any local incomplete pin; unchecking a
+    // genuinely submitted item sets one, since the submission itself can't
+    // be undone server-side.
+    if (completeState) {
+        if (isPinnedIncomplete(item)) setPinnedIncomplete(item, false);
+    } else if (item.submissions?.submitted) {
+        setPinnedIncomplete(item, true);
+    }
 
     // --- Optimistic UI ---
     // Canvas's /planner/overrides endpoint occasionally returns 400 (Bad
@@ -3853,32 +3906,78 @@ function markAs(item, element) {
     }, 400);
 
     // --- Persistence (background, best-effort) ---
-    // A 400/non-OK response is treated as a soft success because Canvas often
-    // completes the override server-side anyway; we already reflected the
-    // change in the UI, so just log it.
-    fetch(domain + "/api/v1/planner/overrides" + (item.planner_override && item.planner_override.id ? "/" + item.planner_override.id : ""), {
-        method: item.planner_override && item.planner_override.id ? "PUT" : "POST",
+    // Toggle the planner override server-side. The override id returned by a
+    // successful POST/PUT is stored on the in-memory item so subsequent
+    // toggles PUT (update) instead of POSTing a duplicate. If a POST still
+    // collides with an existing override (400 "already exists"), we look up
+    // the real id and retry with a PUT. Only if all of that fails is the
+    // response treated as a soft success: the UI already reflects the
+    // intended state, so we just log it.
+    const sendOverride = (override) => fetch(domain + "/api/v1/planner/overrides" + (override && override.id ? "/" + override.id : ""), {
+        method: override && override.id ? "PUT" : "POST",
         headers: {
-            "content-type":"application/json",
-            "accept":"application/json",
+            "content-type": "application/json",
+            "accept": "application/json",
             "X-CSRF-Token": csrfToken
         },
         body: JSON.stringify({
-            id: item.planner_override && item.planner_override.id ? item.planner_override.id : null,
+            id: override && override.id ? override.id : null,
             marked_complete: completeState,
             plannable_id: item.plannable_id,
             plannable_type: item.plannable_type
         })
-    })
-    .then(resp => {
+    });
+
+    sendOverride(item.planner_override)
+    .then(async resp => {
         if (resp.ok) {
+            // Capture the override id from the response. A POST creates the
+            // override server-side with an id we don't know yet; without
+            // storing it, every later toggle on this item would POST again and
+            // collide with the existing override (400 "already exists"), so
+            // unchecking would never actually persist.
+            try {
+                const saved = await resp.json();
+                if (saved && saved.id) {
+                    item.planner_override = item.planner_override || {};
+                    item.planner_override.id = saved.id;
+                }
+            } catch (e) { /* no JSON body; id stays unknown */ }
             console.log("marked as complete");
-        } else {
-            // Non-OK (e.g. 400) is logged but not surfaced: the UI already
-            // reflects the intended state, and Canvas typically applies the
-            // override server-side regardless.
-            console.warn("planner override request returned", resp.status, "— UI already updated optimistically");
+            return;
         }
+        // A POST can return 400 because an override already exists server-side
+        // under an id we never learned (e.g. it was created earlier without the
+        // response being captured). Look up the user's overrides, find the one
+        // for this item, and retry with a PUT so the toggle actually persists.
+        if (!(item.planner_override && item.planner_override.id)) {
+            try {
+                const listResp = await fetch(domain + "/api/v1/planner/overrides", {
+                    headers: { "accept": "application/json" }
+                });
+                if (listResp.ok) {
+                    const overrides = await listResp.json();
+                    const match = (Array.isArray(overrides) ? overrides : []).find(o =>
+                        o &&
+                        String(o.plannable_id) === String(item.plannable_id) &&
+                        String(o.plannable_type).toLowerCase() === String(item.plannable_type).toLowerCase());
+                    if (match && match.id) {
+                        item.planner_override = item.planner_override || {};
+                        item.planner_override.id = match.id;
+                        const retry = await sendOverride(item.planner_override);
+                        if (!retry.ok) {
+                            console.warn("planner override PUT retry returned", retry.status);
+                        }
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error("error recovering planner override id", e);
+            }
+        }
+        // Still non-OK with nothing to recover: logged but not surfaced, the
+        // UI already reflects the intended state.
+        console.warn("planner override request returned", resp.status, "— UI already updated optimistically");
     })
     .catch(err => console.error("error marking as complete", err));
 
