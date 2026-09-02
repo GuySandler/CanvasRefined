@@ -934,6 +934,8 @@ function applyOptionsChanges(changes) {
 			case "custom_cards_3":
 				moreAnnouncementCount = 0;
 				moreAssignmentCount = 0;
+				// A new timeframe starts back at the current window.
+				betterTodoTimeframeOffset = 0;
 				// loadBetterTodo();
 				clearTodoList();
 				createTodoSections(document.querySelector("#canvasrefined-todo-list"));
@@ -1898,19 +1900,78 @@ const BETTER_TODO_TIMEFRAME_DAYS = {
 	"month": 30,
 	"2month": 60,
 };
+// Look-ahead paging for the timeframe window (arrow buttons under the Tasks
+// header). 0 = the current window (now through the timeframe cutoff, with
+// overdue items kept). Each press of the right arrow advances one full
+// window further out, e.g. a 1-week timeframe on offset 1 shows only items
+// due in week 2 (the current week is skipped over).
+let betterTodoTimeframeOffset = 0;
 // null = show every class; a string courseId = only that class's tasks.
 let betterTodoProgressFilter = null;
 let domContainers = {};
 
+// Resolve the persisted todo_timeframe option to a valid key ("all" when
+// unset/unknown).
+function getTodoTimeframeKey() {
+    return (options.todo_timeframe && Object.prototype.hasOwnProperty.call(BETTER_TODO_TIMEFRAME_DAYS, options.todo_timeframe)) ? options.todo_timeframe : "all";
+}
+
 // Better Todo timeframe filter, shared by the task list and the progress
-// display so their counts always agree: keeps items due on/before now+range
-// (overdue items are before now, so they are kept too). "all" keeps
-// everything.
+// display so their counts always agree: keeps items due inside the current
+// window. Offset 0 keeps everything on/before now+range (overdue items are
+// before now, so they are kept too); offset N>0 shows only the window
+// (now+N*range, now+(N+1)*range] so the current timeframe can be paged
+// through with the look-ahead arrows. "all" keeps everything.
 function applyTodoTimeframe(items) {
-    betterTodoTimeframe = (options.todo_timeframe && Object.prototype.hasOwnProperty.call(BETTER_TODO_TIMEFRAME_DAYS, options.todo_timeframe)) ? options.todo_timeframe : "all";
+    betterTodoTimeframe = getTodoTimeframeKey();
     if (betterTodoTimeframe === "all") return items;
-    const cutoff = Date.now() + (BETTER_TODO_TIMEFRAME_DAYS[betterTodoTimeframe] * 24 * 60 * 60 * 1000);
-    return items.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
+    const days = BETTER_TODO_TIMEFRAME_DAYS[betterTodoTimeframe];
+    const now = Date.now();
+    const cutoff = now + ((betterTodoTimeframeOffset + 1) * days * 24 * 60 * 60 * 1000);
+    if (betterTodoTimeframeOffset <= 0) {
+        return items.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
+    }
+    const windowStart = now + (betterTodoTimeframeOffset * days * 24 * 60 * 60 * 1000);
+    return items.filter(item => {
+        const t = new Date(item.plannable_date).getTime();
+        return t > windowStart && t <= cutoff;
+    });
+}
+
+// Date range for the timeframe pager under the Tasks header. The offset is
+// measured in full windows from now, so the dates shown are the exact slice
+// of items the list is currently filtered to.
+function getTodoTimeframeWindow() {
+    const tf = getTodoTimeframeKey();
+    const days = tf === "all" ? 0 : BETTER_TODO_TIMEFRAME_DAYS[tf];
+    const offset = (tf === "all") ? 0 : betterTodoTimeframeOffset;
+    const now = Date.now();
+    const start = new Date(now + (offset * days * 24 * 60 * 60 * 1000));
+    const end = new Date(now + ((offset + 1) * days * 24 * 60 * 60 * 1000));
+    const fmt = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return { tf, range: fmt(start) + " \u2013 " + fmt(end) };
+}
+
+// Refresh the timeframe pager (arrows under the Tasks header) after every
+// render: update its label/date range, disable the back arrow on the
+// current window, and hide it entirely when there is no window to page
+// ("all") or when a non-Tasks tab is showing.
+function updateTodoTimeframeNav() {
+    const nav = document.getElementById("better-todo-timeframe-nav");
+    if (!nav) return;
+    const tfWindow = getTodoTimeframeWindow();
+    const paged = tfWindow.tf !== "all" && betterTodoFilter === "tasks";
+    nav.style.display = paged ? "flex" : "none";
+    if (!paged) return;
+    const label = nav.querySelector("#better-todo-timeframe-label");
+    if (label) label.textContent = tfWindow.range;
+    const prev = nav.querySelector("#better-todo-timeframe-prev");
+    if (prev) {
+        const canPrev = betterTodoTimeframeOffset > 0;
+        prev.disabled = !canPrev;
+        prev.style.opacity = canPrev ? "1" : ".3";
+        prev.style.cursor = canPrev ? "pointer" : "default";
+    }
 }
 
 // true when `courseId` is the dimmed-out class because another class is selected.
@@ -3086,6 +3147,47 @@ async function createTodoSections(location) {
                 <h2 style="border:none !important;padding: 0">${todayString}</h2>
             `;
 
+        // Timeframe pager below the header: arrows page through the timeframe
+        // window (e.g. a 1-week timeframe pages this week -> week 2 -> week 3,
+        // skipping over everything before the window being shown). The left
+        // arrow is disabled on the current window. Arrow keys also work while
+        // hovering the pager.
+        const timeframeNav = makeElement("div", location, { id: "better-todo-timeframe-nav" });
+        timeframeNav.style = "display:none;align-items:center;justify-content:center;width:100%;margin-top:8px;user-select:none;";
+        timeframeNav.innerHTML = `
+            <button id="better-todo-timeframe-prev" type="button" title="Previous timeframe" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:50%;background:transparent;cursor:pointer;transition:all .2s ease;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 6L9 12L15 18" stroke="var(--bctext-0)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <span id="better-todo-timeframe-label" style="font-size:12px;color:var(--bctext-0);white-space:nowrap;"></span>
+            <button id="better-todo-timeframe-next" type="button" title="Look ahead to the next timeframe" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:50%;background:transparent;cursor:pointer;transition:all .2s ease;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 6L15 12L9 18" stroke="var(--bctext-0)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        `;
+        const changeTimeframeOffset = (delta) => {
+            const tf = getTodoTimeframeKey();
+            if (tf === "all" || betterTodoFilter !== "tasks") return;
+            const nextOffset = Math.max(0, betterTodoTimeframeOffset + delta);
+            if (nextOffset === betterTodoTimeframeOffset) return;
+            betterTodoTimeframeOffset = nextOffset;
+            moreAssignmentCount = 0;
+            clearTodoList();
+            createTodoSections(location);
+        };
+        timeframeNav.querySelector("#better-todo-timeframe-prev").addEventListener("click", () => changeTimeframeOffset(-1));
+        timeframeNav.querySelector("#better-todo-timeframe-next").addEventListener("click", () => changeTimeframeOffset(1));
+        // Keyboard arrows page the timeframe while hovering the pager (and
+        // only then, so normal arrow-key use elsewhere is untouched).
+        const timeframeKeyHandler = (e) => {
+            if (e.key === "ArrowRight") { e.preventDefault(); changeTimeframeOffset(1); }
+            else if (e.key === "ArrowLeft") { e.preventDefault(); changeTimeframeOffset(-1); }
+        };
+        timeframeNav.addEventListener("mouseenter", () => document.addEventListener("keydown", timeframeKeyHandler));
+        timeframeNav.addEventListener("mouseleave", () => document.removeEventListener("keydown", timeframeKeyHandler));
+
         // placeholder for progress rings above the tab/filter control
         makeElement("div", location, { id: "better-todo-progress-placeholder", style: "display:flex;justify-content:center;margin-top:8px;" });
 
@@ -3152,6 +3254,9 @@ async function createTodoSections(location) {
 		mainSection.style = "display:flex;flex-direction:column;";
 	}
 	let mainSection = location.querySelector("#better-todo-main");
+	// Refresh the timeframe pager's label/arrows on every render (visibility
+	// depends on the current tab and the todo_timeframe option).
+	updateTodoTimeframeNav();
 	assignments.then(data => {
         const courseId = getCurrentCourseId();
         const scopedData = getTodoScopedData(data, courseId);
