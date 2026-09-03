@@ -63,6 +63,8 @@ Canvas Refined adds more with more to come!
 - Popup UI revamp
 - NEW Better todo list
 - Better sidebar
+- Grade analytics and history
+- Quiz safe mode
 - Global Canvas Search (search modules & assignments across all courses; Ctrl/Cmd+K)
 - Simplified UI
   - Some options won't show up when not needed
@@ -129,7 +131,9 @@ To install, run, and build with this repository locally,
 
 ### Add a new feature
 
-To add a new feature, please follow these guidelines.
+To contribute to this, first either make an issue with feature suggestion or post in the discord.
+
+If nobody is working on the feature, you can clone the dev branch and make your changes while following these guidelines.
 
 #### Identifier
 
