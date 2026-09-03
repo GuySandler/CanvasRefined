@@ -7146,6 +7146,7 @@ let gaCalc = null;           // final-grade calculator settings for this course
 let gaCourseId = null;       // course whose data is cached
 let gaData = null;           // computed data for the current course
 let gaLoading = false;
+let gaChartObserver = null;  // ResizeObserver: redraws charts once their boxes gain a real size
 
 function gradeAnalyticsActive() {
     return options.grade_analytics === true && isGradesPage() && !quizSafeModeActive();
@@ -7248,6 +7249,7 @@ function syncGradeAnalyticsUI() {
 
 function removeGradeAnalyticsPanel() {
     gaOpen = false;
+    if (gaChartObserver) { gaChartObserver.disconnect(); gaChartObserver = null; }
     // Never leave a hypothetical Total or inline editors behind when the
     // panel goes away.
     gaClearImagineUI();
@@ -7433,6 +7435,19 @@ function ensureGradeAnalyticsPanel() {
     // the stored open state was restored), the earlier render call found no
     // panel — draw the charts now that it exists.
     if (gaOpen && gaData) renderGradeAnalytics();
+    // A chart skipped because its box had no size (page still laying out,
+    // tab/panel hidden) is left at width 0; this observer redraws the moment
+    // the boxes get real dimensions, even when no DOM mutation or window
+    // resize follows.
+    if (gaChartObserver) gaChartObserver.disconnect();
+    gaChartObserver = new ResizeObserver(() => {
+        if (!gaOpen || !gaData) return;
+        const pie = panel.querySelector("#canvasrefined-ga-pie");
+        const line = panel.querySelector("#canvasrefined-ga-line");
+        if ((pie && pie.width === 0) || (line && line.width === 0)) renderGradeAnalytics();
+    });
+    gaChartObserver.observe(panel.querySelector("#canvasrefined-ga-pie").parentNode);
+    gaChartObserver.observe(panel.querySelector("#canvasrefined-ga-line").parentNode);
     return panel;
 }
 
@@ -7963,9 +7978,17 @@ function renderGaHeatmap() {
 function gaSetupCanvas(canvas) {
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.parentNode.clientWidth, h = canvas.parentNode.clientHeight;
-    // Zero size means the panel isn't visible/attached yet, so skip drawing;
-    // the DOM observer / resize handler redraws once it has real dimensions.
-    if (w <= 0 || h <= 0) return null;
+    // Zero size means the panel isn't visible/attached yet, so skip drawing —
+    // but mark the canvas "never drawn" (width 0) so the self-heal paths
+    // (syncGradeAnalyticsUI and the chart ResizeObserver) know to retry once
+    // it has real dimensions. A canvas that was never drawn defaults to
+    // width 300, so without this the zero-width "never drawn" check never
+    // matches and charts stay blank until a tab switch or panel toggle.
+    if (w <= 0 || h <= 0) {
+        canvas.width = 0;
+        canvas.height = 0;
+        return null;
+    }
     canvas.width = Math.max(1, Math.round(w * dpr));
     canvas.height = Math.max(1, Math.round(h * dpr));
     canvas.style.width = w + "px";
