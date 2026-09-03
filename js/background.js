@@ -49,6 +49,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "custom_assignments": [],
             "custom_assignments_overflow": ["custom_assignments"],
             "grade_hover": false,
+            "card_letter": true,
             // "hide_completed": false,
             "num_todo_items": 10,
             "custom_font": { "link": "", "family": "" },
@@ -56,7 +57,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "full_width": null,
             "remlogo": null,
             "gpa_calc_bounds": {
-                "A+": { "cutoff": 97, "gpa": 4.3 },
+                "A+": { "cutoff": 97, "gpa": 4.0 },
                 "A": { "cutoff": 93, "gpa": 4 },
                 "A-": { "cutoff": 90, "gpa": 3.7 },
                 "B+": { "cutoff": 87, "gpa": 3.3 },
@@ -74,8 +75,8 @@ chrome.runtime.onInstalled.addListener(function () {
             "card_overdues": false,
             "relative_dues": false,
             "equal_height_cards": false,
-            "hide_feedback": false,
             "hide_new_canvas": true,
+            "hide_sequence_footer": false,
             "quiz_safe_mode": false,
             "dark_mode_fix": [],
             "assignment_states": {},
@@ -102,9 +103,10 @@ chrome.runtime.onInstalled.addListener(function () {
             "custom_styles": "",
             "imageSize": 100,
             "cardRoundness": 5,
+            "imageRoundness": 0,
             'cardSpacing': 0,
             "cardWidth": 262,
-            "cardHeight": 250,
+            "cardHeight": 146,
             "customCardStyles": false,
             "customBackgroundLink": "",
             "customBackgroundScale": 100,
@@ -116,6 +118,9 @@ chrome.runtime.onInstalled.addListener(function () {
             "sidebar_opacity": 100,
             "bg_blur": 8,
             "sidebar_blur": 0,
+            "global_search": false,
+            "grade_analytics": true,
+            "grade_analytics_zones": false,
         }
     };
 

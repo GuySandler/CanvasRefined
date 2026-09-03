@@ -74,6 +74,9 @@
   "grade_hover": {
     "message": "Afficher uniquement au survol"
   },
+  "card_letter": {
+      "message": "Afficher la note en lettres"
+  },
   "due": {
     "message": "Exigible"
   },

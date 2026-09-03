@@ -266,3 +266,142 @@
     color: #000 !important;
 }
 .canvasrefined-quiz-safe-dismiss:hover { background: #ececec; }
+
+/* ===== Global Canvas Search ===== */
+/* Native global-nav search item — matches Canvas' own nav links. */
+.canvasrefined-gs-nav-item { list-style: none; }
+.canvasrefined-gs-nav-item .ic-app-header__menu-list-link { cursor: pointer; }
+.canvasrefined-gs-nav-item .menu-item-icon-container svg { width: 26px; height: 26px; }
+.canvasrefined-gs-nav-item:hover .ic-app-header__menu-list-link { background: #0000004f !important; }
+.canvasrefined-gs-nav-item .menu-item__text { font-size: 12px; }
+
+/* Dashboard header trigger — sits just left of the \u22ee options button. */
+.canvasrefined-gs-header-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-right: 10px; padding: 6px 12px;
+    border: 1px solid var(--bcborders, #c7cdd1); border-radius: 6px;
+    background: var(--bcbackground-2, #f5f7f8); color: var(--bctext-1, #5b6770);
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    line-height: 1; white-space: nowrap;
+    transition: background .12s ease, border-color .12s ease;
+}
+.canvasrefined-gs-header-btn:hover { background: var(--bcbackground-1, #ececec); border-color: var(--bctext-2, #9aa3ab); }
+.canvasrefined-gs-header-btn:active { transform: translateY(1px); }
+.canvasrefined-gs-header-btn-label { line-height: 1; }
+@media (max-width: 768px) { .canvasrefined-gs-header-btn-label { display: none; } }
+
+.canvasrefined-gs-modal {
+    position: fixed; inset: 0; z-index: 2147483100;
+    background: rgba(0,0,0,.42);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding-top: 12vh; animation: canvasrefined-gs-fade .12s ease;
+}
+@keyframes canvasrefined-gs-fade { from { opacity: 0; } to { opacity: 1; } }
+.canvasrefined-gs-card {
+    width: min(640px, 92vw); max-height: 70vh; display: flex; flex-direction: column;
+    background: var(--bcbackground-0, #fff); color: var(--bctext-0, #2d3b45);
+    border: 1px solid var(--bcborders, #c7cdd1); border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.35); overflow: hidden;
+}
+.canvasrefined-gs-input-row {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    border-bottom: 1px solid var(--bcborders, #e2e6e8);
+    background: var(--bcbackground-1, #fff);
+}
+.canvasrefined-gs-input-icon { color: var(--bctext-2, #9aa3ab); flex-shrink: 0; }
+.canvasrefined-gs-input {
+    flex: 1; border: none; outline: none; background: transparent;
+    font: inherit; font-size: 16px; color: var(--bctext-0, #2d3b45);
+}
+.canvasrefined-gs-input::placeholder { color: var(--bctext-2, #9aa3ab); }
+.canvasrefined-gs-close {
+    border: 1px solid var(--bcborders, #c7cdd1); border-radius: 6px;
+    background: var(--bcbackground-2, #f5f7f8); color: var(--bctext-1, #5b6770);
+    font: inherit; font-size: 12px; font-weight: 600; padding: 3px 8px; cursor: pointer;
+}
+.canvasrefined-gs-close:hover { background: var(--bcbackground-2, #ececec); }
+.canvasrefined-gs-results { flex: 1; overflow-y: auto; padding: 6px; }
+.canvasrefined-gs-hint, .canvasrefined-gs-loading {
+    padding: 18px 14px; text-align: center; color: var(--bctext-2, #9aa3ab); font-size: 14px;
+}
+.canvasrefined-gs-row {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
+    cursor: pointer; border: 1px solid transparent;
+}
+.canvasrefined-gs-row:hover { background: var(--bcbackground-2, rgba(0,0,0,.04)); }
+.canvasrefined-gs-row.canvasrefined-gs-selected {
+    background: color-mix(in srgb, var(--bclinks, #0072b5) 16%, transparent);
+    border-color: color-mix(in srgb, var(--bclinks, #0072b5) 40%, transparent);
+}
+.canvasrefined-gs-row-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.canvasrefined-gs-title {
+    font-size: 14px; font-weight: 600; color: var(--bctext-0, #2d3b45);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.canvasrefined-gs-course {
+    font-size: 12px; color: var(--bctext-2, #9aa3ab); white-space: nowrap; flex-shrink: 0;
+    max-width: 38%; overflow: hidden; text-overflow: ellipsis;
+}
+.canvasrefined-gs-type {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+    padding: 2px 7px; border-radius: 6px; flex-shrink: 0;
+    background: var(--bcbackground-2, #eef0f2); color: var(--bctext-1, #5b6770);
+    border: 1px solid var(--bcborders, #dde1e3);
+}
+.canvasrefined-gs-type-assignment { background: #e3f1fb; color: #0b5d8c; border-color: #b9d9ef; }
+.canvasrefined-gs-type-quiz { background: #fde9d9; color: #9a5300; border-color: #f6cdac; }
+.canvasrefined-gs-type-discussion { background: #e6f4ea; color: #1a7a3c; border-color: #c5e6cf; }
+.canvasrefined-gs-type-module { background: #efe7fb; color: #5b2a9e; border-color: #d8c6f1; }
+.canvasrefined-gs-type-page { background: #f1f3f5; color: #444; border-color: #dde1e3; }
+.canvasrefined-gs-type-file { background: #f1f3f5; color: #444; border-color: #dde1e3; }
+.canvasrefined-gs-type-link, .canvasrefined-gs-type-external-tool { background: #fff4d6; color: #7a5b00; border-color: #f1dfab; }
+.canvasrefined-gs-footer {
+    display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 14px; font-size: 12px;
+    color: var(--bctext-2, #9aa3ab); border-top: 1px solid var(--bcborders, #e2e6e8);
+    background: var(--bcbackground-1, #fff);
+}
+.canvasrefined-gs-footer kbd {
+    font: inherit; font-size: 11px; background: var(--bcbackground-2, #eef0f2);
+    border: 1px solid var(--bcborders, #c7cdd1); border-bottom-width: 2px; border-radius: 4px;
+    padding: 0 4px; color: var(--bctext-1, #5b6770);
+}
+
+/* ===== Grades table: scale down with narrow windows =====
+   Canvas lays out #grades_summary with content-driven auto sizing plus hard
+   min-widths (title 150px, details 80px) and nowrap cells (due, score,
+   details), giving it a ~780px floor below which the whole table overflows
+   the page instead of shrinking. Switch it to fixed layout with percentage
+   column widths (set on the header row, which drives fixed layout) and let
+   tight cells wrap, so the header, body and rows all scale with the
+   viewport. #assignments scrolls horizontally as a last resort (e.g. while a
+   what-if score input is open). */
+#grades_summary { table-layout: fixed; width: 100%; }
+#grades_summary thead th:nth-child(1) { width: 30%; } /* Name */
+#grades_summary thead th:nth-child(2) { width: 12%; } /* Due */
+#grades_summary thead th:nth-child(3) { width: 10%; } /* Submitted */
+#grades_summary thead th:nth-child(4) { width: 7%; }  /* Status */
+#grades_summary thead th:nth-child(5) { width: 11%; } /* Score */
+#grades_summary thead th:nth-child(6) { width: 3%; }  /* asset processors */
+#grades_summary thead th:nth-child(7) { width: 15%; } /* Details */
+#grades_summary thead th:nth-child(8) { width: 3%; }  /* progress */
+#grades_summary td.due,
+#grades_summary td.assignment_score,
+#grades_summary td.details { white-space: normal; }
+#assignments { overflow-x: auto; }
+
+
+/* Big strikethrough on checked-off tasks (dashboard list view). Canvas keeps
+   completed planner items looking identical to unfinished ones — the only cue
+   is the checkbox itself — so when a task's checkbox is checked, strike its
+   title through with a thick line and dim the row. :has() matches the
+   checkbox state reactively, so this also applies live at the moment a task
+   is checked, before Canvas collapses it into the completed-items section. */
+.planner-item:has(input[data-testid="planner-item-completed-checkbox"]:checked) {
+    opacity: 0.7;
+}
+.planner-item:has(input[data-testid="planner-item-completed-checkbox"]:checked) .PlannerItem-styles__details a,
+.planner-item:has(input[data-testid="planner-item-completed-checkbox"]:checked) .PlannerItem-styles__title a,
+.planner-item:has(input[data-testid="planner-item-completed-checkbox"]:checked) .PlannerItem-styles__title button {
+    text-decoration: line-through !important;
+    text-decoration-thickness: 2.5px !important;
+}

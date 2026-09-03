@@ -25,6 +25,7 @@ h2 {font-size:24px;}
 #numAssignmentsSlider::-webkit-slider-thumb,  #numTodoItemsSlider::-webkit-slider-thumb, #sidebarScaleSlider::-webkit-slider-thumb, #customBackgroundScale::-webkit-slider-thumb, #bgOpacitySlider::-webkit-slider-thumb, #sidebarOpacitySlider::-webkit-slider-thumb, #bgBlurSlider::-webkit-slider-thumb, #sidebarBlurSlider::-webkit-slider-thumb, #cardOpacitySlider::-webkit-slider-thumb, #cardBlurSlider::-webkit-slider-thumb {-webkit-appearance: none; appearance: none;height: 18px; width: 18px;background: #727272;cursor: pointer;border-radius:30px;}
 .option-container {font-size: 14px; margin-top: 8px;background: var(--containerbg);padding: 18px;border-radius: 14px;box-sizing:border-box}
 .options .option-container {padding: 14px;}
+.options .option-container > .option + .option {margin-top: 10px;}
 a.option-container {display: block;color:#5ca5f6;font-size: 14px;}
 a.option-container:hover {background: #333}
 #customDomain {font-size: 12px; background: var(--inputbg); border: none;padding:8px;color: #e2e2e2;margin-top: 6px;border-radius: 7px; font-family: inherit;}

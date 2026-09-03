@@ -74,6 +74,9 @@
   "grade_hover": {
     "message": "Mostrar apenas ao passar o mouse"
   },
+  "card_letter": {
+      "message": "Mostrar nota em letra"
+  },
   "due": {
     "message": "Devido"
   },

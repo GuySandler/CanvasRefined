@@ -74,6 +74,9 @@
   "grade_hover": {
     "message": "ホバー時のみ表示"
   },
+  "card_letter": {
+      "message": "成績をアルファベットで表示"
+  },
   "due": {
     "message": "期限"
   },

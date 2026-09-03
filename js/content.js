@@ -1,5 +1,32 @@
 const domain = window.location.origin;
-const current_page = window.location.pathname;
+let current_page = window.location.pathname;
+
+// Canvas' "New Canvas" UI navigates client-side via history.pushState/
+// replaceState without a full page reload. current_page is captured once at
+// document_start, so without this hook it goes stale and page-specific features
+// (Back to Assignment button, sequence-footer removal, profile logout button)
+// never activate when the user clicks into a page instead of loading it directly.
+function setupNavigationListener() {
+    const update = () => {
+        const next = window.location.pathname;
+        if (next === current_page) return;
+        current_page = next;
+        // Re-run the page-scoped watchers so they evaluate against the new URL.
+        watchSequenceFooter();
+        watchSubmissionPageButton();
+        watchProfileLogoutPageButton();
+        watchGradeAnalytics();
+    };
+    for (const method of ["pushState", "replaceState"]) {
+        const orig = history[method];
+        history[method] = function (...args) {
+            const ret = orig.apply(this, args);
+            update();
+            return ret;
+        };
+    }
+    window.addEventListener("popstate", update);
+}
 
 function getCurrentCourseId() {
     const match = current_page.match(/^\/courses\/(\d+)(?:\/|$)/);
@@ -55,29 +82,120 @@ function quizSafeModeActive() {
     return isQuizPage() && options.quiz_safe_mode === true;
 }
 
+// Read the URL live: Canvas' "New Canvas" UI navigates client-side via
+// history.pushState/replaceState, and current_page (captured at document_start)
+// can be stale when the user clicks into a submission page. Reading
+// window.location.pathname at check time makes this correct regardless.
 function getSubmissionAssignmentLink() {
-    const match = current_page.match(/^\/courses\/(\d+)\/assignments\/(\d+)\/submissions\/(\d+)(?:\/|$)/);
+    const match = window.location.pathname.match(/^\/courses\/(\d+)\/assignments\/(\d+)\/submissions\/(\d+)(?:\/|$)/);
     if (!match) return null;
     return `${domain}/courses/${match[1]}/assignments/${match[2]}/`;
 }
 
+// The content container isn't always #content on every Canvas layout (submission
+// pages in particular may render into .ic-Layout-contentMain or #main). Match the
+// quiz-safe-mode banner's container finder so the button lands in the visible
+// content area; fall back to <body> so injection never silently no-ops.
+function findContentContainer() {
+    return document.querySelector(".ic-Layout-contentMain")
+        || document.getElementById("content")
+        || document.querySelector("#main")
+        || document.body;
+}
+
 let submissionPageButtonObserver = null;
+let submissionButtonScheduled = false;
+let assignmentButtonScheduled = false;
 let profileLogoutButtonObserver = null;
 let newCanvasButtonObserver = null;
+let sequenceFooterObserver = null;
+
+// Current user id, needed to build "Go to Grades" links on assignment pages.
+// The page's ENV global isn't visible to content scripts (isolated world), so
+// ask the Canvas API once and cache the result.
+// undefined = not fetched yet, null = fetch failed, number = ok.
+let currentUserIdCache;
+let currentUserIdPromise = null;
+function ensureCurrentUserId() {
+    if (currentUserIdCache !== undefined) return Promise.resolve(currentUserIdCache);
+    if (!currentUserIdPromise) {
+        currentUserIdPromise = getData(`${domain}/api/v1/users/self`)
+            .then(user => {
+                currentUserIdCache = (user && user.id) || null;
+            })
+            .catch(() => {
+                currentUserIdCache = null;
+            })
+            .then(() => {
+                currentUserIdPromise = null;
+                return currentUserIdCache;
+            });
+    }
+    return currentUserIdPromise;
+}
+
+// Assignment pages (/courses/123/assignments/456) link to the current user's
+// submission ("grades") page for that assignment. The lookahead keeps this
+// from matching the submission pages themselves (/.../submissions/678).
+function getAssignmentGradesLink() {
+    const match = window.location.pathname.match(/^\/courses\/(\d+)\/assignments\/(\d+)(?!\/submissions)(?:\/|$)/);
+    if (!match || currentUserIdCache == null) return null;
+    return `${domain}/courses/${match[1]}/assignments/${match[2]}/submissions/${currentUserIdCache}`;
+}
 
 function addSubmissionPageButton() {
     const assignmentLink = getSubmissionAssignmentLink();
     if (!assignmentLink) return;
-    const content = document.getElementById("content");
-    if (!content || content.querySelector("#canvasrefined-assignment-return")) return;
+    // Place the button inline with the "Submission Details" heading and the
+    // grade-values table, inside the .submission-details-header__heading-and-grades
+    // flex row (appended so it sits to the right of the grade summary). Only inject
+    // once that row exists; if it's not there yet the persistent MutationObserver
+    // re-tries on the next DOM change so we never fall back to body/#content
+    // (which would put the button at the bottom of the page).
+    const row = document.querySelector(".submission-details-header__heading-and-grades")
+        || document.querySelector(".submission-details-header")
+        || document.querySelector(".submission_details");
+    if (!row || row.querySelector("#canvasrefined-assignment-return")) return;
 
-    makeElement("a", content, {
+    // Insert between the h1 heading and the grade-summary div so it reads
+    // [Heading] [Back to Assignment] [Grade]. Falls back to appending if the
+    // grade-summary div isn't found for some reason.
+    const gradeSummary = row.querySelector(".submission-details-header__grade-summary");
+    const btn = makeElement("a", row, {
         id: "canvasrefined-assignment-return",
         className: "canvasrefined-custom-btn",
         href: assignmentLink,
         textContent: "Back to Assignment",
-        style: "display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;margin:0 0 12px 0;padding:10px 14px;text-decoration:none;font-weight:700;",
-    }, true);
+        style: "display:inline-flex;align-items:center;justify-content:center;align-self:center;margin-left:auto;margin-right:12px;padding:6px 12px;text-decoration:none;font-weight:700;color:inherit!important;",
+    });
+    if (gradeSummary && gradeSummary.parentNode === row) {
+        row.insertBefore(btn, gradeSummary);
+    }
+}
+
+// Assignment pages: /courses/123/assignments/456 — add a "Go to Grades" button
+// to the right edge of the title row.
+function addAssignmentPageButton() {
+    const link = getAssignmentGradesLink();
+    if (!link) return;
+    // Place the button inside the assignment header's .title-content block,
+    // pinned to its right edge on the title's line. .title-content is a plain
+    // block wrapping the <h1>, so switch it to a flex row (h1 left, button
+    // right); the h1 still wraps its text when long.
+    const titleContent = document.querySelector(".assignment-title .title-content")
+        || document.querySelector(".title-content");
+    if (!titleContent || titleContent.querySelector("#canvasrefined-assignment-grades")) return;
+
+    titleContent.style.display = "flex";
+    titleContent.style.alignItems = "center";
+    titleContent.style.gap = "12px";
+    makeElement("a", titleContent, {
+        id: "canvasrefined-assignment-grades",
+        className: "canvasrefined-custom-btn",
+        href: link,
+        textContent: "Go to Grades",
+        style: "display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;padding:6px 12px;text-decoration:none;font-weight:700;font-size:16px;color:inherit!important;white-space:nowrap;",
+    });
 }
 
 function addProfileLogoutPageButton() {
@@ -104,7 +222,10 @@ function ensureProfileLogoutPageButton() {
 }
 
 function watchProfileLogoutPageButton() {
-    if (!isProfilePage()) return;
+    if (!isProfilePage()) {
+        document.getElementById("canvasrefined-profile-logout")?.remove();
+        return;
+    }
     if (ensureProfileLogoutPageButton()) return;
     if (profileLogoutButtonObserver) return;
 
@@ -124,14 +245,64 @@ function watchProfileLogoutPageButton() {
     }, 10000);
 }
 
-function ensureSubmissionPageButton() {
-    const assignmentLink = getSubmissionAssignmentLink();
-    if (!assignmentLink) return false;
-    const content = document.getElementById("content");
-    if (!content) return false;
-    if (content.querySelector("#canvasrefined-assignment-return")) return true;
-    addSubmissionPageButton();
-    return Boolean(content.querySelector("#canvasrefined-assignment-return"));
+// Reconcile the button against the current page on a rAF-throttled schedule.
+// Canvas (React-based "New Canvas" UI) re-renders the content area on SPA
+// navigation and can wipe our injected node; a persistent observer re-adds it.
+function maintainSubmissionPageButton() {
+    if (submissionButtonScheduled) return;
+    submissionButtonScheduled = true;
+    requestAnimationFrame(() => {
+        submissionButtonScheduled = false;
+        const link = getSubmissionAssignmentLink();
+        const existing = document.getElementById("canvasrefined-assignment-return");
+        if (!link) {
+            existing?.remove();
+            return;
+        }
+        if (existing) {
+            if (existing.href !== link) existing.href = link;
+            return;
+        }
+        addSubmissionPageButton();
+    });
+}
+
+// Same reconciliation pattern as maintainSubmissionPageButton, but for the
+// "Go to Grades" button on assignment pages. The grades link needs the
+// current user id, so on the first assignment page visit we kick off the API
+// fetch and re-run once it resolves.
+function maintainAssignmentPageButton() {
+    if (assignmentButtonScheduled) return;
+    assignmentButtonScheduled = true;
+    requestAnimationFrame(() => {
+        assignmentButtonScheduled = false;
+        const isAssignmentPage = /^\/courses\/\d+\/assignments\/\d+(?!\/submissions)(?:\/|$)/.test(window.location.pathname);
+        const existing = document.getElementById("canvasrefined-assignment-grades");
+        if (!isAssignmentPage) {
+            if (existing) {
+                const titleContent = existing.closest(".title-content");
+                existing.remove();
+                // Undo the flex-row layout we applied to the title block.
+                if (titleContent) {
+                    titleContent.style.display = "";
+                    titleContent.style.alignItems = "";
+                    titleContent.style.gap = "";
+                }
+            }
+            return;
+        }
+        if (currentUserIdCache === undefined) {
+            ensureCurrentUserId().then(() => maintainAssignmentPageButton());
+            return;
+        }
+        const link = getAssignmentGradesLink();
+        if (!link) return;
+        if (existing) {
+            if (existing.href !== link) existing.href = link;
+            return;
+        }
+        addAssignmentPageButton();
+    });
 }
 
 function isAssignmentPage() {
@@ -139,6 +310,7 @@ function isAssignmentPage() {
 }
 
 function removeSequenceFooter() {
+    if (options.hide_sequence_footer !== true) return false;
     if (!isAssignmentPage()) return false;
     const sequenceFooter = document.getElementById("sequence_footer");
     if (!sequenceFooter) return false;
@@ -146,11 +318,39 @@ function removeSequenceFooter() {
     return true;
 }
 
+// CSS-based hiding is the primary mechanism: the style element persists across
+// Canvas re-renders and full reloads, so the footer can never flash back after
+// the JS observer has removed it (or timed out) once.
+function applyHideSequenceFooter() {
+    let style = document.getElementById("canvasrefined-hide-sequence-footer");
+    if (options.hide_sequence_footer === true) {
+        if (!style) {
+            style = document.createElement("style");
+            style.id = "canvasrefined-hide-sequence-footer";
+            style.textContent = "#sequence_footer{display:none!important}";
+            (document.head || document.documentElement).appendChild(style);
+        }
+    } else if (style) {
+        style.remove();
+    }
+}
+
 function watchSequenceFooter() {
+    applyHideSequenceFooter();
+    if (options.hide_sequence_footer !== true) {
+        if (sequenceFooterObserver) {
+            sequenceFooterObserver.disconnect();
+            sequenceFooterObserver = null;
+        }
+        return;
+    }
     if (!isAssignmentPage()) return;
     if (removeSequenceFooter()) return;
     if (sequenceFooterObserver) return;
 
+    // The observer strips the footer from the DOM (no leftover gap), and
+    // disconnects once removed — after that (or after the 10s timeout below)
+    // the CSS rule above is what keeps it hidden across Canvas re-renders.
     sequenceFooterObserver = new MutationObserver(() => {
         if (removeSequenceFooter() && sequenceFooterObserver) {
             sequenceFooterObserver.disconnect();
@@ -167,25 +367,26 @@ function watchSequenceFooter() {
     }, 10000);
 }
 
+// One persistent, rAF-throttled observer that keeps both assignment-page
+// navigation buttons present: the "Back to Assignment" button on submission
+// pages and the "Go to Grades" button on assignment pages. Unlike the old
+// 10s-disconnecting observer, this survives Canvas' post-navigation re-renders
+// that remove injected nodes. The extra delayed checks cover React hydration
+// that wipes the button after our first add without emitting any later mutation
+// for the observer to catch.
+function maintainAssignmentNavButtons() {
+    maintainSubmissionPageButton();
+    maintainAssignmentPageButton();
+}
+
 function watchSubmissionPageButton() {
-    if (!getSubmissionAssignmentLink()) return;
-    if (ensureSubmissionPageButton()) return;
     if (submissionPageButtonObserver) return;
-
-    submissionPageButtonObserver = new MutationObserver(() => {
-        if (ensureSubmissionPageButton() && submissionPageButtonObserver) {
-            submissionPageButtonObserver.disconnect();
-            submissionPageButtonObserver = null;
-        }
-    });
-
+    maintainAssignmentNavButtons();
+    submissionPageButtonObserver = new MutationObserver(maintainAssignmentNavButtons);
     submissionPageButtonObserver.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => {
-        if (submissionPageButtonObserver) {
-            submissionPageButtonObserver.disconnect();
-            submissionPageButtonObserver = null;
-        }
-    }, 10000);
+    for (const ms of [300, 800, 1600, 3000, 5000]) {
+        setTimeout(maintainAssignmentNavButtons, ms);
+    }
 }
 
 function removeNewCanvasButton() {
@@ -581,6 +782,15 @@ function startExtension() {
     });
     footerObserver.observe(document.documentElement, { childList: true, subtree: true });
 
+    // Start the submission-page "Back to Assignment" button watcher and the SPA
+    // navigation hook immediately, before the async storage callbacks below.
+    // These don't depend on `options`, and running them first means a throw in
+    // any later init step can't prevent the button from appearing. The watcher
+    // reads window.location.pathname live and uses a persistent MutationObserver
+    // to (re)inject the button once the content container exists.
+    setupNavigationListener();
+    watchSubmissionPageButton();
+
     toggleDarkMode();
 
     // Include bg_opacity/bg_blur so setupBetterSidebar (called below) tints the
@@ -606,10 +816,12 @@ function startExtension() {
         applyCustomBackground();
         ensureBetterSidebar();
         watchSequenceFooter();
-        watchSubmissionPageButton();
         watchProfileLogoutPageButton();
+        watchGradeAnalytics();
 
         setupQuizSafeModeBanner();
+
+        setupGlobalSearch();
 
         
         setTimeout(() => runDarkModeFixer(false), 800);
@@ -640,6 +852,12 @@ function applyOptionsChanges(changes) {
 			case "device_dark":
 				toggleDarkMode();
 				applyTodoAlternateColors();
+				// "Ignore card colors" picks black vs. theme text color based on dark
+				// mode, so re-render the Better Todo list to keep it in sync.
+				if (options.todo_ignore_card_colors && options.better_todo && document.getElementById("better-todo-main")) {
+					clearTodoList();
+					createTodoSections(document.querySelector("#canvasrefined-todo-list"));
+				}
 				break;
 			case "todo_alternate_colors":
 				applyTodoAlternateColors();
@@ -659,6 +877,7 @@ function applyOptionsChanges(changes) {
 				break;
 			case "dashboard_grades":
 			case "grade_hover":
+			case "card_letter":
 				if (!grades) getGrades();
 				insertGrades();
 				break;
@@ -688,6 +907,16 @@ function applyOptionsChanges(changes) {
 				equalizeCardHeights();
 				break;
 			case "custom_cards":
+				customizeCards();
+				// Hiding/unhiding a card changes which courses appear in the todo
+				// list and the progress display, so re-render them immediately.
+				if (options.better_todo && document.getElementById("better-todo-main")) {
+					moreAnnouncementCount = 0;
+					moreAssignmentCount = 0;
+					clearTodoList();
+					createTodoSections(document.querySelector("#canvasrefined-todo-list"));
+				}
+				break;
 			case "custom_cards_2":
 			case "custom_cards_3":
 				customizeCards();
@@ -700,9 +929,13 @@ function applyOptionsChanges(changes) {
 			// case "todo_overdues":
 			case "todo_hide_feedback":
 			case "todo_full_height":
+			case "todo_ignore_card_colors":
+			case "todo_remove_icons":
 			case "custom_cards_3":
 				moreAnnouncementCount = 0;
 				moreAssignmentCount = 0;
+				// A new timeframe starts back at the current window.
+				betterTodoTimeframeOffset = 0;
 				// loadBetterTodo();
 				clearTodoList();
 				createTodoSections(document.querySelector("#canvasrefined-todo-list"));
@@ -723,7 +956,6 @@ function applyOptionsChanges(changes) {
 			case "remlogo":
 			case "disable_color_overlay":
 			case "condensed_cards":
-			case "hide_feedback":
 			case "full_width":
 			case "center_cards":
 			case "custom_styles":
@@ -731,6 +963,16 @@ function applyOptionsChanges(changes) {
 				break;
 			case "hide_new_canvas":
 				watchNewCanvasButton();
+				break;
+			case "hide_sequence_footer":
+				watchSequenceFooter();
+				break;
+			case "global_search":
+				if (options.global_search) {
+					setupGlobalSearch();
+				} else {
+					removeGlobalSearch();
+				}
 				break;
             case "customBackgroundScale":
                 applyCustomBackground();
@@ -755,6 +997,7 @@ function applyOptionsChanges(changes) {
 				break;
 			case "imageSize":
 			case "cardRoundness":
+			case "imageRoundness":
 			case "cardSpacing":
 			case "cardWidth":
 			case "cardHeight":
@@ -802,12 +1045,7 @@ function applyOptionsChanges(changes) {
                         if (typeof assignments?.then === 'function') {
                             assignments.then(data => {
                                 const courseId = getCurrentCourseId();
-                                const scopedData = courseId
-                                    ? data.filter(item => {
-                                        const itemCourseId = parseInt(item.course_id || item.context_id || item?.plannable?.course_id);
-                                        return itemCourseId === courseId;
-                                    })
-                                    : data;
+                                const scopedData = getTodoScopedData(data, courseId);
                                 renderProgressRings(placeholder, scopedData);
                             });
                         }
@@ -823,6 +1061,13 @@ function applyOptionsChanges(changes) {
                     resetBetterSidebarLayout();
                 }
 				break;
+            case "grade_analytics":
+                watchGradeAnalytics();
+                break;
+            case "grade_analytics_zones":
+                // Colored 10% zones on the line chart — just redraw the charts.
+                if (gradeAnalyticsActive() && gaOpen && gaData) renderGradeAnalytics();
+                break;
             case "quiz_safe_mode":
                 // Toggling safe mode changes which features run on quiz pages; reload
                 // so the gating is applied cleanly.
@@ -950,11 +1195,63 @@ async function applyCustomBackground() {
             backdrop-filter: blur(${bgBlur}px) saturate(120%) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) saturate(120%) !important;
         }
+        /* Dashboard list view (planner). Canvas paints each day block an
+           opaque theme color, so with a background image the whole list reads
+           as one solid slab that hides the image — unlike card view, where
+           the glass header and (optionally) translucent cards let it show
+           through. Give each day group the same glass treatment as the module
+           panels (color-mix tint + slider blur + rounded border) so the
+           background peeks through between the day cards. */
+        #dashboard-planner .planner-day,
+        #dashboard-planner .planner-empty-days {
+            background: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            border-radius: 12px !important;
+            border: 1px solid color-mix(in srgb, var(--bcborders) 75%, transparent) !important;
+            padding: 8px 12px !important;
+            box-sizing: border-box !important;
+        }
+        /* Inner surfaces Canvas keeps opaque (the "Show N completed
+           item" facade, "Nothing Planned" filler, and the Today/Add To Do
+           header cluster that sits on the glass dashboard header bar):
+           flatten them so the glass behind shows through. The course-
+           grouping label instead gets a subtle chip behind the course name —
+           it sits over the course hero image, so without a backdrop the
+           text can be hard to read on busy images. */
+        #dashboard-planner .CompletedItemsFacade-styles__root,
+        #dashboard-planner .EmptyDays-styles__nothingPlanned,
+        #dashboard-planner-header .PlannerHeader-styles__root {
+            background: transparent !important;
+        }
+        #dashboard-planner .Grouping-styles__title {
+            background: var(--bcbackground-1) !important;
+            border-radius: 6px !important;
+        }
+        /* Item-row hover: subtle tint on the glass instead of Canvas's flat
+           gray, so rows feel alive on the translucent day cards. */
+        #dashboard-planner .planner-item:hover,
+        #dashboard-planner .Grouping-styles__heroHover:hover {
+            background: color-mix(in srgb, var(--bctext-0) 5%, transparent) !important;
+            border-radius: 8px !important;
+        }
         #right-side-wrapper {
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%);
             border-radius: 5px;
+        }
+        /* Native left nav column: #left-side > #sticky-container.ic-sticky-frame
+           (the course/account/group menu links). Tint the whole #left-side column
+           rather than the inner .ic-sticky-frame, whose height only wraps its
+           links — the column spans the full viewport height like the other
+           sidebars, at the same bg_opacity/bg_blur as the Better Todo List
+           panel. Without this, a custom background (most visible in light mode)
+           shows through untinted behind the nav links. */
+        #left-side {
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
         }
         /* Recent feedback lives in #right-side. The dark-mode CSS
            (darkmodecss.js) recolors its text, but those rules are dark-mode-
@@ -1172,6 +1469,20 @@ async function applyCustomBackground() {
             -webkit-backdrop-filter: blur(${cardBlur}px) saturate(120%) !important;`
                 : `background: var(--bcbackground-0) !important;`}
         }
+        /* Card header strip (the course-nickname bar under the hero). Canvas
+           paints it a solid light color ($ic-color-light) and nothing overrides
+           that in light mode, so with card transparency on it reads as a solid
+           band across an otherwise translucent card. Mirror the card surface:
+           transparent cards drop the strip's background so the card's glass
+           (tint + blur already applied to .ic-DashboardCard) shows through;
+           opaque cards paint it the same solid theme color as the card body.
+           Dark mode already flattens this strip via darkmodecss.js, so this
+           is inert there (same value). */
+        .ic-DashboardCard__header_content {
+            ${cardTransparency
+                ? `background: none !important;`
+                : `background: var(--bcbackground-0) !important;`}
+        }
         tr.student_assignment.assignment_graded.editable > * {
             border:none!important
         }`; 
@@ -1302,14 +1613,13 @@ function recieveMessage(request, sender, sendResponse) {
     switch (request.message) {
         case ("getCards"):
             if (options["card_method_dashboard"] === true) {
-                getCardsFromDashboard();
+                getCardsFromDashboard().then(() => sendResponse(true));
             } else {
-                getCards();
+                getCards().then(() => sendResponse(true));
             }
-            sendResponse(true);
-            break;
+            return true; // keep the message channel open for async sendResponse
         case ("setcolors"): changeColorPreset(request.options); sendResponse(true); break;
-        case ("getcolors"): sendResponse(getCardColors()); break;
+        case ("getcolors"): getCardColors().then(colors => sendResponse(colors)); return true; // keep the message channel open for async sendResponse
         case ("inspect"): sendResponse(inspectDarkMode(true)); break;
         case ("fixdm"): sendResponse(runDarkModeFixer(true)); break;
 		case ("updateBackground"): applyCustomBackground(); sendResponse(true); break;
@@ -1381,21 +1691,21 @@ function inspectDarkMode(withOutput = false) {
     return { "selectors": output === "" ? "no gaps determined" : output, "time": performance.now() - time };
 }
 
-function getCardColors() {
-    let cards = document.querySelectorAll(".ic-DashboardCard__header");
-    let colors = [];
-    cards.forEach(card => {
-        let rgbColor = card.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor;
-        colors.push({ "href": card.querySelector(".ic-DashboardCard__link").href, "color": rgbToHex(rgbColor) });
-    });
-    colors.sort((a, b) => a.href > b.href ? 1 : -1);
-    colors = colors.map(x => x.color);
-    return colors;
+async function getCardColors() {
+    // Same display order changeColorPreset uses to APPLY palettes, so an
+    // exported theme's color list maps back onto the same courses when
+    // applied. Works in list mode too (API fallback inside getPaletteCards).
+    const { cards, apiColors } = await getPaletteCards();
+    if (cards.length === 0) return [];
+    return cards.map(card => card.el
+        ? rgbToHex(card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor)
+        : (apiColors["course_" + card.href.split("courses/")[1]] || "#ffffff"));
 }
 
 function getCardsFromDashboard() {
     console.log("getting cards from dashboard")
     const dashboard_cards = document.querySelectorAll(".ic-DashboardCard");
+    return new Promise(resolve => {
     chrome.storage.sync.get(["custom_cards", "custom_cards_2", "custom_cards_3"], storage => {
         let cards = storage["custom_cards"] || {};
         let cards_2 = storage["custom_cards_2"] || {};
@@ -1409,7 +1719,7 @@ function getCardsFromDashboard() {
 
                 if (!cards[id]) {
                     newCards = true;
-                    cards[id] = { "default": card.querySelector(".ic-DashboardCard__header-subtitle").textContent.substring(0, 20), "name": "", "code": "", "img": "", "hidden": false, "weight": "regular", "credits": 1, "eid": 100000 - count, "gr": null };
+                    cards[id] = { "default": card.querySelector(".ic-DashboardCard__header-subtitle").textContent.substring(0, 20), "fullName": card.querySelector(".ic-DashboardCard__header-title")?.textContent?.trim() || "", "name": "", "code": "", "img": "", "hidden": false, "weight": "regular", "credits": 1, "eid": 100000 - count, "gr": null };
     
                     let links = [];
                     for (let i = 0; i < 4; i++) {
@@ -1418,6 +1728,13 @@ function getCardsFromDashboard() {
                     cards_2[id] = { "links": links };
         
                     cards_3[id] = { "url": domain };
+                } else {
+                    // backfill full name for cards created before this field existed
+                    const full = card.querySelector(".ic-DashboardCard__header-title")?.textContent?.trim() || "";
+                    if (full && cards[id].fullName !== full) {
+                        cards[id].fullName = full;
+                        newCards = true;
+                    }
                 }
                 count++;
             });
@@ -1452,15 +1769,17 @@ function getCardsFromDashboard() {
             console.log("Error getting dashboard cards\n", e);
             logError(e);
         } finally {
-            if(newCards !== true) return;
+            if(newCards !== true) { resolve(); return; }
             console.log(newCards ? "new cards found" : "");
-            chrome.storage.sync.set({ "custom_cards": cards, "custom_cards_2": cards_2, "custom_cards_3": cards_3 });
+            chrome.storage.sync.set({ "custom_cards": cards, "custom_cards_2": cards_2, "custom_cards_3": cards_3 }, () => resolve());
         }
+    });
     });
 }
 
 async function getCards(api = null) {
     let dashboard_cards = api ? api : await getData(`${domain}/api/v1/courses?${/*enrollment_state=active&*/""}per_page=100`);
+    await new Promise(resolve => {
     chrome.storage.sync.get(["custom_cards", "custom_cards_2", "custom_cards_3"], storage => {
         let cards = storage["custom_cards"] || {};
         let cards_2 = storage["custom_cards_2"] || {};
@@ -1479,10 +1798,11 @@ async function getCards(api = null) {
                 let id = card.id;
                 if (!cards || !cards[id]) {
                     newCards = true;
-                    cards[id] = { "default": card.course_code.substring(0, 20), "name": "", "code": "", "img": "", "hidden": false, "weight": "regular", "credits": 1, "eid": card.enrollment_term_id || 0, "gr": null };
+                    cards[id] = { "default": card.course_code.substring(0, 20), "fullName": card.name || card.course_code || "", "name": "", "code": "", "img": "", "hidden": false, "weight": "regular", "credits": 1, "eid": card.enrollment_term_id || 0, "gr": null };
                 } else if (cards && cards[id]) {
                     newCards = true;
                     cards[id].default = card.course_code.substring(0, 20);
+                    cards[id].fullName = card.name || card.course_code || cards[id].fullName || "";
                     cards[id].eid = card.enrollment_term_id || 0;
                     if (!cards[id].code) cards[id].code = "";
                 }
@@ -1530,8 +1850,9 @@ async function getCards(api = null) {
         } catch (e) {
             console.log(e);
         } finally {
-            return chrome.storage.sync.set(newCards ? { "custom_cards": cards, "custom_cards_2": cards_2, "custom_cards_3": cards_3 } : {});
+            chrome.storage.sync.set(newCards ? { "custom_cards": cards, "custom_cards_2": cards_2, "custom_cards_3": cards_3 } : {}, () => resolve());
         }
+    });
     });
 }
 
@@ -1579,14 +1900,95 @@ const BETTER_TODO_TIMEFRAME_DAYS = {
 	"month": 30,
 	"2month": 60,
 };
+// Look-ahead paging for the timeframe window (arrow buttons under the Tasks
+// header). 0 = the current window (now through the timeframe cutoff, with
+// overdue items kept). Each press of the right arrow advances one full
+// window further out, e.g. a 1-week timeframe on offset 1 shows only items
+// due in week 2 (the current week is skipped over).
+let betterTodoTimeframeOffset = 0;
 // null = show every class; a string courseId = only that class's tasks.
 let betterTodoProgressFilter = null;
 let domContainers = {};
+
+// Resolve the persisted todo_timeframe option to a valid key ("all" when
+// unset/unknown).
+function getTodoTimeframeKey() {
+    return (options.todo_timeframe && Object.prototype.hasOwnProperty.call(BETTER_TODO_TIMEFRAME_DAYS, options.todo_timeframe)) ? options.todo_timeframe : "all";
+}
+
+// Better Todo timeframe filter, shared by the task list and the progress
+// display so their counts always agree: keeps items due inside the current
+// window. Offset 0 keeps everything on/before now+range (overdue items are
+// before now, so they are kept too); offset N>0 shows only the window
+// (now+N*range, now+(N+1)*range] so the current timeframe can be paged
+// through with the look-ahead arrows. "all" keeps everything.
+function applyTodoTimeframe(items) {
+    betterTodoTimeframe = getTodoTimeframeKey();
+    if (betterTodoTimeframe === "all") return items;
+    const days = BETTER_TODO_TIMEFRAME_DAYS[betterTodoTimeframe];
+    const now = Date.now();
+    const cutoff = now + ((betterTodoTimeframeOffset + 1) * days * 24 * 60 * 60 * 1000);
+    if (betterTodoTimeframeOffset <= 0) {
+        return items.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
+    }
+    const windowStart = now + (betterTodoTimeframeOffset * days * 24 * 60 * 60 * 1000);
+    return items.filter(item => {
+        const t = new Date(item.plannable_date).getTime();
+        return t > windowStart && t <= cutoff;
+    });
+}
+
+// Date range for the timeframe pager under the Tasks header. The offset is
+// measured in full windows from now, so the dates shown are the exact slice
+// of items the list is currently filtered to.
+function getTodoTimeframeWindow() {
+    const tf = getTodoTimeframeKey();
+    const days = tf === "all" ? 0 : BETTER_TODO_TIMEFRAME_DAYS[tf];
+    const offset = (tf === "all") ? 0 : betterTodoTimeframeOffset;
+    const now = Date.now();
+    const start = new Date(now + (offset * days * 24 * 60 * 60 * 1000));
+    const end = new Date(now + ((offset + 1) * days * 24 * 60 * 60 * 1000));
+    const fmt = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return { tf, range: fmt(start) + " \u2013 " + fmt(end) };
+}
+
+// Refresh the timeframe pager (arrows under the Tasks header) after every
+// render: update its label/date range, disable the back arrow on the
+// current window, and hide it entirely when there is no window to page
+// ("all") or when a non-Tasks tab is showing.
+function updateTodoTimeframeNav() {
+    const nav = document.getElementById("better-todo-timeframe-nav");
+    if (!nav) return;
+    const tfWindow = getTodoTimeframeWindow();
+    const paged = tfWindow.tf !== "all" && betterTodoFilter === "tasks";
+    nav.style.display = paged ? "flex" : "none";
+    if (!paged) return;
+    const label = nav.querySelector("#better-todo-timeframe-label");
+    if (label) label.textContent = tfWindow.range;
+    const prev = nav.querySelector("#better-todo-timeframe-prev");
+    if (prev) {
+        const canPrev = betterTodoTimeframeOffset > 0;
+        prev.disabled = !canPrev;
+        prev.style.opacity = canPrev ? "1" : ".3";
+        prev.style.cursor = canPrev ? "pointer" : "default";
+    }
+}
 
 // true when `courseId` is the dimmed-out class because another class is selected.
 function progressFilterDim(courseId) {
     return betterTodoProgressFilter != null && String(courseId) !== String(betterTodoProgressFilter);
 }
+// Canvas serves gradable work as several plannable types: assignments, quizzes,
+// and graded discussions (plus extension-created planner notes/custom tasks).
+// All of these are "tasks" for the Better Todo list; announcements are
+// handled separately.
+function isTodoTaskType(item) {
+    return item.plannable_type == "assignment"
+        || item.plannable_type == "planner_note"
+        || item.plannable_type == "quiz"
+        || item.plannable_type == "discussion_topic";
+}
+
 // Make an element filter the todo list to one class on click. A no-op on
 // course pages (where only one class is in scope anyway); toggles off when the
 // active class is clicked again.
@@ -1643,6 +2045,89 @@ function courseRingLabel(courseId) {
     return card?.default || `Course ${courseId}`;
 }
 
+// Planner items for courses the user has hidden from their dashboard should
+// not appear in the Better Todo list or its progress display. Personal
+// tasks (planner notes with no course) are always kept.
+function isCourseHidden(courseId) {
+    if (courseId === undefined || courseId === null) return false;
+    const cards = options.custom_cards || {};
+    const card = cards[String(courseId)] || cards[courseId];
+    return !!card && card.hidden === true;
+}
+
+function filterHiddenCourses(data) {
+    return data.filter(item => {
+        const cid = item.course_id || item.context_id || item?.plannable?.course_id;
+        return !isCourseHidden(cid);
+    });
+}
+
+// Build scoped data for the Better Todo list: drop hidden courses, then (on
+// a course page) restrict to the current course.
+function getTodoScopedData(data, courseId) {
+    const visible = filterHiddenCourses(data);
+    if (!courseId) return visible;
+    return visible.filter(item => {
+        const itemCourseId = parseInt(item.course_id || item.context_id || item?.plannable?.course_id);
+        return itemCourseId === courseId;
+    });
+}
+
+// Returns a Map of courseId (string) -> dashboard position index, read from
+// the live dashboard card DOM order. Empty when not on the dashboard. Used
+// to order the progress display the same way the user ordered their cards.
+function getDashboardCourseOrder() {
+    const order = new Map();
+    document.querySelectorAll('.ic-DashboardCard').forEach((card, idx) => {
+        const id = getCardId(card);
+        if (id && id !== -1 && !order.has(String(id))) order.set(String(id), idx);
+    });
+    return order;
+}
+
+// Keep the centered % / count text clear of the progress graphics (the rings'
+// center hole and the rainbow's bowl). The text block is measured after each
+// render; if it would cross into the strokes its fonts are scaled down, and
+// when the hole is really tight the count line is dropped before the % is
+// allowed to shrink below readable size. Font sizes reset to the defaults on
+// every render so the text grows back when there is room again.
+// `neededRadius(hw, hh)` returns the distance from the hole's center to the
+// farthest text corner; the text fits when that is <= availableRadius.
+function fitProgressOverlayText(overlay, neededRadius, availableRadius) {
+    const textWrap = overlay?.firstElementChild;
+    const pct = overlay?.querySelector('.canvasrefined-progress-percent');
+    const cnt = overlay?.querySelector('.canvasrefined-progress-count');
+    if (!textWrap || !pct || !cnt || textWrap === pct || textWrap === cnt) return;
+    // Undo any shrink applied by a previous render before measuring (these
+    // are the default sizes the overlays are created with).
+    pct.style.fontSize = '20px';
+    cnt.style.fontSize = '12px';
+    cnt.style.display = '';
+    if (!availableRadius || availableRadius <= 0) return;
+    let w = textWrap.offsetWidth;
+    let h = textWrap.offsetHeight;
+    if (!w || !h) return;
+    let needed = neededRadius(w / 2, h / 2);
+    if (needed <= availableRadius) return;
+    let scale = availableRadius / needed;
+    if (20 * scale < 11) {
+        // Too tight for both lines: drop the count and re-fit the % alone.
+        cnt.style.display = 'none';
+        w = textWrap.offsetWidth;
+        h = textWrap.offsetHeight;
+        needed = neededRadius(w / 2, h / 2);
+        if (needed <= availableRadius) return;
+        scale = availableRadius / needed;
+    }
+    pct.style.fontSize = `${Math.max(10, Math.round(20 * scale))}px`;
+    if (cnt.style.display !== 'none') cnt.style.fontSize = `${Math.max(9, Math.round(12 * scale))}px`;
+    // Final safety: if the readable-size floors above still don't fit, drop
+    // the count line so the % is guaranteed to clear the strokes.
+    if (neededRadius(textWrap.offsetWidth / 2, textWrap.offsetHeight / 2) > availableRadius) {
+        cnt.style.display = 'none';
+    }
+}
+
 // Mode "rings": concentric rings, one per course, each filled by completion.
 function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent) {
     const containerWidth = wrapper.clientWidth || 240;
@@ -1682,16 +2167,21 @@ function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent
     const decrement = stroke + gap;
     const ringCount = shown.length;
     const startRadius = outerRadius - stroke / 2;
-    const minCenterRadius = 28;
+    // Keep the center hole big enough for the % / count text so the numbers
+    // never sit on top of the ring strokes (fitProgressOverlayText shrinks the
+    // text as a safety net for unusually wide labels).
+    const minCenterRadius = 44;
     const requiredSpace = (ringCount - 1) * decrement + stroke / 2 + minCenterRadius;
     let adjustFactor = 1;
     if (requiredSpace > startRadius) {
         adjustFactor = (startRadius - minCenterRadius - stroke / 2) / Math.max(1, (ringCount - 1) * decrement);
     }
 
+    let innerEdge = startRadius - stroke / 2;
     shown.forEach((entry, idx) => {
         const radius = startRadius - idx * Math.max(1, Math.floor(decrement * adjustFactor));
         if (radius <= 0) return;
+        innerEdge = Math.min(innerEdge, radius - stroke / 2);
         const circumference = 2 * Math.PI * radius;
         const prog = entry.total === 0 ? 0 : entry.completed / entry.total;
         const color = courseRingColor(entry.courseId, idx);
@@ -1768,6 +2258,9 @@ function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent
         };
     });
 
+    // Shrink the % / count text if it would reach the innermost ring.
+    fitProgressOverlayText(overlay, (hw, hh) => Math.hypot(hw, hh), Math.max(0, innerEdge - 2));
+
     const maxIdx = shown.length - 1;
     svg.querySelectorAll('circle').forEach(c => {
         const idx = parseInt(c.getAttribute('data-idx'));
@@ -1802,8 +2295,11 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
     svg.setAttribute('height', String(svgHeight));
     svg.setAttribute('viewBox', `0 0 ${size} ${svgHeight}`);
 
-    // shrink spacing if too many classes would overflow the inner radius
-    const minInnerRadius = 14;
+    // shrink spacing if too many classes would overflow the inner radius;
+    // keep the inner bowl big enough for the % / count text so the numbers
+    // never sit on top of the arcs (fitProgressOverlayText shrinks the text
+    // as a safety net for unusually wide labels).
+    const minInnerRadius = 56;
     const requiredSpace = (ringCount - 1) * decrement;
     let adjustFactor = 1;
     if (requiredSpace > outerRadius - minInnerRadius) {
@@ -1906,13 +2402,31 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
         overlay = document.createElement('div');
         overlay.className = 'canvasrefined-progress-overlay';
         overlay.style.cssText = `position:absolute;left:0;top:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;transform:translateY(${nudge}px);`;
-        overlay.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;color:var(--bctext-0);'></div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:3px;color:var(--bctext-0);'></div>`;
+        // Same textWrap structure as rings mode so fitProgressOverlayText
+        // measures the whole percent+count block, not just one line.
+        const textWrap = document.createElement('div');
+        textWrap.style.cssText = 'text-align:center;color:var(--bctext-0);';
+        textWrap.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;'></div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:3px;'></div>`;
+        overlay.appendChild(textWrap);
         wrapper.appendChild(overlay);
     } else {
         overlay.style.transform = `translateY(${nudge}px)`;
     }
     overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
     overlay.querySelector('.canvasrefined-progress-count').textContent = `${completedAll}/${totalAll} done`;
+
+    // Shrink the % / count text if any corner would cross the innermost arc.
+    // The text is centered at (cx, holeCenterY); the bowl is the semicircle
+    // of innerRadius around (cx, baseY), so check the farthest text corner
+    // against the bowl's inner edge.
+    const bowlRadius = Math.max(0, innerRadius - stroke / 2 - 2);
+    fitProgressOverlayText(overlay, (hw, hh) => {
+        const dv = Math.max(
+            Math.abs(baseY - holeCenterY + hh),
+            Math.abs(baseY - holeCenterY - hh)
+        );
+        return Math.hypot(hw, dv);
+    }, bowlRadius);
 }
 
 // Mode "lines": one horizontal bar per course, each with its own %.
@@ -2049,7 +2563,9 @@ function renderProgressRings(container, scopedData) {
     const mode = getProgressRingMode();
     if (mode === "none") { container.innerHTML = ""; return; }
 
-    const allAssignments = scopedData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note"));
+    // Apply the same timeframe filter the list uses so the counts in the
+    // display match what's shown below it.
+    const allAssignments = applyTodoTimeframe(scopedData.filter(item => isTodoTaskType(item)));
 
     const groups = {};
     allAssignments.forEach(item => {
@@ -2060,14 +2576,23 @@ function renderProgressRings(container, scopedData) {
 
     const entries = Object.keys(groups).map(cid => {
         const arr = groups[cid];
-        const completed = arr.filter(it => (it.submissions?.submitted || it.planner_override?.marked_complete)).length;
+        const completed = arr.filter(it => (it.submissions?.submitted || it.planner_override?.marked_complete) && !isPinnedIncomplete(it)).length;
         return { courseId: cid, total: arr.length, completed };
     }).filter(e => e.total > 0);
 
     if (!entries.length) { container.innerHTML = ""; return; }
 
-    // sort by total desc and limit to 6 courses
-    entries.sort((a, b) => b.total - a.total);
+    // Order courses to match the user's dashboard card order. Courses that
+    // aren't on the dashboard (personal tasks, dropped courses) sort after
+    // dashboard courses, keeping their relative order; ties fall back to
+    // most assignments first so the display stays stable.
+    const dashboardOrder = getDashboardCourseOrder();
+    entries.sort((a, b) => {
+        const ai = dashboardOrder.has(a.courseId) ? dashboardOrder.get(a.courseId) : Infinity;
+        const bi = dashboardOrder.has(b.courseId) ? dashboardOrder.get(b.courseId) : Infinity;
+        if (ai !== bi) return ai - bi;
+        return b.total - a.total;
+    });
     const shown = entries.slice(0, 6);
 
     const totalAll = shown.reduce((s, e) => s + e.total, 0);
@@ -2622,6 +3147,47 @@ async function createTodoSections(location) {
                 <h2 style="border:none !important;padding: 0">${todayString}</h2>
             `;
 
+        // Timeframe pager below the header: arrows page through the timeframe
+        // window (e.g. a 1-week timeframe pages this week -> week 2 -> week 3,
+        // skipping over everything before the window being shown). The left
+        // arrow is disabled on the current window. Arrow keys also work while
+        // hovering the pager.
+        const timeframeNav = makeElement("div", location, { id: "better-todo-timeframe-nav" });
+        timeframeNav.style = "display:none;align-items:center;justify-content:center;width:100%;margin-top:8px;user-select:none;";
+        timeframeNav.innerHTML = `
+            <button id="better-todo-timeframe-prev" type="button" title="Previous timeframe" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:50%;background:transparent;cursor:pointer;transition:all .2s ease;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 6L9 12L15 18" stroke="var(--bctext-0)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <span id="better-todo-timeframe-label" style="font-size:12px;color:var(--bctext-0);white-space:nowrap;"></span>
+            <button id="better-todo-timeframe-next" type="button" title="Look ahead to the next timeframe" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:50%;background:transparent;cursor:pointer;transition:all .2s ease;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 6L15 12L9 18" stroke="var(--bctext-0)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        `;
+        const changeTimeframeOffset = (delta) => {
+            const tf = getTodoTimeframeKey();
+            if (tf === "all" || betterTodoFilter !== "tasks") return;
+            const nextOffset = Math.max(0, betterTodoTimeframeOffset + delta);
+            if (nextOffset === betterTodoTimeframeOffset) return;
+            betterTodoTimeframeOffset = nextOffset;
+            moreAssignmentCount = 0;
+            clearTodoList();
+            createTodoSections(location);
+        };
+        timeframeNav.querySelector("#better-todo-timeframe-prev").addEventListener("click", () => changeTimeframeOffset(-1));
+        timeframeNav.querySelector("#better-todo-timeframe-next").addEventListener("click", () => changeTimeframeOffset(1));
+        // Keyboard arrows page the timeframe while hovering the pager (and
+        // only then, so normal arrow-key use elsewhere is untouched).
+        const timeframeKeyHandler = (e) => {
+            if (e.key === "ArrowRight") { e.preventDefault(); changeTimeframeOffset(1); }
+            else if (e.key === "ArrowLeft") { e.preventDefault(); changeTimeframeOffset(-1); }
+        };
+        timeframeNav.addEventListener("mouseenter", () => document.addEventListener("keydown", timeframeKeyHandler));
+        timeframeNav.addEventListener("mouseleave", () => document.removeEventListener("keydown", timeframeKeyHandler));
+
         // placeholder for progress rings above the tab/filter control
         makeElement("div", location, { id: "better-todo-progress-placeholder", style: "display:flex;justify-content:center;margin-top:8px;" });
 
@@ -2688,14 +3254,12 @@ async function createTodoSections(location) {
 		mainSection.style = "display:flex;flex-direction:column;";
 	}
 	let mainSection = location.querySelector("#better-todo-main");
+	// Refresh the timeframe pager's label/arrows on every render (visibility
+	// depends on the current tab and the todo_timeframe option).
+	updateTodoTimeframeNav();
 	assignments.then(data => {
         const courseId = getCurrentCourseId();
-        const scopedData = courseId
-            ? data.filter(item => {
-                const itemCourseId = parseInt(item.course_id || item.context_id || item?.plannable?.course_id);
-                return itemCourseId === courseId;
-            })
-            : data;
+        const scopedData = getTodoScopedData(data, courseId);
 
         // Clicking a color in the progress display filters the list to that
         // one class. The filter only makes sense where multiple classes show
@@ -2709,17 +3273,20 @@ async function createTodoSections(location) {
             });
 
         announcements = displayData.filter(item => item.plannable_type == "announcement");
-        assignmentsDue = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && !item.submissions?.submitted && !item.planner_override?.marked_complete);
-        completed = displayData.filter(item => (item.plannable_type == "assignment" || item.plannable_type == "planner_note") && (item.submissions?.submitted || item.planner_override?.marked_complete));
+        // Pinned items (locally forced incomplete, e.g. a submitted assignment
+        // the user sent back to Tasks) always count as due; everything else is
+        // due only when neither submitted nor marked complete.
+        assignmentsDue = displayData.filter(item => isTodoTaskType(item) && ((!item.submissions?.submitted && !item.planner_override?.marked_complete) || isPinnedIncomplete(item)));
+        completed = displayData.filter(item => isTodoTaskType(item) && (item.submissions?.submitted || item.planner_override?.marked_complete) && !isPinnedIncomplete(item));
         // The timeframe is a persisted Better Todo List sub-option set in the
         // popup. Read the current value each render so popup changes apply on
-        // the next render. Keeps items due on/before now+range (overdue items
-        // are before now, so they are kept too). Only the Tasks tab is affected.
-        betterTodoTimeframe = (options.todo_timeframe && Object.prototype.hasOwnProperty.call(BETTER_TODO_TIMEFRAME_DAYS, options.todo_timeframe)) ? options.todo_timeframe : "all";
-        if (betterTodoTimeframe !== "all") {
-            const cutoff = Date.now() + (BETTER_TODO_TIMEFRAME_DAYS[betterTodoTimeframe] * 24 * 60 * 60 * 1000);
-            assignmentsDue = assignmentsDue.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
-        }
+        // the next render. Only the Tasks tab is affected (announcements and
+        // the completed tab always show everything).
+        // The timeframe filter only applies to the Tasks tab, but a pinned item
+        // must never be dropped from both tabs: exclude pins from the cutoff
+        // filter so a "sent back" old item still shows up under Tasks.
+        const pinnedItems = assignmentsDue.filter(item => isPinnedIncomplete(item));
+        assignmentsDue = applyTodoTimeframe(assignmentsDue.filter(item => !isPinnedIncomplete(item))).concat(pinnedItems);
 		// console.log("assignments", assignmentsDue);
 		// console.log("announcements", announcements);
 		// console.log("completed", completed);
@@ -3003,6 +3570,13 @@ function attachTodoHoverPreview(anchor, item) {
     });
 }
 
+// Task-type icons for the Better Todo task rows (quiz / graded discussion),
+// adapted from the legacy todo renderer so quizzes and discussions get a
+// recognizable icon instead of the generic assignment one. Same fill
+// variable as the assignment icon so "Remove icons"/theme tweaks apply.
+const TODO_QUIZ_ICON_SVG = '<svg fill="var(--cr-todo-icon)" label="Quiz" name="IconQuiz" viewBox="0 0 1920 1920" rotate="0" aria-hidden="true" role="presentation" focusable="false"  ><g role="presentation"><g fill-rule="evenodd" stroke="none" stroke-width="1"><path d="M746.255375,1466.76417 L826.739372,1547.47616 L577.99138,1796.11015 L497.507383,1715.51216 L746.255375,1466.76417 Z M580.35118,1300.92837 L660.949178,1381.52637 L329.323189,1713.15236 L248.725192,1632.55436 L580.35118,1300.92837 Z M414.503986,1135.20658 L495.101983,1215.80457 L80.5979973,1630.30856 L0,1549.71056 L414.503986,1135.20658 Z M1119.32036,264.600006 C1475.79835,-91.8779816 1844.58834,86.3040124 1848.35034,88.1280123 L1848.35034,88.1280123 L1865.45034,96.564012 L1873.88634,113.664011 C1875.71034,117.312011 2053.89233,486.101999 1697.30034,842.693987 L1697.30034,842.693987 L1550.69635,989.297982 L1548.07435,1655.17196 L1325.43235,1877.81395 L993.806366,1546.30196 L415.712386,968.207982 L84.0863971,636.467994 L306.72839,413.826001 L972.602367,411.318001 Z M1436.24035,1103.75398 L1074.40436,1465.70397 L1325.43235,1716.61796 L1434.30235,1607.74796 L1436.24035,1103.75398 Z M1779.26634,182.406009 C1710.18234,156.41401 1457.90035,87.1020124 1199.91836,345.198004 L1199.91836,345.198004 L576.90838,968.207982 L993.806366,1385.10597 L1616.70235,762.095989 C1873.65834,505.139998 1804.68834,250.920007 1779.26634,182.406009 Z M858.146371,525.773997 L354.152388,527.597997 L245.282392,636.467994 L496.310383,887.609985 L858.146371,525.773997 Z"></path><path d="M1534.98715,372.558003 C1483.91515,371.190003 1403.31715,385.326002 1321.69316,466.949999 L1281.22316,507.305998 L1454.61715,680.585992 L1494.97315,640.343994 C1577.16715,558.035996 1591.87315,479.033999 1589.82115,427.164001 L1587.65515,374.610003 L1534.98715,372.558003 Z"></path></g></g></svg>';
+const TODO_DISCUSSION_ICON_SVG = '<svg fill="var(--cr-todo-icon)" name="IconDiscussion" viewBox="0 0 1920 1920" rotate="0" aria-hidden="true" role="presentation" focusable="false"  ><g role="presentation"><path d="M677.647059,16 L677.647059,354.936471 L790.588235,354.936471 L790.588235,129.054118 L1807.05882,129.054118 L1807.05882,919.529412 L1581.06353,919.529412 L1581.06353,1179.29412 L1321.41176,919.529412 L1242.24,919.529412 L1242.24,467.877647 L677.647059,467.877647 L0,467.877647 L0,1484.34824 L338.710588,1484.34824 L338.710588,1903.24706 L756.705882,1484.34824 L1242.24,1484.34824 L1242.24,1032.47059 L1274.99294,1032.47059 L1694.11765,1451.59529 L1694.11765,1032.47059 L1920,1032.47059 L1920,16 L677.647059,16 Z M338.789647,919.563294 L903.495529,919.563294 L903.495529,806.622118 L338.789647,806.622118 L338.789647,919.563294 Z M338.789647,1145.44565 L677.726118,1145.44565 L677.726118,1032.39153 L338.789647,1032.39153 L338.789647,1145.44565 Z M112.941176,580.705882 L1129.41176,580.705882 L1129.41176,1371.40706 L710.4,1371.40706 L451.651765,1631.05882 L451.651765,1371.40706 L112.941176,1371.40706 L112.941176,580.705882 Z" fill-rule="evenodd" stroke="none" stroke-width="1"></path></g></svg>';
+
 function populateAssignments(iscompleted = false) {
 	const today = new Date();
 	today.setHours(0,0,0,0);
@@ -3016,6 +3590,11 @@ function populateAssignments(iscompleted = false) {
             }
             return new Date(b.plannable_date) - new Date(a.plannable_date);
         });
+    } else {
+        // Keep a stable chronological order (overdue first) so the visible
+        // item budget below counts from due today onward. The planner API
+        // normally returns ascending order already; this makes it guaranteed.
+        assignments.sort((a, b) => new Date(a.plannable_date) - new Date(b.plannable_date));
     }
 
 	let assignmentCount = 0;
@@ -3040,8 +3619,12 @@ function populateAssignments(iscompleted = false) {
 
 		let assignment
 		const targetContainer = domContainers[dueGroup];
-		assignmentCount++;
-		let isHidden = assignmentCount > maxElements;
+		// Overdue items are always shown and don't consume the visible-item
+		// budget: the count starts at items due today. (On the Completed tab,
+		// whose groups are Graded/Ungraded, every item still counts.)
+		const isOverdue = !iscompleted && dueGroup === -1;
+		if (!isOverdue) assignmentCount++;
+		let isHidden = !isOverdue && assignmentCount > maxElements;
 
 		if (targetContainer) {
 			if (!isHidden) {
@@ -3072,23 +3655,42 @@ function populateAssignments(iscompleted = false) {
 			options.custom_cards_3?.[item.plannable.course_id]?.color ??
 			"#cccccc";
 
+        // "Ignore card colors" (Better Todo List): when on, the class name is
+        // rendered black in light mode or the theme text color in dark mode
+        // instead of the course's card color.
+        const classNameColor = options.todo_ignore_card_colors
+            ? (options.dark_mode === true ? "var(--bctext-0)" : "#000000")
+            : courseColor;
+        // "Remove icons" (Better Todo List): when on, the task-type icon is
+        // omitted from the colored strip on the left of each task.
+        const removeIcons = options.todo_remove_icons === true;
+
         const isCustomTask = item.plannable_type == "planner_note" || item.planner_override?.custom === true;
+        // True when Canvas has a real submission for this item: the Completed
+        // list shows it regardless of the checkmark state, so the toggle is
+        // disabled for it (see the checkmark listener below).
+        const wasSubmitted = item.submissions?.submitted === true;
         const taskHref = isCustomTask ? customTaskHref(item) : (domain + item.html_url);
         const editButtonSvg = isCustomTask
             ? `<svg class="better-todo-assignment-edit" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:18px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="Edit this custom task"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
             : "";
         const iconSize = isCustomTask ? 26 : 20;
-        const iconLeftOffset = isCustomTask ? 2 : 5;
-        const taskIcon = isCustomTask
+        // Optical centering inside the colored strip: the assignment icon's
+        // glyph hugs its viewBox's left edge, so it gets a 5px nudge right.
+        // The quiz glyph's visual weight already sits right of center (its
+        // thin "motion lines" occupy the left edge), so it needs less of a
+        // nudge — otherwise it reads as off-center next to the others.
+        const iconLeftOffset = isCustomTask ? 2 : item.plannable_type == "quiz" ? 2 : 5;
+        const taskIcon = removeIcons ? "" : isCustomTask
             ? `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
                 <path d="M19.8201 14H15.6001C15.04 14 14.76 14 14.5461 14.109C14.3579 14.2049 14.2049 14.3578 14.1091 14.546C14.0001 14.7599 14.0001 15.0399 14.0001 15.6V19.82M20 12.7269V7.2C20 6.0799 20 5.51984 19.782 5.09202C19.5903 4.71569 19.2843 4.40973 18.908 4.21799C18.4802 4 17.9201 4 16.8 4H7.2C6.0799 4 5.51984 4 5.09202 4.21799C4.71569 4.40973 4.40973 4.71569 4.21799 5.09202C4 5.51984 4 6.0799 4 7.2V16.8C4 17.9201 4 18.4802 4.21799 18.908C4.40973 19.2843 4.71569 19.5903 5.09202 19.782C5.51984 20 6.0799 20 7.2 20H12.9496C13.4578 20 13.7118 20 13.9498 19.9407C14.1608 19.8882 14.3618 19.8016 14.5449 19.6844C14.7515 19.5522 14.926 19.3675 15.2751 18.9983L19.1254 14.9252C19.4486 14.5833 19.6101 14.4124 19.7255 14.2156C19.8278 14.041 19.903 13.8519 19.9486 13.6548C20 13.4325 20 13.1973 20 12.7269Z" stroke="var(--cr-todo-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>`
-            : `<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
+            : (item.plannable_type == "quiz" ? TODO_QUIZ_ICON_SVG : item.plannable_type == "discussion_topic" ? TODO_DISCUSSION_ICON_SVG : `<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
                 <g id="SVGRepo_bgCarrier" stroke-width="1"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
                 <g id="SVGRepo_iconCarrier">
                     <path d="M1468.214 0v551.145L840.27 1179.089c-31.623 31.623-49.693 74.54-49.693 119.715v395.289h395.288c45.176 0 88.093-18.07 119.716-49.694l162.633-162.633v438.206H0V0h1468.214Zm129.428 581.3c22.137-22.136 57.825-22.136 79.962 0l225.879 225.879c22.023 22.023 22.023 57.712 0 79.848l-677.638 677.637c-10.616 10.503-24.96 16.49-39.98 16.49H903.516v-282.35c0-15.02 5.986-29.364 16.49-39.867Zm-920.005 548.095H338.82v112.94h338.818v-112.94Zm225.88-225.879H338.818v112.94h564.697v-112.94Zm734.106-202.5-89.561 89.56 146.03 146.031 89.562-89.56-146.031-146.031Zm-508.228-362.197H338.82v338.818h790.576V338.82Z" fill-rule="evenodd"></path>
                 </g>
-            </svg>`;
+            </svg>`);
 
 		assignment.style.overflowX = "hidden";
 		assignment.innerHTML = `
@@ -3100,12 +3702,12 @@ function populateAssignments(iscompleted = false) {
 			</div>
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;position:relative;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
-					<span style="color:${courseColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
-					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${item.plannable.title}</a>
+					<span style="color:${classNameColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
+					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;padding-right:28px;margin-top:-5px;">${item.plannable.title}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
 				${editButtonSvg}
-				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'">
+				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'"${(iscompleted && wasSubmitted) ? " title=\"Submitted to Canvas — clicking sends it back to Tasks (locally)\"" : ""}>
 					<g id="SVGRepo_bgCarrier" stroke-width="0"></g>
 					<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
 					<g id="SVGRepo_iconCarrier"> <g id="Interface / Checkbox_Check">
@@ -3115,9 +3717,13 @@ function populateAssignments(iscompleted = false) {
 			</div>
 		</div>
 		`;
+		// The checkmark reflects the tab it is rendered in: on the Tasks tab it
+		// marks the item complete; on the Completed tab it makes it incomplete
+		// again (for genuinely submitted items this sets a local pin, since
+		// Canvas has no way to un-submit).
 		assignment.querySelector(".better-todo-assignment-checkmark").addEventListener("click", () => {
-			console.log("marking ", item.plannable.title, " as complete");
-			markAs(item, assignment.firstElementChild);
+			console.log("marking ", item.plannable.title, iscompleted ? "as incomplete" : "as complete");
+			markAs(item, assignment.firstElementChild, !iscompleted);
 		});
 		const editBtn = assignment.querySelector(".better-todo-assignment-edit");
 		if (editBtn) {
@@ -3181,6 +3787,13 @@ function populateAnnouncements() {
 			options.custom_cards_3?.[item.plannable.course_id]?.color ??
 			"#cccccc";
 
+		// "Ignore card colors": black in light mode, theme text color in dark.
+		const classNameColor = options.todo_ignore_card_colors
+			? (options.dark_mode === true ? "var(--bctext-0)" : "#000000")
+			: courseColor;
+		// "Remove icons": drop the announcement icon from the colored strip.
+		const removeIcons = options.todo_remove_icons === true;
+
 		let filter = "";
 		if (item.plannable.read_state == "read") {
 			filter = "filter: grayscale(40%);"
@@ -3190,17 +3803,17 @@ function populateAnnouncements() {
 		<div style="display:flex;align-items:center;gap:5px;width:100%;height:60px;background:var(--bcbackground-2);border-radius:5px;${filter}">
 			<div style="width:40px;display:flex;align-items:center;justify-content:center;background-color:${courseColor};height:100%;border-radius:5px 0 0 5px;">
 				<div style="width:23px;height:23px;display:flex;margin-left:0px;">
-					<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="transition:all .3s ease;">
+					${removeIcons ? "" : `<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="transition:all .3s ease;">
 						<g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
 						<g id="SVGRepo_iconCarrier">
 							<path d="M1587.162 31.278c11.52-23.491 37.27-35.689 63.473-29.816 25.525 6.099 43.483 28.8 43.483 55.002V570.46C1822.87 596.662 1920 710.733 1920 847.053c0 136.32-97.13 250.503-225.882 276.705v513.883c0 26.202-17.958 49.016-43.483 55.002a57.279 57.279 0 0 1-12.988 1.468c-21.12 0-40.772-11.745-50.485-31.171C1379.238 1247.203 964.18 1242.347 960 1242.347H564.706v564.706h87.755c-11.859-90.127-17.506-247.003 63.473-350.683 52.405-67.087 129.657-101.082 229.948-101.082v112.941c-64.49 0-110.57 18.861-140.837 57.487-68.781 87.868-45.064 263.83-30.269 324.254 4.18 16.828.34 34.673-10.277 48.34-10.73 13.665-27.219 21.684-44.499 21.684H508.235c-31.171 0-56.47-25.186-56.47-56.47v-621.177h-56.47c-155.747 0-282.354-126.607-282.354-282.353v-56.47h-56.47C25.299 903.523 0 878.336 0 847.052c0-31.172 25.299-56.471 56.47-56.471h56.471v-56.47c0-155.634 126.607-282.354 282.353-282.354h564.593c16.941-.112 420.48-7.002 627.275-420.48Zm-5.986 218.429c-194.71 242.371-452.216 298.164-564.705 311.04v572.724c112.489 12.876 369.995 68.556 564.705 311.04ZM903.53 564.7H395.294c-93.402 0-169.412 76.01-169.412 169.411v225.883c0 93.402 76.01 169.412 169.412 169.412H903.53V564.7Zm790.589 123.444v317.93c65.618-23.379 112.94-85.497 112.94-159.021 0-73.525-47.322-135.53-112.94-158.909Z" fill-rule="evenodd"></path>
 						</g>
-					</svg>
+					</svg>`}
 				</div>
 			</div>
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
-					<span style="color:${courseColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
+					<span style="color:${classNameColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
 					<a href="${domain + item.html_url}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${item.plannable.title}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
@@ -3326,9 +3939,38 @@ function createConfettiBurst(targetElement, opts = {}) {
     }
 }
 
-function markAs(item, element) {
+// --- Local "incomplete" pins -----------------------------------------------
+// Canvas records real submissions server-side and offers no API to un-submit,
+// so an assignment the user actually handed in can never leave the Completed
+// list via the planner override. For those items the checkmark instead sets a
+// local pin that forces the item back into the Tasks list. The pin lives in
+// chrome.storage.sync and clears when the item is checked off again.
+function todoPinKey(item) {
+    return item.plannable_type + "_" + item.plannable_id;
+}
+function isPinnedIncomplete(item) {
+    return options.todo_force_incomplete?.[todoPinKey(item)] === true;
+}
+function setPinnedIncomplete(item, pinned) {
+    const pins = Object.assign({}, options.todo_force_incomplete || {});
+    if (pinned) pins[todoPinKey(item)] = true;
+    else delete pins[todoPinKey(item)];
+    options.todo_force_incomplete = pins;
+    chrome.storage.sync.set({ todo_force_incomplete: pins });
+}
+
+function markAs(item, element, makeComplete) {
 	const csrfToken = CSRFtoken();
-	const completeState = item.planner_override ? !item.planner_override.marked_complete : true;
+	const completeState = makeComplete;
+
+    // Checking an item off clears any local incomplete pin; unchecking a
+    // genuinely submitted item sets one, since the submission itself can't
+    // be undone server-side.
+    if (completeState) {
+        if (isPinnedIncomplete(item)) setPinnedIncomplete(item, false);
+    } else if (item.submissions?.submitted) {
+        setPinnedIncomplete(item, true);
+    }
 
     // --- Optimistic UI ---
     // Canvas's /planner/overrides endpoint occasionally returns 400 (Bad
@@ -3353,13 +3995,7 @@ function markAs(item, element) {
     if (progressPlaceholder && typeof assignments?.then === 'function' && progressRingsEnabled()) {
         assignments.then(data => {
             const courseId = getCurrentCourseId();
-            const scopedData = courseId
-                ? data.map(d => Object.assign({}, d)) // shallow copy
-                    .filter(d => {
-                        const itemCourseId = parseInt(d.course_id || d.context_id || d?.plannable?.course_id);
-                        return itemCourseId === courseId;
-                    })
-                : data.map(d => Object.assign({}, d));
+            const scopedData = getTodoScopedData(data.map(d => Object.assign({}, d)), courseId);
 
             // reflect the updated state for this item in the snapshot
             for (let i = 0; i < scopedData.length; i++) {
@@ -3380,32 +4016,78 @@ function markAs(item, element) {
     }, 400);
 
     // --- Persistence (background, best-effort) ---
-    // A 400/non-OK response is treated as a soft success because Canvas often
-    // completes the override server-side anyway; we already reflected the
-    // change in the UI, so just log it.
-    fetch(domain + "/api/v1/planner/overrides" + (item.planner_override && item.planner_override.id ? "/" + item.planner_override.id : ""), {
-        method: item.planner_override && item.planner_override.id ? "PUT" : "POST",
+    // Toggle the planner override server-side. The override id returned by a
+    // successful POST/PUT is stored on the in-memory item so subsequent
+    // toggles PUT (update) instead of POSTing a duplicate. If a POST still
+    // collides with an existing override (400 "already exists"), we look up
+    // the real id and retry with a PUT. Only if all of that fails is the
+    // response treated as a soft success: the UI already reflects the
+    // intended state, so we just log it.
+    const sendOverride = (override) => fetch(domain + "/api/v1/planner/overrides" + (override && override.id ? "/" + override.id : ""), {
+        method: override && override.id ? "PUT" : "POST",
         headers: {
-            "content-type":"application/json",
-            "accept":"application/json",
+            "content-type": "application/json",
+            "accept": "application/json",
             "X-CSRF-Token": csrfToken
         },
         body: JSON.stringify({
-            id: item.planner_override && item.planner_override.id ? item.planner_override.id : null,
+            id: override && override.id ? override.id : null,
             marked_complete: completeState,
             plannable_id: item.plannable_id,
             plannable_type: item.plannable_type
         })
-    })
-    .then(resp => {
+    });
+
+    sendOverride(item.planner_override)
+    .then(async resp => {
         if (resp.ok) {
+            // Capture the override id from the response. A POST creates the
+            // override server-side with an id we don't know yet; without
+            // storing it, every later toggle on this item would POST again and
+            // collide with the existing override (400 "already exists"), so
+            // unchecking would never actually persist.
+            try {
+                const saved = await resp.json();
+                if (saved && saved.id) {
+                    item.planner_override = item.planner_override || {};
+                    item.planner_override.id = saved.id;
+                }
+            } catch (e) { /* no JSON body; id stays unknown */ }
             console.log("marked as complete");
-        } else {
-            // Non-OK (e.g. 400) is logged but not surfaced: the UI already
-            // reflects the intended state, and Canvas typically applies the
-            // override server-side regardless.
-            console.warn("planner override request returned", resp.status, "— UI already updated optimistically");
+            return;
         }
+        // A POST can return 400 because an override already exists server-side
+        // under an id we never learned (e.g. it was created earlier without the
+        // response being captured). Look up the user's overrides, find the one
+        // for this item, and retry with a PUT so the toggle actually persists.
+        if (!(item.planner_override && item.planner_override.id)) {
+            try {
+                const listResp = await fetch(domain + "/api/v1/planner/overrides", {
+                    headers: { "accept": "application/json" }
+                });
+                if (listResp.ok) {
+                    const overrides = await listResp.json();
+                    const match = (Array.isArray(overrides) ? overrides : []).find(o =>
+                        o &&
+                        String(o.plannable_id) === String(item.plannable_id) &&
+                        String(o.plannable_type).toLowerCase() === String(item.plannable_type).toLowerCase());
+                    if (match && match.id) {
+                        item.planner_override = item.planner_override || {};
+                        item.planner_override.id = match.id;
+                        const retry = await sendOverride(item.planner_override);
+                        if (!retry.ok) {
+                            console.warn("planner override PUT retry returned", retry.status);
+                        }
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error("error recovering planner override id", e);
+            }
+        }
+        // Still non-OK with nothing to recover: logged but not surfaced, the
+        // UI already reflects the intended state.
+        console.warn("planner override request returned", resp.status, "— UI already updated optimistically");
     })
     .catch(err => console.error("error marking as complete", err));
 
@@ -3541,8 +4223,15 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
             contentMain?.style.setProperty("backdrop-filter", `blur(${Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)))}px)`, "important");
             contentMain?.style.setProperty("-webkit-backdrop-filter", `blur(${Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)))}px)`, "important");
         }
-        const sidebarParent = layoutMode === "course" && leftSide ? leftSide : mainWrapper;
-        if (layoutMode === "course" && leftSide) {
+        // The rail must always render leftmost. Course-layout pages already
+        // prepend it into #left-side; dash-layout pages that still have a
+        // native left nav (accounts, groups, etc.) must too — otherwise the
+        // native #left-side column (made position:static above) flows before
+        // #not_right_side and shows up to the LEFT of the Better Sidebar,
+        // looking like a competing sidebar once the custom background tints
+        // it. Prepending keeps the order: [Better Sidebar rail][native nav].
+        const sidebarParent = leftSide ? leftSide : mainWrapper;
+        if (leftSide) {
             leftSide.style.display = "flex";
             leftSide.style.flexDirection = "row";
             leftSide.style.alignItems = "stretch";
@@ -3550,9 +4239,6 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
             leftSide.style.gap = "0";
         }
         document.querySelector(".ic-app-nav-toggle-and-crumbs")?.style.setProperty("display", "none");
-        if (layoutMode !== "course") {
-            document.getElementById("left-side")?.style.removeProperty("display");
-        }
         if (layoutMode == "dash") {
             document.getElementById("header")?.style.setProperty("display", "none");
         }
@@ -3681,6 +4367,20 @@ function populateSidebarFromNav(sidebarContent) {
 	const navMenu = document.getElementById("menu");
     let hasDashboardButton = false;
 
+    // Keep the global-search trigger last in the sidebar. The search button's
+    // placement pass and this populate pass run on independent rAF callbacks,
+    // so either can execute first. If the search button was appended before
+    // the nav buttons exist, slot the nav buttons in ahead of it so Search
+    // always stays at the bottom of the sidebar.
+    const searchBtn = sidebarContent.querySelector("#canvasrefined-gs-sidebar-btn");
+    const insertNavButton = (text, href, icon) => {
+        const button = createSidebarButton(text, href, sidebarContent, icon);
+        if (searchBtn && searchBtn.parentNode === sidebarContent) {
+            sidebarContent.insertBefore(button, searchBtn);
+        }
+        return button;
+    };
+
     if (navMenu) {
         const menuItems = navMenu.querySelectorAll("a[id^='global_nav'], .globalNavExternalTool a");
         menuItems.forEach(item => {
@@ -3742,14 +4442,14 @@ function populateSidebarFromNav(sidebarContent) {
             }
 
             if (itemId === "global_nav_dashboard_link") hasDashboardButton = true;
-            const button = createSidebarButton(text, href, sidebarContent, icon);
+            const button = insertNavButton(text, href, icon);
             if (itemId) button.dataset.navItemId = itemId;
             addSidebarButtonBadge(button, getNavBadgeCount(item));
         });
     }
 
     if (!hasDashboardButton) {
-        createSidebarButton("Dashboard", `${domain}/`, sidebarContent, customIcons["global_nav_dashboard_link"]);
+        insertNavButton("Dashboard", `${domain}/`, customIcons["global_nav_dashboard_link"]);
     }
 }
 function updateSidebar(expanded, sidebarList, expander) {
@@ -4063,6 +4763,48 @@ Card color palettes
 
 let changeColorInterval = null;
 let colorChanges = [];
+
+// Course list for palette operations, in DISPLAY order (first shown to
+// last) so palette colors land on courses in the order the user sees them.
+// Card view: dashboard cards are already in the DOM in display order.
+// List mode: there are no .ic-DashboardCard elements (which used to make the
+// palette silently do nothing), so fall back to the dashboard_cards API —
+// ordered by where each course's planner grouping first appears top-to-
+// bottom, with any courses not currently displayed (no items in the loaded
+// date range) at the end in API order. Also returns the user's current
+// course colors from the users/self/colors API (used for "revert colors"
+// when no DOM cards exist to read inline styles from).
+async function getPaletteCards() {
+    let cards = [];
+    let apiColors = {};
+    document.querySelectorAll(".ic-DashboardCard__header").forEach(card => {
+        cards.push({ "href": card.querySelector(".ic-DashboardCard__link").href, "el": card });
+    });
+    if (cards.length > 0) return { cards, apiColors };
+    try {
+        const [cardsRes, colorsRes] = await Promise.all([
+            fetch(domain + "/api/v1/dashboard/dashboard_cards", { headers: { "accept": "application/json" } }),
+            fetch(domain + "/api/v1/users/self/colors", { headers: { "accept": "application/json" } })
+        ]);
+        const apiCards = await cardsRes.json();
+        apiColors = (await colorsRes.json())?.custom_colors || {};
+        const seen = new Set();
+        const orderedIds = [];
+        document.querySelectorAll("a.Grouping-styles__hero").forEach(hero => {
+            const m = (hero.getAttribute("href") || "").match(/\/courses\/(\d+)/);
+            if (m && !seen.has(m[1])) { seen.add(m[1]); orderedIds.push(m[1]); }
+        });
+        apiCards.forEach(card => {
+            const id = String(card.id);
+            if (!seen.has(id)) { seen.add(id); orderedIds.push(id); }
+        });
+        orderedIds.forEach(id => cards.push({ "href": domain + "/courses/" + id, "el": null }));
+    } catch (e) {
+        logError(e);
+    }
+    return { cards, apiColors };
+}
+
 async function changeColorPreset(colors) {
 
     if (colors.length === 0) return;
@@ -4076,25 +4818,44 @@ async function changeColorPreset(colors) {
     colorChanges = [];
 
     // sort cards
-    let cards = document.querySelectorAll(".ic-DashboardCard__header");
-    let sortedCards = [];
-    cards.forEach(card => {
-        sortedCards.push({ "href": card.querySelector(".ic-DashboardCard__link").href, "el": card });
-    });
-    sortedCards.sort((a, b) => a.href > b.href ? 1 : -1);
+    // (display order — see getPaletteCards; no re-sorting here so palette
+    // colors apply from the first course on screen to the last)
+    const { cards: sortedCards, apiColors } = await getPaletteCards();
 
     // push each color change into a queue
     try {
         sortedCards.forEach((card, i) => {
-            let previousColor = rgbToHex(card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor);
+            let course_id = card.href.split("courses/")[1];
+            let previousColor = card.el
+                ? rgbToHex(card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor)
+                : (apiColors["course_" + course_id] || "#ffffff");
             previous.push(previousColor);
 
-            // Object.keys(res.custom_colors).forEach(item => {
-            //let item_id = item.split("_")[1];
-            let course_id = card.href.split("courses/")[1];
-
-            //if (card.href.includes(item_id)) {
             let cnum = i % colors.length;
+
+            // Apply the new color to whatever surface is rendered: dashboard
+            // card elements (card view) or planner item avatars (list view),
+            // so the change is visible immediately instead of only after a
+            // reload.
+            let applyColor = () => {
+                if (card.el) {
+                    card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor = colors[cnum];
+                    card.el.querySelector(".ic-DashboardCard__header-title span").style.color = colors[cnum];
+                    card.el.querySelector(".ic-DashboardCard__header-button-bg").style.backgroundColor = colors[cnum];
+                } else {
+                    const coursePrefix = "/courses/" + course_id;
+                    document.querySelectorAll(".planner-item").forEach(item => {
+                        const titleLink = item.querySelector(".PlannerItem-styles__title a");
+                        const heroLink = item.closest(".Grouping-styles__root")?.querySelector("a.Grouping-styles__hero");
+                        const inCourse = (titleLink && (titleLink.getAttribute("href") || "").startsWith(coursePrefix)) ||
+                            (heroLink && (heroLink.getAttribute("href") || "").startsWith(coursePrefix));
+                        if (inCourse) {
+                            const avatar = item.querySelector(".PlannerItem-styles__avatar, .PlannerItem-styles__icon");
+                            if (avatar) avatar.style.color = colors[cnum];
+                        }
+                    });
+                }
+            };
 
             let changeCardColor = () => {
                 fetch(domain + "/api/v1/users/self/colors/courses_" + course_id,
@@ -4106,20 +4867,12 @@ async function changeColorPreset(colors) {
                             'X-CSRF-Token': csrfToken,
                         },
                         body: JSON.stringify({ "hexcode": colors[cnum] })
-                    }).then(() => {
-                        card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor = colors[cnum];
-                        card.el.querySelector(".ic-DashboardCard__header-title span").style.color = colors[cnum];
-                        card.el.querySelector(".ic-DashboardCard__header-button-bg").style.backgroundColor = colors[cnum];
-                    });
+                    }).then(() => applyColor());
             }
 
             colorChanges.push(changeCardColor);
 
-            card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor = colors[cnum];
-            card.el.querySelector(".ic-DashboardCard__header-title span").style.color = colors[cnum];
-            card.el.querySelector(".ic-DashboardCard__header-button-bg").style.backgroundColor = colors[cnum];
-            //}
-            // });
+            applyColor();
         });
     } catch (e) {
         logError(e);
@@ -4141,7 +4894,13 @@ async function changeColorPreset(colors) {
     // set colors to revert back to
     chrome.storage.local.get("previous_colors", local => {
         const now = Date.now();
-        if (local["previous_colors"] === null || now >= local["previous_colors"].expire) {
+        const prev = local["previous_colors"];
+        // Overwrite when missing or expired — and when an old list-mode run
+        // (which found no dashboard cards) stored an empty list, which made
+        // revert a silent no-op. Never store an empty capture (nothing to
+        // revert to). chrome.storage.local.get yields undefined (not null)
+        // for an unset key, so the old `=== null` check never matched it.
+        if (previous.length > 0 && (!prev || now >= prev.expire || !Array.isArray(prev.colors) || prev.colors.length === 0)) {
             chrome.storage.local.set({ "previous_colors": { "colors": previous, "expire": now + 86400000 } });
         }
     });
@@ -4194,6 +4953,88 @@ function generateDarkModeCSS() {
 }
 
 let darkStyleInserted = false;
+// --- Submission tray dark-mode fixer ---------------------------------------
+// The comment chip on the grades page (…/grades) opens an InstUI
+// "Submission Comments Tray". Its "Attempt N Feedback" card, close-button
+// glyph, and some labels arrive with Canvas's light surface and dark ink
+// through emotion classes whose hashes change between Canvas releases, so
+// they can't be themed from the static dark stylesheet. Instead, watch for
+// the tray and recolor at runtime, scoped strictly to elements inside it.
+// Touched elements are tagged (data-crdarkfix) so turning dark mode off can
+// restore the original colors.
+let submissionTrayObserver = null;
+let submissionTrayFixScheduled = false;
+
+function crApplySubmissionTrayFix(el, props) {
+    const applied = el.dataset.crdarkfix ? el.dataset.crdarkfix.split(" ") : [];
+    for (const prop of Object.keys(props)) {
+        if (!applied.includes(prop)) applied.push(prop);
+        el.style.setProperty(prop, props[prop], "important");
+    }
+    el.dataset.crdarkfix = applied.join(" ");
+}
+
+function fixSubmissionTrayColors(root) {
+    const preset = options.dark_preset;
+    if (!preset) return;
+    const light = (r, g, b) => r >= 225 && g >= 225 && b >= 225;
+    const darkInk = (r, g, b) => r <= 70 && g <= 70 && b <= 70;
+    const rgb = (str) => { const m = str && str.match(/rgb\((\d+), ?(\d+), ?(\d+)/); return m ? [+m[1], +m[2], +m[3]] : null; };
+    root.querySelectorAll("*").forEach(el => {
+        if (el instanceof HTMLImageElement || el instanceof HTMLVideoElement) return;
+        const cs = getComputedStyle(el);
+        const bg = rgb(cs.backgroundColor);
+        if (bg && light(bg[0], bg[1], bg[2])) {
+            // light card/surface -> theme surface with readable text
+            crApplySubmissionTrayFix(el, {
+                "background-color": preset["background-2"],
+                "color": preset["text-0"]
+            });
+        } else {
+            const c = rgb(cs.color);
+            if (c && darkInk(c[0], c[1], c[2])) {
+                // dark ink on dark tray (headings, icon glyphs)
+                crApplySubmissionTrayFix(el, { "color": preset["text-0"] });
+            }
+        }
+        const bc = rgb(cs.borderColor);
+        if (bc && light(bc[0], bc[1], bc[2])) {
+            crApplySubmissionTrayFix(el, { "border-color": preset["borders"] });
+        }
+    });
+}
+
+function setupSubmissionTrayWatcher() {
+    if (submissionTrayObserver) return;
+    const run = () => {
+        submissionTrayFixScheduled = false;
+        if (options.dark_mode !== true && options.device_dark !== true) return;
+        const tray = document.querySelector('[data-testid="submission-tray"]');
+        if (tray) fixSubmissionTrayColors(tray);
+    };
+    // Canvas mutates the DOM constantly; debounce to one run per frame (same
+    // pattern as the footer observer in startExtension). Comments load into
+    // the tray asynchronously, so re-run whenever the tray subtree changes.
+    submissionTrayObserver = new MutationObserver(() => {
+        if (submissionTrayFixScheduled) return;
+        submissionTrayFixScheduled = true;
+        requestAnimationFrame(run);
+    });
+    submissionTrayObserver.observe(document.documentElement, { childList: true, subtree: true });
+    run();
+}
+
+function teardownSubmissionTrayFixes() {
+    if (submissionTrayObserver) {
+        submissionTrayObserver.disconnect();
+        submissionTrayObserver = null;
+    }
+    document.querySelectorAll("[data-crdarkfix]").forEach(el => {
+        (el.dataset.crdarkfix || "").split(" ").forEach(prop => el.style.removeProperty(prop));
+        delete el.dataset.crdarkfix;
+    });
+}
+
 function toggleDarkMode() {
     const css = generateDarkModeCSS();
     const darkOn = options.dark_mode === true || options.device_dark === true;
@@ -4208,6 +5049,14 @@ function toggleDarkMode() {
     style.textContent = css;
     style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
     darkStyleInserted = true;
+    // The InstUI submission tray is themed at runtime (emotion class hashes
+    // change between Canvas releases); keep the watcher in sync with the
+    // current mode, and undo inline fixes when dark mode turns off.
+    if (darkOn) {
+        setupSubmissionTrayWatcher();
+    } else {
+        teardownSubmissionTrayFixes();
+    }
     runiframeChecker();
 }
 
@@ -4303,6 +5152,28 @@ function runiframeChecker() {
 Dashboard grades 
 */
 
+// Map a percentage to a letter grade using the user's configurable GPA
+// calculator cutoffs (A+ down to F). Returns null when no grade is present.
+// Picks the letter with the HIGHEST cutoff the percent meets so the result
+// doesn't depend on the key order of the stored bounds object — theme imports
+// can reorder keys (e.g. alphabetically, where "A" precedes "A+"), which made
+// "+" grades unreachable and displayed e.g. 100% as "A". Cutoffs are coerced
+// with Number() so string values carried in by imported themes still match.
+function percentToLetterGrade(percent) {
+    const bounds = options.gpa_calc_bounds;
+    if (!bounds || typeof percent !== "number") return null;
+    let best = null;
+    let bestCutoff = -Infinity;
+    for (const letter of Object.keys(bounds)) {
+        const cutoff = Number(bounds[letter]?.cutoff);
+        if (Number.isFinite(cutoff) && percent >= cutoff && cutoff > bestCutoff) {
+            best = letter;
+            bestCutoff = cutoff;
+        }
+    }
+    return best;
+}
+
 function insertGrades() {
     if (options.dashboard_grades === true) {
         grades.then(data => {
@@ -4316,7 +5187,12 @@ function insertGrades() {
                             let gradepercent = grade.enrollments[0].has_grading_periods === true ? grade.enrollments[0].current_period_computed_current_score : grade.enrollments[0].computed_current_score;
                             //let gradepercent = grade.enrollments[0].computed_current_score;
                             let percent = (gradepercent || "--") + "%";
-                            let gradeContainer = cards[i].querySelector(".canvasrefined-card-grade") || makeElement("a", cards[i].querySelector(".ic-DashboardCard__header"), { "className": "canvasrefined-card-grade", "textContent": percent });
+                            if (options.card_letter === true) {
+                                const letter = percentToLetterGrade(gradepercent);
+                                if (letter) percent = `${letter} ${percent}`;
+                            }
+                            let gradeContainer = cards[i].querySelector(".canvasrefined-card-grade") || makeElement("a", cards[i].querySelector(".ic-DashboardCard__header"), { "className": "canvasrefined-card-grade" });
+                            gradeContainer.textContent = percent;
                             if (options.grade_hover === true) {
                                 gradeContainer.classList.add("canvasrefined-hover-only");
                             } else {
@@ -5249,37 +6125,42 @@ function applyAestheticChanges() {
     if (options.condensed_cards === true) style.textContent += ".ic-DashboardCard__header_hero {height:60px!important}.ic-DashboardCard__header-subtitle, .ic-DashboardCard__header-term{display:none}";
     if (options.remlogo === true) style.textContent += ".ic-app-header__logomark-container{display:none}";
     if (options.disable_color_overlay === true) style.textContent += ".ic-DashboardCard__header_hero{opacity: 0!important} .ic-DashboardCard__header-button-bg{opacity: 1!important}";
-    if (options.hide_feedback === true) style.textContent += ".recent_feedback {display: none}";
     if (options.full_width === true) style.textContent += "#wrapper,.ic-Layout-wrapper{max-width:100%!important}";
     if (options.center_cards === true) style.textContent += ".ic-DashboardCard__box__container{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:flex-start!important}";
     if (options.customCardStyles === true) {
         if (options.imageSize !== undefined && options.imageSize !== 100) style.textContent += `.ic-DashboardCard__header_image {transform: scale(${options.imageSize / 100})!important; }`;
         if (options.cardRoundness !== undefined && options.cardRoundness !== 5) style.textContent += `.ic-DashboardCard {border-radius: ${options.cardRoundness}px!important;}`;
+        // Rounds the header image band. The photo is the background of
+        // .ic-DashboardCard__header_image, and .ic-DashboardCard__header_hero (a
+        // child that covers the full photo with its colored overlay + 1px
+        // border) sits on top of it. border-radius only clips the element it's
+        // on — rounding the parent alone leaves the hero's square overlay
+        // covering the corners, and rounding the hero alone leaves the photo's
+        // square corners behind it — so both elements need the same radius.
+        // Default 0; guard skips the default so stock cards keep square corners.
+        if (options.imageRoundness !== undefined && options.imageRoundness !== 0) style.textContent += `.ic-DashboardCard__header_image, .ic-DashboardCard__header_hero {border-radius: ${options.imageRoundness}px!important;}`;
         if (options.cardSpacing !== undefined && options.cardSpacing !== 0) style.textContent += `.ic-DashboardCard {margin-right: ${options.cardSpacing / 2}px!important; margin-bottom: ${options.cardSpacing / 2}px!important;}`;
         if (options.cardWidth !== undefined && options.cardWidth !== 262) style.textContent += `.ic-DashboardCard {width: ${options.cardWidth}px!important;}`;
-        // Always emit a fixed card height when custom card styles are on. The old
-        // `!== 250` guard silently dropped the height rule when cardHeight matched
-        // the default, which is exactly what happens after importing a theme that
-        // carries the default cardHeight (250) — leaving cards content-sized.
-        // Content-sized cards plus the dashboard reflow loop trigger Firefox scroll
-        // anchoring to yank the viewport back up while scrolling. A fixed height
-        // (even the default 250px) keeps layout stable.
-        if (options.cardHeight !== undefined && options.cardHeight !== null && options.cardHeight !== "") {
-            style.textContent += `.ic-DashboardCard {height: ${options.cardHeight}px!important;}`;
-            // Canvas sets overflow:hidden on .ic-DashboardCard. With a fixed
-            // height that clips the appended .canvasrefined-card-assignment area
-            // (the assignment rows live at the bottom of the card), making the
-            // .canvasrefined-assignment-link anchors unclickable for users with
-            // custom card styles enabled. Allow overflow so those rows stay
-            // visible and interactive when card assignments are shown.
-            if (options.assignments_due === true) style.textContent += `.ic-DashboardCard {overflow: visible!important;}`;
+        // Card height sizes the image band via .ic-DashboardCard__header_hero —
+        // the element Canvas pins at 146px that actually drives the header image
+        // height (both .ic-DashboardCard and .ic-DashboardCard__header are
+        // content-sized, so a height on either just clips or adds dead space).
+        // Everything else — title, actions, and the appended
+        // .canvasrefined-card-assignment rows — flows below the hero, so the card
+        // grows with the assignment list and nothing gets clipped. Skipped when
+        // condensed cards is on, since that mode pins the hero at 60px.
+        if (options.condensed_cards !== true && options.cardHeight !== undefined && options.cardHeight !== null && options.cardHeight !== "") {
+            style.textContent += `.ic-DashboardCard__header_hero {height: ${options.cardHeight}px!important;}`;
         }
-        // Inner card padding. Applied to the whole .ic-DashboardCard box (the
-        // element that holds the hero header, title, and action buttons) so the
-        // colored hero header and its content all get consistent breathing room
-        // from the card's edges. Guarded by !== 0 (default).
+        // Inner card padding. Applied to the whole .ic-DashboardCard box so the
+        // hero header, title, and action buttons all get breathing room from the
+        // card's edges. Canvas sizes the card with border-box + a fixed width,
+        // so padding alone squishes the content area (narrower image/rows)
+        // instead of expanding the card — switch to content-box so the padding
+        // grows the card outward and the content keeps its full width.
+        // Guarded by > 0 (default).
         if (options.cardPadding !== undefined && Number(options.cardPadding) > 0) {
-            style.textContent += `.ic-DashboardCard {padding: ${options.cardPadding}px!important;}`;
+            style.textContent += `.ic-DashboardCard {padding: ${options.cardPadding}px!important; box-sizing: content-box!important;}`;
         }
     }
 
@@ -5370,6 +6251,595 @@ function injectQuizSafeModeBanner(safeModeOn) {
     setTimeout(() => obs.disconnect(), 15000);
 }
 
+
+
+// =============================================================================
+// Global Canvas Search
+// Search across all of the user's courses for modules, module items, and
+// assignments, then jump straight to them. Triggered by a floating search
+// button (bottom-right) or Ctrl/Cmd+K.
+// =============================================================================
+
+let globalSearchIndex = null;            // [{type,title,course,courseId,url}]
+let globalSearchIndexPromise = null;     // in-flight build so concurrent opens share one fetch
+let globalSearchIndexAt = 0;             // ms timestamp of last successful build
+const GLOBAL_SEARCH_INDEX_TTL = 10 * 60 * 1000; // 10 minutes
+const GLOBAL_SEARCH_STORAGE_KEY = "canvasrefined_global_search_index";
+let _gsShortcutBound = false;
+
+function setupGlobalSearch() {
+    if (options.global_search !== true) return;
+    // Rebuild the index fresh on every page load so newly-concluded/hidden
+    // courses never linger from a previous session's cache.
+    invalidateGlobalSearchIndex();
+    ensureGlobalSearchButton();
+    ensureGlobalSearchShortcut();
+}
+
+function removeGlobalSearch() {
+    document.getElementById("canvasrefined-global-search-header-btn")?.remove();
+    removeGlobalSearchBetterSidebarButton();
+    removeGlobalSearchNativeSidebarButton();
+    closeGlobalSearchModal();
+    if (_gsPlacementObserver) { _gsPlacementObserver.disconnect(); _gsPlacementObserver = null; }
+    if (_gsShortcutBound) {
+        document.removeEventListener("keydown", onGlobalSearchShortcut, true);
+        _gsShortcutBound = false;
+    }
+}
+
+// Shared search icon used by the sidebar + header triggers.
+const GLOBAL_SEARCH_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20px" height="20px"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><circle cx="11" cy="11" r="7" stroke="var(--bcsidebar-text)" stroke-width="2" fill="none"/><path d="m20 20-3.2-3.2" stroke="var(--bcsidebar-text)" stroke-width="2" stroke-linecap="round"/></g></svg>`;
+
+// Placement: a search trigger is injected into whichever left sidebar is
+// active — the Better Sidebar (when enabled) or Canvas' native global nav —
+// and, on the dashboard, a button is also placed in the header actions row.
+// There is no floating button. A rAF-debounced MutationObserver re-evaluates
+// placement as Canvas renders/SPA-navigates/rebuilds the sidebar.
+let _gsPlacementObserver = null;
+let _gsPlacementScheduled = false;
+function ensureGlobalSearchButton() {
+    placeGlobalSearchTrigger();
+    if (_gsPlacementObserver) return;
+    _gsPlacementObserver = new MutationObserver(() => {
+        if (_gsPlacementScheduled) return;
+        _gsPlacementScheduled = true;
+        requestAnimationFrame(() => {
+            _gsPlacementScheduled = false;
+            placeGlobalSearchTrigger();
+        });
+    });
+    _gsPlacementObserver.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+function placeGlobalSearchTrigger() {
+    if (options.global_search !== true) return;
+
+    // Native global nav (the slim icon bar) — always present, so always add.
+    ensureGlobalSearchNativeSidebarButton();
+
+    // Better Sidebar (extra column when the option is enabled) — add when present.
+    const betterSidebar = document.getElementById("better-sidebar-container");
+    if (betterSidebar) {
+        ensureGlobalSearchBetterSidebarButton(betterSidebar);
+    } else {
+        removeGlobalSearchBetterSidebarButton();
+    }
+
+    // Dashboard header button (in addition to the sidebar triggers).
+    const headerActions = document.querySelector(".ic-Dashboard-header__actions");
+    if (isDashboardPage() && headerActions) {
+        ensureGlobalSearchHeaderButton(headerActions);
+    } else {
+        document.getElementById("canvasrefined-global-search-header-btn")?.remove();
+    }
+}
+
+// --- Better Sidebar trigger --------------------------------------------------
+
+function ensureGlobalSearchBetterSidebarButton(betterSidebar) {
+    // The first child of #better-sidebar-container is the button list.
+    const sidebarContent = betterSidebar.querySelector("div");
+    if (!sidebarContent) return;
+    if (sidebarContent.querySelector("#canvasrefined-gs-sidebar-btn")) return;
+    const btn = document.createElement("a");
+    btn.id = "canvasrefined-gs-sidebar-btn";
+    btn.className = "canvasrefined-custom-btn better-sidebar-btn canvasrefined-gs-sidebar-btn";
+    btn.href = "#";
+    btn.title = "Search Canvas (Ctrl+K)";
+    btn.setAttribute("role", "button");
+    btn.setAttribute("aria-label", "Search Canvas");
+    btn.style.cssText = "width:40%;height:var(--bc-sidebar-btn-height,30px);cursor:pointer;text-align:center;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:var(--bc-sidebar-btn-gap,8px);color:var(--bcsidebar-text) !important;font-weight:bold;position:relative;";
+    btn.innerHTML = `${GLOBAL_SEARCH_ICON_SVG}<span class="better-sidebar-label" style="font-size:var(--bc-sidebar-label-size,14px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">Search</span>`;
+    btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openGlobalSearchModal(); });
+    // Append so it sits at the bottom of the sidebar item list.
+    sidebarContent.appendChild(btn);
+    // Match the sidebar's current expanded/collapsed mode immediately so the
+    // button doesn't briefly render in the wrong state (e.g. label visible while
+    // collapsed) until the next toggle calls updateSidebar().
+    applyGlobalSearchSidebarButtonMode(btn, betterSidebar.dataset.expanded === "true");
+}
+
+function removeGlobalSearchBetterSidebarButton() {
+    document.getElementById("canvasrefined-gs-sidebar-btn")?.remove();
+}
+
+// Apply the Better Sidebar's current expanded/collapsed styling to the search
+// button, mirroring updateSidebar()'s button/label/svg rules so the button is
+// correct the moment it's inserted (and whenever the sidebar re-renders).
+function applyGlobalSearchSidebarButtonMode(btn, expanded) {
+    if (!btn) return;
+    btn.style.width = expanded ? "80%" : "40%";
+    const label = btn.querySelector(".better-sidebar-label");
+    if (label) label.style.display = expanded ? "block" : "none";
+    btn.querySelectorAll("svg").forEach(svg => {
+        svg.style.width = "var(--bc-sidebar-icon-size,20px)";
+        svg.style.height = "var(--bc-sidebar-icon-size,20px)";
+    });
+}
+
+// --- Native global-nav trigger ----------------------------------------------
+
+function ensureGlobalSearchNativeSidebarButton() {
+    const navMenu = document.getElementById("menu");
+    if (!navMenu) return;
+    if (navMenu.querySelector("#canvasrefined-gs-nav-item")) return;
+    const li = document.createElement("li");
+    li.id = "canvasrefined-gs-nav-item";
+    li.className = "ic-app-header__menu-list-item canvasrefined-gs-nav-item";
+    const link = document.createElement("a");
+    link.className = "ic-app-header__menu-list-link";
+    link.href = "#";
+    link.setAttribute("role", "button");
+    link.title = "Search Canvas (Ctrl+K)";
+    link.setAttribute("aria-label", "Search Canvas");
+    link.innerHTML = `<span class="menu-item-icon-container" aria-hidden="true">${GLOBAL_SEARCH_ICON_SVG}</span><span class="menu-item__text">Search</span>`;
+    link.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openGlobalSearchModal(); });
+    li.appendChild(link);
+    // Append so the search item appears at the bottom of the global nav.
+    navMenu.appendChild(li);
+}
+
+function removeGlobalSearchNativeSidebarButton() {
+    document.getElementById("canvasrefined-gs-nav-item")?.remove();
+}
+
+// --- Dashboard header trigger -----------------------------------------------
+
+function ensureGlobalSearchHeaderButton(headerActions) {
+    if (headerActions.querySelector("#canvasrefined-global-search-header-btn")) return;
+    const btn = document.createElement("button");
+    btn.id = "canvasrefined-global-search-header-btn";
+    btn.type = "button";
+    btn.className = "canvasrefined-gs-header-btn";
+    btn.title = "Search Canvas (Ctrl+K)";
+    btn.setAttribute("aria-label", "Search Canvas");
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="canvasrefined-gs-header-btn-label">Search</span>`;
+    btn.addEventListener("click", openGlobalSearchModal);
+    // Insert as the first child of the actions row so it sits just to the left
+    // of the "Dashboard Options" (⋯) button, right-aligned with it.
+    headerActions.insertBefore(btn, headerActions.firstChild);
+}
+
+function ensureGlobalSearchShortcut() {
+    if (_gsShortcutBound) return;
+    document.addEventListener("keydown", onGlobalSearchShortcut, true);
+    _gsShortcutBound = true;
+}
+
+function onGlobalSearchShortcut(e) {
+    // Ctrl/Cmd+K toggles the search modal. Ignore when a modal is already open
+    // and the user is typing in its input (handled by the modal's own listener).
+    if (!(e.ctrlKey || e.metaKey) || !(e.key === "k" || e.key === "K")) return;
+
+    // Never activate on quiz pages (intro or take) so we don't interfere with
+    // the quiz experience or the browser's native Ctrl+K. Read the URL live
+    // because current_page can be stale after Canvas' client-side navigation.
+    if (/^\/courses\/\d+\/quizzes\/\d+(?:\/|$)/.test(window.location.pathname)) return;
+
+    const modal = document.getElementById("canvasrefined-global-search-modal");
+    if (modal && modal.dataset.open === "true") {
+        closeGlobalSearchModal();
+    } else {
+        e.preventDefault();
+        openGlobalSearchModal();
+    }
+}
+
+function openGlobalSearchModal() {
+    if (document.getElementById("canvasrefined-global-search-modal")) return;
+
+    // Show the platform-appropriate modifier in keybind hints (⌘ on Mac).
+    const modKey = /Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl";
+    const modal = document.createElement("div");
+    modal.id = "canvasrefined-global-search-modal";
+    modal.className = "canvasrefined-gs-modal";
+    modal.dataset.open = "true";
+    modal.innerHTML = `
+        <div class="canvasrefined-gs-card" role="dialog" aria-modal="true" aria-label="Search Canvas">
+            <div class="canvasrefined-gs-input-row">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" class="canvasrefined-gs-input-icon"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <input id="canvasrefined-gs-input" class="canvasrefined-gs-input" type="text" placeholder="Search modules & assignments\u2026" autocomplete="off" spellcheck="false" />
+                <button id="canvasrefined-gs-close" class="canvasrefined-gs-close" type="button" title="Close (Esc)">Esc</button>
+            </div>
+            <div id="canvasrefined-gs-results" class="canvasrefined-gs-results"></div>
+            <div class="canvasrefined-gs-footer">
+                <span><kbd>\u2191</kbd><kbd>\u2193</kbd> navigate</span>
+                <span><kbd>Enter</kbd> open</span>
+                <span><kbd>${modKey}</kbd>+<kbd>Enter</kbd> new tab</span>
+                <span><kbd>${modKey}</kbd>+<kbd>K</kbd> toggle search</span>
+                <span><kbd>Esc</kbd> close</span>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    const input = modal.querySelector("#canvasrefined-gs-input");
+    const resultsEl = modal.querySelector("#canvasrefined-gs-results");
+    const closeBtn = modal.querySelector("#canvasrefined-gs-close");
+    let selected = -1;
+    let currentResults = [];
+
+    closeBtn.addEventListener("click", closeGlobalSearchModal);
+    modal.addEventListener("mousedown", (e) => { if (e.target === modal) closeGlobalSearchModal(); });
+
+    // Escape closes; arrows + enter navigate. Bound on capture so we win over
+    // the global Ctrl+K toggle.
+    modal.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeGlobalSearchModal(); return; }
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            selected = Math.min(selected + 1, currentResults.length - 1);
+            renderGlobalSearchSelection(resultsEl, selected);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            selected = Math.max(selected - 1, 0);
+            renderGlobalSearchSelection(resultsEl, selected);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            const item = currentResults[selected];
+            if (item) openGlobalSearchResult(item, e.ctrlKey || e.metaKey);
+        }
+    });
+    // Stop the global Ctrl+K handler from closing the modal while typing.
+    input.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) e.stopPropagation();
+    });
+
+    let debounce = null;
+    input.addEventListener("input", () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(() => runGlobalSearch(input.value.trim(), resultsEl).then(res => {
+            currentResults = res;
+            selected = res.length ? 0 : -1;
+            renderGlobalSearchSelection(resultsEl, selected);
+        }), 120);
+    });
+
+    requestAnimationFrame(() => input.focus());
+    // Kick off indexing immediately so the first keystroke is fast.
+    ensureGlobalSearchIndex();
+    // Render an initial hint.
+    resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments.</div>`;
+}
+
+function closeGlobalSearchModal() {
+    const modal = document.getElementById("canvasrefined-global-search-modal");
+    if (!modal) return;
+    modal.remove();
+}
+
+function openGlobalSearchResult(item, newTab) {
+    if (!item || !item.url) return;
+    if (newTab) {
+        // Opening in a new tab keeps the search menu open so the user can keep
+        // searching. Refocus the input for the next keystroke.
+        window.open(item.url, "_blank", "noopener");
+        const input = document.getElementById("canvasrefined-gs-input");
+        if (input) input.focus();
+    } else {
+        closeGlobalSearchModal();
+        window.location.href = item.url;
+    }
+}
+
+function renderGlobalSearchSelection(resultsEl, selected) {
+    const rows = resultsEl.querySelectorAll(".canvasrefined-gs-row");
+    rows.forEach((row, i) => {
+        if (i === selected) { row.classList.add("canvasrefined-gs-selected"); row.scrollIntoView({ block: "nearest" }); }
+        else row.classList.remove("canvasrefined-gs-selected");
+    });
+}
+
+// --- Indexing ---------------------------------------------------------------
+
+// Drop any cached index so the next access rebuilds it from the API. Called
+// at setup time so every page load starts fresh.
+function invalidateGlobalSearchIndex() {
+    globalSearchIndex = null;
+    globalSearchIndexAt = 0;
+    globalSearchIndexPromise = null;
+    try { chrome.storage.local.remove(GLOBAL_SEARCH_STORAGE_KEY); } catch (_) { /* ignore */ }
+}
+
+async function ensureGlobalSearchIndex() {
+    // A per-session in-memory build is shared across opens so we don't refetch
+    // on every keystroke, but we never serve a persisted cache across reloads.
+    if (globalSearchIndex && (Date.now() - globalSearchIndexAt) < GLOBAL_SEARCH_INDEX_TTL) {
+        return globalSearchIndex;
+    }
+    if (globalSearchIndexPromise) return globalSearchIndexPromise;
+
+    globalSearchIndexPromise = (async () => {
+        const index = await buildGlobalSearchIndex();
+        globalSearchIndex = index;
+        globalSearchIndexAt = Date.now();
+        return index;
+    })();
+
+    try {
+        return await globalSearchIndexPromise;
+    } finally {
+        globalSearchIndexPromise = null;
+    }
+}
+
+async function buildGlobalSearchIndex() {
+    let courses = [];
+    try {
+        // enrollment_state=active excludes concluded/inactive enrollments at the
+        // source so we never index (or waste requests on) past-term courses.
+        courses = await getData(`${domain}/api/v1/courses?enrollment_state=active&per_page=100`);
+    } catch (e) {
+        console.warn("[CanvasRefined] global search: failed to load courses", e);
+        return [];
+    }
+    if (!Array.isArray(courses) || !courses.length) return [];
+
+    // Skip inactive/concluded/hidden courses. `enrollment_state=active`
+    // already filters at the source, but some institutions return past-term
+    // courses as "active", so we double-check here:
+    //   - access_restricted_by_date (locked courses)
+    //   - concluded === true (Canvas marks concluded courses)
+    //   - term end_date in the past (when the API exposes it)
+    //   - courses the user hid from their dashboard (custom_cards.hidden)
+    const now = Date.now();
+    courses = courses.filter(c => {
+        if (!c || !c.name) return false;
+        if (c.access_restricted_by_date === true) return false;
+        if (c.concluded === true) return false;
+        // term end date check (API may return term.end_at)
+        const endAt = c?.term?.end_at || c?.end_at;
+        if (endAt) {
+            const end = new Date(endAt).getTime();
+            if (!isNaN(end) && end < now) return false;
+        }
+        if (isCourseHidden(c.id)) return false;
+        return true;
+    });
+    // Cap to keep request volume sane.
+    courses = courses.slice(0, 60);
+
+    // Canvas can return the same course more than once (multi-role enrollments,
+    // cross-listed sections). Dedupe by id so we don't double-index or double-fetch.
+    const seenCourseIds = new Set();
+    courses = courses.filter(c => {
+        if (seenCourseIds.has(c.id)) return false;
+        seenCourseIds.add(c.id);
+        return true;
+    });
+
+    const index = [];
+    // Shared dedup state. Keys identify a piece of *content* regardless of where
+    // it surfaced, so the same assignment (which Canvas exposes both as a module
+    // item AND a standalone assignment) collapses to a single result.
+    //   - standalone assignment:  `asn:<courseId>:<assignmentId>`
+    //   - module item with content_id: `<type>:<courseId>:<contentId>`
+    //       (for type "assignment" this becomes `asn:<courseId>:<contentId>` —
+    //        the SAME key as the standalone assignment, so whichever is added
+    //        first wins; we add assignments first to keep the direct URL)
+    //   - module item without content_id (external url/tool): `url:<normalizedUrl>`
+    //   - module itself: `module:<courseId>:<moduleId>`
+    const seenContent = new Set();
+
+    await Promise.all(courses.map(async (course) => {
+        const courseId = course.id;
+        const courseName = course.name;
+        const courseCode = course.course_code || courseName;
+
+        // Assignments first so their direct URLs win over the module-item
+        // versions of the same assignment.
+        try {
+            const assignments = await getData(`${domain}/api/v1/courses/${courseId}/assignments?per_page=100`);
+            if (Array.isArray(assignments)) {
+                for (const a of assignments) {
+                    if (!a || !a.name || !a.html_url) continue;
+                    const key = `asn:${courseId}:${a.id}`;
+                    if (seenContent.has(key)) continue;
+                    seenContent.add(key);
+                    index.push({
+                        type: "Assignment",
+                        title: a.name,
+                        course: courseName,
+                        courseCode,
+                        courseId,
+                        url: a.html_url
+                    });
+                }
+            }
+        } catch (_) { /* non-fatal */ }
+
+        // Modules + their items.
+        try {
+            const modules = await getData(`${domain}/api/v1/courses/${courseId}/modules?per_page=100`);
+            if (Array.isArray(modules)) {
+                for (const m of modules) {
+                    if (!m || !m.name) continue;
+                    const modKey = `module:${courseId}:${m.id}`;
+                    if (!seenContent.has(modKey)) {
+                        seenContent.add(modKey);
+                        index.push({
+                            type: "Module",
+                            title: m.name,
+                            course: courseName,
+                            courseCode,
+                            courseId,
+                            url: `${domain}/courses/${courseId}/modules`
+                        });
+                    }
+                    try {
+                        const items = await getData(`${domain}/api/v1/courses/${courseId}/modules/${m.id}/items?per_page=100`);
+                        if (Array.isArray(items)) {
+                            for (const it of items) {
+                                if (!it || !it.title) continue;
+                                // Skip text headers / dividers — no destination page.
+                                const itype = (it.type || "").toLowerCase();
+                                if (itype === "subheader") continue;
+                                // Prefer the real page link (html_url). External
+                                // URL items expose external_url instead; the bare
+                                // `url` field is the API endpoint, never use it.
+                                const url = it.html_url || it.external_url;
+                                if (!url) continue;
+
+                                // Build a content-identity key so the same item
+                                // appearing in multiple modules (or mirroring a
+                                // standalone assignment) only produces one result.
+                                let key;
+                                if (itype === "assignment" && it.content_id) {
+                                    key = `asn:${courseId}:${it.content_id}`;
+                                } else if (it.content_id) {
+                                    key = `${itype}:${courseId}:${it.content_id}`;
+                                } else {
+                                    key = `url:${normalizeGlobalSearchUrl(url)}`;
+                                }
+                                if (seenContent.has(key)) continue;
+                                seenContent.add(key);
+
+                                index.push({
+                                    type: prettyModuleItemType(it.type),
+                                    title: it.title,
+                                    course: courseName,
+                                    courseCode,
+                                    courseId,
+                                    url
+                                });
+                            }
+                        }
+                    } catch (_) { /* per-module failure is non-fatal */ }
+                }
+            }
+        } catch (_) { /* per-course failure is non-fatal */ }
+    }));
+
+    // Final safety net: collapse any remaining normalized-URL duplicates (e.g.
+    // external links whose content_id differed but resolve to the same page).
+    const seen = new Set();
+    return index.filter(item => {
+        const key = normalizeGlobalSearchUrl(item.url);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function normalizeGlobalSearchUrl(url) {
+    if (!url) return "";
+    try {
+        const u = new URL(url, domain);
+        let path = u.pathname.replace(/\/+$/, ""); // strip trailing slashes
+        // Ignore case + fragment/query for matching purposes.
+        return (u.host.toLowerCase() + path).toLowerCase();
+    } catch (_) {
+        // Non-absolute (shouldn't happen, but be safe) — normalize as-is.
+        return String(url).replace(/\/+$/, "").toLowerCase();
+    }
+}
+
+function prettyModuleItemType(type) {
+    switch ((type || "").toLowerCase()) {
+        case "assignment": return "Assignment";
+        case "quiz": return "Quiz";
+        case "discussion": case "discussion_topic": return "Discussion";
+        case "externalurl": return "Link";
+        case "externaltool": return "External Tool";
+        case "file": return "File";
+        case "page": return "Page";
+        case "subheader": return "Section";
+        default: return type || "Item";
+    }
+}
+
+// --- Searching --------------------------------------------------------------
+
+async function runGlobalSearch(query, resultsEl) {
+    if (!globalSearchIndex && globalSearchIndexPromise) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-loading">Building search index\u2026</div>`;
+    }
+    const index = await ensureGlobalSearchIndex();
+    if (!query) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments.</div>`;
+        return [];
+    }
+    if (!index || !index.length) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No modules or assignments found. Open the search again later if your courses are still loading.</div>`;
+        return [];
+    }
+
+    const q = query.toLowerCase();
+    const matches = [];
+    for (const item of index) {
+        // Re-check hidden status at search time so a card hidden after the index
+        // was cached (10-min TTL) never surfaces in results.
+        if (isCourseHidden(item.courseId)) continue;
+        const t = (item.title || "").toLowerCase();
+        const c = (item.course || "").toLowerCase();
+        let score = -1;
+        if (t.startsWith(q)) score = 100 - t.indexOf(q);
+        else if (t.includes(q)) score = 60 - t.indexOf(q);
+        else if (c.includes(q)) score = 20;
+        if (score >= 0) { item._score = score + (t === q ? 50 : 0); matches.push(item); }
+    }
+    matches.sort((a, b) => b._score - a._score);
+    const top = matches.slice(0, 50);
+
+    if (!top.length) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No results for \u201c${escapeGlobalSearchHtml(query)}\u201d.</div>`;
+        return [];
+    }
+
+    resultsEl.innerHTML = top.map((item, i) => `
+        <div class="canvasrefined-gs-row" data-i="${i}" data-url="${escapeGlobalSearchAttr(item.url)}">
+            <div class="canvasrefined-gs-row-main">
+                <span class="canvasrefined-gs-type canvasrefined-gs-type-${escapeGlobalSearchAttr((item.type || "").toLowerCase().replace(/\s+/g, "-"))}">${escapeGlobalSearchHtml(item.type || "")}</span>
+                <span class="canvasrefined-gs-title">${escapeGlobalSearchHtml(item.title || "")}</span>
+            </div>
+            <span class="canvasrefined-gs-course">${escapeGlobalSearchHtml(item.course || "")}</span>
+        </div>`).join("");
+
+    resultsEl.querySelectorAll(".canvasrefined-gs-row").forEach((row) => {
+        // Plain click / Ctrl+click: honor modifier for new-tab behavior.
+        row.addEventListener("click", (e) => {
+            const url = row.getAttribute("data-url");
+            const item = top.find(x => x.url === url);
+            if (item) openGlobalSearchResult(item, e.ctrlKey || e.metaKey || (e.button === 1));
+        });
+        // Middle-click opens in a new tab without closing the search.
+        row.addEventListener("auxclick", (e) => {
+            if (e.button !== 1) return;
+            e.preventDefault();
+            const url = row.getAttribute("data-url");
+            const item = top.find(x => x.url === url);
+            if (item) openGlobalSearchResult(item, true);
+        });
+    });
+    return top;
+}
+
+function escapeGlobalSearchHtml(s) {
+    return String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+function escapeGlobalSearchAttr(s) {
+    return escapeGlobalSearchHtml(s).replace(/`/g, "&#96;");
+}
 
 function changeGradientCards() {
     if (options.gradient_cards === true) {
@@ -5521,12 +6991,1863 @@ function changeFavicon() {
 
 function getAssignments() {
     if (options.assignments_due === true || options.better_todo === true) {
-        let weekAgo = new Date(new Date() - 604800000);
-        //let weekAgo = new Date(new Date() - (604800000 * 10));
-        assignments = getData(`${domain}/api/v1/planner/items?start_date=${weekAgo.toISOString()}&per_page=75`);
+        // Fetch planner items from as far back as possible so overdue tasks
+        // always appear, no matter how long ago they were due. The planner
+        // API defaults start_date to "now" (which would hide every overdue
+        // item), so a far-past start date is required. Canvas returns planner
+        // items oldest-first in pages, so every page must be followed — a
+        // single request would only return the oldest page and silently drop
+        // all recent items.
+        assignments = getAllPlannerItems();
         cardAssignments = preloadAssignmentEls();
     }
 }
+
+// Far-past start date for the planner items fetch. Concluded courses are
+// excluded by the API by default, so this only pulls history from the user's
+// currently active courses, which keeps the payload bounded.
+const PLANNER_START_DATE = "2000-01-01";
+// Hard cap on pages fetched (50 pages * 100 items = 5000 items) as a safety
+// net against a malformed/misbehaving next link.
+const PLANNER_MAX_PAGES = 50;
+
+// Fetches every page of /api/v1/planner/items since PLANNER_START_DATE.
+// Uses the same session/headers as getData but follows the Link "next"
+// headers until exhausted.
+async function getAllPlannerItems() {
+    const allItems = [];
+    let url = `${domain}/api/v1/planner/items?start_date=${PLANNER_START_DATE}&per_page=100`;
+    for (let page = 0; page < PLANNER_MAX_PAGES && url; page++) {
+        let response;
+        let data;
+        try {
+            response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+            data = await response.json();
+        } catch (e) {
+            break;
+        }
+        if (!response.ok || !Array.isArray(data)) break;
+        // Deep-clone via JSON to unwrap Firefox Xray objects so nested props
+        // are mutable (same as getData).
+        try {
+            data = JSON.parse(JSON.stringify(data));
+        } catch (_) { /* keep original */ }
+        allItems.push(...data);
+        url = getNextPageUrl(response.headers.get("Link"));
+    }
+    return allItems;
+}
+
+// Extracts the rel="next" URL from a Canvas pagination Link header, or
+// returns null when on the last page.
+function getNextPageUrl(linkHeader) {
+    if (!linkHeader) return null;
+    const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+    return match ? match[1] : null;
+}
+
+// ===================== Grade Analytics =====================
+// On course grades pages, adds an "Analytics" toggle on the left side (in the
+// Better Sidebar when enabled, otherwise in the native course nav) that shows
+// a panel with a score-distribution doughnut, an overall-grade-over-time
+// line chart, a GitHub-style grade heatmap, and a final-grade calculator.
+// Data comes from the Canvas API with the user's session, so it
+// matches the numbers on the page. Charts are hand-drawn on <canvas> so the
+// extension needs no CDN/library and no chart library dependency.
+
+const GA_BUCKETS = [
+    { label: "90+",   min: 90, max: Infinity, color: "#16a34a" },
+    { label: "80-89", min: 80, max: 90,       color: "#4ade80" },
+    { label: "70-79", min: 70, max: 80,       color: "#facc15" },
+    { label: "60-69", min: 60, max: 70,       color: "#fb923c" },
+    { label: "50-59", min: 50, max: 60,       color: "#f87171" },
+    { label: "40-49", min: 40, max: 50,       color: "#ef4444" },
+    { label: "30-39", min: 30, max: 40,       color: "#dc2626" },
+    { label: "20-29", min: 20, max: 30,       color: "#b91c1c" },
+    { label: "10-19", min: 10, max: 20,       color: "#991b1b" },
+    { label: "0-9",   min: 0,  max: 10,       color: "#7f1d1d" },
+];
+const GA_UNGRADED_COLOR = "#6b7280";
+// 5%-wide zone colors for the line chart background: the doughnut's bucket
+// colors interpolated at 5% steps (dark red at 0 → green at 100), so every
+// 5% band gets its own shade. Each band is sampled at its LOWER edge so
+// every decade starts on its pure bucket color — a 70 is exactly yellow,
+// not a yellow-green blend.
+const GA_ZONE_COLORS = (() => {
+    const stops = GA_BUCKETS.slice().reverse(); // 0-9 (dark red) → 90+ (green)
+    const rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+    const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+    return Array.from({ length: 20 }, (_, i) => {
+        const m = i * 5; // band's lower edge (70, 75, …) — see comment above
+        const k = Math.min(stops.length - 1, Math.floor(m / 10));
+        if (k >= stops.length - 1) return stops[stops.length - 1].color;
+        const t = (m - k * 10) / 10;
+        const c1 = rgb(stops[k].color), c2 = rgb(stops[k + 1].color);
+        return `rgb(${lerp(c1[0], c2[0], t)},${lerp(c1[1], c2[1], t)},${lerp(c1[2], c2[2], t)})`;
+    });
+})();
+const GA_OPEN_KEY = "grade_analytics_open";
+
+async function getGradeAnalyticsOpenState() {
+    const result = await chrome.storage.local.get(GA_OPEN_KEY);
+    return result[GA_OPEN_KEY] ?? true;
+}
+
+function setGradeAnalyticsOpenState(open) {
+    chrome.storage.local.set({ [GA_OPEN_KEY]: open });
+}
+
+const GA_FIT_Y_KEY = "grade_analytics_fit_y";
+
+async function getGradeAnalyticsFitY() {
+    const result = await chrome.storage.local.get(GA_FIT_Y_KEY);
+    return result[GA_FIT_Y_KEY] ?? false;
+}
+
+function setGradeAnalyticsFitY(fit) {
+    chrome.storage.local.set({ [GA_FIT_Y_KEY]: fit });
+}
+
+// Final-grade calculator settings, stored per course so each course's final
+// weight and goal survive reloads: { weight, target, show }. The needed
+// score itself is never stored — it's always recomputed against the live
+// current grade.
+const GA_CALC_PREFIX = "grade_analytics_final_";
+
+function gaCalcStorageKey(courseId) {
+    return GA_CALC_PREFIX + courseId;
+}
+
+async function getGaCalcSettings(courseId) {
+    const empty = { weight: null, target: null, show: false };
+    if (courseId == null) return empty;
+    const key = gaCalcStorageKey(courseId);
+    const result = await chrome.storage.local.get(key);
+    const v = result[key];
+    return v && typeof v === "object" ? v : empty;
+}
+
+function saveGaCalcSettings() {
+    const courseId = getCurrentCourseId();
+    if (courseId == null || !gaCalc) return;
+    chrome.storage.local.set({ [gaCalcStorageKey(courseId)]: gaCalc });
+}
+
+let gaObserver = null;
+let gaOpen = false;          // panel open on this page view
+let gaFitY = false;         // scale the line chart Y axis to fit the data
+let gaImagineIf = false;    // "Imagine-If mode" enabled on this page view (never persisted — always off on load)
+let gaScenario = null;      // imagine-if working copy of groups + assignments
+let gaIfCounter = 0;         // unique ids for user-added groups/assignments
+let gaOriginalFinalHtml = null; // Total row's original grade span innerHTML, for restore
+let gaTab = "overview";     // active panel tab: "overview" | "calc" | "heatmap"
+let gaCalc = null;           // final-grade calculator settings for this course
+let gaCourseId = null;       // course whose data is cached
+let gaData = null;           // computed data for the current course
+let gaLoading = false;
+let gaChartObserver = null;  // ResizeObserver: redraws charts once their boxes gain a real size
+
+function gradeAnalyticsActive() {
+    return options.grade_analytics === true && isGradesPage() && !quizSafeModeActive();
+}
+
+// Grades data is read straight from the #grades_summary table the page
+// already rendered — no API round trips, so even courses with hundreds of
+// assignments populate instantly, and the numbers always match what the user
+// sees (grading periods, unposted grades, etc.). Waits briefly for the table
+// to appear on SPA navigations.
+function gaWaitForGradesTable(timeoutMs = 15000) {
+    return new Promise((resolve, reject) => {
+        const ready = () => {
+            const table = document.querySelector("#grades_summary");
+            return table && table.querySelector("tr.student_assignment") ? table : null;
+        };
+        const found = ready();
+        if (found) { resolve(found); return; }
+        const started = Date.now();
+        const timer = setInterval(() => {
+            const table = ready();
+            if (table) { clearInterval(timer); resolve(table); }
+            else if (Date.now() - started > timeoutMs) {
+                clearInterval(timer);
+                reject(new Error("grades table not found on this page"));
+            }
+        }, 250);
+    });
+}
+
+// Entry point: called at init, on SPA navigation, and when the option changes.
+function watchGradeAnalytics() {
+    if (!gradeAnalyticsActive()) {
+        removeGradeAnalyticsPanel();
+        if (gaObserver) { gaObserver.disconnect(); gaObserver = null; }
+        return;
+    }
+    // SPA navigation between courses: drop cached data so the panel never
+    // shows the previous course's charts.
+    const courseId = getCurrentCourseId();
+    if (gaCourseId !== null && gaCourseId !== courseId) {
+        gaData = null;
+        gaCourseId = null;
+        gaCalc = null; // per-course final-calculator settings
+        removeGradeAnalyticsPanel();
+    }
+    if (!gaObserver) {
+        // Canvas re-renders the left nav and content area during SPA
+        // navigation; the observer keeps the panel placed.
+        gaObserver = new MutationObserver(() => scheduleGradeAnalyticsSync());
+        gaObserver.observe(document.documentElement, { childList: true, subtree: true });
+    }
+    scheduleGradeAnalyticsSync();
+    // Restore the open/closed state and Y-axis preference the user last
+    // chose, then inject the panel below the Print Grades header.
+    Promise.all([getGradeAnalyticsOpenState(), getGradeAnalyticsFitY(), getGaCalcSettings(courseId)]).then(([open, fit, calc]) => {
+        gaOpen = open;
+        gaFitY = fit;
+        gaCalc = calc;
+        const panel = ensureGradeAnalyticsPanel();
+        if (panel) applyGaCalcState(panel);
+        if (gaOpen && gaData) renderGradeAnalytics();
+    });
+    if (!gaData && !gaLoading) loadGradeAnalytics();
+}
+
+let gaSyncRaf = null;
+function scheduleGradeAnalyticsSync() {
+    if (gaSyncRaf) return;
+    gaSyncRaf = requestAnimationFrame(() => {
+        gaSyncRaf = null;
+        syncGradeAnalyticsUI();
+    });
+}
+
+function syncGradeAnalyticsUI() {
+    if (!gradeAnalyticsActive()) return;
+    const panel = ensureGradeAnalyticsPanel();
+    if (!panel) return;
+    // Imagine-If: Canvas re-renders can wipe the overwritten Total block or
+    // swap in a new grades table (grading-period switch) — reapply, and
+    // rebuild the scenario when the table's rows changed.
+    if (gaImagineIf) {
+        gaRenderImagineIf();
+        gaApplyImagineTotal();
+    }
+    // Self-heal: the one-shot render after data loads can be a no-op when the
+    // panel was created before Canvas finished laying out the page (zero-size
+    // canvases) or while the body was still hidden. gaSetupCanvas leaves the
+    // canvas backing store at width 0 in that case, so a 0-width canvas means
+    // "never drawn" — redraw now that layout is real.
+    if (gaOpen && gaData) {
+        const pie = panel.querySelector("#canvasrefined-ga-pie");
+        const line = panel.querySelector("#canvasrefined-ga-line");
+        if ((pie && pie.width === 0) || (line && line.width === 0)) {
+            renderGradeAnalytics();
+        }
+    }
+}
+
+function removeGradeAnalyticsPanel() {
+    gaOpen = false;
+    if (gaChartObserver) { gaChartObserver.disconnect(); gaChartObserver = null; }
+    // Never leave a hypothetical Total or inline editors behind when the
+    // panel goes away.
+    gaClearImagineUI();
+    gaRestoreImagineTotal();
+    document.getElementById("canvasrefined-grade-analytics")?.remove();
+}
+
+// Applies the in-memory open/closed state (restored from storage) to the panel
+// DOM. Called both at panel creation and whenever an already-attached panel
+// is reused, so a stored preference is never lost to a creation race (the DOM
+// observer can build the panel before the storage read resolves).
+function applyGradeAnalyticsOpenState(panel) {
+    const body = panel.querySelector("#canvasrefined-ga-body");
+    const btn = panel.querySelector("#canvasrefined-ga-toggle");
+    if (!body || !btn) return;
+    body.style.display = gaOpen ? "" : "none";
+    const svg = btn.querySelector("svg");
+    if (svg) svg.style.transform = gaOpen ? "rotate(180deg)" : "rotate(0deg)";
+    btn.setAttribute("aria-expanded", String(gaOpen));
+}
+
+// Syncs the "Imagine-If mode" button's DOM to the in-memory state.
+// Called at panel creation and whenever an already-attached panel is
+// reused, mirroring applyGradeAnalyticsOpenState.
+function applyGradeAnalyticsImagineState(panel) {
+    const btn = panel.querySelector("#canvasrefined-ga-imagine");
+    if (!btn) return;
+    btn.setAttribute("aria-pressed", String(gaImagineIf));
+    btn.style.borderColor = gaImagineIf ? "#2563eb" : "var(--bcborders)";
+    btn.style.color = gaImagineIf ? "#2563eb" : "var(--bctext-0)";
+    btn.style.fontWeight = gaImagineIf ? "600" : "";
+}
+
+// Panel is injected directly below the "Print Grades" action header on the
+// grades page. Returns null (and retries via the DOM observer) if the anchor
+// hasn't rendered yet.
+function ensureGradeAnalyticsPanel() {
+    let panel = document.getElementById("canvasrefined-grade-analytics");
+    const anchor = document.getElementById("print-grades-container");
+    if (panel && panel.isConnected) {
+        // Canvas re-renders can shift the anchor or our position; keep the
+        // panel directly after #print-grades-container at all times.
+        if (anchor && panel.previousElementSibling !== anchor) {
+            anchor.insertAdjacentElement("afterend", panel);
+        }
+        // Re-apply the open/closed state in case it was restored from storage
+        // after this panel was first created.
+        applyGradeAnalyticsOpenState(panel);
+        applyGradeAnalyticsImagineState(panel);
+        return panel;
+    }
+    const container = anchor || findContentContainer();
+    if (!container) return null;
+    panel = document.createElement("div");
+    panel.id = "canvasrefined-grade-analytics";
+    if (anchor) {
+        anchor.insertAdjacentElement("afterend", panel);
+    } else {
+        // Fallback: top of the content container until the anchor renders.
+        container.insertBefore(panel, container.firstChild);
+    }
+    panel.style.cssText = `margin:18px 0;padding:16px;border:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);border-radius:10px;background-color:var(--bcbackground-0);color:var(--bctext-0);font-family:"Lato","Helvetica Neue",Helvetica,Arial,sans-serif;box-sizing:border-box;`;
+    panel.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;">
+            <h2 style="margin:0;font-size:18px;color:var(--bctext-0);">Grade Analytics</h2>
+            <button id="canvasrefined-ga-imagine" type="button" aria-pressed="false" title="Toggle Imagine-If mode" style="margin-left:auto;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:8px;padding:4px 12px;font-size:14px;line-height:1.4;cursor:pointer;">Imagine-If mode</button>
+            <button id="canvasrefined-ga-toggle" type="button" aria-expanded="true" title="Toggle Grade Analytics" style="background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:8px;padding:4px 12px;font-size:14px;line-height:1.4;cursor:pointer;"><svg style="transform:rotate(180deg);display:block;" fill="currentColor" width="16px" height="16px" viewBox="-6.5 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.6"><g stroke-width="0"/><g stroke-linecap="round" stroke-linejoin="round"/><path d="M18.813 11.406l-7.906 9.906c-0.75 0.906-1.906 0.906-2.625 0l-7.906-9.906c-0.75-0.938-0.375-1.656 0.781-1.656h16.875c1.188 0 1.531 0.719 0.781 1.656z"/></svg></button>
+        </div>
+        <div id="canvasrefined-ga-body">
+        <p id="canvasrefined-ga-status" style="margin:0 0 10px;color:var(--bctext-1);font-size:13px;">Loading grade data…</p>
+        <div id="canvasrefined-ga-tabs" style="display:flex;gap:4px;border-bottom:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);margin-bottom:14px;">
+            <button type="button" data-ga-tab="overview" style="${gaTabStyle(true)}">Overview</button>
+            <button type="button" data-ga-tab="calc" style="${gaTabStyle(false)}">Final Calculator</button>
+            <button type="button" data-ga-tab="heatmap" style="${gaTabStyle(false)}">Heatmap</button>
+        </div>
+        <div id="canvasrefined-ga-tab-overview">
+        <div id="canvasrefined-ga-stats" style="display:none;flex-wrap:wrap;gap:10px;margin-bottom:14px;"></div>
+        <div id="canvasrefined-ga-charts" style="display:none;gap:24px;flex-wrap:wrap;">
+            <div id="canvasrefined-ga-box-pie" style="flex:1 1 calc(33.333% - 8px);min-width:0;">
+                <h3 style="margin:0 0 8px;font-size:14px;color:var(--bctext-0);">Score distribution (graded assignments)</h3>
+                <div style="position:relative;height:280px;"><canvas id="canvasrefined-ga-pie"></canvas><div id="canvasrefined-ga-pie-tip" style="position:absolute;display:none;pointer-events:none;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:6px;padding:6px 10px;font-size:12px;z-index:10;white-space:nowrap;"></div></div>
+            </div>
+            <div id="canvasrefined-ga-box-line" style="flex:1 1 calc(66.666% - 16px);min-width:0;">
+                <div style="display:flex;align-items:center;gap:10px;margin:0 0 8px;">
+                    <h3 style="margin:0;font-size:14px;color:var(--bctext-0);">Overall grade over time</h3>
+                    <label for="canvasrefined-ga-fity" style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--bctext-1);cursor:pointer;user-select:none;"><input type="checkbox" id="canvasrefined-ga-fity"> Fit Y axis</label>
+                </div>
+                <div style="position:relative;height:280px;"><canvas id="canvasrefined-ga-line"></canvas><div id="canvasrefined-ga-line-tip" style="position:absolute;display:none;pointer-events:none;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:6px;padding:8px 10px;font-size:12px;z-index:20;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,0.25);"></div></div>
+            </div>
+        </div>
+        </div>
+        <div id="canvasrefined-ga-tab-calc" style="display:none;">
+            <div style="max-width:620px;">
+                <p style="margin:0 0 14px;color:var(--bctext-1);font-size:13px;">Enter how much your final is worth and the overall grade you want to show see what grade you need on the final.</p>
+                <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+                    <label style="flex:1 1 200px;font-size:12px;color:var(--bctext-1);">Final exam weight (% of grade)
+                        <input id="canvasrefined-ga-calc-weight" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="20" style="display:block;width:100%;margin-top:4px;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--bcborders);background:var(--bcbackground-1);color:var(--bctext-0);font-size:15px;">
+                    </label>
+                    <label style="flex:1 1 200px;font-size:12px;color:var(--bctext-1);">Target overall grade (%)
+                        <input id="canvasrefined-ga-calc-target" type="number" min="0" step="0.1" inputmode="decimal" placeholder="90" style="display:block;width:100%;margin-top:4px;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--bcborders);background:var(--bcbackground-1);color:var(--bctext-0);font-size:15px;">
+                    </label>
+                </div>
+                <label for="canvasrefined-ga-calc-show" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--bctext-0);cursor:pointer;user-select:none;margin-bottom:14px;"><input type="checkbox" id="canvasrefined-ga-calc-show"> Show grade goal on the overview</label>
+                <div id="canvasrefined-ga-calc-result" style="padding:12px 16px;border-radius:8px;background:var(--bcbackground-1);border:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);font-size:14px;"></div>
+            </div>
+        </div>
+        <div id="canvasrefined-ga-tab-heatmap" style="display:none;position:relative;">
+            <div style="overflow-x:auto;max-width:100%;padding:2px 2px 6px;">
+                <div id="canvasrefined-ga-heatmap-grid" style="display:inline-flex;gap:4px;"></div>
+            </div>
+            <div id="canvasrefined-ga-heatmap-note" style="margin:0;color:var(--bctext-1);font-size:12px;"></div>
+            <div style="display:flex;align-items:center;gap:4px;margin-top:8px;font-size:11px;color:var(--bctext-1);">
+                <span>0%</span>
+                <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[0]};"></span>
+                <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[5]};"></span>
+                <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[10]};"></span>
+                <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[15]};"></span>
+                <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[19]};"></span>
+                <span>100%</span>
+                <span style="margin-left:12px;display:inline-flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:color-mix(in srgb, var(--bctext-1) 20%, transparent);"></span>No grade/assignment</span>
+            </div>
+            <style>#canvasrefined-grade-analytics .canvasrefined-ga-hcell:hover{outline:1px solid var(--bctext-0);outline-offset:1px;}</style>
+            <div id="canvasrefined-ga-heatmap-tip" style="position:absolute;display:none;pointer-events:none;z-index:100;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:6px;padding:6px 10px;font-size:12px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,0.25);"></div>
+        </div>
+        </div>
+    `;
+    const toggleBtn = panel.querySelector("#canvasrefined-ga-toggle");
+    const imagineBtn = panel.querySelector("#canvasrefined-ga-imagine");
+    const fitYCheckbox = panel.querySelector("#canvasrefined-ga-fity");
+    const applyOpenState = () => applyGradeAnalyticsOpenState(panel);
+    toggleBtn.addEventListener("click", () => {
+        gaOpen = !gaOpen;
+        setGradeAnalyticsOpenState(gaOpen);
+        applyOpenState();
+        if (gaOpen && gaData) renderGradeAnalytics();
+    });
+    // "Imagine-If mode" button on the right side of the panel header. The
+    // toggle is per-page-view only (always off on load); the active style
+    // highlights the button while the mode is on.
+    imagineBtn.addEventListener("click", () => {
+        gaImagineIf = !gaImagineIf;
+        applyGradeAnalyticsImagineState(panel);
+        if (gaImagineIf) gaEnterImagineIf();
+        else gaExitImagineIf();
+    });
+    // "Fit Y axis" scales the line chart's Y axis to the data instead of a
+    // fixed 0-100; the choice is remembered across pages via chrome.storage.
+    fitYCheckbox.checked = gaFitY;
+    fitYCheckbox.addEventListener("change", () => {
+        gaFitY = fitYCheckbox.checked;
+        setGradeAnalyticsFitY(gaFitY);
+        if (gaData) {
+            gaDrawLine(panel.querySelector("#canvasrefined-ga-line"), panel.querySelector("#canvasrefined-ga-line-tip"));
+        }
+    });
+    // Tab switching between the charts overview and the final calculator.
+    panel.querySelectorAll("[data-ga-tab]").forEach(btn => {
+        btn.addEventListener("click", () => gaSetTab(btn.dataset.gaTab));
+    });
+    // Final-grade calculator inputs persist per course; every change re-saves
+    // and recomputes the result against the live current grade.
+    const calcWeight = panel.querySelector("#canvasrefined-ga-calc-weight");
+    const calcTarget = panel.querySelector("#canvasrefined-ga-calc-target");
+    const calcShow = panel.querySelector("#canvasrefined-ga-calc-show");
+    const onCalcInput = () => {
+        gaCalc = gaCalc || { weight: null, target: null, show: false };
+        const w = parseFloat(calcWeight.value);
+        const t = parseFloat(calcTarget.value);
+        gaCalc.weight = isFinite(w) ? Math.min(100, Math.max(0, w)) : null;
+        gaCalc.target = isFinite(t) ? Math.max(0, t) : null;
+        gaCalc.show = calcShow.checked;
+        saveGaCalcSettings();
+        renderGaCalculator();
+        renderGaStats();
+    };
+    calcWeight.addEventListener("input", onCalcInput);
+    calcTarget.addEventListener("input", onCalcInput);
+    calcShow.addEventListener("change", onCalcInput);
+    applyGaCalcState(panel);
+    applyGradeAnalyticsImagineState(panel);
+    applyOpenState();
+    // If the data finished loading before this panel was created (or before
+    // the stored open state was restored), the earlier render call found no
+    // panel — draw the charts now that it exists.
+    if (gaOpen && gaData) renderGradeAnalytics();
+    // A chart skipped because its box had no size (page still laying out,
+    // tab/panel hidden) is left at width 0; this observer redraws the moment
+    // the boxes get real dimensions, even when no DOM mutation or window
+    // resize follows.
+    if (gaChartObserver) gaChartObserver.disconnect();
+    gaChartObserver = new ResizeObserver(() => {
+        if (!gaOpen || !gaData) return;
+        const pie = panel.querySelector("#canvasrefined-ga-pie");
+        const line = panel.querySelector("#canvasrefined-ga-line");
+        if ((pie && pie.width === 0) || (line && line.width === 0)) renderGradeAnalytics();
+    });
+    gaChartObserver.observe(panel.querySelector("#canvasrefined-ga-pie").parentNode);
+    gaChartObserver.observe(panel.querySelector("#canvasrefined-ga-line").parentNode);
+    return panel;
+}
+
+async function loadGradeAnalytics() {
+    const courseId = getCurrentCourseId();
+    if (courseId == null) return;
+    gaLoading = true;
+    const status = document.getElementById("canvasrefined-ga-status");
+    if (status) status.textContent = "Reading grade data…";
+    try {
+        // Parse the grades table the page already rendered instead of hitting
+        // the paginated API — instant even for courses with hundreds of
+        // assignments, and always in sync with what the page shows.
+        const table = await gaWaitForGradesTable();
+        gaCourseId = courseId;
+        gaData = computeGradeAnalyticsFromPage(table);
+        gaLoading = false;
+        // renderGradeAnalytics self-guards on panel existence and canvas
+        // size; if the panel isn't ready yet, the retry in
+        // ensureGradeAnalyticsPanel / syncGradeAnalyticsUI draws once it is.
+        renderGradeAnalytics();
+    } catch (err) {
+        logError(err);
+        const s = document.getElementById("canvasrefined-ga-status");
+        if (s) s.textContent = "Grade Analytics failed to load: " + (err && err.message ? err.message : err);
+    } finally {
+        gaLoading = false;
+    }
+}
+
+// Parses one assignment row of #grades_summary into a plain record. The row
+// stashes the original posted score in a hidden "original_score" span (the
+// "original_points" span holds points EARNED, not possible), while points
+// possible is only in the "/ 15" span displayed after the grade.
+function gaParseNum(t) {
+    if (!t) return null;
+    let s = String(t).replace(/\s+/g, "");
+    if (s === "" || !/\d/.test(s)) return null;
+    // Normalize "1,234.5" (thousands grouping) and "9,5" (comma decimal).
+    if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, "");
+    else if (/^-?\d+,\d+$/.test(s)) s = s.replace(",", ".");
+    const v = parseFloat(s);
+    return isFinite(v) ? v : null;
+}
+
+function gaParseAssignmentRow(tr) {
+    const q = (sel) => tr.querySelector(sel);
+    const titleLink = q(".title a");
+    const possibleText = q(".tooltip .grade + span")?.textContent || "";
+    return {
+        title: (titleLink ? titleLink.textContent : (q("th.title")?.textContent || "")).trim(),
+        score: gaParseNum(q(".original_score")?.textContent),
+        points: gaParseNum(possibleText.replace(/^.*\//, "")),
+        // Rows the page lists as unsubmitted/unposted carry no score; only
+        // "graded" rows have one.
+        status: (q(".submission_status")?.textContent || "").trim(),
+        gid: (q(".assignment_group_id")?.textContent || "").trim(),
+        due: (q("td.due")?.textContent || "").replace(/\s+/g, " ").trim(),
+    };
+}
+
+function computeGradeAnalyticsFromPage(table) {
+    // Assignment group weights come from the "group total" summary rows
+    // (e.g. "Summative Assessment — 86.67%, weight 85").
+    const groupWeight = {};
+    for (const tr of table.querySelectorAll("tr.group_total")) {
+        const gid = tr.querySelector(".assignment_group_id")?.textContent.trim();
+        const w = parseFloat((tr.querySelector(".group_weight")?.textContent || "").trim());
+        if (gid) groupWeight[gid] = isFinite(w) ? w : 0;
+    }
+    const totalWeight = Object.values(groupWeight).reduce((s, w) => s + w, 0);
+
+    // The page's own computed Total (e.g. "91.1%") — use it directly so the
+    // "Overall grade" stat always matches the page.
+    let pageTotal = null;
+    const totalText = table.querySelector("tr.final_grade .grade")?.textContent || "";
+    const totalMatch = totalText.match(/-?\d+(?:\.\d+)?/);
+    if (totalMatch) pageTotal = parseFloat(totalMatch[0]);
+
+    // Rows are already listed in due-date order; skip the summary rows (they
+    // carry the student_assignment class too).
+    const rows = [...table.querySelectorAll("tr.student_assignment")]
+        .filter(tr => !tr.classList.contains("group_total") && !tr.classList.contains("final_grade"))
+        .map(gaParseAssignmentRow);
+
+    const counts = GA_BUCKETS.map(() => 0);
+    let ungraded = 0;
+    const graded = [];
+    for (const a of rows) {
+        if (a.points == null || a.points <= 0) continue; // no points possible
+        if (a.score == null) { ungraded++; continue; }    // unposted / unsubmitted
+        graded.push(a);
+        const pct = (a.score / a.points) * 100;
+        const idx = GA_BUCKETS.findIndex(b => pct >= b.min && pct < b.max);
+        counts[idx >= 0 ? idx : GA_BUCKETS.length - 1]++;
+    }
+
+    // Running overall grade, in the page's row order, using Canvas's own
+    // weighting algorithm (GradeCalculator): sum each group's pct × weight
+    // over groups that have graded work, then scale up to 100% only when
+    // those weights total less than 100 (weights over 100 are used raw and
+    // can push the grade past 100). Verified to reproduce the Total shown
+    // on the page. Point-based courses (no group weights) use points
+    // earned / points possible.
+    const running = {};
+    const pointsGrade = () => {
+        let s = 0, p = 0;
+        for (const g of Object.values(running)) { s += g.score; p += g.pts; }
+        return p > 0 ? (s / p) * 100 : null;
+    };
+    const points = graded.map(a => {
+        const r = (running[a.gid] ||= { score: 0, pts: 0 });
+        r.score += a.score;
+        r.pts += a.points;
+        let grade = null;
+        if (totalWeight > 0) {
+            let weighted = 0, fullWeight = 0;
+            for (const gid of Object.keys(running)) {
+                const g = running[gid];
+                if (g.pts <= 0) continue;
+                const w = groupWeight[gid] || 0;
+                weighted += (g.score / g.pts) * w;
+                fullWeight += w;
+            }
+            // Only zero-weighted groups have graded work — fall back to
+            // points so the chart still has a line.
+            grade = fullWeight > 0 ? (fullWeight < 100 ? (weighted / fullWeight) * 100 : weighted) : pointsGrade();
+        } else {
+            grade = pointsGrade();
+        }
+        return {
+            title: a.title,
+            score: a.score,
+            points: a.points,
+            pct: (a.score / a.points) * 100,
+            grade,
+            due: a.due,
+        };
+    });
+
+    const pcts = graded.map(a => (a.score / a.points) * 100);
+    // Trend: change in the running overall grade over the last 5 graded
+    // assignments (or since the first, if fewer). Positive = climbing.
+    let trend = null;
+    if (points.length >= 2) {
+        const from = points[Math.max(0, points.length - 1 - 5)].grade;
+        const to = points[points.length - 1].grade;
+        if (from != null && to != null) trend = to - from;
+    }
+    return {
+        counts,
+        ungraded,
+        graded: graded.length,
+        avg: pcts.length ? pcts.reduce((s, p) => s + p, 0) / pcts.length : null,
+        current: pageTotal != null ? pageTotal : (points.length ? points[points.length - 1].grade : null),
+        trend,
+        points,
+    };
+}
+
+// Stat cards row on the Overview tab. The optional "Grade goal" card appears
+// when the final calculator's "show" checkbox is on; it recomputes against
+// the live current grade so it stays accurate as new grades come in.
+function renderGaStats() {
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (!panel || !gaData) return;
+    const stats = panel.querySelector("#canvasrefined-ga-stats");
+    if (!stats) return;
+    stats.style.display = "flex";
+    const stat = (cap, val, color) =>
+        `<div style="padding:8px 14px;border-radius:8px;background:var(--bcbackground-1);"><div style="font-size:18px;font-weight:700;color:${color || "var(--bctext-0)"};">${val}</div><div style="font-size:11px;text-transform:uppercase;color:var(--bctext-1);">${cap}</div></div>`;
+    // Trend card: arrow + colored delta of the overall grade over the last 5
+    // graded assignments (green climbing, red falling, grey steady).
+    let trendVal = "-", trendColor = "var(--bctext-0)";
+    if (gaData.trend != null) {
+        if (gaData.trend > 0.05) { trendVal = "\u25B2 +" + gaData.trend.toFixed(1) + "%"; trendColor = "#16a34a"; }
+        else if (gaData.trend < -0.05) { trendVal = "\u25BC " + gaData.trend.toFixed(1) + "%"; trendColor = "#dc2626"; }
+        else { trendVal = "\u25BA " + gaData.trend.toFixed(1) + "%"; trendColor = "var(--bctext-1)"; }
+    }
+    // Grade goal card from the Final Calculator tab: the score needed on the
+    // final to hit the stored target grade.
+    let goalStat = "";
+    if (gaCalc && gaCalc.show && gaCalc.weight > 0 && gaCalc.target != null && gaData.current != null) {
+        const w = gaCalc.weight / 100;
+        const needed = (gaCalc.target - gaData.current * (1 - w)) / w;
+        let val, color;
+        if (needed <= 0) { val = "\u2713 Secured"; color = "#16a34a"; }
+        else if (needed > 100) { val = "Out of reach"; color = "#dc2626"; }
+        else { val = "\u2265 " + needed.toFixed(1) + "%"; color = gaNeededColor(needed); }
+        goalStat = stat("Final Exam", val, color);
+    }
+    stats.innerHTML =
+        stat("Overall grade", gaData.current == null ? "-" : gaData.current.toFixed(1) + "%") +
+        stat("Grade trend (last 5)", trendVal, trendColor) +
+        stat("Graded", gaData.graded) +
+        stat("Ungraded", gaData.ungraded) +
+        goalStat;
+}
+
+function renderGradeAnalytics() {
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (!panel || !gaData) return;
+    const status = panel.querySelector("#canvasrefined-ga-status");
+    if (status) status.style.display = "none";
+
+    renderGaStats();
+
+    const charts = panel.querySelector("#canvasrefined-ga-charts");
+    charts.style.display = "flex";
+    const fitYBox = panel.querySelector("#canvasrefined-ga-fity");
+    if (fitYBox) fitYBox.checked = gaFitY;
+
+    gaDrawPie(panel.querySelector("#canvasrefined-ga-pie"), panel.querySelector("#canvasrefined-ga-pie-tip"));
+    gaDrawLine(panel.querySelector("#canvasrefined-ga-line"), panel.querySelector("#canvasrefined-ga-line-tip"));
+    renderGaHeatmap();
+    renderGaCalculator();
+}
+
+// --- Final Calculator tab --------------------------------------------------
+
+// Inline style for one panel tab button; the active tab gets the accent
+// underline, matching how the rest of the panel is styled inline.
+function gaTabStyle(active) {
+    return `background:transparent;border:none;padding:6px 14px;font-size:14px;font-weight:600;cursor:pointer;color:${active ? "var(--bctext-0)" : "var(--bctext-1)"};border-bottom:2px solid ${active ? "#2563eb" : "transparent"};`;
+}
+
+function gaSetTab(tab) {
+    gaTab = tab;
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (!panel) return;
+    for (const name of ["overview", "calc", "heatmap"]) {
+        const el = panel.querySelector(`#canvasrefined-ga-tab-${name}`);
+        if (el) el.style.display = name === tab ? "" : "none";
+    }
+    panel.querySelectorAll("[data-ga-tab]").forEach(btn => {
+        const active = btn.dataset.gaTab === tab;
+        btn.style.color = active ? "var(--bctext-0)" : "var(--bctext-1)";
+        btn.style.borderBottomColor = active ? "#2563eb" : "transparent";
+    });
+    if (tab === "overview") {
+        // The canvases were zero-size while the tab was hidden; redraw now
+        // that it's visible again.
+        if (gaOpen && gaData) renderGradeAnalytics();
+    } else if (tab === "heatmap") {
+        renderGaHeatmap();
+    } else {
+        renderGaCalculator();
+    }
+}
+
+// Severity color for an arbitrary score percentage — the same palette the
+// doughnut / zone charts use, so a 70 renders yellow, an 85 green, etc.
+function gaSeverityColor(pct) {
+    if (pct == null || !isFinite(pct)) return "var(--bctext-0)";
+    const b = GA_BUCKETS.find(b => pct >= b.min && pct < b.max);
+    return (b || GA_BUCKETS[GA_BUCKETS.length - 1]).color;
+}
+
+// Inverted severity for the final calculator: a LOW required score is good
+// (needing only 10% on the final is comfortably green), a high one is bad.
+// Own scale, independent of the grade chart palette: needing ≥95% on the
+// final is red, 75–94% yellow, and ≤74% green.
+const GA_NEEDED_COLORS = [
+    { min: 95, color: "#dc2626" },
+    { min: 75, color: "#facc15" },
+    { min: 0,  color: "#16a34a" },
+];
+
+function gaNeededColor(needed) {
+    if (needed == null || !isFinite(needed)) return "var(--bctext-0)";
+    const b = GA_NEEDED_COLORS.find(b => needed >= b.min);
+    return (b || GA_NEEDED_COLORS[GA_NEEDED_COLORS.length - 1]).color;
+}
+
+// Pushes the stored calculator settings into the tab's inputs without
+// clobbering a field the user is actively typing in.
+function applyGaCalcState(panel) {
+    const w = panel.querySelector("#canvasrefined-ga-calc-weight");
+    const t = panel.querySelector("#canvasrefined-ga-calc-target");
+    const s = panel.querySelector("#canvasrefined-ga-calc-show");
+    if (!w || !t || !s) return;
+    if (document.activeElement !== w) w.value = gaCalc && gaCalc.weight != null ? gaCalc.weight : "";
+    if (document.activeElement !== t) t.value = gaCalc && gaCalc.target != null ? gaCalc.target : "";
+    s.checked = !!(gaCalc && gaCalc.show);
+    renderGaCalculator();
+}
+
+// Renders the calculator result: needed = (target − current·(1−w)) / w, where
+// w is the final's weight. Always recomputed from the live current grade so
+// stored goals stay accurate after reloads and as new grades post.
+function renderGaCalculator() {
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (!panel) return;
+    const box = panel.querySelector("#canvasrefined-ga-calc-result");
+    if (!box) return;
+    if (!gaCalc || gaCalc.weight == null || !(gaCalc.weight > 0) || gaCalc.target == null) {
+        box.innerHTML = `<span style="color:var(--bctext-1);">Enter your final's weight and your target grade to see what you need on the final.</span>`;
+        return;
+    }
+    const w = gaCalc.weight / 100;
+    const target = gaCalc.target;
+    const current = gaData ? gaData.current : null;
+    if (current == null) {
+        box.innerHTML = `<span style="color:var(--bctext-1);">Waiting for grade data…</span>`;
+        return;
+    }
+    const needed = (target - current * (1 - w)) / w;
+    const withZero = current * (1 - w);
+    const withPerfect = withZero + 100 * w;
+    let head, sub;
+    if (needed <= 0) {
+        head = `<span style="font-size:20px;font-weight:700;color:#16a34a;">You're already there!</span>`;
+        sub = `Even a 0 on the final leaves you at <b>${withZero.toFixed(1)}%</b>, which is above your <b>${target}%</b> goal.`;
+    } else if (needed > 100) {
+        head = `<span style="font-size:20px;font-weight:700;color:#dc2626;">Out of reach</span>`;
+        sub = `Even a perfect final only gets you to <b>${withPerfect.toFixed(1)}%</b>, which is below your <b>${target}%</b> goal.`;
+    } else {
+        head = `<span style="font-size:20px;font-weight:700;color:${gaNeededColor(needed)};">You need ≥ ${needed.toFixed(1)}% on the final</span>`;
+        sub = `You got this!`;
+    }
+    box.innerHTML = head + `<div style="margin-top:6px;color:var(--bctext-1);font-size:13px;">${sub}</div>`;
+}
+
+// --- Heatmap tab ----------------------------------------------------------
+
+// One week cell in the heatmap strip: one square per Sunday–Saturday week,
+// laid out left to right — 16px squares with 4px gaps. Weekly (not daily)
+// buckets keep a whole semester compact instead of a sparse daily grid.
+// One day cell in the calendar heatmap: 13px squares with 3px gaps,
+// GitHub-style columns of Sunday–Saturday weeks.
+const GA_HM_CELL = 13;
+const GA_HM_GAP = 3;
+const GA_HM_MONTH_H = 16; // vertical room for the month labels above the grid
+let gaHeatmapToken = null; // identifies the data the grid was last built from
+
+// Color for a day's average score — the same 5%-banded red→green palette
+// the line chart's zones use, so an 84% day matches an 84% zone.
+function gaHeatmapColor(avg) {
+    return GA_ZONE_COLORS[Math.max(0, Math.min(GA_ZONE_COLORS.length - 1, Math.floor(avg / 5)))];
+}
+
+// Minimal HTML escaping for assignment titles that go into tooltips.
+function gaEscHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+// Groups the graded assignments by due DATE. The grades table only renders
+// "Sep 23"-style due dates (no year), so years are reconstructed: the table
+// rows are in chronological order, so a month that steps backwards means the
+// calendar wrapped into a new year; the base year is then chosen so the last
+// due date isn't more than ~6 weeks in the future. Returns null when no
+// graded assignment has a parseable due date.
+function gaBuildHeatmapData() {
+    if (!gaData || !Array.isArray(gaData.points) || !gaData.points.length) return null;
+    const parsed = [];
+    for (const p of gaData.points) {
+        const m = /^([A-Za-z]{3})\s+(\d{1,2})/.exec((p.due || "").trim());
+        if (!m) continue;
+        const mo = months.findIndex(x => x.toLowerCase() === m[1].toLowerCase());
+        const day = parseInt(m[2], 10);
+        if (mo < 0 || day < 1 || day > 31) continue;
+        parsed.push({ p, mo, day });
+    }
+    if (!parsed.length) return null;
+    // Reconstruct years WITHOUT assuming the rows are in due-date order —
+    // the table isn't sorted by date when Canvas arranges it by assignment
+    // group, and the old "month stepped backwards ⇒ new year" detection
+    // snowballed on that, landing dates decades off. A course spans at most
+    // ~12 months, so instead: find the month rotation that packs every due
+    // month into the shortest window (months before the rotation wrap into
+    // the following year), then pick the base year whose window actually
+    // contains today — or, failing that, the latest window entirely in the
+    // past.
+    const present = [...new Set(parsed.map(e => e.mo))];
+    let rho = 0, bestSpan = 12;
+    for (let r = 0; r < 12; r++) {
+        let lo = 12, hi = -1;
+        for (const m of present) {
+            const u = (m - r + 12) % 12;
+            if (u < lo) lo = u;
+            if (u > hi) hi = u;
+        }
+        if (hi - lo < bestSpan) { bestSpan = hi - lo; rho = r; }
+    }
+    const thisYear = new Date().getFullYear();
+    const now = Date.now(), grace = 45 * 86400000;
+    const mkDate = (e, y) => new Date(y + (e.mo < rho ? 1 : 0), e.mo, e.day);
+    let base = null;
+    for (let y = thisYear + 1; y >= thisYear - 2 && base == null; y--) {
+        const ds = parsed.map(e => mkDate(e, y).getTime());
+        if (Math.min(...ds) <= now && now <= Math.max(...ds) + grace) base = y;
+    }
+    if (base == null) {
+        for (let y = thisYear; y >= thisYear - 3 && base == null; y--) {
+            if (parsed.every(e => mkDate(e, y).getTime() <= now + grace)) base = y;
+        }
+    }
+    if (base == null) base = thisYear;
+    const abs = (e) => mkDate(e, base);
+    // Bucket by calendar day; multiple assignments due the same day pool into
+    // one cell colored by their average score.
+    const byDay = new Map();
+    let min = null, max = null;
+    for (const e of parsed) {
+        const d = abs(e);
+        const key = d.getTime();
+        let cell = byDay.get(key);
+        if (!cell) {
+            cell = { date: d, sum: 0, items: [] };
+            byDay.set(key, cell);
+            if (min == null || d.getTime() < min.getTime()) min = d;
+            if (max == null || d.getTime() > max.getTime()) max = d;
+        }
+        cell.sum += e.p.pct;
+        cell.items.push(e.p);
+    }
+    return { byDay, min, max, undated: gaData.points.length - parsed.length };
+}
+
+// Tooltip anchored beside the hovered day cell. Positioning is relative to
+// the heatmap tab (the tip's offsetParent), NOT the viewport: position:fixed
+// is unreliable here because ancestors with transforms/backdrop-filters
+// (Better Sidebar's glass panels, Canvas layout) redefine the containing
+// block, which sent a fixed-position tooltip to the wrong part of the page.
+function gaHeatmapShowTip(tip, e, cell, avg) {
+    const d = cell.date;
+    const rows = cell.items.map(p =>
+        `<div style="margin-top:2px;color:var(--bctext-1);">${gaEscHtml(p.title)} — <b style="color:${gaHeatmapColor(p.pct)};">${p.pct.toFixed(1)}%</b></div>`).join("");
+    tip.innerHTML = `<b>${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}</b> — avg <b style="color:${gaHeatmapColor(avg)};">${avg.toFixed(1)}%</b><div style="margin-top:4px;font-size:11px;color:var(--bctext-1);">${cell.items.length} assignment${cell.items.length === 1 ? "" : "s"}:</div>${rows}`;
+    tip.style.display = "block";
+    const host = tip.offsetParent || tip.parentNode;
+    const hostRect = host.getBoundingClientRect();
+    const cellRect = e.target.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    // Beside the cell, vertically centered on it; flip to the left when the
+    // right edge is tight, and clamp inside the tab's box.
+    let left = cellRect.right - hostRect.left + 6;
+    if (left + tw > host.clientWidth - 4) left = Math.max(4, cellRect.left - hostRect.left - tw - 6);
+    let top = cellRect.top - hostRect.top + (cellRect.height - th) / 2;
+    top = Math.min(Math.max(4, top), Math.max(4, host.clientHeight - th - 4));
+    tip.style.left = left + "px";
+    tip.style.top = top + "px";
+}
+
+// Builds the GitHub-style calendar: weekday labels down the left (Mon/Wed/
+// Fri only), one column per Sunday–Saturday week, month labels across the
+// top, one colored square per day (that day's average score). Pure DOM (no
+// canvas) so it needs no redraw on resize; a token guards against rebuilds
+// when renderGradeAnalytics re-fires for the same data.
+function renderGaHeatmap() {
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (!panel) return;
+    const grid = panel.querySelector("#canvasrefined-ga-heatmap-grid");
+    const note = panel.querySelector("#canvasrefined-ga-heatmap-note");
+    const tip = panel.querySelector("#canvasrefined-ga-heatmap-tip");
+    if (!grid || !note || !tip) return;
+    const data = gaBuildHeatmapData();
+    const token = data ? `${gaCourseId}:${data.min.getTime()}:${data.max.getTime()}:${gaData.points.length}` : "none";
+    if (grid.childElementCount && gaHeatmapToken === token) return; // already built
+    gaHeatmapToken = token;
+    grid.textContent = "";
+    if (!data) {
+        note.textContent = "No graded assignments with due dates yet.";
+        return;
+    }
+    note.textContent = data.undated > 0
+        ? `${data.undated} graded assignment${data.undated === 1 ? "" : "s"} without a due date not shown.`
+        : "";
+    // Align the range out to full Sunday–Saturday weeks so columns never
+    // start mid-week.
+    const start = new Date(data.min);
+    start.setDate(start.getDate() - start.getDay());
+    const end = new Date(data.max);
+    end.setDate(end.getDate() + (6 - end.getDay()));
+    // Left weekday labels — sparse like GitHub's (Mon/Wed/Fri).
+    const labels = document.createElement("div");
+    labels.style.cssText = `display:flex;flex-direction:column;gap:${GA_HM_GAP}px;padding-top:${GA_HM_MONTH_H}px;`;
+    ["", "Mon", "", "Wed", "", "Fri", ""].forEach(t => {
+        const l = document.createElement("div");
+        l.style.cssText = `height:${GA_HM_CELL}px;font-size:9px;line-height:${GA_HM_CELL}px;color:var(--bctext-1);white-space:nowrap;`;
+        l.textContent = t;
+        labels.appendChild(l);
+    });
+    grid.appendChild(labels);
+    const wrap = document.createElement("div");
+    wrap.style.cssText = `position:relative;padding-top:${GA_HM_MONTH_H}px;`;
+    const cols = document.createElement("div");
+    cols.style.cssText = `display:flex;gap:${GA_HM_GAP}px;`;
+    wrap.appendChild(cols);
+    grid.appendChild(wrap);
+    const cursor = new Date(start);
+    let wk = 0, prevMonth = null;
+    while (cursor.getTime() <= end.getTime()) {
+        const col = document.createElement("div");
+        col.style.cssText = `display:flex;flex-direction:column;gap:${GA_HM_GAP}px;`;
+        // Month label across the top when this week's Thursday enters a new
+        // month (every month owns at least one Thursday, so none are
+        // skipped).
+        const thursday = new Date(cursor);
+        thursday.setDate(thursday.getDate() + 4);
+        if (prevMonth == null || thursday.getMonth() !== prevMonth) {
+            prevMonth = thursday.getMonth();
+            const lab = document.createElement("div");
+            lab.textContent = months[prevMonth];
+            lab.style.cssText = `position:absolute;top:0;left:${wk * (GA_HM_CELL + GA_HM_GAP)}px;font-size:10px;line-height:1;color:var(--bctext-1);white-space:nowrap;`;
+            wrap.appendChild(lab);
+        }
+        for (let d = 0; d < 7; d++) {
+            const cell = data.byDay.get(cursor.getTime());
+            const div = document.createElement("div");
+            div.className = "canvasrefined-ga-hcell";
+            div.style.cssText = `width:${GA_HM_CELL}px;height:${GA_HM_CELL}px;border-radius:3px;background:${cell ? gaHeatmapColor(cell.sum / cell.items.length) : "color-mix(in srgb, var(--bctext-1) 20%, transparent)"};`;
+            if (cell) {
+                const avg = cell.sum / cell.items.length;
+                div.addEventListener("mousemove", (e) => gaHeatmapShowTip(tip, e, cell, avg));
+                div.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+            }
+            col.appendChild(div);
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        cols.appendChild(col);
+        wk++;
+    }
+}
+
+// --- Canvas-drawn charts --------------------------------------------------
+
+function gaSetupCanvas(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.parentNode.clientWidth, h = canvas.parentNode.clientHeight;
+    // Zero size means the panel isn't visible/attached yet, so skip drawing —
+    // but mark the canvas "never drawn" (width 0) so the self-heal paths
+    // (syncGradeAnalyticsUI and the chart ResizeObserver) know to retry once
+    // it has real dimensions. A canvas that was never drawn defaults to
+    // width 300, so without this the zero-width "never drawn" check never
+    // matches and charts stay blank until a tab switch or panel toggle.
+    if (w <= 0 || h <= 0) {
+        canvas.width = 0;
+        canvas.height = 0;
+        return null;
+    }
+    canvas.width = Math.max(1, Math.round(w * dpr));
+    canvas.height = Math.max(1, Math.round(h * dpr));
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx, w, h };
+}
+
+function gaShowTooltip(el, x, y, html) {
+    el.innerHTML = html;
+    el.style.display = "block";
+    const parent = el.parentNode;
+    const tw = el.offsetWidth, th = el.offsetHeight;
+    // Place the tooltip beside the cursor/point so it never covers the chart
+    // underneath; flip to the left side when the right edge is tight.
+    let left = x + 14;
+    if (left + tw > parent.clientWidth) left = Math.max(0, x - tw - 14);
+    let top = y - th / 2;
+    top = Math.min(Math.max(0, top), Math.max(0, parent.clientHeight - th));
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+}
+
+function gaDrawPie(canvas, tooltip) {
+    const size = gaSetupCanvas(canvas);
+    if (!size || !gaData) return;
+    const { ctx, w, h } = size;
+    const cx = w / 2, cy = h / 2;
+    const r = Math.max(10, Math.min(w, h) / 2 - 10);
+    const slices = GA_BUCKETS.map((b, i) => ({ label: b.label, value: gaData.counts[i], color: b.color }))
+        .concat([{ label: "Ungraded", value: gaData.ungraded, color: GA_UNGRADED_COLOR }]);
+    const total = slices.reduce((s, x) => s + x.value, 0);
+    const arcs = [];
+    if (total === 0) {
+        ctx.strokeStyle = "#888";
+        ctx.lineWidth = r - r * 0.55;
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath(); ctx.arc(cx, cy, (r + r * 0.55) / 2, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#888"; ctx.textAlign = "center";
+        ctx.font = "13px Lato, sans-serif";
+        ctx.fillText("No graded assignments yet", cx, cy);
+    }
+    let start = -Math.PI / 2;
+    for (const s of slices) {
+        if (!s.value) continue;
+        const ang = (s.value / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, start, start + ang);
+        ctx.arc(cx, cy, r * 0.55, start + ang, start, true);
+        ctx.closePath();
+        ctx.fillStyle = s.color;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.9)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        arcs.push({ ...s, start, end: start + ang });
+        start += ang;
+    }
+    canvas._gaArcs = arcs;
+    canvas._gaCenter = { cx, cy, r };
+    if (canvas._gaHover) { canvas.removeEventListener("mousemove", canvas._gaHover); canvas.removeEventListener("mouseleave", canvas._gaLeave); }
+    canvas._gaHover = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left - canvas._gaCenter.cx;
+        const y = e.clientY - rect.top - canvas._gaCenter.cy;
+        const dist = Math.hypot(x, y);
+        const hit = canvas._gaArcs.find(a => {
+            let d = Math.atan2(y, x);
+            if (d < a.start) d += Math.PI * 2;
+            return dist <= canvas._gaCenter.r && dist >= canvas._gaCenter.r * 0.55 && d >= a.start && d <= a.end;
+        });
+        if (hit) gaShowTooltip(tooltip, e.clientX - rect.left, e.clientY - rect.top, `<b>${hit.label}</b>: ${hit.value} assignment${hit.value === 1 ? "" : "s"}`);
+        else tooltip.style.display = "none";
+    };
+    canvas._gaLeave = () => { tooltip.style.display = "none"; };
+    canvas.addEventListener("mousemove", canvas._gaHover);
+    canvas.addEventListener("mouseleave", canvas._gaLeave);
+}
+
+function gaDrawLine(canvas, tooltip) {
+    const size = gaSetupCanvas(canvas);
+    if (!size || !gaData) return;
+    const pts = gaData.points;
+    const { ctx, w, h } = size;
+    const pad = { l: 38, r: 12, t: 12, b: 26 };
+    const text = getComputedStyle(document.body).color || "#666";
+    ctx.font = "11px Lato, sans-serif";
+    // Y axis: fixed 0-100 by default, or scaled to fit the data when the user
+    // toggled "Fit Y axis" (persisted in chrome.storage.local).
+    let yMin = 0, yMax = 100;
+    if (gaFitY) {
+        const vals = pts.map(p => p.grade).filter(v => v != null);
+        if (vals.length) {
+            const lo = Math.min(...vals), hi = Math.max(...vals);
+            if (hi - lo < 1e-9) {
+                yMin = Math.max(0, lo - 5);
+                yMax = hi + 5;
+            } else {
+                const margin = (hi - lo) * 0.1;
+                yMin = Math.max(0, lo - margin);
+                yMax = hi + margin;
+            }
+            if (yMax - yMin < 1) yMax = yMin + 1;
+        }
+    }
+    // Y grid: 5 evenly spaced lines across the current range.
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    const decimals = (yMax - yMin) <= 10 ? 1 : 0;
+    for (let i = 0; i <= 5; i++) {
+        const v = yMin + (yMax - yMin) * (i / 5);
+        const y = pad.t + (1 - (v - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
+        ctx.strokeStyle = "rgba(128,128,128,0.25)";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+        ctx.fillStyle = text;
+        ctx.fillText(v.toFixed(decimals) + "%", pad.l - 6, y);
+    }
+    if (pts.length === 0) {
+        ctx.fillStyle = text; ctx.textAlign = "center";
+        ctx.fillText("No graded assignments yet", w / 2, h / 2);
+        return;
+    }
+    const X = (i) => pad.l + (pts.length === 1 ? (w - pad.l - pad.r) / 2 : (i / (pts.length - 1)) * (w - pad.l - pad.r));
+    const Y = (v) => pad.t + (1 - (Math.max(yMin, Math.min(yMax, v)) - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
+    // Full chart draw, parameterized by the hovered point index so mousemove
+    // can cheaply redraw with a highlight on the active dot.
+    const draw = (hover) => {
+        ctx.clearRect(0, 0, w, h);
+        // Optional colored 5% zones behind the plot ("Colored grade zones"
+        // popup option), tinted red→green. With Fit Y axis on, bands are
+        // clipped to the visible range.
+        if (options.grade_analytics_zones) {
+            GA_ZONE_COLORS.forEach((color, i) => {
+                const top = Math.min(yMax, (i + 1) * 5);
+                const bottom = Math.max(yMin, i * 5);
+                if (top <= bottom) return;
+                const y1 = pad.t + (1 - (top - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
+                const y2 = pad.t + (1 - (bottom - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = color;
+                ctx.fillRect(pad.l, y1, w - pad.l - pad.r, y2 - y1);
+                ctx.globalAlpha = 1;
+            });
+        }
+        // Y grid: 5 evenly spaced lines across the current range.
+        ctx.font = "11px Lato, sans-serif";
+        ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        for (let i = 0; i <= 5; i++) {
+            const v = yMin + (yMax - yMin) * (i / 5);
+            const y = pad.t + (1 - (v - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
+            ctx.strokeStyle = "rgba(128,128,128,0.25)";
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+            ctx.fillStyle = text;
+            ctx.fillText(v.toFixed(decimals) + "%", pad.l - 6, y);
+        }
+        // Line + area fill.
+        ctx.beginPath();
+        pts.forEach((p, i) => { const x = X(i), y = Y(p.grade); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+        ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+        ctx.lineTo(X(pts.length - 1), h - pad.b); ctx.lineTo(X(0), h - pad.b); ctx.closePath();
+        ctx.fillStyle = "rgba(37,99,235,0.12)"; ctx.fill();
+        // Points.
+        pts.forEach((p, i) => {
+            ctx.beginPath(); ctx.arc(X(i), Y(p.grade), 3, 0, Math.PI * 2);
+            ctx.fillStyle = "#2563eb"; ctx.fill();
+            ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+        });
+        // X axis: tick marks plus one label per calendar month. Points are
+        // already in chronological order, so a walking month counter (wrapping
+        // across Dec -> Jan) maps each point to an absolute month; the first
+        // point of each month gets the tick + label.
+        ctx.textAlign = "center"; ctx.textBaseline = "top";
+        ctx.strokeStyle = "rgba(128,128,128,0.55)";
+        ctx.lineWidth = 1;
+        const tick = (x) => {
+            ctx.beginPath(); ctx.moveTo(x, h - pad.b); ctx.lineTo(x, h - pad.b + 4); ctx.stroke();
+        };
+        // Subtle tick under every data point on sparse charts.
+        if (pts.length <= 25) pts.forEach((_, i) => tick(X(i)));
+        // Month boundaries: the first point of each calendar month. Points are
+        // already in chronological order, so a walking month counter (wrapping
+        // across Dec → Jan) maps each point to an absolute month.
+        const boundaries = [];
+        let prevM = null, absM = null;
+        pts.forEach((p, i) => {
+            const m = months.indexOf((p.due || "").trim().slice(0, 3));
+            if (m < 0) return; // no due date on this point
+            if (absM == null) absM = m;
+            else if (m >= prevM) absM += m - prevM;
+            else absM += 12 - prevM + m; // wrapped to a new year
+            prevM = m;
+            const last = boundaries[boundaries.length - 1];
+            if (!last || last.absM !== absM) {
+                boundaries.push({ i, absM, label: (p.due || "").trim().slice(0, 3) });
+            }
+        });
+        boundaries.forEach(b => tick(X(b.i)));
+        // Collision-aware labels: greedily keep a month label only if it fits
+        // after the previous kept one (labels are centered, so compare against
+        // half-widths plus a 6px gap). The first boundary always gets a label;
+        // so does the last — if it doesn't fit, earlier labels are dropped to
+        // make room, so the axis ends on a real month instead of mid-run.
+        const GAP = 6;
+        const kept = [];
+        boundaries.forEach((b, idx) => {
+            const x = X(b.i);
+            const w = ctx.measureText(b.label).width;
+            if (idx === 0 || x - w / 2 > kept[kept.length - 1].right + GAP) {
+                kept.push({ ...b, x, right: x + w / 2 });
+            }
+        });
+        const lastB = boundaries[boundaries.length - 1];
+        if (lastB && kept[kept.length - 1].i !== lastB.i) {
+            const x = X(lastB.i);
+            const w = ctx.measureText(lastB.label).width;
+            while (kept.length && kept[kept.length - 1].right + GAP > x - w / 2) kept.pop();
+            kept.push({ ...lastB, x, right: x + w / 2 });
+        }
+        kept.forEach((b, k) => {
+            // Anchor the edge labels inward so they don't clip.
+            ctx.textAlign = k === 0 ? "left" : (b.i === pts.length - 1 ? "right" : "center");
+            ctx.fillStyle = text;
+            ctx.fillText(b.label, b.x, h - pad.b + 6);
+        });
+        // Hover indicator: dashed vertical guide plus a halo ring around the
+        // hovered dot so it's obvious which point the tooltip describes.
+        if (hover != null && pts[hover]) {
+            const hx = X(hover), hy = Y(pts[hover].grade);
+            ctx.save();
+            ctx.strokeStyle = "rgba(37,99,235,0.55)";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, h - pad.b); ctx.stroke();
+            ctx.restore();
+            ctx.beginPath(); ctx.arc(hx, hy, 7, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(37,99,235,0.25)"; ctx.fill();
+            ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = "#2563eb"; ctx.fill();
+            ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+    };
+    draw(null);
+    canvas._gaHoverIdx = null; // stale hover index from a previous draw
+    canvas._gaPts = pts;
+    canvas._gaX = X; canvas._gaY = Y; canvas._gaPad = pad;
+    if (canvas._gaHover) { canvas.removeEventListener("mousemove", canvas._gaHover); canvas.removeEventListener("mouseleave", canvas._gaLeave); }
+    canvas._gaHover = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        let best = 0, bestD = Infinity;
+        pts.forEach((_, i) => { const d = Math.abs(X(i) - mx); if (d < bestD) { bestD = d; best = i; } });
+        if (best !== canvas._gaHoverIdx) {
+            canvas._gaHoverIdx = best;
+            draw(best);
+        }
+        const p = pts[best];
+        gaShowTooltip(tooltip, X(best), Y(p.grade),
+            `<b>${p.title}</b><br>Overall: ${p.grade == null ? "-" : p.grade.toFixed(1) + "%"}<br>This: ${p.score}/${p.points} (${p.pct.toFixed(1)}%)${p.due ? `<br>Due: ${p.due}` : ""}`);
+    };
+    canvas._gaLeave = () => {
+        tooltip.style.display = "none";
+        if (canvas._gaHoverIdx != null) {
+            canvas._gaHoverIdx = null;
+            draw(null);
+        }
+    };
+    canvas.addEventListener("mousemove", canvas._gaHover);
+    canvas.addEventListener("mouseleave", canvas._gaLeave);
+}
+
+// Redraw open charts when the window is resized.
+window.addEventListener("resize", () => {
+    const panel = document.getElementById("canvasrefined-grade-analytics");
+    if (panel && gaOpen && gaData) renderGradeAnalytics();
+});
+
+// --- Imagine-If mode ---------------------------------------------------------
+//
+// A hypothetical-grade sandbox rendered directly on the grades table (never
+// inside the Grade Analytics panel): each assignment row gets inline
+// score / points-possible inputs plus a group selector and remove button,
+// each group-total row gets a weight input and remove button, the "+ Add
+// assignment" button sits at the top of the table (above the first
+// assignment), and the "+ Add group" button sits above the Total row. The
+// hypothetical total is computed here — Canvas's weighting algorithm
+// (groups with counted work contribute pct × weight, scaled up to 100% when
+// the used weights total less than 100; point-based totals when no group has
+// weight) — and previewed by overwriting the table's Total row (the
+// tr.final_grade percentage span) with an obvious Imagine-If badge. Nothing is ever sent to Canvas; the page is
+// restored to the pixel the moment the mode is turned off.
+
+// Standard grading scheme for the hypothetical letter grade (a course's
+// actual scheme isn't exposed on this page). 80.5% → B− matches Canvas's
+// default cutoffs.
+const GA_LETTER_SCALE = [
+    ["A", 93], ["A−", 90], ["B+", 87], ["B", 83], ["B−", 80],
+    ["C+", 77], ["C", 73], ["C−", 70], ["D+", 67], ["D", 63], ["D−", 60],
+];
+
+function gaLetterFor(pct) {
+    if (pct == null || !isFinite(pct)) return null;
+    for (const [letter, min] of GA_LETTER_SCALE) if (pct >= min) return letter;
+    return "F";
+}
+
+// The table's Total row (tr.final_grade) — the recalculated grade
+// overwrites its percentage span while Imagine-If mode is on.
+function gaFindTotalGradeSpan() {
+    const row = document.querySelector("#grades_summary tr.final_grade");
+    return row ? row.querySelector("td.assignment_score .tooltip .grade") : null;
+}
+
+function gaFindTotalTitleCell() {
+    const row = document.querySelector("#grades_summary tr.final_grade");
+    return row ? row.querySelector("th.title") : null;
+}
+
+// Signature of the page's grades table (row ids). When it changes (grading
+// period switch, SPA navigation) the scenario is rebuilt from the new table.
+function gaImagineTableSig() {
+    const table = document.querySelector("#grades_summary");
+    return table ? [...table.querySelectorAll("tr.student_assignment")].map(tr => tr.id).join(",") : "";
+}
+
+// Snapshot of the page's groups and assignments the scenario starts from.
+// Scores come from the hidden "original_score" spans (immune to Canvas's own
+// What-If edits); ungraded rows keep score: null so they only count once the
+// user types a score for them.
+function gaBuildImagineScenario() {
+    const table = document.querySelector("#grades_summary");
+    if (!table) return null;
+    const groups = [];
+    for (const tr of table.querySelectorAll("tr.group_total")) {
+        const gid = (tr.querySelector(".assignment_group_id")?.textContent || "").trim();
+        if (!gid) continue;
+        const name = (tr.querySelector("th.title")?.textContent || "").trim() || ("Group " + gid);
+        const w = parseFloat((tr.querySelector(".group_weight")?.textContent || "").trim());
+        groups.push({ gid, name, weight: isFinite(w) ? w : 0 });
+    }
+    const assignments = [];
+    for (const tr of table.querySelectorAll("tr.student_assignment")) {
+        if (tr.classList.contains("group_total") || tr.classList.contains("final_grade")) continue;
+        const a = gaParseAssignmentRow(tr);
+        assignments.push({
+            key: tr.id || ("row-" + assignments.length),
+            title: (a.title || "Assignment").trim() || "Assignment",
+            score: a.score,
+            points: a.points,
+            gid: (a.gid || "").trim(),
+        });
+    }
+    return { groups, assignments };
+}
+
+// Hypothetical total for the scenario, computed from scratch (never read
+// from the page's Total). Only assignments with a score, a positive
+// denominator, and a group that still exists count. Weighted when any
+// group has weight (Canvas's GradeCalculator: sum pct × weight over groups
+// with counted work, scale up to 100% when the used weights total < 100,
+// use raw when ≥ 100), otherwise points earned / points possible.
+function gaComputeImagineTotal() {
+    if (!gaScenario) return null;
+    const groups = new Map();
+    let totalWeightAll = 0;
+    for (const g of gaScenario.groups) {
+        if (g.deleted) continue;
+        const w = isFinite(g.weight) ? g.weight : 0;
+        groups.set(String(g.gid), w);
+        totalWeightAll += w;
+    }
+    // With every group removed the total falls back to plain points, so all
+    // assignments count regardless of their (dangling) group id.
+    const noGroups = groups.size === 0;
+    const stats = new Map(); // gid -> {score, pts}
+    for (const a of gaScenario.assignments) {
+        if (a.deleted || a.score == null || !(a.points > 0)) continue;
+        const gid = String(a.gid ?? "");
+        if (!noGroups && !groups.has(gid)) continue; // group deleted / unassigned
+        const s = stats.get(gid) || { score: 0, pts: 0 };
+        s.score += a.score;
+        s.pts += a.points;
+        stats.set(gid, s);
+    }
+    if (!stats.size) return null;
+    if (totalWeightAll > 0) {
+        let weighted = 0, used = 0;
+        for (const [gid, s] of stats) {
+            const w = groups.get(gid) || 0;
+            weighted += (s.score / s.pts) * w;
+            used += w;
+        }
+        if (used > 0) return used < 100 ? (weighted / used) * 100 : weighted;
+        // Only zero-weighted groups have counted work — fall back to points.
+    }
+    let score = 0, pts = 0;
+    for (const s of stats.values()) { score += s.score; pts += s.pts; }
+    return pts > 0 ? (score / pts) * 100 : null;
+}
+
+// Total-row content for the hypothetical grade — clearly not the real
+// grade: a purple Imagine-If badge and the hypothetical total (with letter)
+// replace the percentage span, and an italic note under the "Total" label
+// restates the real grade.
+function gaImagineTotalHtml(pct) {
+    const letter = gaLetterFor(pct);
+    const pctText = pct == null || !isFinite(pct) ? "—" : pct.toFixed(1) + "%";
+    // The wrapper is an inline-flex row with align-items:center so the
+    // badge pill sits vertically centered with the grade text. No
+    // flex-wrap: the narrow score cell would stack the items instead.
+    return `<span style="display:inline-flex;align-items:center;gap:6px;">`
+        + `<span style="background:#7c3aed;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:1px 6px;border-radius:999px;text-transform:uppercase;white-space:nowrap;">Imagine-If</span>`
+        + `<span style="font-weight:700;color:#7c3aed;">${pctText}</span>`
+        + (letter ? `<span style="color:#7c3aed;">(${letter})</span>` : "")
+        + `</span>`;
+}
+
+
+// Overwrites (or restores) the table's Total row. Writes are guarded so the
+// GA DOM observer never loops: the last written HTML is cached on the
+// element and identical writes are skipped.
+function gaApplyImagineTotal() {
+    if (!gaImagineIf) { gaRestoreImagineTotal(); return; }
+    gaIfUpdateGroupPcts();
+    const span = gaFindTotalGradeSpan();
+    if (!span) return;
+    const html = gaImagineTotalHtml(gaComputeImagineTotal());
+    if (!(span.dataset.gaImagine && span._gaImagineHtml === html)) {
+        if (!span.dataset.gaImagine) gaOriginalFinalHtml = span.innerHTML;
+        span.dataset.gaImagine = "1";
+        span._gaImagineHtml = html;
+        span.innerHTML = html;
+    }
+    // Italic note under the "Total" label restating the real grade.
+    const th = gaFindTotalTitleCell();
+    if (th) {
+        let note = th.querySelector(".canvasrefined-ga-if-note");
+        if (!note) {
+            note = document.createElement("div");
+            note.className = "canvasrefined-ga-if-note";
+            note.style.cssText = "font-size:11px;font-style:italic;color:var(--bctext-1);margin-top:2px;";
+            th.appendChild(note);
+        }
+        if (note.dataset.gaIfHtml !== "Imagine-If scenario; not your actual grade.") {
+            note.dataset.gaIfHtml = "Imagine-If scenario; not your actual grade.";
+            note.textContent = "Imagine-If scenario; not your actual grade.";
+        }
+    }
+}
+
+function gaRestoreImagineTotal() {
+    const span = gaFindTotalGradeSpan();
+    if (span && span.dataset.gaImagine) {
+        delete span.dataset.gaImagine;
+        delete span._gaImagineHtml;
+        if (gaOriginalFinalHtml != null) span.innerHTML = gaOriginalFinalHtml;
+    }
+    document.querySelectorAll("#grades_summary tr.final_grade .canvasrefined-ga-if-note").forEach(n => n.remove());
+}
+
+// Compact inline styles for controls injected into the grades table.
+// Canvas's table CSS gives selects/inputs an 11px bottom margin and a tall
+// native select box, which made our rows taller than the page's own —
+// margin:0 and a fixed select height keep the rows even.
+const GA_IF_TD_INPUT = "box-sizing:border-box;padding:3px 6px;border-radius:5px;border:1px solid var(--bcborders);background:var(--bcbackground-1);color:var(--bctext-0);font-size:12px;margin:0;";
+const GA_IF_TD_NUM = GA_IF_TD_INPUT + "width:58px;";
+const GA_IF_TD_SEL = GA_IF_TD_INPUT + "max-width:170px;height:26px;padding:2px 4px;";
+const GA_IF_TD_BTN = GA_IF_TD_INPUT + "cursor:pointer;white-space:nowrap;";
+
+// <select> of the scenario's live groups for one assignment row. A group
+// that was removed leaves its assignments on "— not counted —" until the
+// user reassigns them.
+function gaIfSelectHtml(gid) {
+    const groups = gaScenario ? gaScenario.groups.filter(g => !g.deleted) : [];
+    return `<select data-ga-if-groupsel title="Imagine-If assignment group" style="${GA_IF_TD_SEL}">`
+        + `<option value="">— not counted —</option>`
+        + groups.map(g => `<option value="${gaEscHtml(g.gid)}"${String(gid) === String(g.gid) ? " selected" : ""}>${gaEscHtml(g.name)}</option>`).join("")
+        + `</select>`;
+}
+
+// Re-renders every group <select>'s options (e.g. after a group was added or
+// removed), preserving the current selection when it still exists. Skips the
+// select the user is interacting with.
+function gaIfRefreshSelects(table) {
+    for (const sel of table.querySelectorAll("select[data-ga-if-groupsel]")) {
+        if (document.activeElement === sel) continue;
+        const cur = sel.value;
+        const groups = gaScenario ? gaScenario.groups.filter(g => !g.deleted) : [];
+        sel.innerHTML = `<option value="">— not counted —</option>`
+            + groups.map(g => `<option value="${gaEscHtml(g.gid)}"${String(cur) === String(g.gid) ? " selected" : ""}>${gaEscHtml(g.name)}</option>`).join("");
+        sel.value = groups.some(g => String(g.gid) === cur) ? cur : "";
+    }
+}
+
+// Icon-only remove button (✕) for a row's last cell.
+function gaIfDelButton(attr, title) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.setAttribute(attr, "");
+    btn.title = title;
+    btn.textContent = "✕";
+    btn.style.cssText = GA_IF_TD_BTN + "padding:3px 8px;";
+    return btn;
+}
+
+// Injects the scenario controls into one assignment row: score (numerator)
+// and points possible (denominator) inputs replace the read-only "5 / 5"
+// display in the score cell, a group <select> replaces the group-name
+// context line under the title, and an icon-only remove button goes in the
+// row's last cell.
+function gaIfBuildAssignmentControls(tr, a) {
+    if (tr.querySelector(".canvasrefined-ga-if-edit")) return;
+    const scoreTd = tr.querySelector("td.assignment_score");
+    if (!scoreTd) return;
+    const tooltip = scoreTd.querySelector("span.tooltip");
+    if (tooltip) { tooltip.style.display = "none"; tooltip.dataset.gaIfHidden = "1"; }
+    const edit = document.createElement("span");
+    edit.className = "canvasrefined-ga-if-edit";
+    edit.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
+    edit.innerHTML = `<input data-ga-if-score type="number" step="any" placeholder="—" value="${a.score == null ? "" : a.score}" title="Imagine-If score (numerator); blank = not counted" style="${GA_IF_TD_NUM}">`
+        + ` <span style="color:var(--bctext-1);">/</span> `
+        + `<input data-ga-if-pts type="number" step="any" min="0" placeholder="—" value="${a.points == null ? "" : a.points}" title="Imagine-If points possible (denominator)" style="${GA_IF_TD_NUM}">`;
+    (scoreTd.querySelector(".score_holder") || scoreTd).appendChild(edit);
+    const th = tr.querySelector("th.title");
+    const ctx = th?.querySelector("div.context");
+    if (ctx) { ctx.style.display = "none"; ctx.dataset.gaIfHidden = "1"; }
+    const ctl = document.createElement("div");
+    ctl.className = "canvasrefined-ga-if-ctl";
+    ctl.style.cssText = "display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;";
+    ctl.innerHTML = gaIfSelectHtml(a.gid);
+    (th || tr).appendChild(ctl);
+    // Icon-only remove button in the row's last cell.
+    const lastTd = tr.cells[tr.cells.length - 1];
+    if (lastTd && !lastTd.querySelector("[data-ga-if-adel]")) {
+        lastTd.appendChild(gaIfDelButton("data-ga-if-adel", "Remove this assignment from the scenario"));
+    }
+}
+
+// Injects the scenario controls into one group-total row: a weight input in
+// the score cell (next to the group percentage, which shows the hypothetical
+// value — see gaIfUpdateGroupPcts) and an icon-only remove button in the
+// row's last cell.
+function gaIfBuildGroupControls(tr, g) {
+    if (tr.querySelector(".canvasrefined-ga-if-edit")) return;
+    const scoreTd = tr.querySelector("td.assignment_score");
+    if (!scoreTd) return;
+    const edit = document.createElement("span");
+    edit.className = "canvasrefined-ga-if-edit";
+    edit.style.cssText = "display:inline-flex;align-items:center;gap:4px;margin-left:8px;";
+    edit.innerHTML = `<input data-ga-if-gweight type="number" min="0" max="100" step="0.1" value="${g.weight}" title="Imagine-If group weight (% of grade)" style="${GA_IF_TD_NUM}">`
+        + ` <span style="color:var(--bctext-1);">%</span>`;
+    (scoreTd.querySelector(".score_holder") || scoreTd).appendChild(edit);
+    // Icon-only remove button in the row's last cell.
+    const lastTd = tr.cells[tr.cells.length - 1];
+    if (lastTd && !lastTd.querySelector("[data-ga-if-gdel]")) {
+        lastTd.appendChild(gaIfDelButton("data-ga-if-gdel", "Remove this group from the scenario (its assignments stop counting until reassigned)"));
+    }
+}
+
+// A brand-new assignment row (user-added): same 8-cell shape as the page's
+// own rows, with an editable title. Custom class only — never
+// "student_assignment", so the table signature and the page parsers ignore
+// our rows.
+function gaIfMakeAssignmentRow(a) {
+    const tr = document.createElement("tr");
+    tr.className = "canvasrefined-ga-if-newrow";
+    tr.innerHTML = `
+        <th class="title" scope="row"><input data-ga-if-title type="text" value="${gaEscHtml(a.title)}" title="Assignment name" style="${GA_IF_TD_INPUT}width:100%;max-width:260px;"></th>
+        <td class="due"></td><td class="submitted"></td><td class="status"></td>
+        <td class="assignment_score"><div class="score_holder" style="position:relative;"></div></td>
+        <td class="asset_processors_cell"></td><td class="details"></td><td></td>`;
+    // Row separators matching the page's own rows. Two things make this
+    // subtle: the dark-mode CSS paints every .ic-Table td border dark with
+    // !important (which beats a normal inline style), and in the
+    // collapsed-borders model CELL borders beat ROW borders — so the
+    // separator must be set on the cells, with !important (an inline
+    // !important beats the stylesheet's), to win the edge conflicts and
+    // paint the white line the custom background shows on real rows.
+    for (const cell of tr.cells) {
+        cell.style.setProperty("border-top", "1px solid var(--bctext-1,#e2e2e2)", "important");
+        cell.style.setProperty("border-bottom", "1px solid var(--bctext-1,#e2e2e2)", "important");
+    }
+    return tr;
+}
+
+// A brand-new group-total row (user-added), with an editable name.
+function gaIfMakeGroupRow(g) {
+    const tr = document.createElement("tr");
+    tr.className = "canvasrefined-ga-if-newrow";
+    tr.innerHTML = `
+        <th class="title" scope="row"><input data-ga-if-gname type="text" value="${gaEscHtml(g.name)}" title="Group name" style="${GA_IF_TD_INPUT}width:100%;max-width:260px;"></th>
+        <td class="due"></td><td class="submitted"></td><td class="status"></td>
+        <td class="assignment_score"><div class="score_holder" style="position:relative;"><span class="tooltip"><span class="grade">—</span></span></div></td>
+        <td class="asset_processors_cell"></td><td class="details"></td><td></td>`;
+    // Same cell-level separators as gaIfMakeAssignmentRow.
+    for (const cell of tr.cells) {
+        cell.style.setProperty("border-top", "1px solid var(--bctext-1,#e2e2e2)", "important");
+        cell.style.setProperty("border-bottom", "1px solid var(--bctext-1,#e2e2e2)", "important");
+    }
+    return tr;
+}
+
+// New assignments go right below the table header, above the first real
+// assignment (stacking in add order).
+function gaIfInsertAssignmentRow(table, tr) {
+    const lastNew = [...table.querySelectorAll("tr.canvasrefined-ga-if-newrow[data-ga-if-key]")].pop();
+    if (lastNew) { lastNew.after(tr); return; }
+    const firstReal = [...table.querySelectorAll("tr.student_assignment")]
+        .find(r => !r.classList.contains("group_total") && !r.classList.contains("final_grade"));
+    if (firstReal) { firstReal.before(tr); return; }
+    (table.querySelector("tr.group_total") || table.querySelector("tr.final_grade") || table.lastElementChild).before(tr);
+}
+
+function gaIfInsertGroupRow(table, tr) {
+    const lastNew = [...table.querySelectorAll("tr.canvasrefined-ga-if-newrow[data-ga-if-gid]")].pop();
+    const lastReal = [...table.querySelectorAll("tr.group_total")].pop();
+    (lastNew || lastReal || table.querySelector("tr.final_grade") || table.lastElementChild).after(tr);
+}
+
+// The "+ Add assignment" button sits on its own row at the top of the
+// table — right below the header, above the first (or first user-added)
+// assignment — so new assignments are created right where they appear.
+function gaIfEnsureAddAssignmentRow(table) {
+    if (table.querySelector("#canvasrefined-ga-if-add-asg")) return;
+    const tr = document.createElement("tr");
+    tr.className = "canvasrefined-ga-if-addrow";
+    tr.innerHTML = `<td colspan="8" style="border:none!important;padding:6px 8px;">`
+        + `<button type="button" id="canvasrefined-ga-if-add-asg" style="${GA_IF_TD_BTN}padding:4px 10px;">+ Add assignment</button>`
+        + `</td>`;
+    const firstNew = table.querySelector("tr.canvasrefined-ga-if-newrow[data-ga-if-key]");
+    const firstReal = [...table.querySelectorAll("tr.student_assignment")]
+        .find(r => !r.classList.contains("group_total") && !r.classList.contains("final_grade"));
+    const anchor = firstNew || firstReal;
+    if (anchor) anchor.before(tr);
+    else (table.querySelector("tr.group_total") || table.querySelector("tr.final_grade") || table.lastElementChild).before(tr);
+}
+
+// The "+ Add group" button sits on its own row right above the table's
+// Total row, where the group totals live.
+function gaIfEnsureAddGroupRow(table) {
+    if (table.querySelector("#canvasrefined-ga-if-add-group")) return;
+    const tr = document.createElement("tr");
+    tr.className = "canvasrefined-ga-if-addrow";
+    tr.innerHTML = `<td colspan="8" style="border:none!important;padding:10px 8px;">`
+        + `<button type="button" id="canvasrefined-ga-if-add-group" style="${GA_IF_TD_BTN}padding:6px 12px;">+ Add group</button>`
+        + `</td>`;
+    (table.querySelector("tr.final_grade") || table.lastElementChild).before(tr);
+}
+
+// Rewrites each group row's percentage to the hypothetical value for the
+// current scenario (original text is stashed for restore). A dash means the
+// group has no counted work.
+function gaIfUpdateGroupPcts() {
+    const table = document.querySelector("#grades_summary");
+    if (!table || !gaScenario) return;
+    const stats = new Map();
+    for (const a of gaScenario.assignments) {
+        if (a.deleted || a.score == null || !(a.points > 0)) continue;
+        if (!gaScenario.groups.some(g => !g.deleted && String(g.gid) === String(a.gid))) continue;
+        const s = stats.get(String(a.gid)) || { score: 0, pts: 0 };
+        s.score += a.score;
+        s.pts += a.points;
+        stats.set(String(a.gid), s);
+    }
+    for (const tr of table.querySelectorAll("tr[data-ga-if-gid]")) {
+        const gradeEl = tr.querySelector("td.assignment_score .tooltip .grade");
+        if (!gradeEl) continue;
+        if (gradeEl.dataset.gaIfOrig == null) gradeEl.dataset.gaIfOrig = gradeEl.textContent;
+        const s = stats.get(String(tr.dataset.gaIfGid));
+        const txt = s && s.pts > 0 ? ((s.score / s.pts) * 100).toFixed(2).replace(/\.?0+$/, "") + "%" : "—";
+        if (gradeEl.textContent !== txt) gradeEl.textContent = txt;
+    }
+}
+
+// Removes every trace of the inline UI: injected controls and rows, hidden
+// originals, hidden deleted rows, and the rewritten group percentages.
+function gaClearImagineUI(table) {
+    table = table || document.querySelector("#grades_summary");
+    if (!table) return;
+    delete table.dataset.gaIfUi;
+    delete table.dataset.gaIfBuilt;
+    table.querySelectorAll(".canvasrefined-ga-if-edit, .canvasrefined-ga-if-ctl, tr.canvasrefined-ga-if-newrow, tr.canvasrefined-ga-if-addrow").forEach(el => el.remove());
+    table.querySelectorAll("[data-ga-if-hidden]").forEach(el => { el.style.display = ""; delete el.dataset.gaIfHidden; });
+    table.querySelectorAll(".grade[data-ga-if-orig]").forEach(el => { el.textContent = el.dataset.gaIfOrig; delete el.dataset.gaIfOrig; });
+    table.querySelectorAll("tr[data-ga-if-deleted]").forEach(tr => { tr.style.display = ""; delete tr.dataset.gaIfDeleted; });
+    table.querySelectorAll("tr[data-ga-if-key], tr[data-ga-if-gid]").forEach(tr => { delete tr.dataset.gaIfKey; delete tr.dataset.gaIfGid; });
+}
+
+// One delegated listener set on the grades table handles every scenario
+// edit, so rows can be injected/rebuilt freely without detaching handlers.
+function gaIfBindTable(table) {
+    if (table.dataset.gaIfBound) return;
+    table.dataset.gaIfBound = "1";
+    table.addEventListener("input", e => {
+        if (!gaScenario || !gaImagineIf) return;
+        const t = e.target;
+        const tr = t.closest("tr");
+        if (!tr) return;
+        if (t.matches("[data-ga-if-score],[data-ga-if-pts],[data-ga-if-title]")) {
+            const a = gaScenario.assignments.find(x => String(x.key) === String(tr.dataset.gaIfKey));
+            if (!a) return;
+            if (t.matches("[data-ga-if-title]")) a.title = t.value;
+            else if (t.matches("[data-ga-if-score]")) { const v = parseFloat(t.value); a.score = t.value.trim() !== "" && isFinite(v) ? v : null; }
+            else { const v = parseFloat(t.value); a.points = t.value.trim() !== "" && isFinite(v) ? v : null; }
+            gaApplyImagineTotal();
+        } else if (t.matches("[data-ga-if-gname],[data-ga-if-gweight]")) {
+            const g = gaScenario.groups.find(x => String(x.gid) === String(tr.dataset.gaIfGid));
+            if (!g) return;
+            if (t.matches("[data-ga-if-gname]")) g.name = t.value;
+            else { const w = parseFloat(t.value); g.weight = isFinite(w) ? w : 0; }
+            gaApplyImagineTotal();
+        }
+    });
+    table.addEventListener("change", e => {
+        if (!gaScenario || !gaImagineIf) return;
+        const t = e.target;
+        if (!t.matches("select[data-ga-if-groupsel]")) return;
+        const tr = t.closest("tr");
+        const a = gaScenario.assignments.find(x => String(x.key) === String(tr?.dataset.gaIfKey));
+        if (a) { a.gid = t.value; gaApplyImagineTotal(); }
+    });
+    table.addEventListener("click", e => {
+        if (!gaScenario || !gaImagineIf) return;
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        const table = btn.closest("table") || document.querySelector("#grades_summary");
+        if (btn.matches("[data-ga-if-adel]")) {
+            const tr = btn.closest("tr");
+            const a = gaScenario.assignments.find(x => String(x.key) === String(tr.dataset.gaIfKey));
+            if (!a) return;
+            a.deleted = true;
+            if (a._new) tr.remove();
+            else { tr.style.display = "none"; tr.dataset.gaIfDeleted = "1"; }
+            gaApplyImagineTotal();
+        } else if (btn.matches("[data-ga-if-gdel]")) {
+            const tr = btn.closest("tr");
+            const g = gaScenario.groups.find(x => String(x.gid) === String(tr.dataset.gaIfGid));
+            if (!g) return;
+            g.deleted = true;
+            if (g._new) tr.remove();
+            else { tr.style.display = "none"; tr.dataset.gaIfDeleted = "1"; }
+            gaIfRefreshSelects(table);
+            gaApplyImagineTotal();
+        } else if (btn.id === "canvasrefined-ga-if-add-asg") {
+            const groups = gaScenario.groups.filter(g => !g.deleted);
+            const a = { key: "new-asg-" + (++gaIfCounter), title: "New assignment", score: null, points: 100, gid: groups[0] ? String(groups[0].gid) : "", _new: true };
+            gaScenario.assignments.push(a);
+            const tr = gaIfMakeAssignmentRow(a);
+            gaIfInsertAssignmentRow(table, tr);
+            tr.dataset.gaIfKey = a.key;
+            gaIfBuildAssignmentControls(tr, a);
+            tr.scrollIntoView({ block: "nearest" });
+            tr.querySelector("[data-ga-if-title]")?.focus();
+            gaApplyImagineTotal();
+        } else if (btn.id === "canvasrefined-ga-if-add-group") {
+            const g = { gid: "new-group-" + (++gaIfCounter), name: "New group", weight: 0, _new: true };
+            gaScenario.groups.push(g);
+            const tr = gaIfMakeGroupRow(g);
+            gaIfInsertGroupRow(table, tr);
+            tr.dataset.gaIfGid = g.gid;
+            gaIfBuildGroupControls(tr, g);
+            gaIfRefreshSelects(table);
+            tr.scrollIntoView({ block: "nearest" });
+            tr.querySelector("[data-ga-if-gname]")?.focus();
+            gaApplyImagineTotal();
+        }
+    });
+}
+
+// Builds the inline UI on the grades table itself. The scenario is rebuilt
+// from the page when the table's rows change (grading-period switch, SPA
+// navigation); otherwise the already-built UI is left alone so typing is
+// never clobbered. If Canvas wiped our controls (row re-render), the built
+// count no longer matches and the UI is rebuilt from the scenario.
+function gaRenderImagineIf(force) {
+    if (!gaImagineIf) return;
+    const table = document.querySelector("#grades_summary");
+    if (!table) return;
+    const sig = gaImagineTableSig();
+    if (!gaScenario || gaScenario.sig !== sig) {
+        const sc = gaBuildImagineScenario();
+        if (!sc) return; // table hasn't rendered yet; the DOM observer retries
+        gaScenario = { sig, groups: sc.groups, assignments: sc.assignments };
+        force = true;
+    }
+    if (!force
+        && table.dataset.gaIfUi === sig
+        && Number(table.dataset.gaIfBuilt || 0) === table.querySelectorAll("tr[data-ga-if-key]").length) return;
+    gaClearImagineUI(table);
+    table.dataset.gaIfUi = sig;
+    gaIfBindTable(table);
+
+    const rowById = new Map();
+    for (const tr of table.querySelectorAll("tr.student_assignment")) {
+        if (tr.classList.contains("group_total") || tr.classList.contains("final_grade")) continue;
+        if (tr.id) rowById.set(tr.id, tr);
+    }
+    const groupRowByGid = new Map();
+    for (const tr of table.querySelectorAll("tr.group_total")) {
+        const gid = (tr.querySelector(".assignment_group_id")?.textContent || "").trim();
+        if (gid) groupRowByGid.set(gid, tr);
+    }
+
+    let built = 0;
+    for (const a of gaScenario.assignments) {
+        let tr = a._new ? table.querySelector(`tr[data-ga-if-key="${CSS.escape(a.key)}"]`) : rowById.get(a.key);
+        if (a.deleted) {
+            if (tr) { tr.style.display = "none"; tr.dataset.gaIfDeleted = "1"; }
+            continue;
+        }
+        if (!tr) {
+            if (!a._new) continue; // the page row vanished — nothing to edit
+            tr = gaIfMakeAssignmentRow(a);
+            gaIfInsertAssignmentRow(table, tr);
+        }
+        tr.dataset.gaIfKey = a.key;
+        gaIfBuildAssignmentControls(tr, a);
+        built++;
+    }
+    for (const g of gaScenario.groups) {
+        let tr = g._new ? table.querySelector(`tr[data-ga-if-gid="${CSS.escape(g.gid)}"]`) : groupRowByGid.get(g.gid);
+        if (g.deleted) {
+            if (tr) { tr.style.display = "none"; tr.dataset.gaIfDeleted = "1"; }
+            continue;
+        }
+        if (!tr) {
+            if (!g._new) continue;
+            tr = gaIfMakeGroupRow(g);
+            gaIfInsertGroupRow(table, tr);
+        }
+        tr.dataset.gaIfGid = g.gid;
+        gaIfBuildGroupControls(tr, g);
+    }
+    gaIfEnsureAddAssignmentRow(table);
+    gaIfEnsureAddGroupRow(table);
+    table.dataset.gaIfBuilt = String(built);
+    gaApplyImagineTotal();
+}
+
+// Enters/leaves the mode: builds/removes the inline table UI and
+// overwrites/restores the sidebar Total block.
+function gaEnterImagineIf() {
+    gaRenderImagineIf();
+    gaApplyImagineTotal();
+}
+
+function gaExitImagineIf() {
+    gaClearImagineUI();
+    gaRestoreImagineTotal();
+}
+
 
 function getApiData() {
     if (current_page === "/" || current_page === "" || options.better_todo || options.better_sidebar) {

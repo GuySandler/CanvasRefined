@@ -1,308 +1,326 @@
 {
-	"Canvas_Refined": {
-		"message": "Canvas Refined"
-	},
-	"search_features": {
-		"message": "Search features..."
-	},
-	"updates": {
-		"message": "Updates"
-	},
-	"dark_mode": {
-		"message": "Dark mode"
-	},
-	"automatic_dark_mode": {
-		"message": "Scheduled Dark Mode"
-	},
-	"auto_start_time": {
-		"message": "Start Time"
-	},
-	"auto_end_time": {
-		"message": "End Time"
-	},
-	"edit_dark_mode": {
-		"message": "Dark Mode"
-	},
-	"enter_url": {
-		"message": "Your Canvas url:"
-	},
-	"card_grades": {
-		"message": "Card Grades"
-	},
-	"gradient_cards": {
-		"message": "Gradient Cards"
-	},
-	"condensed_cards": {
-		"message": "Condensed Cards"
-	},
-	"disable_color": {
-		"message": "Disable Color Overlay"
-	},
-	"card_assignments": {
-		"message": "Card Assignments"
-	},
-	"card_customization": {
-		"message": "Cards"
-	},
-	"styles": {
-		"message": "Styles"
-	},
-	"useddmm": {
-		"message": "Use dd/mm"
-	},
-	"better_todo": {
-		"message": "Better todo list"
-	},
-	"better_sidebar": {
-		"message": "Better Sidebar"
-	},
-	"quiz_safe_mode": {
-		"message": "Quiz Safe Mode"
-	},
-	"quiz_safe_mode_desc": {
-		"message": "Turns off most Canvas Refined features on quiz pages so you get the default Canvas quiz experience"
-	},
-	"opacity_options": {
-		"message": "Opacity & Blur"
-	},
-	"opacity_only_background": {
-		"message": "Only available with a custom background"
-	},
-	"card_transparency": {
-		"message": "Card transparency"
-	},
-	"background_opacity": {
-		"message": "Background opacity"
-	},
-	"bg_blur": {
-		"message": "Background blur"
-	},
-	"sidebar_opacity": {
-		"message": "Sidebar opacity"
-	},
-	"sidebar_blur": {
-		"message": "Sidebar blur"
-	},
-	"card_opacity": {
-		"message": "Card opacity"
-	},
-	"card_blur": {
-		"message": "Card blur"
-	},
-	"sidebar_opacity_auto": {
-		"message": "Applies to the Better Sidebar when it's on, otherwise the normal sidebar."
-	},
-	"reset_default": {
-		"message": "Reset to default"
-	},
-	"max_items": {
-		"message": "Max Items: "
-	},
-	"hover_preview": {
-		"message": "Previews on hover"
-	},
-	"hide_completed": {
-		"message": "Hide Completed"
-	},
-	"24hrformat": {
-		"message": "Use 24 hr Format"
-	},
-	"dashboard_notes": {
-		"message": "Dashboard Notes"
-	},
-	"gpa_calculator": {
-		"message": "GPA Calculator"
-	},
-	"gpa_settings": {
-		"message": "GPA Settings"
-	},
-	"grade_hover": {
-		"message": "Show Only On Hover"
-	},
-	"due": {
-		"message": "Due"
-	},
-	"card_colors": {
-		"message": "Card Colors"
-	},
-	"back": {
-		"message": "Back"
-	},
-	"more_options": {
-		"message": "More Options"
-	},
-	"manual_customization": {
-		"message": "Manual Customization"
-	},
-	"background_colors": {
-		"message": "Background"
-	},
-	"text_colors": {
-		"message": "Text"
-	},
-	"full_width": {
-		"message": "Full Width Fix"
-	},
-	"report_issue": {
-		"message": "Report Issue"
-	},
-	"themes": {
-		"message": "Themes"
-	},
-	"move_top": {
-		"message": "Move To Top"
-	},
-	"show_past_due": {
-		"message": "Show Past Due"
-	},
-	"todo_separate_scrollbar": {
-		"message": "Separate Scrollbar"
-	},
-	"todo_full_height": {
-		"message": "Force Full Height"
-	},
-	"todo_alternate_colors": {
-		"message": "Alternate colors"
-	},
-	"relative_due_dates": {
-		"message": "Relative Due Dates"
-	},
-	"equal_height_cards": {
-		"message": "Equal Height"
-	},
-	"enter_multiple": {
-		"message": "(Enter Multiple With A Comma)"
-	},
-	"todo_remind": {
-		"message": "Todo Reminders"
-	},
-	"remlogo": {
-		"message": "Remove Sidebar Logo"
-	},
-	"hide_feedback": {
-		"message": "Hide Recent Feedback"
-	},
-	"tab_icons": {
-		"message": "Color Coded Tab Icons"
-	},
-	"todo_hide_feedback": {
-		"message": "Hide Recent Feedback"
-	},
-	"gpa_calc_cumulative": {
-		"message": "Show Cumulative GPA"
-	},
-	"gpa_calc_weighted": {
-		"message": "Show Weighted GPA"
-	},
-	"device_dark": {
-		"message": "Use Device Dark Mode Settings"
-	},
-	"presets": {
-		"message": "Presets"
-	},
-	"dark_lighter": {
-		"message": "Lighter"
-	},
-	"dark_light": {
-		"message": "Light"
-	},
-	"dark_default": {
-		"message": "Default"
-	},
-	"dark_dark": {
-		"message": "Dark"
-	},
-	"dark_darker": {
-		"message": "Darker"
-	},
-	"dark_mint": {
-		"message": "Mint"
-	},
-	"dark_blue": {
-		"message": "Blue Tint"
-	},
-	"dark_burn": {
-		"message": "Eyeball Burn"
-	},
-	"dark_unicorn": {
-		"message": "Unicorn"
-	},
-	"dark_lightmode": {
-		"message": "Lightmode"
-	},
-	"dark_catppuccin": {
-		"message": "Catppuccin\n By Angel"
-	},
-	"dark_sage": {
-		"message": "Sabia\n By LivDoesDevStuf"
-	},
-	"dark_pink": {
-		"message": "Pink\n By Sayde"
-	},
-	"dark_coral": {
-		"message": "Coral\n By Superchido"
-	},
-	"dp_sidebar_text": {
-		"message": "Sidebar Text"
-	},
-	"dp_sidebar": {
-		"message": "Sidebar"
-	},
-	"radio_sidebar_solid": {
-		"message": "Solid"
-	},
-	"radio_sidebar_gradient": {
-		"message": "Gradient"
-	},
-	"radio_sidebar_image": {
-		"message": "Image"
-	},
-	"dp_background_0": {
-		"message": "Background Main"
-	},
-	"dp_background_1": {
-		"message": "Background Alt"
-	},
-	"dp_background_2": {
-		"message": "Background Other"
-	},
-	"dp_borders": {
-		"message": "Borders"
-	},
-	"dp_links": {
-		"message": "Links"
-	},
-	"dp_text_0": {
-		"message": "Text Main"
-	},
-	"dp_text_1": {
-		"message": "Text Other"
-	},
-	"dp_text_2": {
-		"message": "Text Alt"
-	},
-	"dark_mode_fixer": {
-		"message": "Dark Mode Fixer (Beta)"
-	},
-	"dark_mode_fixer_text": {
-		"message": "This Will Try To Fix Any Dark Mode Gaps On The Current Page."
-	},
-	"fix_dm_btn": {
-		"message": "Go"
-	},
-	"fix_dm_text": {
-		"message": "The Fixer Is Automatically Running On These Pages:"
-	},
-	"hide_links": {
-		"message": "Hide links"
-	},
-	"show_links": {
-		"message": "Show links"
-	},
-	"center_cards": {
-		"message": "Center Cards"
-	},
-	"hide_new_canvas": {
-		"message": "Hide New Dashboard"
-	}
+    "Canvas_Refined": {
+        "message": "Canvas Refined"
+    },
+    "search_features": {
+        "message": "Search features..."
+    },
+    "updates": {
+        "message": "Updates"
+    },
+    "dark_mode": {
+        "message": "Dark mode"
+    },
+    "automatic_dark_mode": {
+        "message": "Scheduled Dark Mode"
+    },
+    "auto_start_time": {
+        "message": "Start Time"
+    },
+    "auto_end_time": {
+        "message": "End Time"
+    },
+    "edit_dark_mode": {
+        "message": "Dark Mode"
+    },
+    "enter_url": {
+        "message": "Your Canvas url:"
+    },
+    "card_grades": {
+        "message": "Card Grades"
+    },
+    "gradient_cards": {
+        "message": "Gradient Cards"
+    },
+    "condensed_cards": {
+        "message": "Condensed Cards"
+    },
+    "disable_color": {
+        "message": "Disable Color Overlay"
+    },
+    "card_assignments": {
+        "message": "Card Assignments"
+    },
+    "card_customization": {
+        "message": "Cards"
+    },
+    "styles": {
+        "message": "Styles"
+    },
+    "useddmm": {
+        "message": "Use dd/mm"
+    },
+    "better_todo": {
+        "message": "Better todo list"
+    },
+    "better_sidebar": {
+        "message": "Better Sidebar"
+    },
+    "quiz_safe_mode": {
+        "message": "Quiz Safe Mode"
+    },
+    "quiz_safe_mode_desc": {
+        "message": "Turns off most Canvas Refined features on quiz pages so you get the default Canvas quiz experience"
+    },
+    "opacity_options": {
+        "message": "Opacity & Blur"
+    },
+    "opacity_only_background": {
+        "message": "Only available with a custom background"
+    },
+    "card_transparency": {
+        "message": "Card transparency"
+    },
+    "background_opacity": {
+        "message": "Background opacity"
+    },
+    "bg_blur": {
+        "message": "Background blur"
+    },
+    "sidebar_opacity": {
+        "message": "Sidebar opacity"
+    },
+    "sidebar_blur": {
+        "message": "Sidebar blur"
+    },
+    "card_opacity": {
+        "message": "Card opacity"
+    },
+    "card_blur": {
+        "message": "Card blur"
+    },
+    "sidebar_opacity_auto": {
+        "message": "Applies to the Better Sidebar when it's on, otherwise the normal sidebar."
+    },
+    "reset_default": {
+        "message": "Reset to default"
+    },
+    "max_items": {
+        "message": "Max Items: "
+    },
+    "hover_preview": {
+        "message": "Previews on hover"
+    },
+    "hide_completed": {
+        "message": "Hide Completed"
+    },
+    "24hrformat": {
+        "message": "Use 24 hr Format"
+    },
+    "dashboard_notes": {
+        "message": "Dashboard Notes"
+    },
+    "gpa_calculator": {
+        "message": "GPA Calculator"
+    },
+    "gpa_settings": {
+        "message": "GPA Settings"
+    },
+    "grade_hover": {
+        "message": "Show Only On Hover"
+    },
+    "card_letter": {
+        "message": "Show letter grade"
+    },
+    "due": {
+        "message": "Due"
+    },
+    "card_colors": {
+        "message": "Card Colors"
+    },
+    "back": {
+        "message": "Back"
+    },
+    "more_options": {
+        "message": "More Options"
+    },
+    "manual_customization": {
+        "message": "Manual Customization"
+    },
+    "background_colors": {
+        "message": "Background"
+    },
+    "text_colors": {
+        "message": "Text"
+    },
+    "full_width": {
+        "message": "Full Width Fix"
+    },
+    "report_issue": {
+        "message": "Report Issue"
+    },
+    "themes": {
+        "message": "Themes"
+    },
+    "move_top": {
+        "message": "Move To Top"
+    },
+    "show_past_due": {
+        "message": "Show Past Due"
+    },
+    "todo_separate_scrollbar": {
+        "message": "Separate Scrollbar"
+    },
+    "todo_full_height": {
+        "message": "Force Full Height"
+    },
+    "todo_alternate_colors": {
+        "message": "Alternate colors"
+    },
+    "relative_due_dates": {
+        "message": "Relative Due Dates"
+    },
+    "equal_height_cards": {
+        "message": "Equal Height"
+    },
+    "enter_multiple": {
+        "message": "(Enter Multiple With A Comma)"
+    },
+    "todo_remind": {
+        "message": "Todo Reminders"
+    },
+    "remlogo": {
+        "message": "Remove Sidebar Logo"
+    },
+    "hide_feedback": {
+        "message": "Hide Recent Feedback"
+    },
+    "tab_icons": {
+        "message": "Color Coded Tab Icons"
+    },
+    "todo_hide_feedback": {
+        "message": "Hide Recent Feedback"
+    },
+    "gpa_calc_cumulative": {
+        "message": "Show Cumulative GPA"
+    },
+    "gpa_calc_weighted": {
+        "message": "Show Weighted GPA"
+    },
+    "device_dark": {
+        "message": "Use Device Dark Mode Settings"
+    },
+    "presets": {
+        "message": "Presets"
+    },
+    "dark_lighter": {
+        "message": "Lighter"
+    },
+    "dark_light": {
+        "message": "Light"
+    },
+    "dark_default": {
+        "message": "Default"
+    },
+    "dark_dark": {
+        "message": "Dark"
+    },
+    "dark_darker": {
+        "message": "Darker"
+    },
+    "dark_mint": {
+        "message": "Mint"
+    },
+    "dark_blue": {
+        "message": "Blue Tint"
+    },
+    "dark_burn": {
+        "message": "Eyeball Burn"
+    },
+    "dark_unicorn": {
+        "message": "Unicorn"
+    },
+    "dark_lightmode": {
+        "message": "Lightmode"
+    },
+    "dark_catppuccin": {
+        "message": "Catppuccin\n By Angel"
+    },
+    "dark_sage": {
+        "message": "Sabia\n By LivDoesDevStuf"
+    },
+    "dark_pink": {
+        "message": "Pink\n By Sayde"
+    },
+    "dark_coral": {
+        "message": "Coral\n By Superchido"
+    },
+    "dp_sidebar_text": {
+        "message": "Sidebar Text"
+    },
+    "dp_sidebar": {
+        "message": "Sidebar"
+    },
+    "radio_sidebar_solid": {
+        "message": "Solid"
+    },
+    "radio_sidebar_gradient": {
+        "message": "Gradient"
+    },
+    "radio_sidebar_image": {
+        "message": "Image"
+    },
+    "dp_background_0": {
+        "message": "Background Main"
+    },
+    "dp_background_1": {
+        "message": "Background Alt"
+    },
+    "dp_background_2": {
+        "message": "Background Other"
+    },
+    "dp_borders": {
+        "message": "Borders"
+    },
+    "dp_links": {
+        "message": "Links"
+    },
+    "dp_text_0": {
+        "message": "Text Main"
+    },
+    "dp_text_1": {
+        "message": "Text Other"
+    },
+    "dp_text_2": {
+        "message": "Text Alt"
+    },
+    "dark_mode_fixer": {
+        "message": "Dark Mode Fixer (Beta)"
+    },
+    "dark_mode_fixer_text": {
+        "message": "This Will Try To Fix Any Dark Mode Gaps On The Current Page."
+    },
+    "fix_dm_btn": {
+        "message": "Go"
+    },
+    "fix_dm_text": {
+        "message": "The Fixer Is Automatically Running On These Pages:"
+    },
+    "hide_links": {
+        "message": "Hide links"
+    },
+    "show_links": {
+        "message": "Show links"
+    },
+    "center_cards": {
+        "message": "Center Cards"
+    },
+    "hide_new_canvas": {
+        "message": "Hide New Dashboard"
+    },
+    "hide_sequence_footer": {
+        "message": "Hide Next/Previous Buttons"
+    },
+    "global_search": {
+        "message": "Global Canvas Search"
+    },
+    "grade_analytics": {
+        "message": "Grade Analytics"
+    },
+    "grade_analytics_desc": {
+        "message": "Adds tools to help you analyze your grades."
+    },
+    "grade_analytics_zones": {
+        "message": "Colored grade zones"
+    }
 }

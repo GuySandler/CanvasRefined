@@ -74,6 +74,9 @@
   "grade_hover": {
     "message": "Mostra solo al passaggio del mouse"
   },
+  "card_letter": {
+      "message": "Mostra voto in lettere"
+  },
   "due": {
     "message": "Dovuto"
   },

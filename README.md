@@ -63,6 +63,9 @@ Canvas Refined adds more with more to come!
 - Popup UI revamp
 - NEW Better todo list
 - Better sidebar
+- Grade analytics and history
+- Quiz safe mode
+- Global Canvas Search (search modules & assignments across all courses; Ctrl/Cmd+K)
 - Simplified UI
   - Some options won't show up when not needed
 - Markdown in dashboard notes
@@ -76,16 +79,13 @@ Canvas Refined adds more with more to come!
 - mail assistant + ui revamp
 - better calender (+ calender sync)
 - better what if grade
-- global canvas search
 - fix darkmode fixer (and automatic)
 - grade history with graph
-- more shapes for the better todo ring thing
 
 ## Extra features that might be added:
 - card grade position, card outline
 - streaks
 - maybe find a way for faster loading
-- liquid glass theme?
 - rotating background, time/weather background overlay
 - custom side logo
 - goals
@@ -96,10 +96,8 @@ Canvas Refined adds more with more to come!
 
 ## Community suggestions (maybe will be done at some point)
 - when opening assignments it will show you "if you get a 0 on this your grade will be _"
-- quick modules button on cards
 - module sorting (newest, oldest) (maybe grid view)
 - grade leaderboard per class (opt in)
-- GPA preset by school name maybe
 - sticky notes
 
 ## Dev Installation
@@ -133,7 +131,9 @@ To install, run, and build with this repository locally,
 
 ### Add a new feature
 
-To add a new feature, please follow these guidelines.
+To contribute to this, first either make an issue with feature suggestion or post in the discord.
+
+If nobody is working on the feature, you can clone the dev branch and make your changes while following these guidelines.
 
 #### Identifier
 

@@ -74,6 +74,9 @@
   "grade_hover": {
     "message": "仅在悬停时显示"
   },
+  "card_letter": {
+      "message": "显示字母成绩"
+  },
   "due": {
     "message": "到期的"
   },

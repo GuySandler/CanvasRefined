@@ -1207,4 +1207,258 @@ hr {
     color-scheme: dark !important;
     color: var(--bctext-0) !important;
 }
+/* Dashboard list view header (Today / Add To Do / Show My Grades /
+   opportunities): Canvas paints the icon glyphs a dark ink color that
+   disappears on the dark glass header bar. Recolor the header text and
+   its icon SVGs to the theme text color. */
+.PlannerHeader-styles__root {
+    color: var(--bctext-0) !important;
+}
+.PlannerHeader-styles__root svg {
+    fill: var(--bctext-0) !important;
+}
+/* The "Today" button's label span carries Canvas's dark ink color from its
+   emotion class, which beats the inherited root color above — dark text on
+   the dark header bar. Force the whole button chain to the theme text color. */
+.PlannerHeader-styles__root button,
+.PlannerHeader-styles__root button span {
+    color: var(--bctext-0) !important;
+}
+/* Solid themed surfaces for the header buttons. Canvas leaves the icon
+   buttons (Add To Do / Show My Grades / opportunities) fully transparent
+   and paints the Today button an unthemed color — on the dark header bar
+   they need solid backgrounds to read as buttons. #planner-today-btn:hover
+   is listed separately because the ID selector on the base background rule
+   above would otherwise out-specify the class-only :hover rule. */
+.PlannerHeader-styles__root button {
+    background: var(--bcbackground-1) !important;
+    border: 1px solid var(--bcborders) !important;
+    border-radius: 4px !important;
+}
+.PlannerHeader-styles__root button:hover,
+#planner-today-btn:hover {
+    background: var(--bcbackground-2) !important;
+}
+/* The "Today" button keeps its filled surface (from the rule above) but
+   gets no outline. Two borders were boxing it in: the themed border the
+   rule above paints on the button itself, and — the sneaky one —
+   Instructure's Button variant draws its own light-gray border
+   (rgb(232,234,236)) on the inner [class$="-baseButton__content"] span,
+   which reads as a bright 1px ring on the dark chip. The icon buttons'
+   content spans carry no border, so only Today needs this. Transparent
+   (instead of border: none) keeps the button's exact dimensions. */
+#planner-today-btn,
+#planner-today-btn [class$="-baseButton__content"] {
+    border-color: transparent !important;
+}
+/* Instructure's Button variant paints its inner content span white (and a
+   light gray on hover / white + inset shadow on active). That span covers
+   the themed button background painted above, so the "Today" button still
+   rendered as a white box. Flatten the content span in every state so the
+   button's own surface shows through. */
+.PlannerHeader-styles__root button [class$="-baseButton__content"],
+.PlannerHeader-styles__root button:hover [class$="-baseButton__content"],
+.PlannerHeader-styles__root button:active [class$="-baseButton__content"] {
+    background: transparent !important;
+    box-shadow: none !important;
+}
+/* Dashboard list-view trays ("Add To Do" / "My Grades" opened from the
+   header buttons): Instructure UI renders Tray panels as body-level
+   portals — body > span > span[...-tray] — with a hardcoded white
+   background. Paint the tray panel with the theme background; the tray
+   contents already pick up the theme text color. */
+body > span > span[class*="-tray"] {
+    background: var(--bcbackground-0) !important;
+}
+/* The Add To Do form ships its own <style> tag hardcoding background
+   #FFFFFF on its root. */
+.UpdateItemTray-styles__root {
+    background: var(--bcbackground-0) !important;
+}
+/* InstUI TextInput / Select facades (Title, Date, Time, Course fields):
+   white surface, dark ink, gray border. Repaint with the theme surface,
+   text, and border colors — the calendar / arrow icons inside use
+   currentColor, so they follow. Attribute-contains matching because
+   emotion appends animation-state classes (e.g. transition--*) after the
+   component class. */
+[class*="-textInput__facade"] {
+    background: var(--bcbackground-1) !important;
+    border-color: var(--bcborders) !important;
+    color: var(--bctext-0) !important;
+}
+/* Field labels (Title / Date / Time / Course / Details) and the date-time
+   summary message keep Canvas's dark ink. */
+[class$="-formFieldLayout__label"],
+[class$="-formFieldMessage"] {
+    color: var(--bctext-1) !important;
+}
+/* InstUI ContextView popovers — the opportunities popup behind "Show My
+   Grades" and the date-picker calendar behind the Date field: white card
+   with dark text. Theme the card; descendants without their own ink
+   color (weekday headers, month label) inherit from here. */
+[class*="-contextView__content"] {
+    background: var(--bcbackground-0) !important;
+    color: var(--bctext-0) !important;
+}
+/* The opportunities popup's tab labels carry their own dark ink. */
+[class*="-contextView__content"] [class$="-view-tab"] {
+    color: var(--bctext-0) !important;
+}
+/* Flatten the white InstUI View surfaces nested inside those popovers
+   (the calendar body, the opportunities tab strip, the panel content) so
+   the themed card shows through. */
+[class*="-contextView__content"] [class*="-view--inlineBlock"],
+[class*="-contextView__content"] [class*="-view--block"],
+[class*="-contextView__content"] [class*="-view-tabs__container"],
+[class*="-contextView__content"] [class*="-view-panel__content"],
+[class*="-contextView__content"] [class*="-calendar__navigation"] {
+    background: transparent !important;
+}
+/* Calendar day chips: white squares with dark numbers. Flatten them and
+   recolor; the selected day keeps a filled chip (matched structurally via
+   aria-selected, since the chip's emotion class is a content hash). */
+[class*="-calendarDay__day"] {
+    background: transparent !important;
+    color: var(--bctext-0) !important;
+}
+button[aria-selected="true"] > [class*="-calendarDay__day"] {
+    background: var(--bclinks) !important;
+    color: #ffffff !important;
+}
+/* InstUI Select dropdowns (Time / Course) open body-level popover portals
+   with white View wrappers and white option rows around the options list.
+   Theme the list, flatten the wrappers and rows; the wrappers' emotion
+   classes carry no semantic suffix, so they are matched structurally with
+   :has() on the options list they contain (portal pattern: body > span). */
+[class*="-options__list"] {
+    background: var(--bcbackground-0) !important;
+    color: var(--bctext-0) !important;
+    border-color: var(--bcborders) !important;
+}
+[class*="-options__list"] [class$="-optionItem__container"] {
+    color: var(--bctext-0) !important;
+}
+[class$="-optionItem"] {
+    background: transparent !important;
+}
+[class$="-optionItem"]:hover,
+[class$="-optionItem"][aria-selected="true"] {
+    background: var(--bcbackground-2) !important;
+}
+body > span span:has([class*="-options__list"]) {
+    background: transparent !important;
+}
+/* Planner "Submitted" pill in the completed-items row: InstUI renders it
+   as a white chip with gray text. */
+.BadgeList-styles__item [class*="-pill"] {
+    background: var(--bcbackground-2) !important;
+    color: var(--bctext-1) !important;
+}
+/* Flash alert toasts (.flashalert-message, e.g. "Nothing planned today.
+   Selecting next item."): Canvas renders them as white cards with dark
+   text, unthemed in dark mode. Paint them with the theme background and
+   text color; the inner div[open] is the alert card itself. The close X
+   glyph inherits currentColor from the button. */
+.flashalert-message > div {
+    background: var(--bcbackground-0) !important;
+    color: var(--bctext-0) !important;
+    border-color: var(--bcborders) !important;
+}
+.flashalert-message > div p {
+    color: var(--bctext-0) !important;
+}
+.flashalert-message > div button {
+    color: var(--bctext-0) !important;
+}
+.flashalert-message > div button svg {
+    fill: var(--bctext-0) !important;
+}
+/* Global Announcements page (…/account_notifications): the Current/Recent
+   tabs come from Instructure UI. Canvas paints the tab labels ("Current" /
+   "Recent") and the panel caption ("Announcements from the past four
+   months") with its dark ink, and the active tab panel's content wrapper
+   (the direct div child of #currentTab/#pastTab) gets a white surface —
+   all unreadable in dark mode. The panel ids and aria-controls values are
+   stable; the emotion class hashes are not, so they are not used.
+   The white surface actually comes from the outer tabs container
+   (.css-gpxu0l-view-tabs__container, style background:#fff) that wraps
+   both the tab strip (.css-1baf0tq-view-tabs) and the panels — it is
+   themed via the stable "view-tabs__container" class fragment, scoped
+   to this page's panels with :has() so other Instructure UI tabs
+   elsewhere in Canvas are untouched.
+   .notification_account_content is the account notification card used on
+   this page and in the dashboard announcement banner: Canvas sets dark
+   ink on the card chain (.ic-notification down through
+   .notification_message and .notification_account_content_text), leaving
+   the announcement body and the "This is an announcement from…" line
+   invisible on the themed dark card background. Recolor the body text to
+   the theme text color, keep the h2 title at the brighter heading color
+   (an ancestor rule below would otherwise dim it), and mute the meta
+   line. These class rules also fix the same markup in the dashboard
+   banner. */
+div[class*='view-tabs__container']:has(#currentTab, #pastTab),
+#currentTab>div,
+#pastTab>div {
+    background: var(--bcbackground-0) !important;
+}
+[aria-controls=currentTab],
+[aria-controls=pastTab] {
+    color: var(--bctext-1) !important;
+}
+#currentTab>div>span,
+#pastTab>div>span {
+    color: var(--bctext-2) !important;
+}
+.notification_account_content,
+.notification_account_content .ic-notification__content,
+.notification_account_content .ic-notification__message,
+.notification_message,
+.notification_message p,
+.notification_message span,
+.notification_message strong,
+.notification_message b,
+.notification_message em,
+.notification_message li,
+.notification_message td,
+.notification_message th {
+    color: var(--bctext-1) !important;
+}
+.notification_account_content .ic-notification__title {
+    color: var(--bctext-0) !important;
+}
+.notification_account_content_text,
+.notification_account_content_text b,
+.notification_account_content_text strong {
+    color: var(--bctext-2) !important;
+}
+.notification_message a,
+.notification_account_content a {
+    color: var(--bclinks) !important;
+}
+/* Grades page: opening the comment tray marks the row with
+   .selected-assignment, which Canvas paints light blue (#e0ebf5) with a
+   .3s background transition — reads as a white row in dark mode. Repaint
+   it as the theme's raised surface so the highlight stays visible but
+   dark. */
+#grades_summary tr.selected-assignment {
+    background-color: var(--bcbackground-2) !important;
+}
+/* Grades page (…/courses/:id/grades): the comment chip in each assignment
+   row (speech-bubble icon + count, .toggle_comments_link) keeps Canvas's
+   light-gray pill background and border in dark mode; repaint it as a
+   theme chip. */
+.toggle_comments_link,
+.toggle_comments_link:hover {
+    background: var(--bcbackground-2) !important;
+    border-color: var(--bcborders) !important;
+}
+/* Grades page "late"/"missing" status pills: InstUI renders the inner pill
+   as a white chip with colored text. The emotion class hashes change between
+   Canvas releases, so match the stable "-pill" fragment scoped under the
+   server-rendered status cell. */
+td.status [class*="-pill"],
+td.status [class*="-pill"]:hover {
+    background: var(--bcbackground-2) !important;
+    color: var(--bctext-1) !important;
+}
 `;
