@@ -1623,6 +1623,19 @@ function recieveMessage(request, sender, sendResponse) {
         case ("inspect"): sendResponse(inspectDarkMode(true)); break;
         case ("fixdm"): sendResponse(runDarkModeFixer(true)); break;
 		case ("updateBackground"): applyCustomBackground(); sendResponse(true); break;
+        case ("clearPlannerCache"):
+            // "Clear planner cache" (Report issue tab in the popup): drop
+            // the cache, re-fetch fresh planner data, and re-render every
+            // consumer in this tab.
+            (async () => {
+                try { await chrome.storage.local.remove(PLANNER_CACHE_KEY); } catch (e) { /* nothing stored */ }
+                if (options.assignments_due === true || options.better_todo === true) {
+                    const items = await loadPlannerItems();
+                    refreshPlannerConsumers(items);
+                }
+                sendResponse(true);
+            })();
+            return true; // keep the message channel open for async sendResponse
         default: sendResponse(true);
     }
 }
@@ -6991,32 +7004,118 @@ function changeFavicon() {
 
 function getAssignments() {
     if (options.assignments_due === true || options.better_todo === true) {
-        // Fetch planner items from as far back as possible so overdue tasks
-        // always appear, no matter how long ago they were due. The planner
-        // API defaults start_date to "now" (which would hide every overdue
-        // item), so a far-past start date is required. Canvas returns planner
-        // items oldest-first in pages, so every page must be followed — a
-        // single request would only return the oldest page and silently drop
-        // all recent items.
-        assignments = getAllPlannerItems();
+        assignments = loadPlannerItems();
         cardAssignments = preloadAssignmentEls();
     }
 }
 
-// Far-past start date for the planner items fetch. Concluded courses are
-// excluded by the API by default, so this only pulls history from the user's
-// currently active courses, which keeps the payload bounded.
-const PLANNER_START_DATE = "2000-01-01";
+// ===================== Planner items (cached) =====================
+// The planner list powers the to-do list, dashboard cards, reminders, and
+// progress rings. It used to be re-fetched from 2000-01-01 on every page
+// load — dozens of sequential requests for students with long histories,
+// which was the main cause of the 1.0.0 slow-load reports. Now:
+//   - items are cached in chrome.storage.local and served instantly,
+//   - each page load only fetches a small recent window (14 days),
+//   - a full lookback walk (max 1 year) runs at most once a week, and only
+//     while the tab is idle, and
+//   - items are limited to courses the student is currently enrolled in.
+// Canvas returns planner items oldest-first, so any fetch that starts far
+// in the past must page through everything newer; capping the lookback at
+// one year bounds both the request count and the cache size. Overdue items
+// older than a year are intentionally dropped. (Concluded courses are
+// excluded by the planner API by default, so this is history from the
+// user's active courses only.)
+const PLANNER_CACHE_KEY = "planner_cache_v1";
+const PLANNER_LOOKBACK_DAYS = 365;   // max history fetched from Canvas
+const PLANNER_WINDOW_DAYS = 14;     // per-load "what changed" refresh window
+const PLANNER_FULL_REFRESH_DAYS = 7; // min time between full lookback walks
 // Hard cap on pages fetched (50 pages * 100 items = 5000 items) as a safety
 // net against a malformed/misbehaving next link.
 const PLANNER_MAX_PAGES = 50;
 
-// Fetches every page of /api/v1/planner/items since PLANNER_START_DATE.
-// Uses the same session/headers as getData but follows the Link "next"
-// headers until exhausted.
-async function getAllPlannerItems() {
+function plannerDateDaysAgo(days) {
+    return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+}
+
+// Stable identity for a planner item (same pair the complete-toggle uses).
+function plannerItemKey(item) {
+    return `${item.plannable_type}|${item.plannable_id}`;
+}
+
+// ===================== Active-enrollment filter =====================
+// Reported bug: the to-do list showed assignments/announcements from old,
+// concluded classes. The planner API excludes concluded *courses*, but not
+// courses where only the student's *enrollment* has concluded (common at
+// term boundaries), so those items still leak through. This fetches the ids
+// of the user's currently-active course enrollments so planner items can be
+// filtered to real, current classes. Returns null on failure so callers
+// skip filtering instead of hiding everything.
+async function fetchActiveCourseIds() {
+    const ids = new Set();
+    let url = `${domain}/api/v1/courses?enrollment_state=active&per_page=100`;
+    // 10 pages * 100 courses is far beyond any real enrollment count; just a
+    // safety net against a malformed next link.
+    for (let page = 0; page < 10 && url; page++) {
+        let response;
+        let data;
+        try {
+            response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+            data = await response.json();
+        } catch (e) {
+            return null;
+        }
+        if (!response.ok || !Array.isArray(data)) return null;
+        for (const course of data) {
+            if (course && course.id != null) ids.add(String(course.id));
+        }
+        url = getNextPageUrl(response.headers.get("Link"));
+    }
+    return ids;
+}
+
+// Keeps only items belonging to courses in `courseIds` (Set or array).
+// null/undefined means "unknown" (the enrollment fetch failed), so no
+// filtering is applied. Personal items with no course context (planner
+// notes, non-course contexts like groups) are always kept.
+function filterPlannerItemsByActiveCourses(items, courseIds) {
+    if (!courseIds) return items;
+    const active = (courseIds instanceof Set) ? courseIds : new Set(courseIds.map(String));
+    return items.filter(item => {
+        const cid = item.course_id ?? (item.context_type === "course" ? item.context_id : null);
+        return cid == null || active.has(String(cid));
+    });
+}
+
+async function readPlannerCache() {
+    try {
+        const result = await chrome.storage.local.get(PLANNER_CACHE_KEY);
+        const cache = result && result[PLANNER_CACHE_KEY];
+        if (cache && Array.isArray(cache.items)) return cache;
+    } catch (e) { /* storage unavailable; fall back to live fetch */ }
+    return null;
+}
+
+function writePlannerCache(items, lastFullRefresh, activeCourseIds) {
+    try {
+        // Fire-and-forget; guard both sync throws and (in MV3) promise
+        // rejection, e.g. a quota error — losing the cache is non-fatal.
+        const p = chrome.storage.local.set({ [PLANNER_CACHE_KEY]: { items, lastFullRefresh, activeCourseIds } });
+        if (p && typeof p.catch === "function") p.catch(() => {});
+    } catch (e) { /* cache write failure is non-fatal */ }
+}
+
+// Fetches every page of /api/v1/planner/items with a due date on/after
+// `startDate`, following the Link "next" headers until exhausted. Uses the
+// same session/headers as getData.
+async function fetchPlannerItemsSince(startDate) {
     const allItems = [];
-    let url = `${domain}/api/v1/planner/items?start_date=${PLANNER_START_DATE}&per_page=100`;
+    let url = `${domain}/api/v1/planner/items?start_date=${startDate}&per_page=100`;
     for (let page = 0; page < PLANNER_MAX_PAGES && url; page++) {
         let response;
         let data;
@@ -7036,12 +7135,138 @@ async function getAllPlannerItems() {
         // Deep-clone via JSON to unwrap Firefox Xray objects so nested props
         // are mutable (same as getData).
         try {
-            data = JSON.parse(JSON.stringify(data));
-        } catch (_) { /* keep original */ }
-        allItems.push(...data);
+            allItems.push(...JSON.parse(JSON.stringify(data)));
+        } catch (_) {
+            allItems.push(...data);
+        }
         url = getNextPageUrl(response.headers.get("Link"));
     }
     return allItems;
+}
+
+// Merges a fresh window fetch into the cached list. Cached items whose due
+// date falls inside the fetched window are replaced wholesale (catches new,
+// changed, and removed items); older cached items are kept as-is.
+function mergePlannerItems(cached, fetched, windowStartMs) {
+    const byKey = new Map();
+    for (const item of cached) {
+        const due = new Date(item.plannable_date).getTime();
+        if (due >= windowStartMs) continue; // superseded by the fresh fetch
+        byKey.set(plannerItemKey(item), item);
+    }
+    for (const item of fetched) byKey.set(plannerItemKey(item), item);
+    return sortAndTrimPlannerItems([...byKey.values()]);
+}
+
+// Drops items older than the lookback window and returns the list sorted by
+// due date ascending (the order the rest of the extension expects).
+function sortAndTrimPlannerItems(items) {
+    const cutoff = Date.now() - PLANNER_LOOKBACK_DAYS * 86400000;
+    const trimmed = items.filter(item => new Date(item.plannable_date).getTime() >= cutoff);
+    trimmed.sort((a, b) => new Date(a.plannable_date) - new Date(b.plannable_date));
+    return trimmed;
+}
+
+// Cheap change signature so consumers only re-render when something they
+// display actually moved: due date, submitted/graded/complete state, or an
+// announcement's read state.
+function plannerFingerprint(items) {
+    return items.map(item =>
+        `${plannerItemKey(item)}:${item.plannable_date}:${item.submissions?.submitted ? 1 : 0}:${item.submissions?.graded ? 1 : 0}:${item.planner_override?.marked_complete ? 1 : 0}:${item.plannable?.read_state ?? ""}`
+    ).join("|");
+}
+
+// Entry point for the planner data. Resolves instantly from cache when
+// present; otherwise does one bounded (1-year) fetch on the critical path so
+// the to-do list isn't empty on first run, then caches the result. In both
+// cases items are limited to the student's currently-active courses.
+async function loadPlannerItems() {
+    const cache = await readPlannerCache();
+    if (cache) {
+        schedulePlannerRefresh(cache);
+        // Serve instantly, filtered with the last known enrollment list;
+        // the background refresh below brings that list up to date.
+        return filterPlannerItemsByActiveCourses(cache.items, cache.activeCourseIds);
+    }
+    // First run (no cache yet): fetch the bounded lookback and the active
+    // enrollment list in parallel, then cache the filtered result.
+    const [items, courseIds] = await Promise.all([
+        fetchPlannerItemsSince(plannerDateDaysAgo(PLANNER_LOOKBACK_DAYS)),
+        fetchActiveCourseIds(),
+    ]);
+    const filtered = filterPlannerItemsByActiveCourses(
+        sortAndTrimPlannerItems(items), courseIds
+    );
+    writePlannerCache(filtered, Date.now(), courseIds ? [...courseIds] : null);
+    return filtered;
+}
+
+// Background cache refresh: a small recent window on every load (catches new
+// items and recent changes), plus a full lookback walk at most once every
+// PLANNER_FULL_REFRESH_DAYS (catches state changes on older items, e.g. a
+// months-old assignment finally being submitted). The active-enrollment list
+// is refreshed on every pass so concluded classes drop out promptly rather
+// than waiting for the weekly walk. Runs while the tab is idle so it never
+// competes with page load.
+function schedulePlannerRefresh(cache) {
+    const fullRefreshDue = !cache.lastFullRefresh ||
+        (Date.now() - cache.lastFullRefresh > PLANNER_FULL_REFRESH_DAYS * 86400000);
+    const run = async () => {
+        try {
+            const before = plannerFingerprint(
+                filterPlannerItemsByActiveCourses(cache.items, cache.activeCourseIds)
+            );
+            const courseIds = await fetchActiveCourseIds();
+            // On enrollment-fetch failure, fall back to the cached list.
+            const active = courseIds ?? (cache.activeCourseIds ?? null);
+            const idsToStore = courseIds ? [...courseIds] : (cache.activeCourseIds ?? null);
+            let merged;
+            if (fullRefreshDue) {
+                merged = filterPlannerItemsByActiveCourses(
+                    sortAndTrimPlannerItems(
+                        await fetchPlannerItemsSince(plannerDateDaysAgo(PLANNER_LOOKBACK_DAYS))
+                    ),
+                    active
+                );
+                writePlannerCache(merged, Date.now(), idsToStore);
+            } else {
+                const windowStart = plannerDateDaysAgo(PLANNER_WINDOW_DAYS);
+                const fetched = await fetchPlannerItemsSince(windowStart);
+                merged = filterPlannerItemsByActiveCourses(
+                    mergePlannerItems(cache.items, fetched, Date.parse(windowStart)),
+                    active
+                );
+                writePlannerCache(merged, cache.lastFullRefresh, idsToStore);
+            }
+            if (plannerFingerprint(merged) !== before) refreshPlannerConsumers(merged);
+        } catch (e) {
+            console.warn("planner refresh failed", e);
+        }
+    };
+    if (typeof requestIdleCallback === "function") {
+        requestIdleCallback(() => run(), { timeout: 20000 });
+    } else {
+        setTimeout(run, 5000);
+    }
+}
+
+// Re-renders everything that displays planner items after the background
+// refresh produced new data. Mirrors the option-change handlers so all the
+// existing consumers re-attach to the updated promise.
+function refreshPlannerConsumers(items) {
+    assignments = Promise.resolve(items);
+    updateReminders();
+    if (options.assignments_due === true || options.better_todo === true) {
+        cardAssignments = preloadAssignmentEls();
+        loadCardAssignments();
+    }
+    if (options.better_todo && document.getElementById("better-todo-main")) {
+        moreAnnouncementCount = 0;
+        moreAssignmentCount = 0;
+        moreCompletedCount = 0;
+        clearTodoList();
+        createTodoSections(document.querySelector("#canvasrefined-todo-list"));
+    }
 }
 
 // Extracts the rel="next" URL from a Canvas pagination Link header, or

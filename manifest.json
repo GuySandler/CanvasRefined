@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Refined",
   "description": "Even More Feature packed extension for Canvas.",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "icons": {
     "16": "icon/icon-16.png",
     "32": "icon/icon-32.png",
@@ -30,7 +30,7 @@
       "run_at": "document_start"
     }
   ],
-  "permissions": ["storage"],
+  "permissions": ["storage", "unlimitedStorage"],
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {
