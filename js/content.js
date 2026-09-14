@@ -1914,6 +1914,14 @@ const BETTER_TODO_TIMEFRAME_DAYS = {
 	"month": 30,
 	"2month": 60,
 };
+// Announcements older than this are never shown in the Better Todo list (and
+// never count toward the unread badge). Unlike assignments, an announcement
+// stops being an actionable to-do once it's old: the planner cache keeps a
+// full year of history (PLANNER_LOOKBACK_DAYS, needed for overdue
+// assignments), so without this cutoff never-opened announcements from a
+// year ago kept showing under "New" forever. Old announcements are still
+// available on the course's own Announcements page.
+const TODO_ANNOUNCEMENT_MAX_AGE_DAYS = 30;
 // Look-ahead paging for the timeframe window (arrow buttons under the Tasks
 // header). 0 = the current window (now through the timeframe cutoff, with
 // overdue items kept). Each press of the right arrow advances one full
@@ -3291,13 +3299,26 @@ async function createTodoSections(location) {
         // "Hide read announcements" off. This mirrors how native Canvas
         // clears announcements from the to-do once seen; without it the list
         // accumulated every announcement in the lookback window (reporters
-        // saw 200+ "Seen" entries from a single year).
+        // saw 200+ "Seen" entries from a single year). Read-state filters
+        // alone don't fix the whole window, though: an announcement the user
+        // simply never opened stays "unread" forever, so year-old ones kept
+        // appearing under "New" and inflating the unread badge. Anything
+        // older than TODO_ANNOUNCEMENT_MAX_AGE_DAYS is stale regardless of
+        // read state and is dropped here (see that constant for rationale).
         announcements = displayData.filter(item => {
             if (item.plannable_type != "announcement") return false;
             if (item.planner_override?.marked_complete === true) return false;
             if (options.todo_hide_read !== false && item.plannable.read_state == "read") return false;
+            const postedAt = new Date(item.plannable_date).getTime();
+            if (!Number.isNaN(postedAt) && postedAt < Date.now() - TODO_ANNOUNCEMENT_MAX_AGE_DAYS * 86400000) return false;
             return true;
         });
+        // Planner items arrive oldest-first (sortAndTrimPlannerItems), so
+        // without this the Announcements tab showed the newest posts at the
+        // bottom. Display newest-first instead: sort a descending copy by
+        // posted date (filter() already returns a fresh array, so this never
+        // mutates the shared planner list).
+        announcements.sort((a, b) => new Date(b.plannable_date) - new Date(a.plannable_date));
         // Pinned items (locally forced incomplete, e.g. a submitted assignment
         // the user sent back to Tasks) always count as due; everything else is
         // due only when neither submitted nor marked complete.
