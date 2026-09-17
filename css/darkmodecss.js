@@ -288,7 +288,8 @@ div[style*='background-color: rgb(245, 245, 245)'],
 #course_select_menu,
 .css-1dn3ise-textInput__facade,
 .css-1veueey-textInput__facade,
-.canvasrefined-todo-action:hover {
+.canvasrefined-todo-action:hover,
+.css-ywdg6k-view-rowHeader {
     background:var(--bcbackground-1)!important
 }
 
@@ -658,7 +659,8 @@ ul.outcome-level {
 .ui-progressbar .ui-button.ui-widget-header,
 ::-webkit-scrollbar-thumb,
 .ic-unread-badge__total-count,
-#calendar-app .fc-month-view .fc-today {
+#calendar-app .fc-month-view .fc-today,
+.css-um72cs-view-cell {
     background:var(--bcbackground-2)!important
 }
 
@@ -742,7 +744,9 @@ h5,
 h6,
 #tinymce,
 .PlannerItem-styles__type > span,
-.canvasrefined-todo-actions {
+.canvasrefined-todo-actions,
+.css-md78hg-colHeader,
+.css-ywdg6k-view-rowHeader {
     color:var(--bctext-0)!important
 }
 
@@ -925,7 +929,8 @@ ic-tokeninput-input,
 .card,
 .ac-token,
 span[style='color: #000000;'],
-.canvasrefined-gpa-edit-btn {
+.canvasrefined-gpa-edit-btn,
+.css-um72cs-view-cell {
     color:var(--bctext-1)!important
 }
 
@@ -1450,6 +1455,13 @@ div[class*='view-tabs__container']:has(#currentTab, #pastTab),
 .toggle_comments_link,
 .toggle_comments_link:hover {
     background: var(--bcbackground-2) !important;
+    border-color: var(--bcborders) !important;
+}
+/* Grades page rubric table borders are white by default. */
+.rating-tier,
+.react-rubric td,
+.react-rubric th,
+.rating-all-footer {
     border-color: var(--bcborders) !important;
 }
 /* Grades page "late"/"missing" status pills: InstUI renders the inner pill
