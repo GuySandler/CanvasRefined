@@ -292,7 +292,8 @@ div[style*='background-color: rgb(245, 245, 245)'],
 .css-ywdg6k-view-rowHeader,
 #grades_summary a.toggle_comments_link,
 #grades_summary a.toggle_score_details_link,
-#grades_summary a.toggle_rubric_assessments_link {
+#grades_summary a.toggle_rubric_assessments_link,
+.course-list-table-row:hover {
     background:var(--bcbackground-1)!important
 }
 
