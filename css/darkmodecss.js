@@ -289,7 +289,10 @@ div[style*='background-color: rgb(245, 245, 245)'],
 .css-1dn3ise-textInput__facade,
 .css-1veueey-textInput__facade,
 .canvasrefined-todo-action:hover,
-.css-ywdg6k-view-rowHeader {
+.css-ywdg6k-view-rowHeader,
+#grades_summary a.toggle_comments_link,
+#grades_summary a.toggle_score_details_link,
+#grades_summary a.toggle_rubric_assessments_link {
     background:var(--bcbackground-1)!important
 }
 
@@ -464,7 +467,10 @@ textarea,
 .canvasrefined-gpa-edit-btn,
 .css-26xxi8-view--block,
 .css-9fqfm7-view--block,
-.canvasrefined-todo-actions {
+.canvasrefined-todo-actions,
+#grades_summary a.toggle_comments_link,
+#grades_summary a.toggle_score_details_link,
+#grades_summary a.toggle_rubric_assessments_link {
     border:1px solid var(--bcborders)!important
 }
 
