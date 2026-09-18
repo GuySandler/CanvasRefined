@@ -1977,12 +1977,13 @@ function getTodoTimeframeWindow() {
 // Refresh the timeframe pager (arrows under the Tasks header) after every
 // render: update its label/date range, disable the back arrow on the
 // current window, and hide it entirely when there is no window to page
-// ("all") or when a non-Tasks tab is showing.
+// ("all"). Shown on every tab — the pager pages time itself, so each tab
+// shows its slice of the selected window.
 function updateTodoTimeframeNav() {
     const nav = document.getElementById("better-todo-timeframe-nav");
     if (!nav) return;
     const tfWindow = getTodoTimeframeWindow();
-    const paged = tfWindow.tf !== "all" && betterTodoFilter === "tasks";
+    const paged = tfWindow.tf !== "all";
     nav.style.display = paged ? "flex" : "none";
     if (!paged) return;
     const label = nav.querySelector("#better-todo-timeframe-label");
@@ -1994,6 +1995,16 @@ function updateTodoTimeframeNav() {
         prev.style.opacity = canPrev ? "1" : ".3";
         prev.style.cursor = canPrev ? "pointer" : "default";
     }
+}
+
+// Strict [start, end] bounds of the timeframe window the pager is currently
+// showing, or null when the timeframe is "all" (no window).
+function getTodoTimeframeBounds() {
+    const tf = getTodoTimeframeKey();
+    if (tf === "all") return null;
+    const span = BETTER_TODO_TIMEFRAME_DAYS[tf] * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    return { start: now + (betterTodoTimeframeOffset * span), end: now + ((betterTodoTimeframeOffset + 1) * span) };
 }
 
 // true when `courseId` is the dimmed-out class because another class is selected.
@@ -2585,9 +2596,26 @@ function renderProgressRings(container, scopedData) {
     const mode = getProgressRingMode();
     if (mode === "none") { container.innerHTML = ""; return; }
 
-    // Apply the same timeframe filter the list uses so the counts in the
-    // display match what's shown below it.
-    const allAssignments = applyTodoTimeframe(scopedData.filter(item => isTodoTaskType(item)));
+    // Apply the same timeframe window the list pages through so the counts
+    // in the display match what's shown below it. Unlike the Tasks list —
+    // which keeps every overdue item — finished work from before the window
+    // is history, not current workload, so it never counts. Unfinished items
+    // from before the window still count on the current window (offset 0)
+    // because the Tasks tab shows them as overdue; later windows are strict
+    // slices, so the backlog only appears on the current one.
+    const taskItems = scopedData.filter(item => isTodoTaskType(item));
+    const bounds = getTodoTimeframeBounds();
+    let allAssignments;
+    if (!bounds) {
+        allAssignments = taskItems;
+    } else {
+        const isDone = (item) => (item.submissions?.submitted || item.planner_override?.marked_complete === true) && !isPinnedIncomplete(item);
+        allAssignments = taskItems.filter(item => {
+            const t = new Date(item.plannable_date).getTime();
+            if (t > bounds.start && t <= bounds.end) return true;
+            return betterTodoTimeframeOffset === 0 && t <= bounds.start && !isDone(item);
+        });
+    }
 
     const groups = {};
     allAssignments.forEach(item => {
@@ -2602,7 +2630,19 @@ function renderProgressRings(container, scopedData) {
         return { courseId: cid, total: arr.length, completed };
     }).filter(e => e.total > 0);
 
-    if (!entries.length) { container.innerHTML = ""; return; }
+    if (!entries.length) {
+        // Don't just blank the display: an empty window (e.g. after advancing
+        // the pager to a week with nothing due) previously made the whole
+        // progress display disappear, which read as a bug. Show a quiet
+        // empty state instead.
+        container.innerHTML = "";
+        const empty = document.createElement('div');
+        empty.className = 'canvasrefined-progress-empty';
+        empty.style.cssText = 'color:var(--bctext-0);opacity:.7;font-size:12px;padding:6px 0;text-align:center;';
+        empty.textContent = bounds ? 'No tasks in this timeframe' : 'No tasks yet';
+        container.appendChild(empty);
+        return;
+    }
 
     // Order courses to match the user's dashboard card order. Courses that
     // aren't on the dashboard (personal tasks, dropped courses) sort after
@@ -3191,11 +3231,13 @@ async function createTodoSections(location) {
         `;
         const changeTimeframeOffset = (delta) => {
             const tf = getTodoTimeframeKey();
-            if (tf === "all" || betterTodoFilter !== "tasks") return;
+            if (tf === "all") return;
             const nextOffset = Math.max(0, betterTodoTimeframeOffset + delta);
             if (nextOffset === betterTodoTimeframeOffset) return;
             betterTodoTimeframeOffset = nextOffset;
+            moreAnnouncementCount = 0;
             moreAssignmentCount = 0;
+            moreCompletedCount = 0;
             clearTodoList();
             createTodoSections(location);
         };
@@ -3326,13 +3368,16 @@ async function createTodoSections(location) {
         completed = displayData.filter(item => isTodoTaskType(item) && (item.submissions?.submitted || item.planner_override?.marked_complete) && !isPinnedIncomplete(item));
         // The timeframe is a persisted Better Todo List sub-option set in the
         // popup. Read the current value each render so popup changes apply on
-        // the next render. Only the Tasks tab is affected (announcements and
-        // the completed tab always show everything).
-        // The timeframe filter only applies to the Tasks tab, but a pinned item
-        // must never be dropped from both tabs: exclude pins from the cutoff
-        // filter so a "sent back" old item still shows up under Tasks.
+        // the next render. Every tab is paged through time: Tasks by due
+        // date, Announcements by posted date, Completed by due date. On the
+        // current window (offset 0) everything on/before the cutoff stays
+        // visible, so only paging forward narrows these two tabs.
+        // Pinned items ("sent back" submissions) bypass the window filter so
+        // an old pinned item still shows up under Tasks.
         const pinnedItems = assignmentsDue.filter(item => isPinnedIncomplete(item));
         assignmentsDue = applyTodoTimeframe(assignmentsDue.filter(item => !isPinnedIncomplete(item))).concat(pinnedItems);
+        announcements = applyTodoTimeframe(announcements);
+        completed = applyTodoTimeframe(completed);
 		// console.log("assignments", assignmentsDue);
 		// console.log("announcements", announcements);
 		// console.log("completed", completed);
