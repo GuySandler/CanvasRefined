@@ -18,6 +18,7 @@ const syncedSubOptions = [
 	"auto_dark",
 	"auto_dark_start",
 	"auto_dark_end",
+	"custom_font_skip_p",
 	"num_assignments",
 	"assignment_date_format",
 	"todo_hr24",
@@ -136,6 +137,7 @@ const defaultOptions = {
         // "hide_completed": false,
         "num_todo_items": 10,
         "custom_font": { "link": "", "family": "" },
+        "custom_font_skip_p": false,
         "hover_preview": true,
         "full_width": null,
         "remlogo": null,
@@ -962,6 +964,7 @@ function setup() {
 			"gpa_calc_prepend",
 			"auto_dark",
 			"assignment_date_format",
+			"custom_font_skip_p",
 			"todo_hr24",
 			"todo_separate_scrollbar",
 			"todo_alternate_colors",
@@ -1428,7 +1431,7 @@ function setup() {
                                 break;
                             }
                             case "export-font":
-                                final = { ...final, ...(await getExport(storage, ["custom_font"])) };
+                                final = { ...final, ...(await getExport(storage, ["custom_font", "custom_font_skip_p"])) };
                                 break;
                             case "export-background":
                                 final = { ...final, ...(await getExport(storage, exportBackground)) };
@@ -1702,6 +1705,13 @@ function setup() {
         chrome.storage.local.set({ [fontsDropdownStateKey]: nextOpen });
     });
 
+    // The "Keep original assignment font" toggle sits inline in the dropdown
+    // header; clicking it must not also collapse/expand the font dropdown.
+    const skipPToggle = document.getElementById("custom_font_skip_p");
+    if (skipPToggle) {
+        skipPToggle.closest("span").addEventListener("click", (e) => e.stopPropagation());
+    }
+
 }
 
 function applyGPAPreset(bounds) {
@@ -1874,6 +1884,7 @@ function saveCurrentTheme() {
                 "custom_cards": current["custom_cards"],
                 "card_colors": current["card_colors"] === null ? [current["dark_preset"]["links"]] : current["card_colors"],
                 "custom_font": current["custom_font"],
+                "custom_font_skip_p": current["custom_font_skip_p"],
                 "better_todo": current["better_todo"],
                 "todo_hide_feedback": current["todo_hide_feedback"],
                 "todo_hide_read": current["todo_hide_read"] !== false,

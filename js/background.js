@@ -87,6 +87,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "todo_progress_rings": "rings",
             "todo_confetti": true,
             "todo_show_scores": false,
+            "custom_font_skip_p": false,
             "device_dark": false,
             "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
             // "show_updates": false,

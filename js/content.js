@@ -998,6 +998,7 @@ function applyOptionsChanges(changes) {
 				calculateGPA2();
 				break;
 			case "custom_font":
+			case "custom_font_skip_p":
 				loadCustomFont();
 				break;
 			case "remlogo":
@@ -6415,6 +6416,49 @@ function loadDashboardNotes() {
 Custom font
 */
 
+// "Keep original assignment font": Canvas sets its font (Lato) on <body>
+// via author CSS, and the custom-font rule's `*` selector overrides it. To
+// keep <p> original we (a) carve p + its descendants out of the custom rule
+// and (b) pin them back to the font body had BEFORE the custom rule landed —
+// plain `inherit` wouldn't work because p's ancestors still carry the custom
+// font via `*`. The pre-custom font is captured once from body's computed
+// style (before our <style> is first injected), with Canvas's default Lato
+// stack as fallback.
+let originalPageFontFamily = null;
+const CANVAS_DEFAULT_FONT_STACK = '"Lato Extended", Lato, "Helvetica Neue", Helvetica, Arial, sans-serif';
+
+function captureOriginalPageFont() {
+    if (originalPageFontFamily) return;
+    // Too late to capture once our rule is live: body's computed style would
+    // already be the custom font.
+    if (document.querySelector("#custom_font")) return;
+    try {
+        const family = getComputedStyle(document.body || document.documentElement).fontFamily;
+        if (family) originalPageFontFamily = family;
+    } catch (_) { /* keep fallback */ }
+}
+
+function originalPageFontOrFallback() {
+    return originalPageFontFamily || CANVAS_DEFAULT_FONT_STACK;
+}
+
+function customFontRules() {
+    if (options.custom_font_skip_p !== true) {
+        return `${customFontSelector()} {font-family: ${options.custom_font.family}!important}`;
+    }
+    return `${customFontSelector()} {font-family: ${options.custom_font.family}!important}\n`
+        + `p, p * {font-family: ${originalPageFontOrFallback()}!important}`;
+}
+
+// Selector for the custom font rule. With "Keep original assignment font"
+// on, <p> (and everything inside one) is carved out with :not() so the
+// paragraph override rule below is the only thing styling them.
+function customFontSelector() {
+    return options.custom_font_skip_p === true
+        ? "*:not(p):not(p *), input, a, button, h1, h2, h3, h4, h5, h6, span"
+        : "*, input, a, button, h1, h2, h3, h4, h5, h6, p, span";
+}
+
 function loadCustomFont() {
     // Quiz safe mode: don't override fonts on quiz pages.
     if (quizSafeModeActive()) return;
@@ -6423,13 +6467,15 @@ function loadCustomFont() {
 
     let load = () => {
         if (options.custom_font.link !== "") {
+            // Capture the original font before the custom rule is injected.
+            captureOriginalPageFont();
             document.head.appendChild(style);
             link.href = `https://fonts.googleapis.com/css2?family=${options.custom_font.link}&display=swap`;
             link.rel = "stylesheet";
             document.head.appendChild(link);
         }
 
-        style.textContent = options.custom_font.link === "" ? "" : `*, input, a, button, h1, h2, h3, h4, h5, h6, p, span {font-family: ${options.custom_font.family}!important}`;
+        style.textContent = options.custom_font.link === "" ? "" : customFontRules();
     }
 
     let createEls = () => {
