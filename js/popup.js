@@ -25,6 +25,7 @@ const syncedSubOptions = [
 	"todo_alternate_colors",
 	"todo_ignore_card_colors",
 	"todo_remove_icons",
+	"todo_show_scores",
 	"grade_hover",
 	"card_letter",
 	// "hide_completed",
@@ -59,7 +60,7 @@ const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
-const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "hover_preview"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
@@ -121,6 +122,7 @@ const defaultOptions = {
 		"todo_alternate_colors": false,
 		"todo_ignore_card_colors": false,
 		"todo_remove_icons": false,
+		"todo_show_scores": false,
         "todo_hide_read": true,
         "condensed_cards": false,
         "center_cards": false,
@@ -965,6 +967,7 @@ function setup() {
 			"todo_alternate_colors",
 			"todo_ignore_card_colors",
 			"todo_remove_icons",
+			"todo_show_scores",
 			"grade_hover",
 			"card_letter",
 			// "hide_completed",
@@ -1868,6 +1871,7 @@ function saveCurrentTheme() {
                 "todo_alternate_colors": current["todo_alternate_colors"],
                 "todo_ignore_card_colors": current["todo_ignore_card_colors"],
                 "todo_remove_icons": current["todo_remove_icons"],
+                "todo_show_scores": current["todo_show_scores"],
                 "better_sidebar": current["better_sidebar"],
                 "sidebar_scale": current["sidebar_scale"],
 				"imageSize": current["imageSize"],

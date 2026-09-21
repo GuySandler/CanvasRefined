@@ -955,6 +955,7 @@ function applyOptionsChanges(changes) {
 			case "todo_full_height":
 			case "todo_ignore_card_colors":
 			case "todo_remove_icons":
+			case "todo_show_scores":
 			case "custom_cards_3":
 				if (options.better_todo && document.getElementById("better-todo-main")) {
 					moreAnnouncementCount = 0;
@@ -3754,6 +3755,110 @@ function attachTodoHoverPreview(anchor, item) {
 const TODO_QUIZ_ICON_SVG = '<svg fill="var(--cr-todo-icon)" label="Quiz" name="IconQuiz" viewBox="0 0 1920 1920" rotate="0" aria-hidden="true" role="presentation" focusable="false"  ><g role="presentation"><g fill-rule="evenodd" stroke="none" stroke-width="1"><path d="M746.255375,1466.76417 L826.739372,1547.47616 L577.99138,1796.11015 L497.507383,1715.51216 L746.255375,1466.76417 Z M580.35118,1300.92837 L660.949178,1381.52637 L329.323189,1713.15236 L248.725192,1632.55436 L580.35118,1300.92837 Z M414.503986,1135.20658 L495.101983,1215.80457 L80.5979973,1630.30856 L0,1549.71056 L414.503986,1135.20658 Z M1119.32036,264.600006 C1475.79835,-91.8779816 1844.58834,86.3040124 1848.35034,88.1280123 L1848.35034,88.1280123 L1865.45034,96.564012 L1873.88634,113.664011 C1875.71034,117.312011 2053.89233,486.101999 1697.30034,842.693987 L1697.30034,842.693987 L1550.69635,989.297982 L1548.07435,1655.17196 L1325.43235,1877.81395 L993.806366,1546.30196 L415.712386,968.207982 L84.0863971,636.467994 L306.72839,413.826001 L972.602367,411.318001 Z M1436.24035,1103.75398 L1074.40436,1465.70397 L1325.43235,1716.61796 L1434.30235,1607.74796 L1436.24035,1103.75398 Z M1779.26634,182.406009 C1710.18234,156.41401 1457.90035,87.1020124 1199.91836,345.198004 L1199.91836,345.198004 L576.90838,968.207982 L993.806366,1385.10597 L1616.70235,762.095989 C1873.65834,505.139998 1804.68834,250.920007 1779.26634,182.406009 Z M858.146371,525.773997 L354.152388,527.597997 L245.282392,636.467994 L496.310383,887.609985 L858.146371,525.773997 Z"></path><path d="M1534.98715,372.558003 C1483.91515,371.190003 1403.31715,385.326002 1321.69316,466.949999 L1281.22316,507.305998 L1454.61715,680.585992 L1494.97315,640.343994 C1577.16715,558.035996 1591.87315,479.033999 1589.82115,427.164001 L1587.65515,374.610003 L1534.98715,372.558003 Z"></path></g></g></svg>';
 const TODO_DISCUSSION_ICON_SVG = '<svg fill="var(--cr-todo-icon)" name="IconDiscussion" viewBox="0 0 1920 1920" rotate="0" aria-hidden="true" role="presentation" focusable="false"  ><g role="presentation"><path d="M677.647059,16 L677.647059,354.936471 L790.588235,354.936471 L790.588235,129.054118 L1807.05882,129.054118 L1807.05882,919.529412 L1581.06353,919.529412 L1581.06353,1179.29412 L1321.41176,919.529412 L1242.24,919.529412 L1242.24,467.877647 L677.647059,467.877647 L0,467.877647 L0,1484.34824 L338.710588,1484.34824 L338.710588,1903.24706 L756.705882,1484.34824 L1242.24,1484.34824 L1242.24,1032.47059 L1274.99294,1032.47059 L1694.11765,1451.59529 L1694.11765,1032.47059 L1920,1032.47059 L1920,16 L677.647059,16 Z M338.789647,919.563294 L903.495529,919.563294 L903.495529,806.622118 L338.789647,806.622118 L338.789647,919.563294 Z M338.789647,1145.44565 L677.726118,1145.44565 L677.726118,1032.39153 L338.789647,1032.39153 L338.789647,1145.44565 Z M112.941176,580.705882 L1129.41176,580.705882 L1129.41176,1371.40706 L710.4,1371.40706 L451.651765,1631.05882 L451.651765,1371.40706 L112.941176,1371.40706 L112.941176,580.705882 Z" fill-rule="evenodd" stroke="none" stroke-width="1"></path></g></svg>';
 
+// --- Assignment scores on the Better Todo List ("Show assignment scores") ---
+// Canvas's planner items API omits the actual submission score (its
+// `submissions` object only carries booleans like graded/late), so points
+// possible come straight from the plannable and the earned score is lazily
+// fetched per course (students/submissions?student_ids[]=self) and cached for
+// the session. Badges always render as "{score}/{points} pts" — an en dash
+// stands in for the earned score until the fetch lands (or while the item is
+// ungraded/unsubmitted), and "Excused" replaces the whole badge for excused
+// submissions.
+const todoScoreCache = new Map(); // `${courseId}:${plannableId}` -> {score, excused}
+let todoScoreLoadToken = 0;
+
+function formatTodoScoreNumber(n) {
+    return String(Math.round(n * 100) / 100);
+}
+
+// Tiny green check shown right after the score on graded assignments. Kept
+// as a constant string so both the initial render and the async patch can
+// insert the exact same markup.
+const TODO_GRADED_BADGE_HTML = `<svg class="better-todo-graded" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:10px;height:10px;margin-left:5px;display:inline-block;vertical-align:-1px;" title="Graded"><path d="M20 6L9 17l-5-5" stroke="#28a745" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+// Small inline badge shown next to the due date. "" when the item has no
+// meaningful points (custom tasks, wiki pages, etc.).
+function todoScoreBadgeHtml(item) {
+    if (item.plannable_type == "planner_note" || item.planner_override?.custom === true) return "";
+    const points = item.plannable?.points_possible;
+    if (points == null) return "";
+    const pts = formatTodoScoreNumber(points);
+    const key = `${item.course_id}:${item.plannable_id}`;
+    const cached = todoScoreCache.get(key);
+    // Graded state: the live fetched score is the strongest signal, otherwise
+    // fall back to the planner API's boolean — but only while the score fetch
+    // hasn't run yet (a cached null score means the fetch confirmed no grade).
+    const graded = cached ? cached.score != null : item.submissions?.graded === true;
+    let text;
+    if (cached?.excused) text = "Excused";
+    else text = `${cached?.score != null ? formatTodoScoreNumber(cached.score) : "–"}/${pts} pts`;
+    const attrs = `data-todo-course="${item.course_id ?? ""}" data-todo-plannable="${item.plannable_id}" data-todo-points="${pts}"`;
+    return `<span class="better-todo-score" ${attrs} style="margin-left:6px;opacity:.85;">${text}</span>${graded ? TODO_GRADED_BADGE_HTML : ""}`;
+}
+
+// Fetches the current user's submission scores for every course with visible
+// todo items still missing a score, then patches the badges in place (a full
+// re-render would reset the "View More" expansion state). The token guards
+// against overlapping loads from rapid option/tab switches: an outdated run
+// stops touching the DOM, and any newer run re-collects the still-missing
+// items anyway.
+async function loadTodoScores(items) {
+    if (options.todo_show_scores !== true) return;
+    const byCourse = new Map();
+    for (const item of items) {
+        if (item.plannable_type == "planner_note" || item.planner_override?.custom === true) continue;
+        if (item.plannable?.points_possible == null) continue;
+        const cid = item.course_id ?? item.context_id;
+        if (cid == null) continue;
+        const key = `${cid}:${item.plannable_id}`;
+        if (todoScoreCache.has(key)) continue;
+        if (item.submissions?.excused === true) { todoScoreCache.set(key, { score: null, excused: true }); continue; }
+        let list = byCourse.get(String(cid));
+        if (!list) { list = []; byCourse.set(String(cid), list); }
+        list.push(item);
+    }
+    if (byCourse.size === 0) return;
+    const token = ++todoScoreLoadToken;
+    for (const [cid] of byCourse) {
+        try {
+            let url = `${domain}/api/v1/courses/${cid}/students/submissions?student_ids[]=self&per_page=100`;
+            // 10 pages * 100 submissions is a safety net against a malformed
+            // next link, same as fetchActiveCourseIds.
+            for (let page = 0; page < 10 && url; page++) {
+                const response = await fetch(url, {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json", "Accept": "application/json" }
+                });
+                if (!response.ok) throw new Error(`Canvas API request failed (${response.status})`);
+                const data = await response.json();
+                if (token !== todoScoreLoadToken) return;
+                if (Array.isArray(data)) {
+                    for (const s of data) {
+                        if (s && s.assignment_id != null) {
+                            todoScoreCache.set(`${cid}:${s.assignment_id}`, { score: s.score, excused: s.excused === true });
+                        }
+                    }
+                }
+                url = getNextPageUrl(response.headers.get("Link"));
+            }
+        } catch (e) {
+            // Leave these items uncached so a later render retries the fetch
+            // (e.g. teacher accounts, which the submissions endpoint rejects).
+        }
+    }
+    if (token !== todoScoreLoadToken) return;
+    // Patch every badge that now has data, on either tab.
+    document.querySelectorAll("#better-todo-main .better-todo-score").forEach(el => {
+        const cached = todoScoreCache.get(`${el.dataset.todoCourse}:${el.dataset.todoPlannable}`);
+        if (!cached) return;
+        if (cached.excused) el.textContent = "Excused";
+        else el.textContent = `${cached.score != null ? formatTodoScoreNumber(cached.score) : "–"}/${el.dataset.todoPoints} pts`;
+        if (cached.score != null && !el.nextElementSibling?.classList.contains("better-todo-graded")) {
+            el.insertAdjacentHTML("afterend", TODO_GRADED_BADGE_HTML);
+        }
+    });
+}
+
 function populateAssignments(iscompleted = false) {
 	const today = new Date();
 	today.setHours(0,0,0,0);
@@ -3858,6 +3963,7 @@ function populateAssignments(iscompleted = false) {
         // thin "motion lines" occupy the left edge), so it needs less of a
         // nudge — otherwise it reads as off-center next to the others.
         const iconLeftOffset = isCustomTask ? 2 : item.plannable_type == "quiz" ? 2 : 5;
+        const scoreBadge = options.todo_show_scores === true ? todoScoreBadgeHtml(item) : "";
         const taskIcon = removeIcons ? "" : isCustomTask
             ? `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
                 <path d="M19.8201 14H15.6001C15.04 14 14.76 14 14.5461 14.109C14.3579 14.2049 14.2049 14.3578 14.1091 14.546C14.0001 14.7599 14.0001 15.0399 14.0001 15.6V19.82M20 12.7269V7.2C20 6.0799 20 5.51984 19.782 5.09202C19.5903 4.71569 19.2843 4.40973 18.908 4.21799C18.4802 4 17.9201 4 16.8 4H7.2C6.0799 4 5.51984 4 5.09202 4.21799C4.71569 4.40973 4.40973 4.71569 4.21799 5.09202C4 5.51984 4 6.0799 4 7.2V16.8C4 17.9201 4 18.4802 4.21799 18.908C4.40973 19.2843 4.71569 19.5903 5.09202 19.782C5.51984 20 6.0799 20 7.2 20H12.9496C13.4578 20 13.7118 20 13.9498 19.9407C14.1608 19.8882 14.3618 19.8016 14.5449 19.6844C14.7515 19.5522 14.926 19.3675 15.2751 18.9983L19.1254 14.9252C19.4486 14.5833 19.6101 14.4124 19.7255 14.2156C19.8278 14.041 19.903 13.8519 19.9486 13.6548C20 13.4325 20 13.1973 20 12.7269Z" stroke="var(--cr-todo-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -3881,7 +3987,7 @@ function populateAssignments(iscompleted = false) {
 				<div style="display:flex;flex-direction:column;gap:3px;">
 					<span style="color:${classNameColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
 					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;padding-right:28px;margin-top:-5px;">${item.plannable.title}</a>
-					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
+					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}${scoreBadge}</span>
 				</div>
 				${editButtonSvg}
 				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'"${(iscompleted && wasSubmitted) ? " title=\"Submitted to Canvas — clicking sends it back to Tasks (locally)\"" : ""}>
@@ -3912,6 +4018,8 @@ function populateAssignments(iscompleted = false) {
 		}
 		attachTodoHoverPreview(assignment, item);
 	});
+
+	if (options.todo_show_scores === true) loadTodoScores(iscompleted ? completed : assignmentsDue);
 
 	if (document.getElementById("better-todo-see-more")) {
 		document.getElementById("better-todo-see-more").remove();
