@@ -6796,7 +6796,7 @@ function openGlobalSearchModal() {
         <div class="canvasrefined-gs-card" role="dialog" aria-modal="true" aria-label="Search Canvas">
             <div class="canvasrefined-gs-input-row">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" class="canvasrefined-gs-input-icon"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                <input id="canvasrefined-gs-input" class="canvasrefined-gs-input" type="text" placeholder="Search modules & assignments\u2026" autocomplete="off" spellcheck="false" />
+                <input id="canvasrefined-gs-input" class="canvasrefined-gs-input" type="text" placeholder="Search modules & assignments\u2026 (@coursename filters by course)" autocomplete="off" spellcheck="false" />
                 <button id="canvasrefined-gs-close" class="canvasrefined-gs-close" type="button" title="Close (Esc)">Esc</button>
             </div>
             <div id="canvasrefined-gs-results" class="canvasrefined-gs-results"></div>
@@ -6856,7 +6856,7 @@ function openGlobalSearchModal() {
     // Kick off indexing immediately so the first keystroke is fast.
     ensureGlobalSearchIndex();
     // Render an initial hint.
-    resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments.</div>`;
+    resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments. Use @coursename to search a specific course.</div>`;
 }
 
 function closeGlobalSearchModal() {
@@ -6983,6 +6983,21 @@ async function buildGlobalSearchIndex() {
         const courseName = course.name;
         const courseCode = course.course_code || courseName;
 
+        // The course itself, so class-name queries surface its homepage and
+        // the @course filter has something to match against.
+        const courseKey = `course:${courseId}`;
+        if (!seenContent.has(courseKey)) {
+            seenContent.add(courseKey);
+            index.push({
+                type: "Course",
+                title: courseName,
+                course: courseName,
+                courseCode,
+                courseId,
+                url: `${domain}/courses/${courseId}`
+            });
+        }
+
         // Assignments first so their direct URLs win over the module-item
         // versions of the same assignment.
         try {
@@ -7107,51 +7122,54 @@ function prettyModuleItemType(type) {
 
 // --- Searching --------------------------------------------------------------
 
-async function runGlobalSearch(query, resultsEl) {
-    if (!globalSearchIndex && globalSearchIndexPromise) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-loading">Building search index\u2026</div>`;
-    }
-    const index = await ensureGlobalSearchIndex();
-    if (!query) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments.</div>`;
-        return [];
-    }
-    if (!index || !index.length) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No modules or assignments found. Open the search again later if your courses are still loading.</div>`;
-        return [];
-    }
+// Course-name matching used by the @course filter (case-insensitive, matches
+// anywhere in the full name or the course code, e.g. "101" or "calc"). An
+// empty filter (a bare "@") matches every course.
+function globalSearchCourseMatches(courseEntry, filter) {
+    const f = (filter || "").toLowerCase();
+    if (!f) return true;
+    return (courseEntry.title || "").toLowerCase().includes(f) ||
+        (courseEntry.courseCode || "").toLowerCase().includes(f);
+}
 
-    const q = query.toLowerCase();
-    const matches = [];
-    for (const item of index) {
-        // Re-check hidden status at search time so a card hidden after the index
-        // was cached (10-min TTL) never surfaces in results.
-        if (isCourseHidden(item.courseId)) continue;
-        const t = (item.title || "").toLowerCase();
-        const c = (item.course || "").toLowerCase();
-        let score = -1;
-        if (t.startsWith(q)) score = 100 - t.indexOf(q);
-        else if (t.includes(q)) score = 60 - t.indexOf(q);
-        else if (c.includes(q)) score = 20;
-        if (score >= 0) { item._score = score + (t === q ? 50 : 0); matches.push(item); }
+// Splits "@Math 101 homework 5" into { courseFilter, content }. The filter is
+// the longest prefix after the last "@" that still matches at least one
+// course, so course names with spaces work: whatever remains becomes the
+// content query. Returns null when there is no @token at all (plain search).
+function parseGlobalSearchCourseFilter(query, courseEntries) {
+    const at = query.lastIndexOf("@");
+    if (at < 0) return null;
+    // '@' must start the query or follow whitespace, so email addresses and
+    // URLs the user pastes in aren't split apart.
+    if (at > 0 && !/\s/.test(query[at - 1])) return null;
+    const before = query.slice(0, at).trim();
+    const rest = query.slice(at + 1);
+    // Longest matching prefix; must end at a word boundary (or the end of the
+    // query) so "@mathh" doesn't silently become course "math" + query "h".
+    for (let len = rest.length; len > 0; len--) {
+        if (len < rest.length && rest[len] !== " ") continue;
+        const candidate = rest.slice(0, len).trim().toLowerCase();
+        if (!candidate) continue;
+        if (courseEntries.some(c => globalSearchCourseMatches(c, candidate))) {
+            return { courseFilter: candidate, content: `${before} ${rest.slice(len)}`.trim() };
+        }
     }
-    matches.sort((a, b) => b._score - a._score);
-    const top = matches.slice(0, 50);
+    if (!rest.trim()) return { courseFilter: "", content: before }; // bare "@" -> all courses
+    return null;
+}
 
-    if (!top.length) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No results for \u201c${escapeGlobalSearchHtml(query)}\u201d.</div>`;
-        return [];
-    }
-
-    resultsEl.innerHTML = top.map((item, i) => `
+function globalSearchRowHtml(item, i) {
+    return `
         <div class="canvasrefined-gs-row" data-i="${i}" data-url="${escapeGlobalSearchAttr(item.url)}">
             <div class="canvasrefined-gs-row-main">
                 <span class="canvasrefined-gs-type canvasrefined-gs-type-${escapeGlobalSearchAttr((item.type || "").toLowerCase().replace(/\s+/g, "-"))}">${escapeGlobalSearchHtml(item.type || "")}</span>
                 <span class="canvasrefined-gs-title">${escapeGlobalSearchHtml(item.title || "")}</span>
             </div>
             <span class="canvasrefined-gs-course">${escapeGlobalSearchHtml(item.course || "")}</span>
-        </div>`).join("");
+        </div>`;
+}
 
+function bindGlobalSearchRows(resultsEl, top) {
     resultsEl.querySelectorAll(".canvasrefined-gs-row").forEach((row) => {
         // Plain click / Ctrl+click: honor modifier for new-tab behavior.
         row.addEventListener("click", (e) => {
@@ -7168,6 +7186,74 @@ async function runGlobalSearch(query, resultsEl) {
             if (item) openGlobalSearchResult(item, true);
         });
     });
+}
+
+async function runGlobalSearch(query, resultsEl) {
+    if (!globalSearchIndex && globalSearchIndexPromise) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-loading">Building search index\u2026</div>`;
+    }
+    const index = await ensureGlobalSearchIndex();
+    if (!query) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments. Use @coursename to search a specific course.</div>`;
+        return [];
+    }
+    if (!index || !index.length) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No modules or assignments found. Open the search again later if your courses are still loading.</div>`;
+        return [];
+    }
+
+    // "@course name" narrows the search to one course. With no other words
+    // after the filter (or a bare "@"), list the matching courses' homepages.
+    const courseEntries = index.filter(i => i.type === "Course");
+    const parsed = parseGlobalSearchCourseFilter(query, courseEntries);
+    let effectiveQuery = query;
+    let allowedCourseIds = null;
+    if (parsed) {
+        effectiveQuery = parsed.content;
+        const matching = courseEntries.filter(c => globalSearchCourseMatches(c, parsed.courseFilter));
+        allowedCourseIds = new Set(matching.map(c => String(c.courseId)));
+        if (!effectiveQuery) {
+            if (!matching.length) {
+                resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No course matches \u201c${escapeGlobalSearchHtml(parsed.courseFilter)}\u201d.</div>`;
+                return [];
+            }
+            resultsEl.innerHTML = matching.map((item, i) => globalSearchRowHtml(item, i)).join("");
+            bindGlobalSearchRows(resultsEl, matching);
+            return matching;
+        }
+    }
+
+    const q = effectiveQuery.toLowerCase();
+    const matches = [];
+    for (const item of index) {
+        // Re-check hidden status at search time so a card hidden after the index
+        // was cached (10-min TTL) never surfaces in results.
+        if (isCourseHidden(item.courseId)) continue;
+        // An @course filter restricts results to that course's entries.
+        if (allowedCourseIds && !allowedCourseIds.has(String(item.courseId))) continue;
+        const t = (item.title || "").toLowerCase();
+        const c = (item.course || "").toLowerCase();
+        let score = -1;
+        if (t.startsWith(q)) score = 100 - t.indexOf(q);
+        else if (t.includes(q)) score = 60 - t.indexOf(q);
+        else if (c.includes(q)) score = 20;
+        // Course homepages float above item matches for class-name queries.
+        if (score >= 0) {
+            if (item.type === "Course" && t.startsWith(q)) score += 40;
+            item._score = score + (t === q ? 50 : 0);
+            matches.push(item);
+        }
+    }
+    matches.sort((a, b) => b._score - a._score);
+    const top = matches.slice(0, 50);
+
+    if (!top.length) {
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No results for \u201c${escapeGlobalSearchHtml(query)}\u201d.</div>`;
+        return [];
+    }
+
+    resultsEl.innerHTML = top.map((item, i) => globalSearchRowHtml(item, i)).join("");
+    bindGlobalSearchRows(resultsEl, top);
     return top;
 }
 

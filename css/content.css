@@ -354,7 +354,8 @@
 .canvasrefined-gs-type-module { background: #efe7fb; color: #5b2a9e; border-color: #d8c6f1; }
 .canvasrefined-gs-type-page { background: #f1f3f5; color: #444; border-color: #dde1e3; }
 .canvasrefined-gs-type-file { background: #f1f3f5; color: #444; border-color: #dde1e3; }
-.canvasrefined-gs-type-link, .canvasrefined-gs-type-external-tool { background: #fff4d6; color: #7a5b00; border-color: #f1dfab; }
+    .canvasrefined-gs-type-link, .canvasrefined-gs-type-external-tool { background: #fff4d6; color: #7a5b00; border-color: #f1dfab; }
+.canvasrefined-gs-type-course { background: #dff3f3; color: #0b6e6e; border-color: #b3dede; }
 .canvasrefined-gs-footer {
     display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 14px; font-size: 12px;
     color: var(--bctext-2, #9aa3ab); border-top: 1px solid var(--bcborders, #e2e6e8);
