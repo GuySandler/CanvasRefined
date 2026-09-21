@@ -57,7 +57,7 @@ const localSwitches = [];
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding"];
-const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "tab_icons"];
+const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
@@ -158,6 +158,7 @@ const defaultOptions = {
         "equal_height_cards": false,
         "hide_new_canvas": true,
         "hide_sequence_footer": false,
+        "hide_navbar": false,
         "grade_analytics_zones": false,
         "quiz_safe_mode": false,
         "dark_mode_fix": [],
@@ -942,6 +943,7 @@ function setup() {
     const menu = {
 		switches: syncedSwitches,
 		checkboxes: [
+			"hide_navbar",
 			"browser_show_likes",
 			"gpa_calc_weighted",
 			"gpa_calc_cumulative",

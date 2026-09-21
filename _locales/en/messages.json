@@ -311,6 +311,9 @@
     "hide_sequence_footer": {
         "message": "Hide Next/Previous Buttons"
     },
+    "hide_navbar": {
+        "message": "Hide Navigation Bar"
+    },
     "global_search": {
         "message": "Global Canvas Search"
     },

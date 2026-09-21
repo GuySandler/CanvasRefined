@@ -1,6 +1,7 @@
 const DARKMODE_CSS = `
 #announcementWrapper>div>div,
 #breadcrumbs,
+.ic-app-nav-toggle-and-crumbs,
 #calendar-app .fc-agendaWeek-view .fc-body,
 #calendar-app .fc-event,
 #calendar-app .fc-month-view .fc-body,
@@ -1285,6 +1286,24 @@ body > span > span[class*="-tray"] {
    #FFFFFF on its root. */
 .UpdateItemTray-styles__root {
     background: var(--bcbackground-0) !important;
+}
+/* Immersive Reader button (in the nav-toggle + breadcrumbs bar): an InstUI
+   Button whose emotion class hashes change between Canvas releases, so
+   target the stable mount point and attribute-suffix class names instead.
+   The button and its inner content span carry a light surface, dark ink
+   text and a black icon glyph, which are unreadable on the dark theme. */
+#immersive_reader_mount_point button[class$="-baseButton"],
+#immersive_reader_mount_point button[class$="-baseButton"] > span:first-child {
+    background: var(--bcbackground-1) !important;
+    color: var(--bctext-0) !important;
+    border: 1px solid var(--bcborders) !important;
+    box-shadow: none !important;
+}
+/* The icon glyph is hardcoded black (fill="#000000" attribute); recolor it
+   to the theme text color. The blue accent paths stay as-is — they read
+   fine on dark. */
+#immersive_reader_mount_point button[class$="-baseButton"] svg path[fill="#000000"] {
+    fill: var(--bctext-0) !important;
 }
 /* InstUI TextInput / Select facades (Title, Date, Time, Course fields):
    white surface, dark ink, gray border. Repaint with the theme surface,

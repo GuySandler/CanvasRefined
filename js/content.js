@@ -602,9 +602,22 @@ let grades = null;
 let announcements = [];
 let completed = [];
 let assignmentsDue = [];
+// Render-generation counters. createTodoSections/loadCardAssignments render
+// asynchronously (inside a .then), while several code paths re-render by
+// calling clearTodoList() + createTodoSections() again. Without a guard, a
+// render whose data promise resolves AFTER a newer clear+render started would
+// append a second full set of group wrappers/items on top of the fresh render
+// — the reported "todo list is all doubled" glitch. Each render captures the
+// counter at call time and aborts if a newer render has started by the time
+// its data arrives.
+let todoRenderGen = 0;
+let cardRenderGen = 0;
 let options = {};
 let timeCheck = null;
 let reminderCheck = null;
+// Set while a background planner-cache refresh is in flight so overlapping
+// schedules (multiple loads, multiple tabs) can't run concurrently.
+let plannerRefreshRunning = false;
 let betterSidebarLoading = false;
 let dashboardReadyTimer = null;
 let sidebarReadyTimer = null;
@@ -632,24 +645,34 @@ Todo Reminders
 const canvas_svg = `<svg xmlns="http://www.w3.org/2000/svg" fill="#ff4545" width="25px" height="25px" viewBox="-192 -192 2304.00 2304.00" stroke="white"><g stroke-width="0"><rect x="-192" y="-192" width="2304.00" height="2304.00" rx="0" fill="none" strokewidth="0"/></g><g stroke-linecap="round" stroke-linejoin="round"/><g> <path d="M958.568 277.97C1100.42 277.97 1216.48 171.94 1233.67 34.3881 1146.27 12.8955 1054.57 0 958.568 0 864.001 0 770.867 12.8955 683.464 34.3881 700.658 171.94 816.718 277.97 958.568 277.97ZM35.8207 682.031C173.373 699.225 279.403 815.285 279.403 957.136 279.403 1098.99 173.373 1215.05 35.8207 1232.24 12.8953 1144.84 1.43262 1051.7 1.43262 957.136 1.43262 862.569 12.8953 769.434 35.8207 682.031ZM528.713 957.142C528.713 1005.41 489.581 1044.55 441.31 1044.55 393.038 1044.55 353.907 1005.41 353.907 957.142 353.907 908.871 393.038 869.74 441.31 869.74 489.581 869.74 528.713 908.871 528.713 957.142ZM1642.03 957.136C1642.03 1098.99 1748.06 1215.05 1885.61 1232.24 1908.54 1144.84 1920 1051.7 1920 957.136 1920 862.569 1908.54 769.434 1885.61 682.031 1748.06 699.225 1642.03 815.285 1642.03 957.136ZM1567.51 957.142C1567.51 1005.41 1528.38 1044.55 1480.11 1044.55 1431.84 1044.55 1392.71 1005.41 1392.71 957.142 1392.71 908.871 1431.84 869.74 1480.11 869.74 1528.38 869.74 1567.51 908.871 1567.51 957.142ZM958.568 1640.6C816.718 1640.6 700.658 1746.63 683.464 1884.18 770.867 1907.11 864.001 1918.57 958.568 1918.57 1053.14 1918.57 1146.27 1907.11 1233.67 1884.18 1216.48 1746.63 1100.42 1640.6 958.568 1640.6ZM1045.98 1480.11C1045.98 1528.38 1006.85 1567.51 958.575 1567.51 910.304 1567.51 871.172 1528.38 871.172 1480.11 871.172 1431.84 910.304 1392.71 958.575 1392.71 1006.85 1392.71 1045.98 1431.84 1045.98 1480.11ZM1045.98 439.877C1045.98 488.148 1006.85 527.28 958.575 527.28 910.304 527.28 871.172 488.148 871.172 439.877 871.172 391.606 910.304 352.474 958.575 352.474 1006.85 352.474 1045.98 391.606 1045.98 439.877ZM1441.44 1439.99C1341.15 1540.29 1333.98 1697.91 1418.52 1806.8 1579 1712.23 1713.68 1577.55 1806.82 1418.5 1699.35 1332.53 1541.74 1339.7 1441.44 1439.99ZM1414.21 1325.37C1414.21 1373.64 1375.08 1412.77 1326.8 1412.77 1278.53 1412.77 1239.4 1373.64 1239.4 1325.37 1239.4 1277.1 1278.53 1237.97 1326.8 1237.97 1375.08 1237.97 1414.21 1277.1 1414.21 1325.37ZM478.577 477.145C578.875 376.846 586.039 219.234 501.502 110.339 341.024 204.906 206.338 339.592 113.203 498.637 220.666 584.607 378.278 576.01 478.577 477.145ZM679.155 590.32C679.155 638.591 640.024 677.723 591.752 677.723 543.481 677.723 504.349 638.591 504.349 590.32 504.349 542.048 543.481 502.917 591.752 502.917 640.024 502.917 679.155 542.048 679.155 590.32ZM1440 475.712C1540.3 576.01 1697.91 583.174 1806.8 498.637 1712.24 338.159 1577.55 203.473 1418.51 110.339 1332.54 217.801 1341.13 375.413 1440 475.712ZM1414.21 590.32C1414.21 638.591 1375.08 677.723 1326.8 677.723 1278.53 677.723 1239.4 638.591 1239.4 590.32 1239.4 542.048 1278.53 502.917 1326.8 502.917 1375.08 502.917 1414.21 542.048 1414.21 590.32ZM477.145 1438.58C376.846 1338.28 219.234 1331.12 110.339 1415.65 204.906 1576.13 339.593 1710.82 498.637 1805.39 584.607 1696.49 577.443 1538.88 477.145 1438.58ZM679.155 1325.37C679.155 1373.64 640.024 1412.77 591.752 1412.77 543.481 1412.77 504.349 1373.64 504.349 1325.37 504.349 1277.1 543.481 1237.97 591.752 1237.97 640.024 1237.97 679.155 1277.1 679.155 1325.37Z"/></g></svg>`;
 
 async function insertReminders(reminders) {
-    const toAdd = [];
     const storage = await chrome.storage.sync.get("reminders");
-    // overrides = if theres a item that needs to update, but already exists
-    let overrides = false;
-    for (const insert of reminders) {
-        let found = false;
-        for (let i = 0; i < storage["reminders"].length; i++) {
-            // check if item was recently submitted
-            if (insert.c === -1 && insert.h === storage["reminders"][i].h) {
-                overrides = true;
-                storage["reminders"][i] = insert;
-            } else if (insert.h === storage["reminders"][i].h) {
-                found = true;
-            }
-        }
-        if (found === false) toAdd.push(insert);
+    const stored = Array.isArray(storage["reminders"]) ? storage["reminders"] : [];
+    // Keyed by link ("h"). Dedupes while loading: older versions replaced a
+    // matching entry in place for submitted items (c === -1) but ALSO appended
+    // the insert again, so one extra copy accumulated in storage on every
+    // load/refresh. Rebuilding the map here heals already-duplicated storage.
+    const byHref = new Map();
+    for (const r of stored) {
+        if (!r || !r.h) continue;
+        const prev = byHref.get(r.h);
+        if (!prev || (prev.c !== -1 && r.c === -1)) byHref.set(r.h, r);
     }
-    if (toAdd.length > 0 || overrides === true) chrome.storage.sync.set({ "reminders": [...storage["reminders"], ...toAdd] });
+    let changed = byHref.size !== stored.length;
+    for (const insert of reminders) {
+        if (!insert || !insert.h) continue;
+        const prev = byHref.get(insert.h);
+        if (!prev) {
+            byHref.set(insert.h, insert);
+            changed = true;
+        } else if (insert.c === -1 && prev.c !== -1) {
+            // Recently submitted: update the existing entry in place instead of
+            // adding a second copy. An unsubmitted insert never overwrites an
+            // existing entry, and a submitted entry stays submitted.
+            byHref.set(insert.h, insert);
+            changed = true;
+        }
+    }
+    if (changed) chrome.storage.sync.set({ "reminders": [...byHref.values()] });
 }
 
 async function hideReminder(href) {
@@ -933,13 +956,14 @@ function applyOptionsChanges(changes) {
 			case "todo_ignore_card_colors":
 			case "todo_remove_icons":
 			case "custom_cards_3":
-				moreAnnouncementCount = 0;
-				moreAssignmentCount = 0;
-				// A new timeframe starts back at the current window.
-				betterTodoTimeframeOffset = 0;
-				// loadBetterTodo();
-				clearTodoList();
-				createTodoSections(document.querySelector("#canvasrefined-todo-list"));
+				if (options.better_todo && document.getElementById("better-todo-main")) {
+					moreAnnouncementCount = 0;
+					moreAssignmentCount = 0;
+					// A new timeframe starts back at the current window.
+					betterTodoTimeframeOffset = 0;
+					clearTodoList();
+					createTodoSections(document.querySelector("#canvasrefined-todo-list"));
+				}
 				break;
 			case "gpa_calc":
 			case "gpa_calc_prepend":
@@ -960,7 +984,21 @@ function applyOptionsChanges(changes) {
 			case "full_width":
 			case "center_cards":
 			case "custom_styles":
+			case "hide_navbar":
 				applyAestheticChanges();
+				// Better Sidebar also hides the nav-toggle + breadcrumbs bar with
+				// an inline style (part of its layout). The "Hide Navigation
+				// Bar" sub-option is the single source of truth for that
+				// element, so live-apply/restore the inline style here too —
+				// setupBetterSidebar only sets it once, on first mount.
+				if (options.better_sidebar) {
+					const crumbsBar = document.querySelector(".ic-app-nav-toggle-and-crumbs");
+					if (options.hide_navbar === true) {
+						crumbsBar?.style.setProperty("display", "none");
+					} else {
+						crumbsBar?.style.removeProperty("display");
+					}
+				}
 				break;
 			case "hide_new_canvas":
 				watchNewCanvasButton();
@@ -1614,9 +1652,9 @@ function recieveMessage(request, sender, sendResponse) {
     switch (request.message) {
         case ("getCards"):
             if (options["card_method_dashboard"] === true) {
-                getCardsFromDashboard().then(() => sendResponse(true));
+                getCardsFromDashboard().then(() => sendResponse(true)).catch(() => sendResponse(true));
             } else {
-                getCards().then(() => sendResponse(true));
+                getCards().then(() => sendResponse(true)).catch(() => sendResponse(true));
             }
             return true; // keep the message channel open for async sendResponse
         case ("setcolors"): changeColorPreset(request.options); sendResponse(true); break;
@@ -3198,6 +3236,12 @@ function openTaskForEdit(item) {
 }
 
 async function createTodoSections(location) {
+	if (!location || !assignments || typeof assignments.then !== "function") return;
+	// Render-generation guard: capture the counter at call time and bail out of
+	// the async render if a newer call has started by the time our data
+	// resolves. Incremented only after the guards above, so a bail-out can
+	// never cancel an in-flight render without scheduling a replacement.
+	const renderGen = ++todoRenderGen;
 	if (!location.querySelector("#better-todo-header")) {
 		let header = makeElement("div", location, { id: "better-todo-header" });
 		header.style = "display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bcbackground-1);padding-bottom:-2px;";
@@ -3322,6 +3366,9 @@ async function createTodoSections(location) {
 	// depends on the current tab and the todo_timeframe option).
 	updateTodoTimeframeNav();
 	assignments.then(data => {
+	    // A newer render superseded this one — appending now would duplicate
+	    // the whole list on top of it.
+	    if (renderGen !== todoRenderGen) return;
         const courseId = getCurrentCourseId();
         const scopedData = getTodoScopedData(data, courseId);
 
@@ -3470,15 +3517,16 @@ async function createTodoSections(location) {
         ensureRightSideWrapperScrollbarHidden();
         sidebar.style.setProperty("scrollbar-width", "none");
         sidebar.style.setProperty("-ms-overflow-style", "none");
+		const viewportOffset = todoViewportOffsetPx();
 		if (options.todo_full_height) {
-			sidebar.style.minHeight = "100vh";
+			sidebar.style.minHeight = viewportOffset > 0 ? `calc(100vh - ${viewportOffset}px)` : "100vh";
 		} else {
 			sidebar.style.minHeight = "";
 		}
 		if (options.todo_separate_scrollbar) {
 			sidebar.style.position = "sticky";
 			sidebar.style.top = "0";
-			sidebar.style.height = "100vh";
+			sidebar.style.height = viewportOffset > 0 ? `calc(100vh - ${viewportOffset}px)` : "100vh";
 			sidebar.style.overflowY = "auto";
 		} else {
 			sidebar.style.position = "";
@@ -3487,8 +3535,42 @@ async function createTodoSections(location) {
 			sidebar.style.overflowY = "";
 			// maybe invisible scrollbar?
 		}
+	}).catch(err => {
+		// A rejected data promise must not leave the todo list half-rendered or
+		// throw unhandled; the generation guard above keeps renders idempotent.
+		if (renderGen === todoRenderGen) console.warn("Canvas Refined - todo list render failed", err);
 	});
 }
+
+// Height the todo sidebar must shed to fit the viewport: the nav-toggle +
+// breadcrumbs bar sits above the content column, so a full-viewport (100vh)
+// sidebar forces the page to scroll by exactly the bar's height now that the
+// bar is visible again (Hide Navigation Bar defaults to off). Returns 0 when
+// the bar is hidden or absent (dashboard pages have no crumbs bar).
+function todoViewportOffsetPx() {
+	if (options.hide_navbar === true) return 0;
+	const crumbs = document.querySelector(".ic-app-nav-toggle-and-crumbs");
+	const h = crumbs ? crumbs.offsetHeight : 0;
+	return h > 0 ? h : 0;
+}
+
+// The navbar height changes with window size/zoom, so re-apply the height
+// styles on resize (without a full todo re-render).
+let todoHeightResizeTimer = null;
+window.addEventListener("resize", () => {
+	if (todoHeightResizeTimer) clearTimeout(todoHeightResizeTimer);
+	todoHeightResizeTimer = setTimeout(() => {
+		const sidebar = document.getElementById("right-side-wrapper");
+		if (!sidebar || !document.getElementById("better-todo-main")) return;
+		const viewportOffset = todoViewportOffsetPx();
+		if (options.todo_full_height) {
+			sidebar.style.minHeight = viewportOffset > 0 ? `calc(100vh - ${viewportOffset}px)` : "100vh";
+		}
+		if (options.todo_separate_scrollbar) {
+			sidebar.style.height = viewportOffset > 0 ? `calc(100vh - ${viewportOffset}px)` : "100vh";
+		}
+	}, 150);
+});
 
 function ensureRightSideWrapperScrollbarHidden() {
     let style = document.getElementById("canvasrefined-hide-right-sidebar-scrollbar") || document.createElement("style");
@@ -3508,12 +3590,16 @@ function ensureRightSideWrapperScrollbarHidden() {
 }
 
 function clearTodoList() {
+    const main = document.getElementById("better-todo-main");
     const seeMoreBtn = document.getElementById("better-todo-see-more");
     if (seeMoreBtn) {
         seeMoreBtn.remove();
     }
+    // Called from storage-change handlers on every page; without this guard it
+    // throws on pages that have no todo list mounted.
+    if (!main) return;
 
-	document.getElementById("better-todo-main").querySelectorAll(".todo-group-list").forEach(list => {
+	main.querySelectorAll(".todo-group-list").forEach(list => {
 		list.innerHTML = "";
 	});
 	document.querySelectorAll(".better-todo-dueheader").forEach(header => {
@@ -4219,6 +4305,13 @@ function setupBetterTodo() {
     if (isQuizPage()) return;
     if (options.better_todo !== true || isGradesPage()) return;
     if (document.querySelector('#canvasrefined-todo-list')) return;
+    // The dashboard MutationObserver can fire before getApiData() has assigned
+    // the `assignments` promise. Creating the sidebar now would leave it
+    // permanently empty: createTodoSections would throw on `assignments.then`
+    // after the shell was built, and the existing-element guard above prevents
+    // any retry. Bail instead — Canvas keeps mutating the DOM during load, so
+    // checkDashboardReady calls us again once data is ready.
+    if (!assignments || typeof assignments.then !== "function") return;
     let list = document.querySelector("#right-side");
     if (!list) return;
     //if (!list || list.childElementCount === 0 || list.children[0].id === "canvasrefined-todo-list") return;
@@ -4344,7 +4437,13 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
             leftSide.style.minWidth = "0";
             leftSide.style.gap = "0";
         }
-        document.querySelector(".ic-app-nav-toggle-and-crumbs")?.style.setProperty("display", "none");
+        // Only hide the nav-toggle + breadcrumbs bar when the Better Sidebar
+        // "Hide Navigation Bar" sub-option is on — this used to be hidden
+        // unconditionally. (The global hide lives in applyAestheticChanges;
+        // live toggling is handled in applyOptionsChanges.)
+        if (options.hide_navbar === true) {
+            document.querySelector(".ic-app-nav-toggle-and-crumbs")?.style.setProperty("display", "none");
+        }
         if (layoutMode == "dash") {
             document.getElementById("header")?.style.setProperty("display", "none");
         }
@@ -5313,7 +5412,7 @@ function insertGrades() {
             } catch (e) {
                 logError(e);
             }
-        });
+        }).catch(e => logError(e));
     } else {
         document.querySelectorAll('.canvasrefined-card-grade').forEach(grade => {
             grade.style.display = "none";
@@ -5388,28 +5487,41 @@ window.addEventListener("resize", () => {
 });
 
 function preloadAssignmentEls() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         let assignmentEls = {};
         const now = new Date();
-        assignments.then((data) => {
-            data = combineAssignments(data);
-            data.forEach(item => {
-                let due = new Date(item.plannable_date);
-                item.overdue = now >= due;
-                let o = {
-                    "submitted": item.submissions && item.submissions.submitted === true,
-                    "override": item.planner_override && item.planner_override.marked_complete,
-                    "type": item.plannable_type,
-                    "due": due,
-                    "el": createCardAssignment(item)
-                }
-                if (assignmentEls[item.course_id]) {
-                    assignmentEls[item.course_id].push(o);
-                } else {
-                    assignmentEls[item.course_id] = [o];
-                }
-            });
-            resolve(assignmentEls);
+        // Resolve (never reject, never hang): a throw inside the data callback
+        // previously left this promise pending forever, so every dashboard
+        // card kept showing its blinking "loading" skeleton indefinitely.
+        const finish = () => resolve(assignmentEls);
+        if (!assignments || typeof assignments.then !== "function") { finish(); return; }
+        assignments.then(data => {
+            try {
+                data = combineAssignments(data);
+                data.forEach(item => {
+                    let due = new Date(item.plannable_date);
+                    item.overdue = now >= due;
+                    let o = {
+                        "submitted": item.submissions && item.submissions.submitted === true,
+                        "override": item.planner_override && item.planner_override.marked_complete,
+                        "type": item.plannable_type,
+                        "due": due,
+                        "el": createCardAssignment(item)
+                    }
+                    if (assignmentEls[item.course_id]) {
+                        assignmentEls[item.course_id].push(o);
+                    } else {
+                        assignmentEls[item.course_id] = [o];
+                    }
+                });
+            } catch (e) {
+                logError(e);
+            } finally {
+                finish();
+            }
+        }).catch(e => {
+            logError(e);
+            finish();
         });
     });
 }
@@ -5423,7 +5535,13 @@ function loadCardAssignments() {
         return;
     }
     setupCardAssignments();
+    if (!cardAssignments || typeof cardAssignments.then !== "function") return;
+    // Render-generation guard: cardAssignments is reassigned whenever the
+    // planner data refreshes; a stale callback re-queried the live cards and
+    // re-appended outdated rows over the fresh render.
+    const renderGen = ++cardRenderGen;
     cardAssignments.then(els => {
+        if (renderGen !== cardRenderGen) return;
         try {
             let cards = document.querySelectorAll('.ic-DashboardCard');
             if (cards.length === 0) return;
@@ -5841,7 +5959,7 @@ function setupGPACalc() {
             } catch (e) {}
 
             calculateGPA2();
-        });
+        }).catch(e => logError(e));
     } catch (e) {
         logError(e);
     }
@@ -6270,7 +6388,12 @@ function applyAestheticChanges() {
         }
     }
 
-    style.textContent += ".ic-app-nav-toggle-and-crumbs{display:none!important}";
+    // Hiding the nav-toggle + breadcrumbs bar used to be hardcoded always-on;
+    // it is now opt-in via the popup toggle (off by default). Its left/right
+    // margins are always removed so the bar lines up with the content column
+    // edges (cosmetic, light and dark mode).
+    style.textContent += ".ic-app-nav-toggle-and-crumbs{margin-left:0!important;margin-right:0!important}";
+    if (options.hide_navbar === true) style.textContent += ".ic-app-nav-toggle-and-crumbs{display:none!important}";
     if (options.custom_styles !== "") style.textContent += options.custom_styles;
     document.documentElement.appendChild(style);
 }
@@ -7024,6 +7147,25 @@ function combineAssignments(data) {
     } catch (e) {
         logError(e);
     }
+    // Dedupe by planner item identity (same key the cache merge uses), keeping
+    // the LAST occurrence so locally-stored overflow entries win over fetched
+    // ones. Without this, an item present in both the planner data and an
+    // overflow array rendered twice — once on the dashboard cards and once per
+    // copy in the todo list.
+    if (Array.isArray(combined)) {
+        const seen = new Set();
+        const deduped = [];
+        for (let i = combined.length - 1; i >= 0; i--) {
+            const item = combined[i];
+            if (!item) continue;
+            const key = `${item.plannable_type}|${item.plannable_id}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            deduped.push(item);
+        }
+        deduped.reverse();
+        combined = deduped;
+    }
     return combined.sort((a, b) => new Date(a.plannable_date).getTime() - new Date(b.plannable_date).getTime());
 }
 
@@ -7082,6 +7224,11 @@ function getColors() {
             });
             chrome.storage.sync.set({ "custom_cards_3": cards });
             return cards;
+        }).catch(e => {
+            // A failed colors fetch (e.g. an expired session) must not throw an
+            // unhandled rejection or wipe the stored colors — keep the old ones.
+            console.warn("Canvas Refined - could not load course colors", e);
+            return options.custom_cards_3;
         });
     }
 }
@@ -7099,6 +7246,14 @@ function getAssignments() {
     if (options.assignments_due === true || options.better_todo === true) {
         assignments = loadPlannerItems();
         cardAssignments = preloadAssignmentEls();
+        // setupBetterTodo bails (instead of mounting a permanently-empty
+        // shell) when the data promise isn't ready yet — the common case on
+        // first run or after an expired session, when the initial fetch takes
+        // seconds. Once data resolves, try mounting the sidebar in case the
+        // dashboard has gone quiet since the last MutationObserver burst;
+        // setupBetterTodo's own guards make this a no-op everywhere it
+        // shouldn't run (wrong page, quiz, already mounted).
+        assignments.then(() => setupBetterTodo());
     }
 }
 
@@ -7194,18 +7349,32 @@ async function readPlannerCache() {
     return null;
 }
 
-function writePlannerCache(items, lastFullRefresh, activeCourseIds) {
+function writePlannerCache(items, lastFullRefresh, activeCourseIds, minRefreshedAt = 0) {
     try {
-        // Fire-and-forget; guard both sync throws and (in MV3) promise
-        // rejection, e.g. a quota error — losing the cache is non-fatal.
-        const p = chrome.storage.local.set({ [PLANNER_CACHE_KEY]: { items, lastFullRefresh, activeCourseIds } });
-        if (p && typeof p.catch === "function") p.catch(() => {});
+        // Cross-tab last-writer-wins guard: several Canvas tabs can refresh the
+        // shared cache concurrently, and a slower tab merging from an older
+        // snapshot must not overwrite a newer write. Skip when storage already
+        // holds a cache refreshed after our snapshot was taken. Losing the
+        // write is non-fatal — the other tab's data is fresher.
+        chrome.storage.local.get(PLANNER_CACHE_KEY, result => {
+            try {
+                const current = result && result[PLANNER_CACHE_KEY];
+                if (current && ((current.refreshedAt || 0) > minRefreshedAt)) return;
+                const p = chrome.storage.local.set({ [PLANNER_CACHE_KEY]: { items, lastFullRefresh, activeCourseIds, refreshedAt: Date.now() } });
+                if (p && typeof p.catch === "function") p.catch(() => {});
+            } catch (e) { /* cache write failure is non-fatal */ }
+        });
     } catch (e) { /* cache write failure is non-fatal */ }
 }
 
 // Fetches every page of /api/v1/planner/items with a due date on/after
 // `startDate`, following the Link "next" headers until exhausted. Uses the
 // same session/headers as getData.
+// Returns null when the fetch failed (network error, non-OK response such as
+// a 401 from an expired session, or a redirect to the login page). Callers
+// MUST treat null as "unknown", never as "no items" — writing a failed fetch
+// into the cache used to wipe real data whenever the Canvas session had
+// expired (the reported "reload after SSO login breaks everything" bug).
 async function fetchPlannerItemsSince(startDate) {
     const allItems = [];
     let url = `${domain}/api/v1/planner/items?start_date=${startDate}&per_page=100`;
@@ -7222,9 +7391,9 @@ async function fetchPlannerItemsSince(startDate) {
             });
             data = await response.json();
         } catch (e) {
-            break;
+            return null;
         }
-        if (!response.ok || !Array.isArray(data)) break;
+        if (!response.ok || !Array.isArray(data)) return null;
         // Deep-clone via JSON to unwrap Firefox Xray objects so nested props
         // are mutable (same as getData).
         try {
@@ -7251,11 +7420,25 @@ function mergePlannerItems(cached, fetched, windowStartMs) {
     return sortAndTrimPlannerItems([...byKey.values()]);
 }
 
-// Drops items older than the lookback window and returns the list sorted by
-// due date ascending (the order the rest of the extension expects).
+// Drops items older than the lookback window, dedupes them by planner item
+// identity, and returns the list sorted by due date ascending (the order the
+// rest of the extension expects). Dedupe happens here so EVERY cache-write
+// path is idempotent — previously only mergePlannerItems deduped, so a
+// duplicated page from the API (or any other double-insert) could be
+// persisted verbatim and render the same assignment twice on cards and in
+// the todo list until the next successful window merge happened to clean it.
 function sortAndTrimPlannerItems(items) {
     const cutoff = Date.now() - PLANNER_LOOKBACK_DAYS * 86400000;
-    const trimmed = items.filter(item => new Date(item.plannable_date).getTime() >= cutoff);
+    // Map insertion keeps the LAST occurrence per key: Canvas returns items
+    // oldest-first, so within a single (possibly self-overlapping) fetch the
+    // later copy is the newer data. (mergePlannerItems additionally layers the
+    // fresh fetch over the cache, so fetched data still wins there.)
+    const byKey = new Map();
+    for (const item of items) {
+        if (new Date(item.plannable_date).getTime() < cutoff) continue;
+        byKey.set(plannerItemKey(item), item);
+    }
+    const trimmed = [...byKey.values()];
     trimmed.sort((a, b) => new Date(a.plannable_date) - new Date(b.plannable_date));
     return trimmed;
 }
@@ -7282,11 +7465,14 @@ async function loadPlannerItems() {
         return filterPlannerItemsByActiveCourses(cache.items, cache.activeCourseIds);
     }
     // First run (no cache yet): fetch the bounded lookback and the active
-    // enrollment list in parallel, then cache the filtered result.
+    // enrollment list in parallel, then cache the filtered result. A failed
+    // fetch (e.g. expired session) must NOT be cached: cache nothing so the
+    // next load retries the full fetch instead of serving an empty list.
     const [items, courseIds] = await Promise.all([
         fetchPlannerItemsSince(plannerDateDaysAgo(PLANNER_LOOKBACK_DAYS)),
         fetchActiveCourseIds(),
     ]);
+    if (items === null) return [];
     const filtered = filterPlannerItemsByActiveCourses(
         sortAndTrimPlannerItems(items), courseIds
     );
@@ -7304,7 +7490,14 @@ async function loadPlannerItems() {
 function schedulePlannerRefresh(cache) {
     const fullRefreshDue = !cache.lastFullRefresh ||
         (Date.now() - cache.lastFullRefresh > PLANNER_FULL_REFRESH_DAYS * 86400000);
+    // Only one refresh may run at a time. loadPlannerItems schedules a refresh
+    // on every cache hit (including Add-Task's re-fetch), and every open Canvas
+    // tab runs its own; concurrent runs could interleave so a slow stale run
+    // overwrites a newer incremental write in storage.
+    if (plannerRefreshRunning) return;
     const run = async () => {
+        if (plannerRefreshRunning) return;
+        plannerRefreshRunning = true;
         try {
             const before = plannerFingerprint(
                 filterPlannerItemsByActiveCourses(cache.items, cache.activeCourseIds)
@@ -7315,25 +7508,47 @@ function schedulePlannerRefresh(cache) {
             const idsToStore = courseIds ? [...courseIds] : (cache.activeCourseIds ?? null);
             let merged;
             if (fullRefreshDue) {
+                const fetched = await fetchPlannerItemsSince(plannerDateDaysAgo(PLANNER_LOOKBACK_DAYS));
+                // Fetch failed (e.g. expired session): keep the existing cache
+                // untouched and retry on the next load. Writing the empty
+                // result used to wipe the cache AND stamp lastFullRefresh,
+                // locking in the data loss for a week.
+                if (fetched === null) return;
                 merged = filterPlannerItemsByActiveCourses(
-                    sortAndTrimPlannerItems(
-                        await fetchPlannerItemsSince(plannerDateDaysAgo(PLANNER_LOOKBACK_DAYS))
-                    ),
+                    sortAndTrimPlannerItems(fetched),
                     active
                 );
-                writePlannerCache(merged, Date.now(), idsToStore);
+                writePlannerCache(merged, Date.now(), idsToStore, cache.refreshedAt || 0);
             } else {
                 const windowStart = plannerDateDaysAgo(PLANNER_WINDOW_DAYS);
                 const fetched = await fetchPlannerItemsSince(windowStart);
+                // Fetch failed: skip the merge entirely. mergePlannerItems
+                // drops cached items inside the window before adding the fresh
+                // ones, so merging an empty/failed fetch would silently delete
+                // the most recent two weeks from the persisted cache.
+                if (fetched === null) return;
                 merged = filterPlannerItemsByActiveCourses(
-                    mergePlannerItems(cache.items, fetched, Date.parse(windowStart)),
+                    // Drop threshold = the window start's LOCAL midnight, not
+                    // UTC midnight. The window start is a date-only string
+                    // (Date.parse → UTC midnight) while Canvas evaluates
+                    // start_date in the user's timezone: for a user west of
+                    // UTC, an item due between UTC midnight and local midnight
+                    // counts as "inside the window" by UTC but is NOT returned
+                    // by a fetch filtered from local midnight — dropping it at
+                    // the UTC threshold silently deleted it until the weekly
+                    // full walk. Thresholding at local midnight keeps exactly
+                    // the items the fetch may not return; any harmless overlap
+                    // is removed by mergePlannerItems' key dedupe (fresh wins).
+                    mergePlannerItems(cache.items, fetched, Date.parse(windowStart + "T00:00:00")),
                     active
                 );
-                writePlannerCache(merged, cache.lastFullRefresh, idsToStore);
+                writePlannerCache(merged, cache.lastFullRefresh, idsToStore, cache.refreshedAt || 0);
             }
             if (plannerFingerprint(merged) !== before) refreshPlannerConsumers(merged);
         } catch (e) {
             console.warn("planner refresh failed", e);
+        } finally {
+            plannerRefreshRunning = false;
         }
     };
     if (typeof requestIdleCallback === "function") {
@@ -9198,6 +9413,13 @@ async function getData(url) {
             'Accept': 'application/json'
         }
     });
+    // Fail loudly on HTTP errors (e.g. an expired session returning 401 or a
+    // redirect to the login page). Previously non-OK responses were returned
+    // as-is, so callers received an error object/HTML and crashed later in
+    // confusing ways (or silently rendered wrong data).
+    if (!response.ok) {
+        throw new Error(`Canvas API request failed (${response.status})`);
+    }
     let data = await response.json();
     // Deep-clone via JSON to unwrap Firefox Xray objects so nested props are mutable.
     try {
