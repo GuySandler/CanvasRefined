@@ -1418,9 +1418,15 @@ function setup() {
                             case "export-card-styles":
                                 final = { ...final, ...(await getExport(storage, exportCardStyles)) };
                                 break;
-                            case "export-customStyles":
-                                final = { ...final, ...(await getExport(storage, ["custom_styles"])) };
+                            case "export-customStyles": {
+                                // custom_styles is stored in storage.local
+                                // (see setupCustomStyle); fall back to the
+                                // legacy sync value for pre-migration themes.
+                                const localStyles = await chrome.storage.local.get("custom_styles");
+                                const styleSource = localStyles && localStyles["custom_styles"] !== undefined ? localStyles : storage;
+                                final = { ...final, ...(await getExport(styleSource, ["custom_styles"])) };
                                 break;
+                            }
                             case "export-font":
                                 final = { ...final, ...(await getExport(storage, ["custom_font"])) };
                                 break;
@@ -1706,9 +1712,15 @@ function applyGPAPreset(bounds) {
 
 function setupCustomStyle(initial) {
     const el = document.getElementById("custom-styles");
-    el.value = initial;
+    // Custom CSS lives in storage.local (unlimitedStorage) — storage.sync's
+    // 8KB per-item quota silently dropped long stylesheets. `initial` is the
+    // legacy sync value, used until the user saves again (migrated to local
+    // on first save; content.js also self-migrates on page load).
+    chrome.storage.local.get("custom_styles", local => {
+        el.value = local && local["custom_styles"] !== undefined ? local["custom_styles"] : (initial || "");
+    });
     el.addEventListener("change", (e) => {
-        chrome.storage.sync.set({ "custom_styles": e.target.value });
+        chrome.storage.local.set({ "custom_styles": e.target.value });
     });
 }
 
@@ -1848,8 +1860,11 @@ let fallback = false;
 
 function saveCurrentTheme() {
     const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
-    chrome.storage.local.get("saved_themes", local => {
+    chrome.storage.local.get(["saved_themes", "custom_styles"], local => {
         chrome.storage.sync.get(allOptions, async sync => {
+            // custom_styles is stored in storage.local (sync's 8KB per-item
+            // quota drops long stylesheets); merge it over the legacy sync one.
+            if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
             let current = await getExport(sync, allOptions);
             let trimmed = { 
                 "disable_color_overlay": current["disable_color_overlay"], 
@@ -1932,8 +1947,11 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
             themeBtn.addEventListener("click", () => {
                 const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
                 chrome.storage.sync.get(allOptions, sync => {
-                    chrome.storage.local.get(["previous_theme"], async local => {
+                    chrome.storage.local.get(["previous_theme", "custom_styles"], async local => {
                         if (local["previous_theme"] === null) {
+                            // custom_styles is stored in storage.local; merge it
+                            // in so saved themes keep the user's CSS.
+                            if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
                             let previous = await getExport(sync, allOptions);
                             chrome.storage.local.set({ "previous_theme": previous });
                         }
@@ -2007,6 +2025,7 @@ function importTheme(theme) {
     try {
         let keys = Object.keys(theme);
         let final = {};
+        let localFinal = null;
         chrome.storage.sync.get("custom_cards", sync => {
             keys.forEach(key => {
                 switch (key) {
@@ -2038,7 +2057,14 @@ function importTheme(theme) {
                         break;
                 }
             });
+            // custom_styles must go to storage.local — sync's 8KB per-item
+            // quota rejects (or truncates) large stylesheets from themes.
+            if (Object.prototype.hasOwnProperty.call(final, "custom_styles")) {
+                localFinal = { "custom_styles": final["custom_styles"] };
+                delete final["custom_styles"];
+            }
             chrome.storage.sync.set(final);
+            if (localFinal) chrome.storage.local.set(localFinal);
         });
     } catch (e) {
         console.log(e);

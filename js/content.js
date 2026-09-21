@@ -851,6 +851,27 @@ function startExtension() {
         setTimeout(() => runDarkModeFixer(false), 4500);
     });
 
+    // Custom CSS lives in storage.local (unlimitedStorage) because
+    // storage.sync's 8KB per-item quota silently dropped long stylesheets.
+    // Merge it into options once sync data is in, re-applying styles. If the
+    // user has CSS only in the legacy sync key (pre-migration), copy it over
+    // to local so it keeps working — sync keeps its copy as a rollback-safe
+    // backup until the next popup save.
+    chrome.storage.local.get("custom_styles", local => {
+        if (local && local["custom_styles"] !== undefined) {
+            options = { ...options, custom_styles: local["custom_styles"] };
+            applyAestheticChanges();
+        } else {
+            chrome.storage.sync.get("custom_styles", sync => {
+                if (sync && sync["custom_styles"]) {
+                    chrome.storage.local.set({ custom_styles: sync["custom_styles"] });
+                    options = { ...options, custom_styles: sync["custom_styles"] };
+                    applyAestheticChanges();
+                }
+            });
+        }
+    });
+
     chrome.runtime.onMessage.addListener(recieveMessage);
 
     chrome.storage.onChanged.addListener(applyOptionsChanges);
