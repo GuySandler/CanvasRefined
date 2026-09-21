@@ -406,3 +406,11 @@
     text-decoration: line-through !important;
     text-decoration-thickness: 2.5px !important;
 }
+
+/* InstUI View (emotion hash css-fkmnqn-view) ships a bottom margin that
+   leaves a stray gap below the discussion/announcement header card.
+   Hashed classes can shift between Canvas releases; an unmatched selector
+   here is simply inert. */
+.css-fkmnqn-view {
+    margin-bottom: 0 !important;
+}

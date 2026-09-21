@@ -172,6 +172,7 @@ span[style*='background: #fff'],
 .fOyUs_dUgE,
 .fOyUs_bvKN,
 .css-1fwux0x-view--block,
+.css-1n94jrf-view,
 .css-1v8v5q1-optionItem,
 #comments-tray,
 .css-d76rpr-view--inlineBlock[data-testid='tool-bar'],
@@ -1273,6 +1274,16 @@ hr {
 .PlannerHeader-styles__root button:active [class$="-baseButton__content"] {
     background: transparent !important;
     box-shadow: none !important;
+}
+/* InstUI Button whose inner content span ships a light background and its
+   own border, which reads as a bright chip on the dark theme. Paint it with
+   the themed button surface, drop the border entirely, and force the theme
+   text color: Canvas sets its own dark ink color on the content span, which
+   left labels/icons dark-on-dark inside the dark chip. */
+.css-1ta5ds2-baseButton__content {
+    background: var(--bcbackground-1) !important;
+    border: none !important;
+    color: var(--bctext-0) !important;
 }
 /* Dashboard list-view trays ("Add To Do" / "My Grades" opened from the
    header buttons): Instructure UI renders Tray panels as body-level

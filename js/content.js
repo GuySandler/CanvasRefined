@@ -1411,6 +1411,59 @@ async function applyCustomBackground() {
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
         }
+        /* InstUI flex View panel (emotion hash css-fiozi7-view--flex-flex)
+           ships a hardcoded opaque surface that sits untinted on top of the
+           background image. Give it the same glass treatment as the other
+           content panels: theme tint at the bg_opacity slider value plus the
+           bg_blur backdrop. */
+        .css-fiozi7-view--flex-flex {
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            border-radius: 5px !important;
+        }
+        /* Inner InstUI Views of that panel (author row, title row, message
+           container...) keep their own opaque backgrounds, which read as
+           dark/light slabs covering the glass. Flatten them so the panel
+           reads as one glass surface — with exceptions:
+           - avatar circles (their backdrop is part of the picture),
+           - the whole role-pill subtree (Canvas pairs its white uppercase
+             text with a chip painted on the list items; flattening it left
+             white text on glass),
+           - base buttons: flattened to bare glass buttons instead. The
+             button root, its content span and its icon wrapper all go
+             transparent so the white label/icon read on the glass — this
+             also overrides the dark-mode baseButton__content chip, which
+             would otherwise double-stack inside the flattened panel. */
+        .css-fiozi7-view--flex-flex [class*="-view"]:not([class*="-avatar"]):not([data-testid="pill-container"]):not([data-testid="pill-container"] *):not([class*="-baseButton"]) {
+            background: none !important;
+        }
+        .css-fiozi7-view--flex-flex [class*="-baseButton"],
+        .css-fiozi7-view--flex-flex [class*="-baseButton"] [class*="-baseButton__content"],
+        .css-fiozi7-view--flex-flex [class*="-baseButton"] [class*="-baseButton__iconWrapper"] {
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        /* De-dupe stacked surfaces: a nested copy of the panel (the header
+           renders one View inside another) must not add a second backdrop
+           blur over the outer glass. */
+        .css-fiozi7-view--flex-flex .css-fiozi7-view--flex-flex {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        /* The discussion threads toolbar (emotion hash css-1n94jrf-view,
+           themed opaque in dark mode) sits directly under the glass header
+           panel; with a custom background the two read as a double opaque
+           surface. Give the toolbar the same glass treatment so the area is
+           one continuous surface. */
+        .css-1n94jrf-view {
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            border-radius: 5px !important;
+            padding: 5px !important;
+        }
         #assignments {
             padding-top: 0px !important;
             padding-bottom: 0px !important;
