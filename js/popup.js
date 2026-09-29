@@ -40,6 +40,15 @@ const syncedSubOptions = [
 	"cardWidth",
 	"cardHeight",
 	"cardPadding",
+	// Card Grid settings — included here so theme exports, saved themes and
+	// previous-theme snapshots actually read them from storage (getExport
+	// drops keys it wasn't given).
+	"card_grid",
+	"card_grid_columns",
+	"card_grid_rows",
+	"card_grid_column_gap",
+	"card_grid_row_gap",
+	"card_grid_center_rows",
 	"customBackgroundLink",
     "customBackgroundScale",
     "customBackgroundDaily",
@@ -58,7 +67,7 @@ const localSwitches = [];
 // Theme export only carries visual settings, never personal productivity data.
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
-const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding"];
+const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding", "card_grid", "card_grid_columns", "card_grid_rows", "card_grid_column_gap", "card_grid_row_gap", "card_grid_center_rows"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
@@ -186,6 +195,12 @@ const defaultOptions = {
         "cardWidth": 262,
         "cardHeight": 146,
         "cardPadding": 0,
+        "card_grid": false,
+        "card_grid_columns": 4,
+        "card_grid_rows": 3,
+        "card_grid_column_gap": 12,
+        "card_grid_row_gap": 12,
+        "card_grid_center_rows": false,
         "customCardStyles": false,
         "customBackgroundLink": "",
         "customBackgroundScale": 100,
@@ -201,9 +216,12 @@ sendFromPopup("getCards");
 // refresh the cards if new ones were just recieved
 chrome.storage.onChanged.addListener((changes) => {
     if (changes["custom_cards"]) {
-        if (Object.keys(changes["custom_cards"].oldValue).length !== Object.keys(changes["custom_cards"].newValue).length) {
+        if (Object.keys(changes["custom_cards"].oldValue || {}).length !== Object.keys(changes["custom_cards"].newValue || {}).length) {
             displayAdvancedCards();
         }
+        // Hidden-card edits from the card menu change how many cells the
+        // grid preview should mark as filled.
+        updateCardGridPreview();
     }
 });
 
@@ -447,6 +465,109 @@ function setupCardPaddingInput(initial) {
     el.value = initial;
     el.addEventListener("input", (e) => {
         debouncedCardStyleSet("cardPadding", e.target.value);
+    });
+}
+
+// Card Grid (dashboard card layout). The toggle lives in menu.checkboxes;
+// this wires the reveal of the options panel plus the squares preview and
+// the "some cards may be cut off" warning.
+function setupCardGrid(initial) {
+    const panel = document.getElementById("card-grid-options");
+    if (!panel) return;
+    panel.style.display = initial === true ? "" : "none";
+    // Defer the first render: setupCardGrid runs inside the special-options
+    // loop BEFORE the column/row/gap inputs get their stored values
+    // (setupCardGridCountInput), so an immediate render would use the HTML
+    // defaults and look wrong until a value changes. A 0ms timeout runs once
+    // the whole synchronous setup pass is done.
+    setTimeout(() => updateCardGridPreview(), 0);
+    document.getElementById("card_grid").addEventListener("change", (e) => {
+        panel.style.display = e.target.checked ? "" : "none";
+        if (e.target.checked) updateCardGridPreview();
+    });
+    // Row-centering only affects the preview's last-row offset.
+    document.getElementById("card_grid_center_rows").addEventListener("change", () => {
+        updateCardGridPreview();
+    });
+}
+
+// Grid count/spacing inputs for the card grid. Update the preview
+// immediately on every keystroke, but debounce the storage write like the
+// other card style number inputs. `fallback` is used when the field is
+// cleared/invalid — 1 for counts, 0 for spacings.
+function setupCardGridCountInput(id, initial, fallback = 1) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = initial;
+    el.addEventListener("input", (e) => {
+        updateCardGridPreview();
+        const num = parseInt(e.target.value, 10);
+        debouncedCardStyleSet(id, isNaN(num) ? fallback : num);
+    });
+}
+
+// Number of dashboard cards that will occupy grid cells: every stored card
+// that isn't hidden via the card menu. Hidden cards get display:none in the
+// dashboard, so they don't take up a grid slot.
+function countActiveDashboardCards(cards) {
+    return Object.values(cards || {}).filter(c => c && typeof c === "object" && c.hidden !== true && c.hide !== true).length;
+}
+
+// Squares preview: one square per grid cell. Filled squares = cells covered
+// by an active (non-hidden) card; dim squares = empty cells. Warns when the
+// grid can't fit every active card.
+function updateCardGridPreview() {
+    const panel = document.getElementById("card-grid-options");
+    const preview = document.getElementById("card-grid-preview");
+    if (!panel || !preview || panel.style.display === "none") return;
+    const cols = Math.max(1, parseInt(document.getElementById("card_grid_columns").value, 10) || 1);
+    const rows = Math.max(1, parseInt(document.getElementById("card_grid_rows").value, 10) || 1);
+    const colGapRaw = parseInt(document.getElementById("card_grid_column_gap").value, 10);
+    const colGap = Math.max(0, Math.min(10, isNaN(colGapRaw) ? 12 : colGapRaw));
+    const total = cols * rows;
+    preview.style.gridTemplateColumns = `repeat(${cols}, 18px)`;
+    // Echo the chosen column spacing in the preview (clamped so extreme
+    // values don't blow the layout out).
+    preview.style.columnGap = `${colGap}px`;
+    preview.style.rowGap = "4px";
+    preview.innerHTML = "";
+    chrome.storage.sync.get("custom_cards", s => {
+        // Grid may have been toggled off while the storage read was pending.
+        if (document.getElementById("card-grid-options").style.display === "none") return;
+        const active = countActiveDashboardCards(s.custom_cards);
+        // Uneven-row centering: the real grid shifts the last partial row in
+        // half-card steps (double sub-columns — see centerUnevenGridRows).
+        // In the preview that's a margin on every square of that row; since
+        // the squares shift into space where no neighbor sits, nothing
+        // overlaps.
+        let lastRowStart = -1, offset = 0;
+        if (document.getElementById("card_grid_center_rows")?.checked === true && active > 0 && active < total) {
+            lastRowStart = Math.floor((active - 1) / cols) * cols;
+            const inLastRow = active - lastRowStart;
+            if (inLastRow < cols) offset = cols - inLastRow;
+        }
+        for (let i = 0; i < total; i++) {
+            const inShiftedRow = lastRowStart !== -1 && i >= lastRowStart;
+            // The shifted row's empty cells aren't rendered — the row's filled
+            // squares carry the offset, so the empties would misrepresent it.
+            if (inShiftedRow && i >= active) continue;
+            const square = document.createElement("div");
+            square.style.cssText = "width:18px;height:18px;border-radius:4px;box-sizing:border-box;";
+            square.style.background = i < active ? "#56Caf0" : "#3c3c3c";
+            if (inShiftedRow && offset > 0) {
+                square.style.marginLeft = `${offset * (18 + colGap) / 2}px`;
+            }
+            preview.appendChild(square);
+        }
+        const warning = document.getElementById("card-grid-warning");
+        if (warning) {
+            if (active > total) {
+                warning.textContent = `\u26A0 Your grid holds ${total} card${total === 1 ? "" : "s"} but you have ${active} active card${active === 1 ? "" : "s"} - some cards may be cut off.`;
+                warning.style.display = "block";
+            } else {
+                warning.style.display = "none";
+            }
+        }
     });
 }
 
@@ -980,6 +1101,8 @@ function setup() {
             "fitImageToScreen",
             "card_transparency",
 			"customCardStyles",
+			"card_grid",
+			"card_grid_center_rows",
 			"grade_analytics_zones",
 		],
 		tabs: {
@@ -1096,6 +1219,26 @@ function setup() {
 			{
 				identifier: "cardPadding",
 				setup: (initial) => setupCardPaddingInput(initial),
+			},
+			{
+				identifier: "card_grid",
+				setup: (initial) => setupCardGrid(initial),
+			},
+			{
+				identifier: "card_grid_columns",
+				setup: (initial) => setupCardGridCountInput("card_grid_columns", initial),
+			},
+			{
+				identifier: "card_grid_rows",
+				setup: (initial) => setupCardGridCountInput("card_grid_rows", initial),
+			},
+			{
+				identifier: "card_grid_column_gap",
+				setup: (initial) => setupCardGridCountInput("card_grid_column_gap", initial, 0),
+			},
+			{
+				identifier: "card_grid_row_gap",
+				setup: (initial) => setupCardGridCountInput("card_grid_row_gap", initial, 0),
 			},
 			{
 				identifier: "customBackgroundLink",
@@ -1906,6 +2049,15 @@ function saveCurrentTheme() {
 				"cardSpacing": current["cardSpacing"],
 				"cardWidth": current["cardWidth"],
 				"cardHeight": current["cardHeight"],
+				"cardPadding": current["cardPadding"],
+				// Card Grid (part of card styles): layout toggle, counts,
+				// spacing and uneven-row centering.
+				"card_grid": current["card_grid"],
+				"card_grid_columns": current["card_grid_columns"],
+				"card_grid_rows": current["card_grid_rows"],
+				"card_grid_column_gap": current["card_grid_column_gap"],
+				"card_grid_row_gap": current["card_grid_row_gap"],
+				"card_grid_center_rows": current["card_grid_center_rows"],
 				"custom_styles": current["custom_styles"],
 				"customCardStyles": current["customCardStyles"],
 				"customBackgroundLink": current["customBackgroundLink"],

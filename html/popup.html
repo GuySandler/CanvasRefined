@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <meta charset="utf-8">
     <title>Canvas Refined</title>
     <link href="../css/popup.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -838,6 +839,44 @@
 
 			</div>
 		</div>
+
+        <div class="option-container">
+            <h3 class="header-small">Card Grid</h3>
+            <div class="sub-option">
+                <input type="checkbox" id="card_grid" name="card_grid">
+                <label for="card_grid" class="sub-text">Card Grid</label>
+            </div>
+            <div id="card-grid-options" style="display:none; margin-top:12px;">
+                <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;">
+                    <div id="card-grid-preview" title="Card grid preview" style="display:grid;gap:4px;padding:10px;background:#00000042;border:1px solid #3c3c3c;border-radius:10px;width:fit-content;"></div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="sub-text" style="width:90px;">Horizontal</span>
+                            <input type="number" id="card_grid_columns" class="card-input" min="1" max="12" value="4" style="width:80px;margin-top:0;">
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="sub-text" style="width:90px;">Vertical</span>
+                            <input type="number" id="card_grid_rows" class="card-input" min="1" max="12" value="3" style="width:80px;margin-top:0;">
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="sub-text" style="width:90px;">Column spacing</span>
+                            <input type="number" id="card_grid_column_gap" class="card-input" min="0" max="100" value="12" style="width:80px;margin-top:0;">
+                            <span class="sub-text">px</span>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="sub-text" style="width:90px;">Row spacing</span>
+                            <input type="number" id="card_grid_row_gap" class="card-input" min="0" max="100" value="12" style="width:80px;margin-top:0;">
+                            <span class="sub-text">px</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-option" style="margin-top:10px">
+                    <input type="checkbox" id="card_grid_center_rows" name="card_grid_center_rows">
+                    <label for="card_grid_center_rows" class="sub-text">Center uneven rows</label>
+                </div>
+                <p id="card-grid-warning" style="display:none;margin:10px 0 0;color:#ffd166;font-size:12px;font-weight:600;"></p>
+            </div>
+        </div>
 
         <div class="option-container">
             <h3 class="header-small">Missing cards?</h3>

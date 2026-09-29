@@ -993,6 +993,10 @@ function applyOptionsChanges(changes) {
 			case "gpa_calc_cumulative":
 				if (!grades) getGrades();
 				setupGPACalc();
+				// The GPA elements are placed on dedicated grid rows when Card
+				// Grid is on (see applyAestheticChanges), so toggling GPA on/off
+				// has to regenerate the grid CSS too.
+				if (options.card_grid === true) debouncedApplyAestheticChanges();
 				break;
 			case "gpa_calc_bounds":
 				calculateGPA2();
@@ -1064,6 +1068,12 @@ function applyOptionsChanges(changes) {
 			case "cardWidth":
 			case "cardHeight":
 			case "cardPadding":
+			case "card_grid":
+			case "card_grid_columns":
+			case "card_grid_rows":
+			case "card_grid_column_gap":
+			case "card_grid_row_gap":
+			case "card_grid_center_rows":
 			case "customCardStyles":
 				// Coalesce rapid card-style edits (e.g. holding the arrow keys on a
 			// number input) into a single applyAestheticChanges() call. Each
@@ -1117,6 +1127,14 @@ function applyOptionsChanges(changes) {
                     break;
                 }
 			case "better_sidebar":
+				// Better Sidebar mounts its whole layout on page load, so either
+				// direction of the toggle reloads the page for a clean mount/
+				// removal. The old-value guard keeps a re-save of the same value
+				// from looping the reload.
+				if (changes["better_sidebar"]?.oldValue !== options.better_sidebar) {
+					window.location.reload();
+					break;
+				}
                 if (options.better_sidebar) {
                     ensureBetterSidebar();
                 } else {
@@ -5881,6 +5899,10 @@ function customizeCards(c = null) {
 
         });
 
+        // Hiding/unhiding cards changes how many cards sit in each grid row,
+        // so recompute the uneven-row centering offset after visibility is set.
+        centerUnevenGridRows();
+
     } catch (e) {
         logError(e);
     }
@@ -6579,6 +6601,49 @@ function applyAestheticChanges() {
     if (options.disable_color_overlay === true) style.textContent += ".ic-DashboardCard__header_hero{opacity: 0!important} .ic-DashboardCard__header-button-bg{opacity: 1!important}";
     if (options.full_width === true) style.textContent += "#wrapper,.ic-Layout-wrapper{max-width:100%!important}";
     if (options.center_cards === true) style.textContent += ".ic-DashboardCard__box__container{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:flex-start!important}";
+    // Card Grid: lay the dashboard card container out as a strict columns x
+    // rows grid chosen in the popup, with separate column/row spacing.
+    // Added after center_cards so it wins the !important tie-break if both
+    // are on. Hidden cards are display:none, so they don't take up grid
+    // cells. Cards beyond the chosen cells fall into zero-height implicit
+    // rows that overflow-hidden clips away — hence the "cards may be cut
+    // off" warning in the popup. When Center Cards is also on, columns size
+    // to the cards' natural width (they have a fixed width anyway) and the
+    // whole grid is centered horizontally, mirroring what Center Cards does
+    // in flex mode.
+    //
+    // Columns are doubled into "sub-columns" (each card spans 2 of them) so
+    // "Center uneven rows" can shift a partial last row by half a card —
+    // e.g. 3 cards under a 4-card row has exactly one column of leftover
+    // space, which needs a half-column offset to look centered. Empty
+    // sub-columns just make the odd case possible; full rows are unaffected.
+    // Tracks are always max-content (Canvas cards have a fixed width, so the
+    // tracks hug them exactly): spacing stays identical whether Center Cards
+    // is on or off, instead of 1fr stretching cells and widening the visual
+    // gaps. Center Cards then just centers the whole grid with
+    // justify-content:center.
+    //
+    // The GPA calculator elements live in this same container (appended by
+    // setupGPACalc), so when they're visible they get definite full-width
+    // rows past the card rows — otherwise they'd take grid cells, land in
+    // the middle of the card flow (they can be prepended), and throw off the
+    // row math. Two spare auto-height template rows host them; when the GPA
+    // feature is off they're display:none and the spare rows collapse to 0.
+    if (options.card_grid === true) {
+        const gridCols = Math.max(1, parseInt(options.card_grid_columns, 10) || 4);
+        const gridRows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
+        const gridColGap = Math.max(0, !isNaN(parseInt(options.card_grid_column_gap, 10)) ? parseInt(options.card_grid_column_gap, 10) : 12);
+        const gridRowGap = Math.max(0, !isNaN(parseInt(options.card_grid_row_gap, 10)) ? parseInt(options.card_grid_row_gap, 10) : 12);
+        const centerGrid = options.center_cards === true;
+        const gpaOn = options.gpa_calc === true;
+        const totalRows = gridRows + (gpaOn ? 2 : 0);
+        style.textContent += `.ic-DashboardCard__box__container{display:grid!important;grid-template-columns:repeat(${gridCols * 2},minmax(0,max-content))!important;grid-template-rows:repeat(${totalRows},minmax(0,auto))!important;grid-auto-rows:0!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important;overflow:hidden!important${centerGrid ? ";justify-content:center!important" : ""}}`;
+        style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard{grid-column:span 2!important}`;
+        if (gpaOn) {
+            style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:${gridRows + 1}!important;grid-column:span 2!important}`;
+            style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:${gridRows + 2}!important;grid-column:1/-1!important}`;
+        }
+    }
     if (options.customCardStyles === true) {
         if (options.imageSize !== undefined && options.imageSize !== 100) style.textContent += `.ic-DashboardCard__header_image {transform: scale(${options.imageSize / 100})!important; }`;
         if (options.cardRoundness !== undefined && options.cardRoundness !== 5) style.textContent += `.ic-DashboardCard {border-radius: ${options.cardRoundness}px!important;}`;
@@ -6624,6 +6689,59 @@ function applyAestheticChanges() {
     if (options.hide_navbar === true) style.textContent += ".ic-app-nav-toggle-and-crumbs{display:none!important}";
     if (options.custom_styles !== "") style.textContent += options.custom_styles;
     document.documentElement.appendChild(style);
+    // Uneven-row centering needs the real cards (it offsets the first card of
+    // the last partial row), so schedule it just after the style lands. Run
+    // unconditionally while any grid setting changes: the function clears
+    // stale offsets first, which is what makes turning the option (or the
+    // whole grid) OFF take effect without a page refresh.
+    requestAnimationFrame(centerUnevenGridRows);
+}
+
+/*
+Center uneven grid rows.
+
+CSS grid always packs rows from the left, so a last row with fewer cards
+than the chosen column count sits flush-left while the rows above are full.
+Pure CSS can't center a partial row, so we offset the first card of the last
+partial row with grid-column-start.
+
+The grid runs on double sub-columns (each card spans 2 — see
+applyAestheticChanges), which is what makes this possible at all: with 3
+cards under a 4-card row the leftover space is one column, and centering
+needs a HALF-column shift — impossible on plain column lines. On sub-columns
+the shift is a whole sub-column (half a card + half a gap), so every
+remainder can be centered exactly.
+
+Only runs while Card Grid is on. Skips when the cards overflow the explicit
+template (those extra rows are clipped anyway, and the last visible row is
+full). Any previously applied offset is cleared first so re-runs (card
+hidden/unhidden, dashboard re-render, setting changes) start clean.
+*/
+function centerUnevenGridRows() {
+    const container = document.querySelector(".ic-DashboardCard__box__container");
+    if (!container) return;
+    const cards = Array.from(container.children).filter(el => el.classList && el.classList.contains("ic-DashboardCard"));
+    cards.forEach(card => card.style.removeProperty("grid-column"));
+    if (options.card_grid !== true || options.card_grid_center_rows !== true) return;
+    const cols = Math.max(1, parseInt(options.card_grid_columns, 10) || 4);
+    const rows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
+    const visible = cards.filter(card => getComputedStyle(card).display !== "none");
+    const count = visible.length;
+    // Overflowing the template: extra cards land in clipped implicit rows and
+    // the last explicit row is full, so there's nothing to center.
+    if (count === 0 || count >= cols * rows) return;
+    const lastRowStart = Math.floor((count - 1) / cols) * cols;
+    const inLastRow = count - lastRowStart;
+    if (inLastRow >= cols) return;
+    // Offset in sub-columns: each card spans 2 sub-columns, so the leftover
+    // space is 2 * (cols - inLastRow) sub-columns and centering shifts by
+    // half of it. The explicit start must be paired with an explicit span,
+    // or the card would collapse to a single sub-column. Both are set with
+    // "important" priority because the stylesheet span rule is !important
+    // too — plain inline styles would lose to it and the offset would never
+    // take effect.
+    const offset = cols - inLastRow;
+    if (offset > 0) visible[lastRowStart].style.setProperty("grid-column", `${offset + 1} / span 2`, "important");
 }
 
 /*
