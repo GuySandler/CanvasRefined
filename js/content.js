@@ -2220,10 +2220,22 @@ function isCourseHidden(courseId) {
     return !!card && card.hidden === true;
 }
 
+// Courses the user ticked "Hide this course from the Better Todo list" in the
+// card edit menu are dropped from the todo list and its progress display.
+// This is independent of dashboard visibility (isCourseHidden), so a course
+// can stay on the dashboard while its items stay off the todo list, and
+// vice versa. Personal tasks (planner notes with no course) are always kept.
+function isCourseTodoHidden(courseId) {
+    if (courseId === undefined || courseId === null) return false;
+    const cards = options.custom_cards || {};
+    const card = cards[String(courseId)] || cards[courseId];
+    return !!card && card.hide_todo === true;
+}
+
 function filterHiddenCourses(data) {
     return data.filter(item => {
         const cid = item.course_id || item.context_id || item?.plannable?.course_id;
-        return !isCourseHidden(cid);
+        return !isCourseHidden(cid) && !isCourseTodoHidden(cid);
     });
 }
 

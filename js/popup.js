@@ -2410,7 +2410,7 @@ function createCourseButton(courseId, courseData) {
 	button.textContent = displayName;
 	button.dataset.courseId = courseId;
 
-	if (courseData.img || courseData.hidden || courseData.hide) {
+	if (courseData.img || courseData.hidden || courseData.hide || courseData.hide_todo) {
 		button.classList.add("customized");
 	}
 
@@ -2469,6 +2469,14 @@ function showCardEditMenu(courseId, courseData) {
             </div>
         </div>
         
+        <div class="card-edit-section">
+            <label class="card-edit-label">Better Todo List</label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="card-todo-hidden-input" ${courseData.hide_todo === true ? "checked" : ""}>
+                <span>Hide this course from the Better Todo list</span>
+            </div>
+        </div>
+        
         <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button class="big-button" id="save-card-btn">Save Changes</button>
             <button class="customization-button" id="reset-card-btn">Reset to Default</button>
@@ -2512,6 +2520,7 @@ function saveCardChanges(courseId) {
 	const codeInput = document.getElementById("card-code-input");
 	const imageInput = document.getElementById("card-image-input");
 	const hideInput = document.getElementById("card-hide-input");
+	const todoHiddenInput = document.getElementById("card-todo-hidden-input");
 
 	const updates = {
 		name: nameInput.value,
@@ -2519,6 +2528,7 @@ function saveCardChanges(courseId) {
 		img: imageInput.value,
 		hidden: hideInput.checked,
 		hide: hideInput.checked,
+		hide_todo: todoHiddenInput.checked,
 	};
 
 	if (imageInput.value !== "" && imageInput.value !== "none") {
@@ -2538,7 +2548,7 @@ function saveCardChanges(courseId) {
 
 
 function resetCardToDefault(courseId) {
-	updateCards(courseId, { name: "", code: "", img: "", hidden: false, hide: false });
+	updateCards(courseId, { name: "", code: "", img: "", hidden: false, hide: false, hide_todo: false });
 	displayAlert(false, "Card reset to default settings!");
 
 	setTimeout(() => {
