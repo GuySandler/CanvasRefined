@@ -29,6 +29,7 @@ const syncedSubOptions = [
 	"todo_show_scores",
 	"grade_hover",
 	"card_letter",
+	"auto_detect_disabled",
 	// "hide_completed",
 	"num_todo_items",
 	"hover_preview",
@@ -111,6 +112,8 @@ const defaultOptions = {
         "auto_dark_end": { "hour": "08", "minute": "00" },
         "num_assignments": 4,
         "custom_domain": [""],
+        "custom_domain_denied": [],
+        "auto_detect_disabled": false,
         "assignments_done": [],
         "dashboard_grades": false,
         "assignment_date_format": false,
@@ -876,8 +879,8 @@ function setupFeatureSearch(menu) {
             add({ key: "sub:" + keyIdOf(sub), text, el: sub, action: () => goToMainElement(sub) });
         });
 
-        // Home: custom Canvas URL
-        const customDomain = document.querySelector("#customDomain");
+        // Home: custom Canvas URLs
+        const customDomain = document.querySelector(".customDomain");
         if (customDomain && !shouldSkip(customDomain)) {
             const wrap = customDomain.closest(".customDomain");
             const label = wrap ? wrap.querySelector("[data-i18n='enter_url']") : null;
@@ -1094,6 +1097,7 @@ function setup() {
 			"todo_show_scores",
 			"grade_hover",
 			"card_letter",
+			"auto_detect_disabled",
 			// "hide_completed",
 			"hover_preview",
             "customBackgroundDaily",
@@ -1491,28 +1495,94 @@ function setup() {
     }
     updateStorageUsage();
 
-    // activate custom url input
-    document.querySelector('#customDomain').addEventListener('input', function () {
-        let domains = this.value.split(",");
-        domains.forEach((domain, index) => {
-            let val = domain.replace(" ", "");
-            if (val === "") return;
-            //if (!val.includes("https://") && !val.includes("http://")) val = "https://" + val;
-            try {
-                let url = new URL(val);
-                domains[index] = url.hostname;
+    // Canvas URL list — each school gets its own text box
+    const domainListEl = document.querySelector("#custom-domain-list");
+    const addDomainBtn = document.querySelector("#add-domain-btn");
+
+    // Normalize a single entry: a full URL becomes its hostname, anything else
+    // is kept as typed. Idempotent — rows store bare hostnames
+    // ("canvas.school.edu"), which fail new URL() without a scheme, so they're
+    // validated as hostnames instead of re-flagged as invalid on every save.
+    function sanitizeDomainEntry(val, showAlert = true) {
+        let trimmed = val.trim().replace(/ /g, "");
+        if (trimmed === "") return "";
+        try {
+            const host = new URL(trimmed).hostname;
+            if (host) {
                 clearAlert();
-            } catch (e) {
-                domains[index] = val;
-                displayAlert(true, "The URL you entered appears to be invalid, so it might not work.");
+                return host;
+            }
+        } catch (e) { /* not a full URL — may still be a bare hostname */ }
+        // strip scheme/path if new URL couldn't parse it, then validate as a hostname
+        const host = trimmed.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+        if (host && /^[a-z0-9][a-z0-9.-]*$/i.test(host)) {
+            clearAlert();
+            return host;
+        }
+        if (showAlert) displayAlert(true, "The URL you entered appears to be invalid, so it might not work.");
+        return trimmed;
+    }
+
+    function saveDomainList() {
+        const domains = [];
+        domainListEl.querySelectorAll(".domain-row input").forEach(input => {
+            const val = sanitizeDomainEntry(input.value);
+            if (val !== "") domains.push(val);
+        });
+        // keep the legacy [""]-when-empty shape the rest of the code expects
+        chrome.storage.sync.set({ custom_domain: domains.length ? domains : [""] });
+    }
+
+    function makeDomainRow(value) {
+        const row = document.createElement("div");
+        row.className = "domain-row";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "canvas.myschool.edu";
+        input.value = value || "";
+        input.spellcheck = false;
+        input.addEventListener("input", saveDomainList);
+        input.addEventListener("blur", () => {
+            // normalize what's shown and drop rows left empty
+            if (input.value.trim() === "") {
+                if (domainListEl.querySelectorAll(".domain-row").length > 1) row.remove();
+            } else {
+                input.value = sanitizeDomainEntry(input.value);
+            }
+            saveDomainList();
+        });
+        const remove = document.createElement("button");
+        remove.className = "domain-remove";
+        remove.type = "button";
+        remove.textContent = "\u2715";
+        remove.title = "Remove";
+        remove.addEventListener("click", () => {
+            const val = sanitizeDomainEntry(input.value, false);
+            row.remove();
+            saveDomainList();
+            // clear any past "no thanks" for this canvas so the detection
+            // prompt can ask again if it's visited later
+            if (val) {
+                chrome.storage.sync.get(["custom_domain_denied"], storage => {
+                    const denied = (storage.custom_domain_denied || []).filter(d => d !== val);
+                    chrome.storage.sync.set({ custom_domain_denied: denied });
+                });
             }
         });
-        chrome.storage.sync.set({ custom_domain: domains });
+        row.appendChild(input);
+        row.appendChild(remove);
+        return row;
+    }
+
+    chrome.storage.sync.get(["custom_domain"], storage => {
+        const domains = (storage.custom_domain || []).filter(d => d && d.trim() !== "");
+        domains.forEach(d => domainListEl.appendChild(makeDomainRow(d)));
     });
 
-    // setup custom url
-    chrome.storage.sync.get(["custom_domain"], storage => {
-        document.querySelector("#customDomain").value = storage.custom_domain ? storage.custom_domain : "";
+    addDomainBtn.addEventListener("click", () => {
+        domainListEl.appendChild(makeDomainRow(""));
+        const rows = domainListEl.querySelectorAll(".domain-row input");
+        rows[rows.length - 1].focus();
     });
 
     // activate import input box

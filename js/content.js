@@ -757,31 +757,131 @@ function showExampleReminder() {
 }
 
 
+// Canvas detection: if the domain is in the user's list, start normally.
+// Otherwise probe it (unless detection was declined for it); an empty list
+// auto-adds the first canvas, and with canvases already in the list the user
+// is asked once per domain.
 isDomainCanvasPage();
 
 function isDomainCanvasPage() {
-    chrome.storage.sync.get(['custom_domain', 'dark_mode', 'dark_preset', 'device_dark', 'remind'], result => {
+    chrome.storage.sync.get(['custom_domain', 'custom_domain_denied', 'auto_detect_disabled', 'dark_mode', 'dark_preset', 'device_dark', 'remind'], result => {
         options = result;
-        if (result.custom_domain.length && result.custom_domain[0] !== "") {
-            for (let i = 0; i < result.custom_domain.length; i++) {
-                if (domain.includes(result.custom_domain[i])) {
-                    startExtension();
-                    return;
-                }
-            }
-
-            // if the code reaches this point, its not a canvas page so run the reminders
-            setTimeout(reminderWatch, 2000);
-            setInterval(reminderWatch, 60000);
-            // turn the reminders on/off if the option is changed
-            chrome.storage.onChanged.addListener((changes) => {
-                Object.keys(changes).forEach(key => {
-                    if (key === "remind") reminderWatch();
-                })
-            })
-        } else {
-            setupCustomURL();
+        const domains = (result.custom_domain || []).filter(d => d && d !== "");
+        const denied = result.custom_domain_denied || [];
+        if (domains.some(d => domain.includes(d))) {
+            startExtension();
+            return;
         }
+
+        // not in the list — no prompting/probing if the user turned auto detect
+        // off, or already said no here; just run reminders
+        if (result.auto_detect_disabled === true || denied.some(d => domain.includes(d))) {
+            startReminderMode();
+            return;
+        }
+
+        detectCanvasPage().then(({ isCanvas, courses }) => {
+            if (!isCanvas) {
+                startReminderMode();
+                return;
+            }
+            if (domains.length === 0) {
+                // first canvas ever — add it automatically (original first-run
+                // behavior) and reload so the extension starts
+                addCanvasDomain(courses).then(() => location.reload());
+            } else {
+                // at least one canvas already in the list: ask the first time
+                // this page is seen. Saying no means we never ask again here.
+                promptAddCanvasDomain(courses);
+            }
+        });
+    });
+}
+
+function startReminderMode() {
+    setTimeout(reminderWatch, 2000);
+    setInterval(reminderWatch, 60000);
+    // turn the reminders on/off if the option is changed
+    chrome.storage.onChanged.addListener((changes) => {
+        Object.keys(changes).forEach(key => {
+            if (key === "remind") reminderWatch();
+        })
+    })
+}
+
+// The courses API only answers on real Canvas installs. Resolves { isCanvas, courses }.
+async function detectCanvasPage() {
+    try {
+        const courses = await getData(`${domain}/api/v1/courses?${/*enrollment_state=active&*/""}per_page=100`);
+        if (Array.isArray(courses) && courses.length) {
+            return { isCanvas: true, courses };
+        }
+        console.log("Canvas Refined - this url doesn't seem to be a canvas url (1)");
+        return { isCanvas: false, courses: null };
+    } catch (err) {
+        console.log("Canvas Refined - this url doesn't seem to be a canvas url (2)");
+        return { isCanvas: false, courses: null };
+    }
+}
+
+// Register the domain in the canvas list. `courses` (from detectCanvasPage) is
+// passed to getCards so this school's courses are indexed before the reload,
+// exactly like the original first-run flow did.
+function addCanvasDomain(courses) {
+    return getCards(courses).then(() => new Promise(resolve => {
+        setTimeout(() => {
+            console.log("Canvas Refined - setting custom domain to " + domain);
+            chrome.storage.sync.get(["custom_domain"], storage => {
+                const domains = (storage.custom_domain || []).filter(d => d && d !== "");
+                domains.push(domain);
+                // the domain was just accepted — make sure it isn't on the
+                // "don't ask again" list
+                chrome.storage.sync.get(["custom_domain_denied"], deniedStorage => {
+                    const denied = (deniedStorage.custom_domain_denied || []).filter(d => !domain.includes(d));
+                    chrome.storage.sync.set({ custom_domain: domains, custom_domain_denied: denied }).then(resolve);
+                });
+            });
+        }, 100);
+    }));
+}
+
+function promptAddCanvasDomain(courses) {
+    // content scripts run at document_start, so the body may not exist yet
+    const show = () => showCanvasPrompt(courses);
+    if (document.body) show();
+    else document.addEventListener("DOMContentLoaded", show, { once: true });
+}
+
+function showCanvasPrompt(courses) {
+    if (document.getElementById("canvasrefined-domain-prompt-backdrop")) return;
+
+    const host = domain.replace(/^https?:\/\//, "");
+    // modal with a backdrop so the ask is impossible to miss
+    const backdrop = makeElement("div", document.body, { "id": "canvasrefined-domain-prompt-backdrop" });
+    const prompt = makeElement("div", backdrop, { "id": "canvasrefined-domain-prompt" });
+    makeElement("h3", prompt, { "textContent": "New Canvas detected" });
+    const text = makeElement("p", prompt, {});
+    text.append("Canvas Refined detected a Canvas page at ");
+    makeElement("span", text, { "className": "canvasrefined-domain-host", "textContent": host });
+    text.append(". Add it to your canvas list?");
+    const actions = makeElement("div", prompt, { "className": "canvasrefined-domain-prompt-actions" });
+    const yes = makeElement("button", actions, { "textContent": chrome.i18n.getMessage("add_to_list") || "Add to list", "className": "canvasrefined-domain-yes" });
+    const no = makeElement("button", actions, { "textContent": chrome.i18n.getMessage("no_thanks") || "No thanks", "className": "canvasrefined-domain-no" });
+
+    const dismiss = () => backdrop.remove();
+
+    yes.addEventListener("click", () => {
+        dismiss();
+        addCanvasDomain(courses).then(() => location.reload());
+    });
+    no.addEventListener("click", () => {
+        dismiss();
+        chrome.storage.sync.get(["custom_domain_denied"], storage => {
+            const denied = storage.custom_domain_denied || [];
+            if (!denied.some(d => domain.includes(d))) denied.push(domain);
+            chrome.storage.sync.set({ custom_domain_denied: denied });
+        });
+        startReminderMode();
     });
 }
 
@@ -7631,25 +7731,6 @@ function cleanCustomAssignments() {
             });
 
         });
-    });
-}
-
-function setupCustomURL() {
-    //let test = getData(`${domain}/api/v1/dashboard/dashboard_cards?include[]=concluded&include[]=term`);
-    let test = getData(`${domain}/api/v1/courses?${/*enrollment_state=active&*/""}per_page=100`);
-    test.then(res => {
-        if (res.length) {
-            getCards(res).then(() => {
-                setTimeout(() => {
-                    console.log("Canvas Refined - setting custom domain to " + domain);
-                    chrome.storage.sync.set({ custom_domain: [domain] }).then(location.reload());
-                }, 100);
-            });
-        } else {
-            console.log("Canvas Refined - this url doesn't seem to be a canvas url (1)");
-        }
-    }).catch(err => {
-        console.log("Canvas Refined - this url doesn't seem to be a canvas url (2)");
     });
 }
 

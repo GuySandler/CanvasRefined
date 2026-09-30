@@ -34,6 +34,15 @@ a.option-container:hover {background: #333}
 .options-left {margin-right: 8px;}
 .options-left, .options-right {width: 50%;}
 .customDomain {font-weight:600}
+
+/* Canvas URL list — one text box per school */
+#custom-domain-list {display: flex;flex-direction: column;gap: 6px;margin-top: 8px}
+.domain-row {display: flex;gap: 6px;align-items: center}
+.domain-row input {flex: 1;min-width: 0;box-sizing: border-box;font-size: 12px;background: var(--inputbg);border: none;padding: 8px;color: #e2e2e2;border-radius: 7px;font-family: inherit}
+.domain-row .domain-remove {flex: none;width: 24px;height: 31px;padding: 0;border: none;border-radius: 6px;background: #2f2f2f;color: #a7a7a7;font-size: 13px;line-height: 1;cursor: pointer}
+.domain-row .domain-remove:hover {background: #3d3d3d;color: #fff}
+#add-domain-btn {margin-top: 8px;font-size: 12px;padding: 5px 12px}
+.domain-toggles {margin-top: 10px;display: flex;flex-direction: column}
 .changer {margin:0;margin-bottom: 0px;width:100%}
 .option-background {color: #fff}
 .color-changer { font-family: inherit;font-size: 20px;background: none;border: none;color: #000;height: 30px;width:100%;padding:10px 0px 10px 10px;}

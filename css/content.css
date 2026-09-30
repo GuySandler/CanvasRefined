@@ -158,6 +158,20 @@
 .canvasrefined-todo-item-header {max-height:80px;overflow:hidden;}
 .canvasrefined-todo-svg {fill:#2d3b45!important}
 #canvasrefined-update-msg {margin-top: 5px; display: flex; justify-content: space-between; font-size:15px;background: linear-gradient(115deg, rgb(255, 53, 88, .9), rgb(255, 131, 73, .9), rgb(255, 103, 187, .9)); color: #fff; border-radius:4px; padding: 20px;white-space: pre-line;}
+
+/* Detected-canvas prompt — centered modal with backdrop so it can't be missed */
+#canvasrefined-domain-prompt-backdrop {position: fixed!important;inset: 0!important;width: 100%!important;height: 100%!important;background: rgb(0 0 0 / 60%)!important;z-index: 2147483647!important;display: flex!important;align-items: center!important;justify-content: center!important;}
+#canvasrefined-domain-prompt {background: #fff!important;border-radius: 14px!important;padding: 24px 28px!important;max-width: 460px!important;width: 90%!important;box-sizing: border-box!important;box-shadow: 0 12px 48px rgb(0 0 0 / 45%)!important;animation: .25s ease canvasrefined-pop;}
+@keyframes canvasrefined-pop {0% {transform: scale(.9);opacity: 0} 100% {transform: scale(1);opacity: 1}}
+#canvasrefined-domain-prompt h3 {margin: 0 0 10px!important;font-size: 19px!important;font-weight: 700!important;color: #2d3b45!important;font-family: inherit!important;}
+#canvasrefined-domain-prompt p {margin: 0 0 18px!important;font-size: 14px!important;color: #4a5460!important;line-height: 1.5!important;font-family: inherit!important;}
+.canvasrefined-domain-host {font-weight: 700!important;color: #2d3b45!important;word-break: break-all!important;}
+.canvasrefined-domain-prompt-actions {display: flex!important;gap: 10px!important;}
+.canvasrefined-domain-prompt-actions button {flex: 1!important;border: none!important;border-radius: 8px!important;padding: 11px 16px!important;font-size: 14px!important;font-weight: 600!important;cursor: pointer!important;font-family: inherit!important;}
+.canvasrefined-domain-yes {background: #2d3b45!important;color: #fff!important;}
+.canvasrefined-domain-yes:hover {background: #3b4d61!important;}
+.canvasrefined-domain-no {background: #eceef0!important;color: #2d3b45!important;}
+.canvasrefined-domain-no:hover {background: #dfe2e5!important;}
 #canvasrefined-update-msg p {margin: 0;color:#fff!important;}
 #canvasrefined-update-close { background: #2f2f2f59; padding: 3px 6px; border-radius: 3px; height:100%; border:none; color: #fff!important;}
 #canvasrefined-reminders {animation: .4s ease slide; margin:20px!important;position: fixed!important; bottom: 0!important;right: 0;z-index:10000000000!important;flex-direction: column!important; gap:10px!important;}

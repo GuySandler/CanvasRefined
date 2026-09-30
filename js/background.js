@@ -32,6 +32,8 @@ chrome.runtime.onInstalled.addListener(function () {
             "auto_dark_end": { "hour": "08", "minute": "00" },
             "num_assignments": 4,
             "custom_domain": [""],
+            "custom_domain_denied": [],
+            "auto_detect_disabled": false,
             "assignments_done": [],
             "dashboard_grades": true,
             "assignment_date_format": false,

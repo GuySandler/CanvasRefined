@@ -440,9 +440,15 @@
                 </div>
                 <div class="option-container">
                     <div class="customDomain">
-                        <span data-i18n="enter_url">Your Canvas URL:</span>
-                        <p style="font-size: 11px;color:#8d8d8d" data-i18n="enter_multiple">(Enter multiple with a comma)</p>
-                        <input type="text" id="customDomain" placeholder="Or just refresh your Canvas page!"></input>
+                        <span data-i18n="enter_url">Your Canvas URLs:</span>
+                        <div id="custom-domain-list"></div>
+                        <button id="add-domain-btn" class="customization-button" data-i18n="add_canvas">+ Add canvas</button>
+                        <div class="domain-toggles">
+                            <div class="sub-option">
+                                <input type="checkbox" id="auto_detect_disabled" name="auto_detect_disabled">
+                                <label for="auto_detect_disabled" class="sub-text" data-i18n="no_auto_detect">Don't auto detect canvases</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

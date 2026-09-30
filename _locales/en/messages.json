@@ -24,7 +24,19 @@
         "message": "Dark Mode"
     },
     "enter_url": {
-        "message": "Your Canvas url:"
+        "message": "Your Canvas URLs:"
+    },
+    "add_canvas": {
+        "message": "+ Add canvas"
+    },
+    "no_auto_detect": {
+        "message": "Don't auto detect canvases"
+    },
+    "add_to_list": {
+        "message": "Add to list"
+    },
+    "no_thanks": {
+        "message": "No thanks"
     },
     "card_grades": {
         "message": "Card Grades"
