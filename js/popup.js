@@ -1,6 +1,7 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
+	"hide_course_images",
 	"todo_hide_feedback",
 	"todo_hide_read",
 	"todo_full_height",
@@ -50,6 +51,7 @@ const syncedSubOptions = [
 	"card_grid_column_gap",
 	"card_grid_row_gap",
 	"card_grid_center_rows",
+	"card_grid_flex",
 	"customBackgroundLink",
     "customBackgroundScale",
     "customBackgroundDaily",
@@ -68,7 +70,7 @@ const localSwitches = [];
 // Theme export only carries visual settings, never personal productivity data.
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
-const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding", "card_grid", "card_grid_columns", "card_grid_rows", "card_grid_column_gap", "card_grid_row_gap", "card_grid_center_rows"];
+const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding", "card_grid", "card_grid_columns", "card_grid_rows", "card_grid_column_gap", "card_grid_row_gap", "card_grid_center_rows", "card_grid_flex"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
@@ -103,6 +105,8 @@ const defaultOptions = {
         },
         "new_install": true,
         "assignments_due": true,
+        "hide_personal_details": false,
+        "hide_course_images": false,
         "gpa_calc": false,
         "dark_mode": true,
         "gradent_cards": false,
@@ -204,6 +208,7 @@ const defaultOptions = {
         "card_grid_column_gap": 12,
         "card_grid_row_gap": 12,
         "card_grid_center_rows": false,
+        "card_grid_flex": false,
         "customCardStyles": false,
         "customBackgroundLink": "",
         "customBackgroundScale": 100,
@@ -225,8 +230,22 @@ chrome.storage.onChanged.addListener((changes) => {
         // Hidden-card edits from the card menu change how many cells the
         // grid preview should mark as filled.
         updateCardGridPreview();
+        scheduleGridPreviewFollowUp();
     }
 });
+
+// The live card count is read from the dashboard tab's DOM, which applies
+// display:none for a newly hidden card in its own storage listener — a race
+// against the popup's. One debounced follow-up render re-syncs the preview
+// (and the cut-off warning) right after a card edit settles.
+let gridPreviewFollowUpTimer = null;
+function scheduleGridPreviewFollowUp() {
+    if (gridPreviewFollowUpTimer) clearTimeout(gridPreviewFollowUpTimer);
+    gridPreviewFollowUpTimer = setTimeout(() => {
+        gridPreviewFollowUpTimer = null;
+        updateCardGridPreview();
+    }, 800);
+}
 
 function displayErrors() {
     chrome.storage.local.get("errors", storage => {
@@ -492,6 +511,11 @@ function setupCardGrid(initial) {
     document.getElementById("card_grid_center_rows").addEventListener("change", () => {
         updateCardGridPreview();
     });
+    // Flexible grid changes what the warning means (cards wrap instead of
+    // being cut off), so re-render it on toggle.
+    document.getElementById("card_grid_flex")?.addEventListener("change", () => {
+        updateCardGridPreview();
+    });
 }
 
 // Grid count/spacing inputs for the card grid. Update the preview
@@ -509,11 +533,13 @@ function setupCardGridCountInput(id, initial, fallback = 1) {
     });
 }
 
-// Number of dashboard cards that will occupy grid cells: every stored card
-// that isn't hidden via the card menu. Hidden cards get display:none in the
-// dashboard, so they don't take up a grid slot.
+// Fallback count of dashboard cards that will occupy grid cells, used only
+// when no dashboard tab answered the live "getGridCardCount" query (e.g. the
+// options page was opened outside a Canvas window). Every stored card that
+// isn't hidden via the card menu would be shown, so it doesn't take up a
+// grid slot. Treated as truthy so legacy string values ("true") count too.
 function countActiveDashboardCards(cards) {
-    return Object.values(cards || {}).filter(c => c && typeof c === "object" && c.hidden !== true && c.hide !== true).length;
+    return Object.values(cards || {}).filter(c => c && typeof c === "object" && !c.hidden && !c.hide).length;
 }
 
 // Squares preview: one square per grid cell. Filled squares = cells covered
@@ -534,10 +560,20 @@ function updateCardGridPreview() {
     preview.style.columnGap = `${colGap}px`;
     preview.style.rowGap = "4px";
     preview.innerHTML = "";
-    chrome.storage.sync.get("custom_cards", s => {
+    chrome.storage.sync.get(["custom_cards", "gpa_calc"], async s => {
         // Grid may have been toggled off while the storage read was pending.
         if (document.getElementById("card-grid-options").style.display === "none") return;
-        const active = countActiveDashboardCards(s.custom_cards);
+        // Prefer the live count from an open dashboard tab: the page itself
+        // knows exactly which cards are rendered and not display:none (hidden
+        // via the card menu), so the preview/warning can't drift out of sync
+        // with stored data (stale entries, other-domain cards, legacy values).
+        // Fall back to the storage-derived count when no dashboard answers.
+        const live = await sendFromPopup("getGridCardCount");
+        let active = (live && typeof live.count === "number" && live.count >= 0)
+            ? live.count
+            : countActiveDashboardCards(s.custom_cards);
+        // The GPA calculator card occupies one card slot in the grid too.
+        if (s.gpa_calc === true) active += 1;
         // Uneven-row centering: the real grid shifts the last partial row in
         // half-card steps (double sub-columns — see centerUnevenGridRows).
         // In the preview that's a margin on every square of that row; since
@@ -564,8 +600,14 @@ function updateCardGridPreview() {
         }
         const warning = document.getElementById("card-grid-warning");
         if (warning) {
-            if (active > total) {
-                warning.textContent = `\u26A0 Your grid holds ${total} card${total === 1 ? "" : "s"} but you have ${active} active card${active === 1 ? "" : "s"} - some cards may be cut off.`;
+            if (s.card_grid_flex === true) {
+                // Flexible grid never clips: cards wrap into new rows as the
+                // window narrows, so the cut-off warning doesn't apply.
+                warning.textContent = "Flexible grid is on - cards wrap to fit narrow windows instead of being cut off.";
+                warning.style.display = "block";
+            } else if (active > total) {
+                const gpaNote = s.gpa_calc === true ? " (including the GPA calculator)" : "";
+                warning.textContent = `\u26A0 Your grid holds ${total} card${total === 1 ? "" : "s"} but you have ${active} card${active === 1 ? "" : "s"}${gpaNote} - some cards may be cut off.`;
                 warning.style.display = "block";
             } else {
                 warning.style.display = "none";
@@ -716,7 +758,7 @@ function toggleAlternateColorsVisibility(darkModeOn) {
 
 // Hide a toggle's sub-options when it's off; auto_dark only hides its time clocks.
 function toggleSubOptionsVisibility(option, isOn) {
-    const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics"];
+    const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
     if (!togglesWithSubOptions.includes(option)) return;
     const optionEl = document.getElementById(option);
     if (!optionEl) return;
@@ -1098,6 +1140,7 @@ function setup() {
 			"grade_hover",
 			"card_letter",
 			"auto_detect_disabled",
+			"hide_course_images",
 			// "hide_completed",
 			"hover_preview",
             "customBackgroundDaily",
@@ -1107,6 +1150,7 @@ function setup() {
 			"customCardStyles",
 			"card_grid",
 			"card_grid_center_rows",
+			"card_grid_flex",
 			"grade_analytics_zones",
 		],
 		tabs: {
@@ -1289,7 +1333,7 @@ function setup() {
             });
         });
         toggleBetterSidebarSubOptions(sync["better_sidebar"] === true);
-        ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics"].forEach(opt => {
+        ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
         toggleAlternateColorsVisibility(sync["dark_mode"] === true);

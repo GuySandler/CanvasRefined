@@ -941,6 +941,7 @@ function startExtension() {
         watchSequenceFooter();
         watchProfileLogoutPageButton();
         watchGradeAnalytics();
+        setupPersonalDetailsHiding();
 
         setupQuizSafeModeBanner();
 
@@ -1087,6 +1088,26 @@ function applyOptionsChanges(changes) {
 					createTodoSections(document.querySelector("#canvasrefined-todo-list"));
 				}
 				break;
+			case "hide_personal_details":
+				// Starts/stops the DOM watcher; with it off, restores the real
+				// text/attributes stashed in dataset markers.
+				setupPersonalDetailsHiding();
+				// Todo item text, card grades and card assignment names are baked
+				// in at render time, so re-render them to swap fake/real data.
+				if (options.better_todo && document.getElementById("better-todo-main")) {
+					moreAnnouncementCount = 0;
+					moreAssignmentCount = 0;
+					clearTodoList();
+					createTodoSections(document.querySelector("#canvasrefined-todo-list"));
+				}
+				if (!grades) getGrades();
+				insertGrades();
+				cardAssignments = preloadAssignmentEls();
+				loadCardAssignments();
+				break;
+			case "hide_course_images":
+				applyCourseImageHiding();
+				break;
 			case "gpa_calc":
 			case "gpa_calc_prepend":
 			case "gpa_calc_weighted":
@@ -1174,6 +1195,7 @@ function applyOptionsChanges(changes) {
 			case "card_grid_column_gap":
 			case "card_grid_row_gap":
 			case "card_grid_center_rows":
+			case "card_grid_flex":
 			case "customCardStyles":
 				// Coalesce rapid card-style edits (e.g. holding the arrow keys on a
 			// number input) into a single applyAestheticChanges() call. Each
@@ -1853,6 +1875,22 @@ function recieveMessage(request, sender, sendResponse) {
             return true; // keep the message channel open for async sendResponse
         case ("setcolors"): changeColorPreset(request.options); sendResponse(true); break;
         case ("getcolors"): getCardColors().then(colors => sendResponse(colors)); return true; // keep the message channel open for async sendResponse
+        case ("getGridCardCount"): {
+            // Popup card-grid warning asks the real page instead of guessing
+            // from stored card data: only cards actually rendered on this
+            // dashboard that aren't display:none (hidden via the card menu)
+            // occupy grid cells. Null means "no dashboard here" so the popup
+            // falls back to its storage-derived count.
+            try {
+                const dashCards = Array.from(document.querySelectorAll(".ic-DashboardCard"));
+                if (!dashCards.length) { sendResponse(null); break; }
+                const visible = dashCards.filter(c => getComputedStyle(c).display !== "none");
+                sendResponse({ count: visible.length });
+            } catch (e) {
+                sendResponse(null);
+            }
+            break;
+        }
         case ("inspect"): sendResponse(inspectDarkMode(true)); break;
         case ("fixdm"): sendResponse(runDarkModeFixer(true)); break;
 		case ("updateBackground"): applyCustomBackground(); sendResponse(true); break;
@@ -3928,14 +3966,15 @@ async function showTodoPreview(anchor, item) {
     const el = getTodoPreviewEl();
     const title = el.querySelector(".canvasrefined-preview-title");
     const text = el.querySelector(".canvasrefined-preview-text");
-    title.textContent = item.plannable && item.plannable.title ? item.plannable.title : "";
+    title.textContent = anonTitleForItem(item);
     text.textContent = "Loading…";
     el.style.display = "block";
     positionTodoPreview(el, anchor);
     const content = await getTodoPreviewText(item);
     if (token !== todoPreviewToken) return; // a newer hover (or hide) superseded this one
     if (el.style.display !== "block") return; // user already moved away
-    text.textContent = content;
+    // "Hide personal details": don't reveal real assignment descriptions.
+    text.textContent = options.hide_personal_details === true ? "Preview hidden while personal details are hidden." : content;
     positionTodoPreview(el, anchor); // reposition now that the height is known
 }
 
@@ -3995,8 +4034,10 @@ function todoScoreBadgeHtml(item) {
     // hasn't run yet (a cached null score means the fetch confirmed no grade).
     const graded = cached ? cached.score != null : item.submissions?.graded === true;
     let text;
+    // "Hide personal details": never reveal the real earned score.
+    const shownScore = options.hide_personal_details === true ? null : cached?.score;
     if (cached?.excused) text = "Excused";
-    else text = `${cached?.score != null ? formatTodoScoreNumber(cached.score) : "–"}/${pts} pts`;
+    else text = `${shownScore != null ? formatTodoScoreNumber(shownScore) : "–"}/${pts} pts`;
     const attrs = `data-todo-course="${item.course_id ?? ""}" data-todo-plannable="${item.plannable_id}" data-todo-points="${pts}"`;
     return `<span class="better-todo-score" ${attrs} style="margin-left:6px;opacity:.85;">${text}</span>${graded ? TODO_GRADED_BADGE_HTML : ""}`;
 }
@@ -4056,8 +4097,10 @@ async function loadTodoScores(items) {
     document.querySelectorAll("#better-todo-main .better-todo-score").forEach(el => {
         const cached = todoScoreCache.get(`${el.dataset.todoCourse}:${el.dataset.todoPlannable}`);
         if (!cached) return;
+        // "Hide personal details": never reveal the real earned score.
+        const shownScore = options.hide_personal_details === true ? null : cached.score;
         if (cached.excused) el.textContent = "Excused";
-        else el.textContent = `${cached.score != null ? formatTodoScoreNumber(cached.score) : "–"}/${el.dataset.todoPoints} pts`;
+        else el.textContent = `${shownScore != null ? formatTodoScoreNumber(shownScore) : "–"}/${el.dataset.todoPoints} pts`;
         if (cached.score != null && !el.nextElementSibling?.classList.contains("better-todo-graded")) {
             el.insertAdjacentHTML("afterend", TODO_GRADED_BADGE_HTML);
         }
@@ -4190,8 +4233,8 @@ function populateAssignments(iscompleted = false) {
 			</div>
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;position:relative;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
-					<span style="color:${classNameColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
-					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;padding-right:28px;margin-top:-5px;">${item.plannable.title}</a>
+					<span style="color:${classNameColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${anonCourseNameForItem(item)}</span>
+					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;padding-right:28px;margin-top:-5px;">${anonTitleForItem(item)}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}${scoreBadge}</span>
 				</div>
 				${editButtonSvg}
@@ -4303,8 +4346,8 @@ function populateAnnouncements() {
 			</div>
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;position:relative;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
-					<span style="color:${classNameColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${item.context_name}</span>
-					<a href="${domain + item.html_url}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${item.plannable.title}</a>
+					<span style="color:${classNameColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${anonCourseNameForItem(item)}</span>
+					<a href="${domain + item.html_url}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${anonTitleForItem(item)}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
 				<svg class="better-todo-announcement-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="Mark as seen">
@@ -5113,9 +5156,9 @@ async function loadBetterTodo() {
                     if (itemState?.["crs"] === true) {
                         listItemContainer.querySelector(".canvasrefined-todo-item").style.textDecoration = "line-through";
                     }
-                    let title = makeElement("a", listItem.querySelector(".canvasrefined-todo-item-header"), { "className": "canvasrefined-todoitem-title", "textContent": item.plannable.title });
+                    let title = makeElement("a", listItem.querySelector(".canvasrefined-todo-item-header"), { "className": "canvasrefined-todoitem-title", "textContent": anonTitleForItem(item) });
                     if (options.todo_hide_feedback === true) title.style = "color:" + courseColor + "!important;";
-                    let course = makeElement("p", listItem, { "className": "canvasrefined-todoitem-course", "textContent": item.context_name });
+                    let course = makeElement("p", listItem, { "className": "canvasrefined-todoitem-course", "textContent": anonCourseNameForItem(item) });
                     course.style.color = courseColor;
                     let format = formatTodoDate(date, item.submissions, hr24);
                     let todoDate = makeElement("p", listItem, { "className": "canvasrefined-todoitem-date", "textContent": format.date });
@@ -5360,6 +5403,11 @@ async function changeColorPreset(colors) {
                     card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor = colors[cnum];
                     card.el.querySelector(".ic-DashboardCard__header-title span").style.color = colors[cnum];
                     card.el.querySelector(".ic-DashboardCard__header-button-bg").style.backgroundColor = colors[cnum];
+                    // Recompute this card's gradient from its NEW color right
+                    // away — changeGradientCards() outside the queue ran too
+                    // early (colors land later, on the 250ms interval), which
+                    // left gradients built from the previous course colors.
+                    changeGradientCards();
                 } else {
                     const coursePrefix = "/courses/" + course_id;
                     document.querySelectorAll(".planner-item").forEach(item => {
@@ -5666,6 +5714,305 @@ function runiframeChecker() {
     iframeObserver.observe(document.documentElement, { childList: true, subtree: true });
 }
 
+/*
+Hide personal details (screenshot privacy mode)
+*/
+
+// Pregenerated pool of fake courses (15 entries). Every real course is mapped
+// to a unique entry (stable per course via a hash, collisions probed away),
+// so the same course always shows the same fake name everywhere — dashboard
+// cards, the Better Todo List and recent feedback.
+const FAKE_COURSES = [
+    { name: "Algebra II", teacher: "Martinez" },
+    { name: "AP Biology", teacher: "Nguyen" },
+    { name: "Art History", teacher: "Kowalski" },
+    { name: "Astronomy", teacher: "Delgado" },
+    { name: "Chemistry", teacher: "Patel" },
+    { name: "Computer Science", teacher: "Brooks" },
+    { name: "Creative Writing", teacher: "Ellis" },
+    { name: "European History", teacher: "Fischer" },
+    { name: "Geography", teacher: "Okafor" },
+    { name: "Marine Biology", teacher: "Silva" },
+    { name: "Physics", teacher: "Jensen" },
+    { name: "Psychology", teacher: "Moreau" },
+    { name: "Spanish III", teacher: "Rivera" },
+    { name: "Statistics", teacher: "Chen" },
+    { name: "World History", teacher: "Adler" },
+];
+const FAKE_SCHOOL_NAME = "Ridgeview High School";
+const FAKE_ASSIGNMENT_TITLES = [
+    "Homework 4", "Reading Response", "Lab Report 2", "Practice Problems",
+    "Unit Quiz", "Essay Draft", "Worksheet 7", "Group Project",
+    "Chapter Review", "Study Guide", "Discussion Post", "Exit Ticket",
+    "Vocabulary Quiz", "Lab Worksheet", "Project Proposal", "Test Review",
+    "Notes Check", "Article Summary", "Problem Set 3", "Class Survey",
+];
+const FAKE_FEEDBACK_COMMENTS = [
+    "Nice work!", "Good effort.", "Well done!", "Keep it up!", "Solid job!",
+    "Great improvement!", "Strong submission.", "Excellent detail.",
+];
+
+// FNV-1a — small, dependency-free, deterministic string hash.
+function anonHash(str) {
+    let h = 2166136261;
+    const s = String(str);
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+}
+
+// key -> index into FAKE_COURSES. Hash-based so a course keeps its fake name
+// across reloads, with linear probing so every real course gets a UNIQUE fake
+// course. Once the pool is exhausted (more than 15 courses), reuse is allowed.
+const anonCourseMap = new Map();
+function getAnonCourse(key) {
+    const k = String(key ?? "unknown");
+    if (!anonCourseMap.has(k)) {
+        const used = new Set(anonCourseMap.values());
+        let idx = anonHash(k) % FAKE_COURSES.length;
+        if (used.size < FAKE_COURSES.length) {
+            while (used.has(idx)) idx = (idx + 1) % FAKE_COURSES.length;
+        }
+        anonCourseMap.set(k, idx);
+    }
+    return FAKE_COURSES[anonCourseMap.get(k)];
+}
+function fakeCourseLabel(key) {
+    const c = getAnonCourse(key);
+    return `${c.name} - ${c.teacher}`;
+}
+
+// "a:<assignment id>" when the id is known, "t:<title text>" otherwise.
+function fakeAssignmentTitle(key) {
+    return FAKE_ASSIGNMENT_TITLES[anonHash(String(key)) % FAKE_ASSIGNMENT_TITLES.length];
+}
+function fakeFeedbackComment(key) {
+    return FAKE_FEEDBACK_COMMENTS[anonHash(String(key)) % FAKE_FEEDBACK_COMMENTS.length];
+}
+
+// Deterministic fake "x out of 20" score for recent feedback entries.
+function fakeFeedbackScore(key) {
+    const earned = 13 + (anonHash(String(key)) % 8);
+    return `${earned} out of 20`;
+}
+
+// Deterministic fake dashboard grade: a plausible percent plus the letter the
+// user's own GPA cutoffs would assign it (same scale their real grades show).
+function fakeGradeText(key) {
+    const h = anonHash(String(key));
+    const percent = Math.round((70 + (h % 300) / 10) * 10) / 10;
+    const letter = percentToLetterGrade(percent);
+    return (letter ? `${letter} ` : "") + `${percent}%`;
+}
+
+// Term strings look like "2026/2027 - Campolindo High School - Year": keep the
+// year and the term type, swap the school name for a fake one.
+function anonFakeTerm(orig) {
+    const parts = String(orig).split(" - ").map(p => p.trim()).filter(p => p !== "");
+    if (parts.length >= 3) return `${parts[0]} - ${FAKE_SCHOOL_NAME} - ${parts[parts.length - 1]}`;
+    return FAKE_SCHOOL_NAME;
+}
+
+// Render-time helpers so text baked into todo/assignment templates is fake
+// from the start (a DOM pass alone can't beat async re-renders clobbering it).
+function anonCourseNameForItem(item) {
+    const real = item?.context_name ?? "";
+    if (options.hide_personal_details !== true) return real;
+    return fakeCourseLabel(item?.course_id ?? item?.context_id ?? "name:" + String(real).trim().toLowerCase());
+}
+function anonTitleForItem(item) {
+    const real = item?.plannable?.title ?? "";
+    if (options.hide_personal_details !== true) return real;
+    const id = item?.plannable_id ?? item?.plannable?.id;
+    return fakeAssignmentTitle(id != null ? "a:" + id : "t:" + String(real).trim());
+}
+
+// Marked-text helpers. Original text/attributes are stashed in dataset entries
+// so toggling the option off restores the real content in place.
+function anonText(el, computeFake) {
+    if (!el || el.dataset.crAnonOrig !== undefined) return;
+    const orig = el.textContent;
+    el.dataset.crAnonOrig = orig;
+    el.textContent = computeFake(orig);
+}
+function anonAttr(el, attr, computeFake) {
+    if (!el) return;
+    let attrs = {};
+    if (el.dataset.crAnonAttrs !== undefined) {
+        attrs = JSON.parse(el.dataset.crAnonAttrs);
+        if (attrs[attr] !== undefined) return;
+    } else {
+        el.dataset.crAnonAttrs = "{}";
+    }
+    const orig = el.getAttribute(attr);
+    if (orig == null) return;
+    attrs[attr] = orig;
+    el.dataset.crAnonAttrs = JSON.stringify(attrs);
+    el.setAttribute(attr, computeFake(orig));
+}
+function restoreAnonymized(root = document) {
+    root.querySelectorAll("[data-cr-anon-orig]").forEach(el => {
+        el.textContent = el.dataset.crAnonOrig;
+        delete el.dataset.crAnonOrig;
+    });
+    root.querySelectorAll("[data-cr-anon-attrs]").forEach(el => {
+        try {
+            const attrs = JSON.parse(el.dataset.crAnonAttrs);
+            for (const [attr, value] of Object.entries(attrs)) el.setAttribute(attr, value);
+        } catch (e) { /* malformed marker: leave as-is */ }
+        delete el.dataset.crAnonAttrs;
+    });
+}
+
+// Anonymize one dashboard card's visible + screenreader text.
+function anonymizeDashboardCard(card) {
+    const link = card.querySelector('.ic-DashboardCard__link[href*="/courses/"]');
+    const idMatch = link ? (link.getAttribute("href") || "").match(/courses\/(\d+)/) : null;
+    const key = idMatch
+        ? "id:" + idMatch[1]
+        : "name:" + (card.querySelector(".ic-DashboardCard__header-title")?.textContent || "").trim().toLowerCase();
+    const fakeLabel = fakeCourseLabel(key);
+
+    // Snapshot the real names BEFORE anything is anonymized so substring
+    // replacement in aria-labels/screenreader spans works off originals.
+    // Both forms matter: the h2 text is the course nickname ("Calculus BC -
+    // Schoen") while the title attr/subtitle use the full course name.
+    const titleEl = card.querySelector(".ic-DashboardCard__header-title");
+    const origNames = [];
+    if (titleEl) {
+        origNames.push((titleEl.getAttribute("title") || "").trim());
+        origNames.push(titleEl.textContent.trim());
+    }
+    const subtitleEl = card.querySelector(".ic-DashboardCard__header-subtitle");
+    if (subtitleEl) {
+        origNames.push(subtitleEl.textContent.trim());
+        origNames.push((subtitleEl.getAttribute("title") || "").trim());
+    }
+    const uniqueOrigNames = [...new Set(origNames.filter(n => n && n.length > 1))];
+    const replaceNames = (s) => {
+        let out = String(s);
+        uniqueOrigNames.forEach(n => { out = out.split(n).join(fakeLabel); });
+        return out;
+    };
+
+    if (titleEl) {
+        const inner = titleEl.querySelector("span") || titleEl;
+        anonText(inner, () => fakeLabel);
+        anonAttr(titleEl, "title", () => fakeLabel);
+    }
+    if (subtitleEl) {
+        anonText(subtitleEl, () => fakeLabel);
+        anonAttr(subtitleEl, "title", () => fakeLabel);
+    }
+    const termEl = card.querySelector(".ic-DashboardCard__header-term");
+    if (termEl) {
+        anonText(termEl, anonFakeTerm);
+        anonAttr(termEl, "title", anonFakeTerm);
+    }
+    // querySelectorAll only matches descendants, so the card's own
+    // aria-label needs handling separately.
+    anonAttr(card, "aria-label", replaceNames);
+    card.querySelectorAll("[aria-label]").forEach(el => anonAttr(el, "aria-label", replaceNames));
+    card.querySelectorAll(".screenreader-only").forEach(el => anonText(el, replaceNames));
+    // The fake grade is normally written directly by insertGrades(); this
+    // covers cards rendered before that ran or with grades unavailable.
+    const gradeEl = card.querySelector(".canvasrefined-card-grade");
+    if (gradeEl && gradeEl.textContent.trim() !== "") anonText(gradeEl, () => fakeGradeText(key));
+}
+
+// Anonymize one recent-feedback entry (the classic right-sidebar widget, which
+// the Better Todo List re-appends as-is).
+function anonymizeFeedbackLink(a) {
+    const details = a.querySelector(".event-details");
+    if (!details) return;
+    const href = a.getAttribute("href") || "";
+    const cMatch = href.match(/courses\/(\d+)/);
+    const aMatch = href.match(/assignments\/(\d+)/);
+    const contextEl = details.querySelector(".event-details__context");
+    const key = cMatch
+        ? "id:" + cMatch[1]
+        : "name:" + (contextEl ? contextEl.textContent : "").trim().toLowerCase();
+    const fakeLabel = fakeCourseLabel(key);
+
+    if (contextEl) anonText(contextEl, () => fakeLabel);
+    const titleEl = details.querySelector(".recent_feedback_title");
+    if (titleEl) anonText(titleEl, () => fakeAssignmentTitle(aMatch ? "a:" + aMatch[1] : "t:" + titleEl.textContent.trim()));
+    const scoreEl = details.querySelector("p strong");
+    if (scoreEl && /out of|\/.|%/.test(scoreEl.textContent)) {
+        anonText(scoreEl, () => fakeFeedbackScore(aMatch ? "a:" + aMatch[1] : "t:" + (titleEl ? titleEl.textContent : "")));
+    }
+    // The comment is the last <p> and is quoted feedback text.
+    const ps = details.querySelectorAll("p");
+    const commentP = ps.length ? ps[ps.length - 1] : null;
+    if (commentP && commentP !== scoreEl?.parentElement && !commentP.querySelector("strong")) {
+        anonText(commentP, (orig) => {
+            const t = orig.trim();
+            return t.startsWith('"') ? `"${fakeFeedbackComment(aMatch ? "a:" + aMatch[1] : "t:" + t)}"` : fakeFeedbackComment(aMatch ? "a:" + aMatch[1] : "t:" + t);
+        });
+    }
+}
+
+// One anonymizer sweep over the current DOM.
+function anonymizePersonalDetails(root = document) {
+    if (options.hide_personal_details !== true) return;
+    try {
+        root.querySelectorAll(".ic-DashboardCard").forEach(anonymizeDashboardCard);
+        root.querySelectorAll(".recent_feedback a[href]").forEach(anonymizeFeedbackLink);
+    } catch (e) {
+        logError(e);
+    }
+}
+
+// Course image removal (small checkbox under the toggle): hides the course
+// photos on dashboard cards via a style element, so no upload/refresh is
+// needed and unchecking restores them instantly.
+function applyCourseImageHiding() {
+    const on = options.hide_course_images === true;
+    let style = document.getElementById("canvasrefined-hide-course-images");
+    if (on && !style) {
+        style = document.createElement("style");
+        style.id = "canvasrefined-hide-course-images";
+        style.textContent = `
+            .ic-DashboardCard__header_image { background-image: none !important; }
+            .ic-DashboardCard__header_image img { display: none !important; }
+            .canvasrefined-link-image { display: none !important; }
+        `;
+        (document.head || document.documentElement).append(style);
+    } else if (!on && style) {
+        style.remove();
+    }
+}
+
+let personalDetailsObserver = null;
+let anonPassScheduled = false;
+
+// Master switch: starts/stops the DOM watcher and (de)anonymizes in place.
+function setupPersonalDetailsHiding() {
+    applyCourseImageHiding();
+    if (options.hide_personal_details === true) {
+        if (!personalDetailsObserver) {
+            personalDetailsObserver = new MutationObserver(() => {
+                if (anonPassScheduled) return;
+                anonPassScheduled = true;
+                requestAnimationFrame(() => {
+                    anonPassScheduled = false;
+                    anonymizePersonalDetails();
+                });
+            });
+            personalDetailsObserver.observe(document.documentElement, { childList: true, subtree: true });
+        }
+        anonymizePersonalDetails();
+    } else {
+        if (personalDetailsObserver) {
+            personalDetailsObserver.disconnect();
+            personalDetailsObserver = null;
+        }
+        restoreAnonymized();
+    }
+}
+
 /* 
 Dashboard grades 
 */
@@ -5710,7 +6057,8 @@ function insertGrades() {
                                 if (letter) percent = `${letter} ${percent}`;
                             }
                             let gradeContainer = cards[i].querySelector(".canvasrefined-card-grade") || makeElement("a", cards[i].querySelector(".ic-DashboardCard__header"), { "className": "canvasrefined-card-grade" });
-                            gradeContainer.textContent = percent;
+                            // "Hide personal details": show a deterministic fake grade instead.
+                            gradeContainer.textContent = options.hide_personal_details === true ? fakeGradeText("id:" + course_id) : percent;
                             if (options.grade_hover === true) {
                                 gradeContainer.classList.add("canvasrefined-hover-only");
                             } else {
@@ -5741,7 +6089,7 @@ Card assignments
 function createCardAssignment(assignment) {
     let assignmentContainer = document.createElement("div");
     assignmentContainer.className = "canvasrefined-assignment-container";
-    let assignmentName = makeElement("a", assignmentContainer, { "className": "canvasrefined-assignment-link", "textContent": assignment.plannable.title, "href": assignment.html_url });
+    let assignmentName = makeElement("a", assignmentContainer, { "className": "canvasrefined-assignment-link", "textContent": anonTitleForItem(assignment), "href": assignment.html_url });
     let assignmentDueAt = makeElement("span", assignmentContainer, { "className": "canvasrefined-assignment-dueat", "textContent": formatCardDue(new Date(assignment.plannable_date)) });
     if (assignment.overdue === true) assignmentDueAt.classList.add("canvasrefined-assignment-overdue");
     if (assignment?.submissions?.submitted === true) {
@@ -6748,12 +7096,78 @@ function applyAestheticChanges() {
         const gridRowGap = Math.max(0, !isNaN(parseInt(options.card_grid_row_gap, 10)) ? parseInt(options.card_grid_row_gap, 10) : 12);
         const centerGrid = options.center_cards === true;
         const gpaOn = options.gpa_calc === true;
-        const totalRows = gridRows + (gpaOn ? 2 : 0);
-        style.textContent += `.ic-DashboardCard__box__container{display:grid!important;grid-template-columns:repeat(${gridCols * 2},minmax(0,max-content))!important;grid-template-rows:repeat(${totalRows},minmax(0,auto))!important;grid-auto-rows:0!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important;overflow:hidden!important${centerGrid ? ";justify-content:center!important" : ""}}`;
-        style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard{grid-column:span 2!important}`;
-        if (gpaOn) {
-            style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:${gridRows + 1}!important;grid-column:span 2!important}`;
-            style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:${gridRows + 2}!important;grid-column:1/-1!important}`;
+        const gpaTop = options.gpa_calc_prepend === true;
+        const flexGrid = options.card_grid_flex === true;
+        if (flexGrid) {
+            // Flexible grid: fixed-width tracks (cards keep their natural
+            // width — no stretching). While the container is wide it lays out
+            // exactly the user's column count; as it narrows, @container
+            // queries — measured against the card container's REAL width, so
+            // there's no window/chrome-width guessing — step the count down
+            // precisely when the next column would no longer fit. Tracks are
+            // always a full card wide, so cards can't overlap; extra cards
+            // wrap into auto-height rows instead of being clipped.
+            const cardW = options.customCardStyles === true && parseInt(options.cardWidth, 10) > 0
+                ? parseInt(options.cardWidth, 10)
+                : 262;
+            // Container queries need an ancestor size container; the card
+            // section wrapper is a plain full-width block, so inline-size
+            // containment is safe there.
+            style.textContent += `#DashboardCard_Container{container-type:inline-size}`;
+            // Full fit (m = gridCols columns): applies whenever no narrower
+            // breakpoint matches, i.e. only when all columns truly fit.
+            style.textContent += `.ic-DashboardCard__box__container{display:grid!important;grid-template-columns:repeat(${gridCols},${cardW}px)!important;grid-auto-rows:auto!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important${centerGrid ? ";justify-content:center!important" : ""}}`;
+            // Grid gaps alone control spacing (beats the customCardStyles
+            // margin rules emitted later via higher specificity).
+            style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{margin-right:0!important;margin-bottom:0!important}`;
+            if (gpaOn) {
+                if (gpaTop) {
+                    // Top mode: definite first-row placement, one track wide;
+                    // the expanded calculator takes the full second row.
+                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1!important}`;
+                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
+                } else {
+                    // Bottom mode: no fixed spare rows (column count varies
+                    // with width). `order` places the GPA card after every
+                    // course card in the auto-placement sequence — it flows
+                    // right after the last card — and the expanded calculator
+                    // follows on a full-width row.
+                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{order:1!important}`;
+                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-column:1/-1!important;order:2!important}`;
+                }
+            }
+            // Step the column count down: m columns apply once m+1 no longer
+            // fit (full fit for m columns = m*cardW + (m-1)*colGap). Emitted
+            // widest-first so the narrowest matching rule wins the cascade.
+            // The last step (1 column) also lets the lone card shrink with
+            // the window instead of overflowing it.
+            for (let m = gridCols - 1; m >= 1; m--) {
+                const tooWideFor = (m + 1) * cardW + m * gridColGap;
+                if (m === 1) {
+                    style.textContent += `@container (max-width:${tooWideFor - 1}px){.ic-DashboardCard__box__container{grid-template-columns:minmax(0,1fr)!important}.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{width:100%!important;min-width:0!important}}`;
+                } else {
+                    style.textContent += `@container (max-width:${tooWideFor - 1}px){.ic-DashboardCard__box__container{grid-template-columns:repeat(${m},${cardW}px)!important}}`;
+                }
+            }
+        } else {
+            const totalRows = gridRows + (gpaOn ? 2 : 0);
+            style.textContent += `.ic-DashboardCard__box__container{display:grid!important;grid-template-columns:repeat(${gridCols * 2},minmax(0,max-content))!important;grid-template-rows:repeat(${totalRows},minmax(0,auto))!important;grid-auto-rows:0!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important;overflow:hidden!important${centerGrid ? ";justify-content:center!important" : ""}}`;
+            style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard{grid-column:span 2!important}`;
+            if (gpaOn) {
+                // "Move to top" (gpa_calc_prepend) decides where the GPA card sits
+                // in the grid: on -> first row, leftmost slot (the calculator row
+                // goes right below it, and cards auto-place around both); off ->
+                // spare rows past the card rows, anchored to the rightmost slot.
+                // In both cases the card spans one card width (2 sub-columns) and
+                // the expanded calculator spans the full grid width.
+                if (gpaTop) {
+                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1/span 2!important}`;
+                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
+                } else {
+                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:${gridRows + 1}!important;grid-column:-3/span 2!important}`;
+                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:${gridRows + 2}!important;grid-column:1/-1!important}`;
+                }
+            }
         }
     }
     if (options.customCardStyles === true) {
@@ -6835,6 +7249,9 @@ function centerUnevenGridRows() {
     const cards = Array.from(container.children).filter(el => el.classList && el.classList.contains("ic-DashboardCard"));
     cards.forEach(card => card.style.removeProperty("grid-column"));
     if (options.card_grid !== true || options.card_grid_center_rows !== true) return;
+    // Flexible grid: the live column count changes with the window width, so
+    // fixed sub-column offsets computed here would be wrong — skip centering.
+    if (options.card_grid_flex === true) return;
     const cols = Math.max(1, parseInt(options.card_grid_columns, 10) || 4);
     const rows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
     const visible = cards.filter(card => getComputedStyle(card).display !== "none");
@@ -7615,38 +8032,34 @@ function escapeGlobalSearchAttr(s) {
 }
 
 function changeGradientCards() {
-    if (options.gradient_cards === true) {
-        let cardheads = document.querySelectorAll('.ic-DashboardCard__header_hero');
-
-        // Create the style once; re-appending triggers the MutationObserver and re-runs this function.
-        let cardcss = document.querySelector("#gradientcss");
-        if (!cardcss) {
-            cardcss = document.createElement('style');
-            cardcss.id = "gradientcss";
-            document.documentElement.appendChild(cardcss);
+    // Apply the gradient INLINE on each hero instead of via index-based CSS
+    // rules: the gradient is always computed from that hero's actual current
+    // course color, so it stays in sync even when cards are reordered,
+    // re-rendered, or recolored after this pass (the old #gradientcss
+    // "card N" selectors silently drifted onto the wrong cards).
+    // Only background-image is set inline — background-color (the course
+    // color) is left untouched so it can still be read/recolord later.
+    const heroes = document.querySelectorAll('.ic-DashboardCard__header_hero');
+    heroes.forEach(hero => {
+        if (options.gradient_cards !== true) {
+            hero.style.removeProperty("background-image");
+            return;
         }
+        const rgb = hero.style.backgroundColor;
+        const parts = rgb.match(/\d+(\.\d+)?/g);
+        // No inline course color (e.g. hero not painted yet): leave untouched
+        // rather than guessing NaN colors.
+        if (!parts || parts.length < 3) return;
+        const [r, g, b] = [parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2])];
+        let [h, s, l] = rgbToHsl(r, g, b);
+        let degree = ((h % 60) / 60) >= .66 ? 30 : ((h % 60) / 60) <= .33 ? -30 : 15;
+        let newh = h > 300 ? (360 - (h + 65)) + (65 + degree) : h + 65 + degree;
+        hero.style.backgroundImage = `linear-gradient(115deg, hsl(${h}deg,${s}%,${l}%) 5%, hsl(${newh}deg,${s}%,${l}%) 100%)`;
+    });
 
-        // Build CSS into a string and only touch the DOM if it changed.
-        let css = "";
-        for (let i = 0; i < cardheads.length; i++) {
-            let colorone = cardheads[i].style.backgroundColor.split(',');
-            let [r, g, b] = [parseInt(colorone[0].split('(')[1]), parseInt(colorone[1]), parseInt(colorone[2])];
-            let [h, s, l] = [rgbToHsl(r, g, b)[0], rgbToHsl(r, g, b)[1], rgbToHsl(r, g, b)[2]];
-            let degree = ((h % 60) / 60) >= .66 ? 30 : ((h % 60) / 60) <= .33 ? -30 : 15;
-            let newh = h > 300 ? (360 - (h + 65)) + (65 + degree) : h + 65 + degree;
-            css += ".ic-DashboardCard:nth-of-type(" + (i + 1) + ") .ic-DashboardCard__header_hero{background: linear-gradient(115deg, hsl(" + h + "deg," + s + "%," + l + "%) 5%, hsl(" + newh + "deg," + s + "%," + l + "%) 100%)!important}";
-        }
-
-        if (cardcss.textContent !== css) {
-            cardcss.textContent = css;
-        }
-
-    } else {
-        let cardcss = document.querySelector("#gradientcss");
-        if (cardcss && cardcss.textContent !== "") {
-            cardcss.textContent = "";
-        }
-    }
+    // Clean up the legacy index-based stylesheet from older versions.
+    const legacy = document.querySelector("#gradientcss");
+    if (legacy) legacy.remove();
 }
 
 function showUpdateMsg() {

@@ -880,6 +880,10 @@
                     <input type="checkbox" id="card_grid_center_rows" name="card_grid_center_rows">
                     <label for="card_grid_center_rows" class="sub-text">Center uneven rows</label>
                 </div>
+                <div class="sub-option" style="margin-top:10px">
+                    <input type="checkbox" id="card_grid_flex" name="card_grid_flex">
+                    <label for="card_grid_flex" class="sub-text">Flexible grid</label>
+                </div>
                 <p id="card-grid-warning" style="display:none;margin:10px 0 0;color:#ffd166;font-size:12px;font-weight:600;"></p>
             </div>
         </div>
@@ -1236,6 +1240,24 @@
             <button class="big-button back-btn" data-i18n="back">Back</button>
         </div>
         <p class="option-container">You can also email <b style="font-weight:600">sandlerguy5@gmail.com</b> for any issues or feedback. Thank you!</p>
+        <div class="option-container">
+            <h3 class="header-small">Privacy</h3>
+            <div class="option" id="hide_personal_details">
+                <input type="radio" id="off" name="hide_personal_details">
+                <input type="radio" id="on" name="hide_personal_details">
+                <div class="slider">
+                    <div class="sliderknob"></div>
+                    <div class="sliderbg"></div>
+                </div><span class="option-name">Hide personal details</span>
+            </div>
+            <p class="sub-text" style="margin-top:6px;">Replaces course names, teacher names, grades and assignment titles with fake data from a pregenerated list, on the dashboard cards, the Better Todo List and recent feedback. Perfect for screenshots — nothing real is shown. Turn it off to restore everything (no refresh needed).</p>
+            <div class="sub-options">
+                <div class="sub-option">
+                    <input type="checkbox" id="hide_course_images" name="hide_course_images">
+                    <label for="hide_course_images" class="sub-text">Temporarily remove all course images</label>
+                </div>
+            </div>
+        </div>
         <p id="dev-alert"></p>
         <div class="option-container">
             <h3 class="header-small">Storage reset</h3>

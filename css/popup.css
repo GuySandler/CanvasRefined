@@ -6,8 +6,9 @@ h1, h2, p, body{margin:0;padding:0}
 h1 {font-size:30px;}
 h2 {font-size:24px;}
 .option input{display:none;}
-.options input:nth-of-type(1).checked ~ .slider .sliderknob{background-color:#e1e1e12e;}
-.options input:nth-of-type(2).checked ~ .slider .sliderknob{transform:translate(18px);background-color:#8dd28d;}
+/* Knob state for every big toggle (main options AND tab pages like Report issue) */
+.option input:nth-of-type(1).checked ~ .slider .sliderknob{background-color:#e1e1e12e;}
+.option input:nth-of-type(2).checked ~ .slider .sliderknob{transform:translate(18px);background-color:#8dd28d;}
 .option{display:flex;align-items:center;}
 .option span{margin-left:8px;}
 .main{position: relative;padding: 20px}
