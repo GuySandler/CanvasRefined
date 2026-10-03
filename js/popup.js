@@ -1329,6 +1329,15 @@ function setup() {
                 if (option === "dark_mode") {
                     toggleAlternateColorsVisibility(status);
                 }
+                if (option === "hide_personal_details" && status === false) {
+                    // "Temporarily remove all course images" is a sub-option of
+                    // the privacy mode: switching the mode off restores the
+                    // images too (the content script listens for this key and
+                    // removes its hiding stylesheet).
+                    const imgCheckbox = document.getElementById("hide_course_images");
+                    if (imgCheckbox) imgCheckbox.checked = false;
+                    chrome.storage.sync.set({ "hide_course_images": false });
+                }
                 toggleSubOptionsVisibility(option, status);
             });
         });

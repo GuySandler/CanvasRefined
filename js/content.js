@@ -16,6 +16,9 @@ function setupNavigationListener() {
         watchSubmissionPageButton();
         watchProfileLogoutPageButton();
         watchGradeAnalytics();
+        // Show/hide the Better Todo sidebar for the new page (course home vs
+        // sub-page) without needing a full reload.
+        updateTodoSidebarVisibility();
     };
     for (const method of ["pushState", "replaceState"]) {
         const orig = history[method];
@@ -63,6 +66,22 @@ function isAccountsPage() {
 
 function isProfilePage() {
     return /^\/profile(?:\/|$)/.test(current_page);
+}
+
+// The Better Todo sidebar belongs only on the main dashboard and each
+// course's homepage (/courses/<id>, optional trailing slash) — not on
+// sub-pages like assignments, modules, quizzes or the syllabus.
+function isTodoAllowedPage() {
+    if (current_page === "/" || current_page === "") return true;
+    return /^\/courses\/\d+\/?$/.test(current_page);
+}
+
+// Show/hide an already-mounted Better Todo sidebar when the user navigates
+// client-side into or out of an allowed page (Canvas' New UI doesn't reload).
+function updateTodoSidebarVisibility() {
+    const list = document.getElementById("canvasrefined-todo-list");
+    if (!list) return;
+    list.style.display = isTodoAllowedPage() ? "" : "none";
 }
 
 // Quiz pages: /courses/123/quizzes/456 (pre-take/intro) and
@@ -4659,6 +4678,9 @@ function createTodoViewMore(location, type) {
 function setupBetterTodo() {
     // Better Todo list is removed from quizzes (it interferes with the quiz page).
     if (isQuizPage()) return;
+    // Only the main dashboard and course homepages get the todo sidebar;
+    // sub-pages (assignments, modules, files, ...) keep Canvas's own sidebar.
+    if (!isTodoAllowedPage()) return;
     if (options.better_todo !== true || isGradesPage()) return;
     if (document.querySelector('#canvasrefined-todo-list')) return;
     // The dashboard MutationObserver can fire before getApiData() has assigned
@@ -7094,6 +7116,14 @@ function applyAestheticChanges() {
         const gridRows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
         const gridColGap = Math.max(0, !isNaN(parseInt(options.card_grid_column_gap, 10)) ? parseInt(options.card_grid_column_gap, 10) : 12);
         const gridRowGap = Math.max(0, !isNaN(parseInt(options.card_grid_row_gap, 10)) ? parseInt(options.card_grid_row_gap, 10) : 12);
+        // Canvas gives dashboard cards their own natural top/left margins
+        // for the default flow layout. The grid positions everything with
+        // its own row/column gaps, so strip those natural margins top and
+        // left — otherwise every card sits visibly lower and further right
+        // than the grid math says it should. (Card Spacing's right/bottom
+        // margins are untouched.)
+        style.textContent += `.ic-DashboardCard__box__container{margin-top:0!important;margin-left:0!important}`;
+        style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{margin-top:0!important;margin-left:0!important}`;
         const centerGrid = options.center_cards === true;
         const gpaOn = options.gpa_calc === true;
         const gpaTop = options.gpa_calc_prepend === true;
@@ -7623,7 +7653,7 @@ function openGlobalSearchModal() {
     // Kick off indexing immediately so the first keystroke is fast.
     ensureGlobalSearchIndex();
     // Render an initial hint.
-    resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments. Use @coursename to search a specific course.</div>`;
+    resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.</div>`;
 }
 
 function closeGlobalSearchModal() {
@@ -7961,12 +7991,38 @@ async function runGlobalSearch(query, resultsEl) {
     }
     const index = await ensureGlobalSearchIndex();
     if (!query) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments. Use @coursename to search a specific course.</div>`;
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.</div>`;
         return [];
     }
     if (!index || !index.length) {
         resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No modules or assignments found. Open the search again later if your courses are still loading.</div>`;
         return [];
+    }
+
+    // "@grades [course filter]" lists course grade pages instead of content.
+    // A bare "@grades" lists every course; "@grades calc" narrows to courses
+    // matching "calc" (same matching as the @course filter). Checked before
+    // the generic @course parse so "@grades" never gets eaten as a course
+    // name (e.g. a course actually called "Grades").
+    const gradesMatch = query.match(/(?:^|\s)@grades(?:\s+(.+))?$/i);
+    if (gradesMatch) {
+        const courseEntries = index.filter(i => i.type === "Course");
+        const filter = (gradesMatch[1] || "").trim();
+        const matching = courseEntries.filter(c => globalSearchCourseMatches(c, filter));
+        if (!matching.length) {
+            resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${filter ? `No course matches \u201c${escapeGlobalSearchHtml(filter)}\u201d.` : "No courses found to open grades for."}</div>`;
+            return [];
+        }
+        const gradeRows = matching.map(c => ({
+            type: "Grades",
+            title: c.title,
+            course: c.course,
+            courseId: c.courseId,
+            url: `${domain}/courses/${c.courseId}/grades`,
+        }));
+        resultsEl.innerHTML = gradeRows.map((item, i) => globalSearchRowHtml(item, i)).join("");
+        bindGlobalSearchRows(resultsEl, gradeRows);
+        return gradeRows;
     }
 
     // "@course name" narrows the search to one course. With no other words
@@ -8958,6 +9014,29 @@ async function loadGradeAnalytics() {
 // stashes the original posted score in a hidden "original_score" span (the
 // "original_points" span holds points EARNED, not possible), while points
 // possible is only in the "/ 15" span displayed after the grade.
+// Month abbreviations for parsing the grades table's due-date strings.
+const GA_MONTH_NAMES = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+// Parse a due-date string from the grades table into sortable parts.
+// Handles "Sep 12", "Sep 12 at 11:59pm", "Sep 12 by 23:59" and
+// "Sep 12, 2024 at 11:59pm". Returns { mon, day, minutes } or null.
+function gaParseDueDate(due) {
+    const m = String(due || "").toLowerCase().match(/([a-z]{3})[a-z]*\.?\s+(\d{1,2})(?:[^\d]+\d{4})?(?:[^\d]{0,8}?(\d{1,2}):(\d{2})\s*(am|pm)?)?/);
+    if (!m) return null;
+    const mon = GA_MONTH_NAMES.indexOf(m[1]);
+    if (mon < 0) return null;
+    const day = parseInt(m[2], 10);
+    if (!isFinite(day) || day < 1 || day > 31) return null;
+    let minutes = 0;
+    if (m[3] !== undefined) {
+        let h = parseInt(m[3], 10);
+        minutes = h * 60 + parseInt(m[4], 10);
+        if (m[5] === "pm" && h < 12) minutes += 720;
+        if (m[5] === "am" && h === 12) minutes = parseInt(m[4], 10);
+    }
+    return { mon, day, minutes };
+}
+
 function gaParseNum(t) {
     if (!t) return null;
     let s = String(t).replace(/\s+/g, "");
@@ -8982,6 +9061,9 @@ function gaParseAssignmentRow(tr) {
         status: (q(".submission_status")?.textContent || "").trim(),
         gid: (q(".assignment_group_id")?.textContent || "").trim(),
         due: (q("td.due")?.textContent || "").replace(/\s+/g, " ").trim(),
+        // Full hover tooltip date when present — a better parse source than
+        // the abbreviated cell text.
+        dueTitle: q("td.due [title]")?.getAttribute("title") || q("td.due")?.getAttribute("title") || "",
     };
 }
 
@@ -9020,6 +9102,67 @@ function computeGradeAnalyticsFromPage(table) {
         const idx = GA_BUCKETS.findIndex(b => pct >= b.min && pct < b.max);
         counts[idx >= 0 ? idx : GA_BUCKETS.length - 1]++;
     }
+
+    // Sort graded work chronologically by due date before building the
+    // running-grade timeline. The chart and trend assume row order is
+    // chronological, but the grades table isn't guaranteed to be (it follows
+    // the course's assignment ordering, and users can re-sort it), which left
+    // the grade-history line jumping back and forth in time.
+    //
+    // Due strings have no year, so months are cyclic: a school-year course
+    // (Sep → May) and a calendar-year course (Jan → Dec) both count upward,
+    // just from different "year starts". Each candidate rotation r (month
+    // the year window starts at) maps a due month to (mon - r) mod 12; the
+    // rotation whose keys produce the least total backward drift in the
+    // table's row order wins, with ties going to the first dated row's
+    // month (which reproduces the chart's walking-month behavior on
+    // already-ordered data). This stays correct whether rows come in
+    // due-date order, a different sort order, or shuffled. Day-of-month and
+    // time break ties within a month; undated rows inherit their nearest
+    // dated neighbour's key (forward, then backward fill); equal keys keep
+    // their original relative order (stable sort).
+    const parsed = graded.map(a => gaParseDueDate(a.dueTitle || a.due));
+    // Cost of a rotation = total backward drift it forces on the row order
+    // (sum of positive key drops between consecutive dated rows). Magnitude
+    // beats counting steps: a shuffle costs real months, a year-wrap costs
+    // ~11/12 of a cycle only if it's the wrong rotation.
+    const rotationCost = (r) => {
+        let cost = 0, prev = null;
+        for (const d of parsed) {
+            if (!d) continue;
+            const k = (d.mon - r + 12) % 12;
+            if (prev != null && k < prev) cost += prev - k;
+            prev = k;
+        }
+        return cost;
+    };
+    let bestRotation = 0, bestCost = Infinity;
+    for (let r = 0; r < 12; r++) {
+        const cost = rotationCost(r);
+        if (cost < bestCost) { bestCost = cost; bestRotation = r; }
+    }
+    const firstDated = parsed.find(d => d);
+    if (firstDated) {
+        const pref = firstDated.mon;
+        // Re-scan for the preferred rotation on a cost tie.
+        for (let r = 0; r < 12; r++) {
+            if (rotationCost(r) === bestCost && r === pref) { bestRotation = r; break; }
+        }
+    }
+    const keys = parsed.map(d => d ? [(d.mon - bestRotation + 12) % 12, d.day, d.minutes] : null);
+    let lastKey = null;
+    for (let i = 0; i < keys.length; i++) { if (keys[i] == null) keys[i] = lastKey; else lastKey = keys[i]; }
+    let nextKey = null;
+    for (let i = keys.length - 1; i >= 0; i--) { if (keys[i] == null) keys[i] = nextKey; else nextKey = keys[i]; }
+    const order = graded.map((_, i) => i).sort((x, y) => {
+        const kx = keys[x], ky = keys[y];
+        if (!kx || !ky) return x - y;
+        for (let j = 0; j < 3; j++) if (kx[j] !== ky[j]) return kx[j] - ky[j];
+        return x - y;
+    });
+    const sortedGraded = order.map(i => graded[i]);
+    graded.length = 0;
+    graded.push(...sortedGraded);
 
     // Running overall grade, in the page's row order, using Canvas's own
     // weighting algorithm (GradeCalculator): sum each group's pct × weight
