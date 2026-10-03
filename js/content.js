@@ -956,6 +956,7 @@ function startExtension() {
         changeFavicon();
         updateReminders();
         applyCustomBackground();
+        setupMobileNavStyle();
         ensureBetterSidebar();
         watchSequenceFooter();
         watchProfileLogoutPageButton();
@@ -1165,6 +1166,10 @@ function applyOptionsChanges(changes) {
 					} else {
 						crumbsBar?.style.removeProperty("display");
 					}
+					// The mobile context nav + arrow button follow the same
+					// "Hide Navigation Bar" gate — restyle to add/remove the
+					// hide rules live.
+					setupMobileNavStyle();
 				}
 				break;
 			case "hide_new_canvas":
@@ -1237,6 +1242,7 @@ function applyOptionsChanges(changes) {
             case "sidebar_opacity":
             case "sidebar_blur":
                 applyCustomBackground();
+                setupMobileNavStyle();
                 break;
             case "card_transparency":
             case "card_opacity":
@@ -1276,10 +1282,12 @@ function applyOptionsChanges(changes) {
 					window.location.reload();
 					break;
 				}
-                if (options.better_sidebar) {
+				if (options.better_sidebar) {
                     ensureBetterSidebar();
+                    setupMobileNavStyle();
                 } else {
                     resetBetterSidebarLayout();
+                    setupMobileNavStyle();
                 }
 				break;
             case "grade_analytics":
@@ -4720,6 +4728,130 @@ function applySidebarScaleStyles(sidebarList) {
     sidebarList.style.setProperty("--bc-sidebar-btn-height", `${Math.round(30 * scale)}px`);
     sidebarList.style.setProperty("--bc-sidebar-btn-gap", `${Math.round(8 * scale)}px`);
     sidebarList.style.setProperty("--bc-sidebar-label-size", `${Math.round(14 * scale)}px`);
+}
+
+// --- Mobile global-nav tray (Better Sidebar styling) ------------------------
+// Below Canvas' responsive breakpoint the global nav collapses into an InstUI
+// tray dialog ([role="dialog"][aria-label="Global Navigation"]) instead of the
+// .ic-app-header rail, so none of the rail's theming reaches it. When Better
+// Sidebar is enabled, give that dialog the same look as the rail: --bcsidebar
+// surface at the sidebar opacity/blur slider values, --bcsidebar-text ink, and
+// rounded sidebar-style rows. The dialog's behavior, item list and a11y
+// attributes are left untouched — styling only. Selectors use stable
+// attributes ([role], [aria-label], [data-cid]) instead of emotion hashes,
+// which shift between Canvas releases; an unmatched rule is simply inert.
+function setupMobileNavStyle() {
+    let style = document.getElementById("canvasrefined-mobile-nav") || document.createElement("style");
+    style.id = "canvasrefined-mobile-nav";
+    if (!options.better_sidebar) {
+        style.remove();
+        return;
+    }
+    const sidebarOpacity = Math.max(0, Math.min(100, Number(options.sidebar_opacity ?? 100)));
+    const sidebarBlur = Math.max(0, Math.min(30, Number(options.sidebar_blur ?? 0)));
+    const sidebarTransparent = 100 - sidebarOpacity;
+    const dialog = '[role="dialog"][aria-label="Global Navigation"]';
+    style.textContent = `
+        /* Tray wrapper: consistent drawer width instead of InstUI's inline
+           width, so labels have room on any narrow window. */
+        span:has(> ${dialog}) {
+            width: min(320px, 90vw) !important;
+            max-width: 90vw !important;
+        }
+        /* Panel: the same glass surface as the Better Sidebar rail */
+        ${dialog} {
+            background: color-mix(in srgb, var(--bcsidebar), transparent ${sidebarTransparent}%) !important;
+            backdrop-filter: blur(${sidebarBlur}px) !important;
+            -webkit-backdrop-filter: blur(${sidebarBlur}px) !important;
+            border-right: 1px solid color-mix(in srgb, var(--bcsidebar-text) 10%, transparent) !important;
+            border-radius: 0 16px 16px 0 !important;
+            box-shadow: 8px 0 40px rgba(0, 0, 0, .28) !important;
+            color: var(--bcsidebar-text) !important;
+        }
+        /* Ink: recolor labels, icons and expand arrows to the sidebar text
+           color. Tray icons are fill-based InstUI SVGIcons, so fill covers
+           them; stroke-based icons inherit currentColor from the dialog.
+           Canvas ships some tray text with color="brand" (link-blue), so
+           cover every text/emotion View span too, not just <a>. */
+        ${dialog} svg {
+            fill: var(--bcsidebar-text) !important;
+        }
+        ${dialog} a,
+        ${dialog} span[class*="-text"],
+        ${dialog} h2[class*="-heading"],
+        ${dialog} h2[class*="-heading"] a {
+            color: var(--bcsidebar-text) !important;
+            text-decoration: none !important;
+        }
+        /* The tray header's big institution logo link (Canvas renders it as a
+           large image or wordmark). Hide it so the header collapses to just
+           the close button, matching the rail's compact top. */
+        ${dialog} .ic-brand-mobile-global-nav-logo {
+            display: none !important;
+        }
+        /* Rows: padded, rounded, same hover tint as the rail's links */
+        ${dialog} li[data-cid="ListItem"] > a,
+        ${dialog} li[data-cid="ListItem"] > div[data-cid="ToggleDetails"] > button {
+            padding: 12px 14px !important;
+            border-radius: 10px !important;
+            transition: background-color .15s ease !important;
+        }
+        ${dialog} li[data-cid="ListItem"] > a:hover,
+        ${dialog} li[data-cid="ListItem"] > a:focus-visible,
+        ${dialog} li[data-cid="ListItem"] > div[data-cid="ToggleDetails"] > button:hover,
+        ${dialog} li[data-cid="ListItem"] > div[data-cid="ToggleDetails"] > button:focus-visible {
+            background: #0000004f !important;
+        }
+        /* Expanded sub-items (Account/Courses/History/Help details), indented
+           under their parent like the rail's expanded section links */
+        ${dialog} div[id^="Expandable"] a {
+            padding: 10px 14px 10px 40px !important;
+            border-radius: 10px !important;
+            opacity: .92;
+            transition: background-color .15s ease !important;
+        }
+        ${dialog} div[id^="Expandable"] a:hover,
+        ${dialog} div[id^="Expandable"] a:focus-visible {
+            background: #0000004f !important;
+        }
+        /* Close button: bare glass circle (data-cid holds multiple tokens, so
+           match on substring) */
+        ${dialog} button[data-cid*="BaseButton"] {
+            background: color-mix(in srgb, var(--bcsidebar-text) 12%, transparent) !important;
+            border-radius: 999px !important;
+            color: var(--bcsidebar-text) !important;
+            transition: background-color .15s ease !important;
+        }
+        ${dialog} button[data-cid*="BaseButton"]:hover {
+            background: color-mix(in srgb, var(--bcsidebar-text) 22%, transparent) !important;
+        }
+        /* Avatar: subtle ring so it reads on the glass surface */
+        ${dialog} [class*="-avatar"] {
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--bcsidebar-text) 30%, transparent) !important;
+        }
+        /* Thin, theme-tinted scrollbar for the tray content */
+        ${dialog} ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ${dialog} ::-webkit-scrollbar-track { background: transparent; }
+        ${dialog} ::-webkit-scrollbar-thumb {
+            background: color-mix(in srgb, var(--bcsidebar-text) 30%, transparent);
+            border-radius: 999px;
+        }
+    `;
+    // The mobile course-context nav (#mobileContextNavContainer — the
+    // Home/Assignments/Grades list behind the arrow button) is the narrow-
+    // window counterpart of the desktop nav-toggle + breadcrumbs bar, which
+    // Better Sidebar already hides under the "Hide Navigation Bar" sub-option.
+    // Apply the same gate here: hide the nav and its .mobile-header-arrow
+    // button only when Better Sidebar is on AND "Hide Navigation Bar" is on.
+    if (options.hide_navbar === true) {
+        style.textContent += `
+            #mobileContextNavContainer,
+            button.mobile-header-arrow {
+                display: none !important;
+            }
+        `;
+    }
+    if (!style.isConnected) document.documentElement.append(style);
 }
 
 // Re-apply the tinted course-content panel when the background opacity slider
