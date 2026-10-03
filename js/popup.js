@@ -11,6 +11,7 @@ const syncedSubOptions = [
 	"device_dark",
 	"relative_dues",
 	"card_overdues",
+	"hide_completed_cards",
 	"equal_height_cards",
 	// "todo_overdues",
 	"gpa_calc_prepend",
@@ -174,6 +175,7 @@ const defaultOptions = {
         },
         // "todo_overdues": false,
         "card_overdues": false,
+        "hide_completed_cards": false,
         "relative_dues": false,
         "equal_height_cards": false,
         "hide_new_canvas": true,
@@ -188,6 +190,7 @@ const defaultOptions = {
 		"todo_full_height": false,
         "todo_progress_rings": "rings",
 		"todo_timeframe": "all",
+		"todo_more_expanded": false,
 		"todo_confetti": true,
         "device_dark": false,
         "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
@@ -372,6 +375,31 @@ function setupProgressRingsSelect(initial) {
     el.value = value;
     el.addEventListener("change", function () {
         chrome.storage.sync.set({ "todo_progress_rings": this.value });
+    });
+}
+
+// Collapsible "More options" section for the Better Todo List sub-options.
+// Persists whether it's expanded so the popup reopens in the same state.
+function setupTodoMoreOptions(initial) {
+    const wrap = document.getElementById("todo-more-options");
+    const toggle = document.getElementById("todo-more-toggle");
+    if (!wrap || !toggle) return;
+    const setExpanded = (expanded) => {
+        wrap.classList.toggle("expanded", expanded === true);
+        toggle.setAttribute("aria-expanded", expanded === true ? "true" : "false");
+    };
+    setExpanded(initial === true);
+    const flip = () => {
+        const expanded = !wrap.classList.contains("expanded");
+        setExpanded(expanded);
+        chrome.storage.sync.set({ "todo_more_expanded": expanded });
+    };
+    toggle.addEventListener("click", flip);
+    toggle.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            flip();
+        }
     });
 }
 
@@ -857,6 +885,12 @@ function setupFeatureSearch(menu) {
             if (node.style && node.style.display === "none") node.style.display = "";
             node = node.parentElement;
         }
+        // Expand the Better Todo "More options" collapsible if the target lives inside it.
+        const moreWrap = el.closest ? el.closest("#todo-more-options") : null;
+        if (moreWrap && !moreWrap.classList.contains("expanded")) {
+            const toggle = document.getElementById("todo-more-toggle");
+            if (toggle) toggle.click();
+        }
     }
 
     function highlight(el) {
@@ -1125,6 +1159,7 @@ function setup() {
 			"device_dark",
 			"relative_dues",
 			"card_overdues",
+			"hide_completed_cards",
 			"equal_height_cards",
 			// "todo_overdues",
 			"gpa_calc_prepend",
@@ -1303,6 +1338,10 @@ function setup() {
 			{
 				identifier: "todo_timeframe",
 				setup: (initial) => setupTimeframeSelect(initial),
+			},
+			{
+				identifier: "todo_more_expanded",
+				setup: (initial) => setupTodoMoreOptions(initial),
 			},
 		],
 	};

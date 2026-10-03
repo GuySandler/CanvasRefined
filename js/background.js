@@ -53,6 +53,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "grade_hover": false,
             "card_letter": true,
             // "hide_completed": false,
+            "hide_completed_cards": false,
             "num_todo_items": 10,
             "custom_font": { "link": "", "family": "" },
             "hover_preview": true,

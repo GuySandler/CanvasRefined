@@ -1071,6 +1071,10 @@ function applyOptionsChanges(changes) {
 				// Stretch or reset card heights in place instead of rebuilding rows.
 				equalizeCardHeights();
 				break;
+			case "hide_completed_cards":
+				// Assignment elements are already preloaded; just re-filter the render.
+				loadCardAssignments();
+				break;
 			case "custom_cards":
 				customizeCards();
 				// Hiding/unhiding a card changes which courses appear in the todo
@@ -9374,9 +9378,9 @@ function renderGaStats() {
     // graded assignments (green climbing, red falling, grey steady).
     let trendVal = "-", trendColor = "var(--bctext-0)";
     if (gaData.trend != null) {
-        if (gaData.trend > 0.05) { trendVal = "\u25B2 +" + gaData.trend.toFixed(1) + "%"; trendColor = "#16a34a"; }
-        else if (gaData.trend < -0.05) { trendVal = "\u25BC " + gaData.trend.toFixed(1) + "%"; trendColor = "#dc2626"; }
-        else { trendVal = "\u25BA " + gaData.trend.toFixed(1) + "%"; trendColor = "var(--bctext-1)"; }
+        if (gaData.trend > 0.05) { trendVal = "\u25B2 +" + gaData.trend.toFixed(2) + "%"; trendColor = "#16a34a"; }
+        else if (gaData.trend < -0.05) { trendVal = "\u25BC " + gaData.trend.toFixed(2) + "%"; trendColor = "#dc2626"; }
+        else { trendVal = "\u25BA " + gaData.trend.toFixed(2) + "%"; trendColor = "var(--bctext-1)"; }
     }
     // Grade goal card from the Final Calculator tab: the score needed on the
     // final to hit the stored target grade.
@@ -9387,11 +9391,11 @@ function renderGaStats() {
         let val, color;
         if (needed <= 0) { val = "\u2713 Secured"; color = "#16a34a"; }
         else if (needed > 100) { val = "Out of reach"; color = "#dc2626"; }
-        else { val = "\u2265 " + needed.toFixed(1) + "%"; color = gaNeededColor(needed); }
+        else { val = "\u2265 " + needed.toFixed(2) + "%"; color = gaNeededColor(needed); }
         goalStat = stat("Final Exam", val, color);
     }
     stats.innerHTML =
-        stat("Overall grade", gaData.current == null ? "-" : gaData.current.toFixed(1) + "%") +
+        stat("Overall grade", gaData.current == null ? "-" : gaData.current.toFixed(2) + "%") +
         stat("Grade trend (last 5)", trendVal, trendColor) +
         stat("Graded", gaData.graded) +
         stat("Ungraded", gaData.ungraded) +
@@ -9511,12 +9515,12 @@ function renderGaCalculator() {
     let head, sub;
     if (needed <= 0) {
         head = `<span style="font-size:20px;font-weight:700;color:#16a34a;">You're already there!</span>`;
-        sub = `Even a 0 on the final leaves you at <b>${withZero.toFixed(1)}%</b>, which is above your <b>${target}%</b> goal.`;
+        sub = `Even a 0 on the final leaves you at <b>${withZero.toFixed(2)}%</b>, which is above your <b>${target}%</b> goal.`;
     } else if (needed > 100) {
         head = `<span style="font-size:20px;font-weight:700;color:#dc2626;">Out of reach</span>`;
-        sub = `Even a perfect final only gets you to <b>${withPerfect.toFixed(1)}%</b>, which is below your <b>${target}%</b> goal.`;
+        sub = `Even a perfect final only gets you to <b>${withPerfect.toFixed(2)}%</b>, which is below your <b>${target}%</b> goal.`;
     } else {
-        head = `<span style="font-size:20px;font-weight:700;color:${gaNeededColor(needed)};">You need ≥ ${needed.toFixed(1)}% on the final</span>`;
+        head = `<span style="font-size:20px;font-weight:700;color:${gaNeededColor(needed)};">You need ≥ ${needed.toFixed(2)}% on the final</span>`;
         sub = `You got this!`;
     }
     box.innerHTML = head + `<div style="margin-top:6px;color:var(--bctext-1);font-size:13px;">${sub}</div>`;
@@ -9626,8 +9630,8 @@ function gaBuildHeatmapData() {
 function gaHeatmapShowTip(tip, e, cell, avg) {
     const d = cell.date;
     const rows = cell.items.map(p =>
-        `<div style="margin-top:2px;color:var(--bctext-1);">${gaEscHtml(p.title)} — <b style="color:${gaHeatmapColor(p.pct)};">${p.pct.toFixed(1)}%</b></div>`).join("");
-    tip.innerHTML = `<b>${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}</b> — avg <b style="color:${gaHeatmapColor(avg)};">${avg.toFixed(1)}%</b><div style="margin-top:4px;font-size:11px;color:var(--bctext-1);">${cell.items.length} assignment${cell.items.length === 1 ? "" : "s"}:</div>${rows}`;
+        `<div style="margin-top:2px;color:var(--bctext-1);">${gaEscHtml(p.title)} — <b style="color:${gaHeatmapColor(p.pct)};">${p.pct.toFixed(2)}%</b></div>`).join("");
+    tip.innerHTML = `<b>${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}</b> — avg <b style="color:${gaHeatmapColor(avg)};">${avg.toFixed(2)}%</b><div style="margin-top:4px;font-size:11px;color:var(--bctext-1);">${cell.items.length} assignment${cell.items.length === 1 ? "" : "s"}:</div>${rows}`;
     tip.style.display = "block";
     const host = tip.offsetParent || tip.parentNode;
     const hostRect = host.getBoundingClientRect();
@@ -9850,7 +9854,7 @@ function gaDrawLine(canvas, tooltip) {
     }
     // Y grid: 5 evenly spaced lines across the current range.
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
-    const decimals = (yMax - yMin) <= 10 ? 1 : 0;
+    const decimals = (yMax - yMin) <= 1 ? 2 : (yMax - yMin) <= 10 ? 1 : 0;
     for (let i = 0; i <= 5; i++) {
         const v = yMin + (yMax - yMin) * (i / 5);
         const y = pad.t + (1 - (v - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
@@ -10001,7 +10005,7 @@ function gaDrawLine(canvas, tooltip) {
         }
         const p = pts[best];
         gaShowTooltip(tooltip, X(best), Y(p.grade),
-            `<b>${p.title}</b><br>Overall: ${p.grade == null ? "-" : p.grade.toFixed(1) + "%"}<br>This: ${p.score}/${p.points} (${p.pct.toFixed(1)}%)${p.due ? `<br>Due: ${p.due}` : ""}`);
+            `<b>${p.title}</b><br>Overall: ${p.grade == null ? "-" : p.grade.toFixed(2) + "%"}<br>This: ${p.score}/${p.points} (${p.pct.toFixed(2)}%)${p.due ? `<br>Due: ${p.due}` : ""}`);
     };
     canvas._gaLeave = () => {
         tooltip.style.display = "none";
@@ -10149,7 +10153,7 @@ function gaComputeImagineTotal() {
 // restates the real grade.
 function gaImagineTotalHtml(pct) {
     const letter = gaLetterFor(pct);
-    const pctText = pct == null || !isFinite(pct) ? "—" : pct.toFixed(1) + "%";
+    const pctText = pct == null || !isFinite(pct) ? "—" : pct.toFixed(2) + "%";
     // The wrapper is an inline-flex row with align-items:center so the
     // badge pill sits vertically centered with the grade text. No
     // flex-wrap: the narrow score cell would stack the items instead.

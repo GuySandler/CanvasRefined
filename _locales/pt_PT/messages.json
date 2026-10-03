@@ -75,7 +75,7 @@
     "message": "Mostrar apenas ao passar o mouse"
   },
   "card_letter": {
-      "message": "Mostrar nota em letra"
+    "message": "Mostrar nota em letra"
   },
   "due": {
     "message": "Devido"
@@ -253,5 +253,8 @@
   },
   "hide_new_canvas": {
     "message": "Ocultar novo Canvas"
+  },
+  "hide_completed_cards": {
+    "message": "Ocultar concluídas"
   }
 }

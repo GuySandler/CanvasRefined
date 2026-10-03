@@ -75,7 +75,7 @@
     "message": "Показывать только при наведении"
   },
   "card_letter": {
-      "message": "Показывать буквенную оценку"
+    "message": "Показывать буквенную оценку"
   },
   "due": {
     "message": "Должный"
@@ -253,5 +253,8 @@
   },
   "hide_new_canvas": {
     "message": "Скрыть новый Canvas"
+  },
+  "hide_completed_cards": {
+    "message": "Скрыть выполненные"
   }
 }

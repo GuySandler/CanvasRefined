@@ -75,7 +75,7 @@
     "message": "Mostrar solo al pasar el mouse"
   },
   "card_letter": {
-      "message": "Mostrar letra de la nota"
+    "message": "Mostrar letra de la nota"
   },
   "due": {
     "message": "Pendiente"
@@ -253,5 +253,8 @@
   },
   "hide_new_canvas": {
     "message": "Ocultar nuevo Canvas"
+  },
+  "hide_completed_cards": {
+    "message": "Ocultar completadas"
   }
 }

@@ -123,6 +123,10 @@
                             <label for="card_overdues" class="sub-text" data-i18n="show_past_due">Show past due</label>
                         </div>
                         <div class="sub-option">
+                            <input type="checkbox" id="hide_completed_cards" name="hide_completed_cards">
+                            <label for="hide_completed_cards" class="sub-text" data-i18n="hide_completed_cards">Hide completed</label>
+                        </div>
+                        <div class="sub-option">
                             <input type="checkbox" id="relative_dues" name="relative_dues">
                             <label for="relative_dues" class="sub-text" data-i18n="relative_due_dates">Relative due dates</label>
                         </div>
@@ -268,26 +272,7 @@
                         <span class="option-name" data-i18n="better_todo">Better Todo List</span>
                     </div>
                     <div class="sub-options">
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_separate_scrollbar" name="todo_separate_scrollbar">
-                            <label for="todo_separate_scrollbar" class="sub-text" data-i18n="todo_separate_scrollbar">Separate Scrollbar</label>
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_hr24" name="todo_hr24">
-                            <label for="todo_hr24" class="sub-text" data-i18n="24hrformat">Use 24hr format</label>
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_full_height" name="todo_full_height">
-                            <label for="todo_full_height" class="sub-text" data-i18n="todo_full_height">Force Full Height</label> <!-- TO REMOVE and replace with full height -->
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="hover_preview" name="hover_preview">
-                            <label for="hover_preview" class="sub-text" data-i18n="hover_preview">Previews on hover</label>
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_hide_feedback" name="todo_hide_feedback">
-                            <label for="todo_hide_feedback" class="sub-text" data-i18n="todo_hide_feedback">Hide Recent Feedback</label>
-                        </div>
+                        <!-- Frequently-changed options stay visible; rarer ones live in the collapsible "More options" section below -->
                         <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
                             <label for="todo_progress_rings" class="sub-text">Progress display</label>
                             <select id="todo_progress_rings" name="todo_progress_rings">
@@ -309,33 +294,61 @@
                             </select>
                         </div>
                         <div class="sub-option">
-                            <input type="checkbox" id="todo_confetti" name="todo_confetti">
-                            <label for="todo_confetti" class="sub-text">Show confetti on complete</label>
-                        </div>
-                        <div class="sub-option" id="todo_alternate_colors_wrap" style="display:none;">
-                            <input type="checkbox" id="todo_alternate_colors" name="todo_alternate_colors">
-                            <label for="todo_alternate_colors" class="sub-text" data-i18n="todo_alternate_colors">Alternate colors</label>
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_ignore_card_colors" name="todo_ignore_card_colors">
-                            <label for="todo_ignore_card_colors" class="sub-text">Ignore card colors</label>
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_hide_read" name="todo_hide_read">
-                            <label for="todo_hide_read" class="sub-text">Hide read announcements</label>
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_remove_icons" name="todo_remove_icons">
-                            <label for="todo_remove_icons" class="sub-text">Remove icons</label>
+                            <input type="checkbox" id="hover_preview" name="hover_preview">
+                            <label for="hover_preview" class="sub-text" data-i18n="hover_preview">Previews on hover</label>
                         </div>
                         <div class="sub-option">
                             <input type="checkbox" id="todo_show_scores" name="todo_show_scores">
                             <label for="todo_show_scores" class="sub-text">Show assignment scores</label>
                         </div>
+                        <div class="sub-option">
+                            <input type="checkbox" id="todo_confetti" name="todo_confetti">
+                            <label for="todo_confetti" class="sub-text">Show confetti on complete</label>
+                        </div>
+                        <div class="sub-option">
+                            <input type="checkbox" id="todo_hide_read" name="todo_hide_read">
+                            <label for="todo_hide_read" class="sub-text">Hide read announcements</label>
+                        </div>
                         <div style="margin-top: 5px">
                             <span class="sub-text" data-i18n="max_items">Max items to show: </span><span
                                 id="numTodoItems"></span>
                             <input type="range" min="1" max="12" id="numTodoItemsSlider">
+                        </div>
+                        <div class="todo-more-options" id="todo-more-options">
+                            <div class="todo-more-toggle" id="todo-more-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="todo-more-items">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6l6 6l-6 6" /></svg>
+                                <span data-i18n="more_options">More options</span>
+                            </div>
+                            <div class="todo-more-items" id="todo-more-items">
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_separate_scrollbar" name="todo_separate_scrollbar">
+                                    <label for="todo_separate_scrollbar" class="sub-text" data-i18n="todo_separate_scrollbar">Separate Scrollbar</label>
+                                </div>
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_hr24" name="todo_hr24">
+                                    <label for="todo_hr24" class="sub-text" data-i18n="24hrformat">Use 24hr format</label>
+                                </div>
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_full_height" name="todo_full_height">
+                                    <label for="todo_full_height" class="sub-text" data-i18n="todo_full_height">Force Full Height</label> <!-- TO REMOVE and replace with full height -->
+                                </div>
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_hide_feedback" name="todo_hide_feedback">
+                                    <label for="todo_hide_feedback" class="sub-text" data-i18n="todo_hide_feedback">Hide Recent Feedback</label>
+                                </div>
+                                <div class="sub-option" id="todo_alternate_colors_wrap" style="display:none;">
+                                    <input type="checkbox" id="todo_alternate_colors" name="todo_alternate_colors">
+                                    <label for="todo_alternate_colors" class="sub-text" data-i18n="todo_alternate_colors">Alternate colors</label>
+                                </div>
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_ignore_card_colors" name="todo_ignore_card_colors">
+                                    <label for="todo_ignore_card_colors" class="sub-text">Ignore card colors</label>
+                                </div>
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_remove_icons" name="todo_remove_icons">
+                                    <label for="todo_remove_icons" class="sub-text">Remove icons</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

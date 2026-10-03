@@ -337,5 +337,8 @@
     },
     "grade_analytics_zones": {
         "message": "Colored grade zones"
+    },
+    "hide_completed_cards": {
+        "message": "Hide Completed"
     }
 }
