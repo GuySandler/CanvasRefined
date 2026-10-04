@@ -4,7 +4,7 @@ let current_page = window.location.pathname;
 // Canvas' "New Canvas" UI navigates client-side via history.pushState/
 // replaceState without a full page reload. current_page is captured once at
 // document_start, so without this hook it goes stale and page-specific features
-// (Back to Assignment button, sequence-footer removal, profile logout button)
+// (Back to Assignment button, sequence-footer hiding, profile logout button)
 // never activate when the user clicks into a page instead of loading it directly.
 function setupNavigationListener() {
     const update = () => {
@@ -127,7 +127,6 @@ let submissionButtonScheduled = false;
 let assignmentButtonScheduled = false;
 let profileLogoutButtonObserver = null;
 let newCanvasButtonObserver = null;
-let sequenceFooterObserver = null;
 
 // Current user id, needed to build "Go to Grades" links on assignment pages.
 // The page's ENV global isn't visible to content scripts (isolated world), so
@@ -328,27 +327,27 @@ function isAssignmentPage() {
     return /^\/courses\/\d+\/assignments(?:\/\d+)?(?:\/|$)/.test(current_page);
 }
 
-function removeSequenceFooter() {
-    if (options.hide_sequence_footer !== true) return false;
-    if (!isAssignmentPage()) return false;
-    const sequenceFooter = document.getElementById("sequence_footer");
-    if (!sequenceFooter) return false;
-    sequenceFooter.remove();
-    return true;
-}
-
-// CSS-based hiding is the primary mechanism: the style element persists across
-// Canvas re-renders and full reloads, so the footer can never flash back after
-// the JS observer has removed it (or timed out) once.
+// CSS-based hiding is the only mechanism: the style element persists across
+// Canvas re-renders and full reloads, and toggling the option off just removes
+// the style — the footer comes back instantly with no refresh. (An earlier
+// version also stripped the footer from the DOM on assignment pages, but that
+// made the toggle one-way until a reload, and display:none collapses the
+// footer gaplessly anyway — verified the content panel height shrinks by
+// exactly the footer height.)
 function applyHideSequenceFooter() {
     let style = document.getElementById("canvasrefined-hide-sequence-footer");
     if (options.hide_sequence_footer === true) {
         if (!style) {
             style = document.createElement("style");
             style.id = "canvasrefined-hide-sequence-footer";
-            style.textContent = "#sequence_footer{display:none!important}";
             (document.head || document.documentElement).appendChild(style);
         }
+        // #sequence_footer is the wrapper Canvas uses on assignment, discussion
+        // and quiz show pages; page show (/courses/:id/pages/:slug) renders the
+        // same Previous/Next bar without that wrapper, as a bare
+        // .module-sequence-footer inside #module_navigation_target — so both
+        // selectors are needed.
+        style.textContent = "#sequence_footer,.module-sequence-footer{display:none!important}";
     } else if (style) {
         style.remove();
     }
@@ -356,34 +355,6 @@ function applyHideSequenceFooter() {
 
 function watchSequenceFooter() {
     applyHideSequenceFooter();
-    if (options.hide_sequence_footer !== true) {
-        if (sequenceFooterObserver) {
-            sequenceFooterObserver.disconnect();
-            sequenceFooterObserver = null;
-        }
-        return;
-    }
-    if (!isAssignmentPage()) return;
-    if (removeSequenceFooter()) return;
-    if (sequenceFooterObserver) return;
-
-    // The observer strips the footer from the DOM (no leftover gap), and
-    // disconnects once removed — after that (or after the 10s timeout below)
-    // the CSS rule above is what keeps it hidden across Canvas re-renders.
-    sequenceFooterObserver = new MutationObserver(() => {
-        if (removeSequenceFooter() && sequenceFooterObserver) {
-            sequenceFooterObserver.disconnect();
-            sequenceFooterObserver = null;
-        }
-    });
-
-    sequenceFooterObserver.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => {
-        if (sequenceFooterObserver) {
-            sequenceFooterObserver.disconnect();
-            sequenceFooterObserver = null;
-        }
-    }, 10000);
 }
 
 // One persistent, rAF-throttled observer that keeps both assignment-page
@@ -1546,6 +1517,25 @@ async function applyCustomBackground() {
             background: none !important;
             padding: 0 !important;
             border: none !important;
+        }
+        /* Page show (/courses/:id/pages/:slug): Canvas paints h1.page-title and
+           the Previous/Next module-sequence footer as opaque slabs, so with a
+           custom background they sit as solid blocks on the glass content
+           panel (dark mode also paints both var(--bcbackground-0) via
+           darkmodecss.js). Flatten the title to match assignment/quiz titles
+           (plain text on the glass panel) and give the sequence footer the
+           same glass treatment as the other content surfaces. Selectors match
+           darkmodecss.js exactly and this style element is appended after it,
+           so these rules win the !important cascade tie. */
+        .pages.show .page-title,
+        .page-title {
+            background: none !important;
+        }
+        .module-sequence-footer .module-sequence-footer-content {
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            border-radius: 5px !important;
         }
         .item-group-condensed,
         .item-group-container {
