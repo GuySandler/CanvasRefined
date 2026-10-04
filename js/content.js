@@ -1109,9 +1109,9 @@ function applyOptionsChanges(changes) {
 			case "gpa_calc_cumulative":
 				if (!grades) getGrades();
 				setupGPACalc();
-				// The GPA elements are placed on dedicated grid rows when Card
-				// Grid is on (see applyAestheticChanges), so toggling GPA on/off
-				// has to regenerate the grid CSS too.
+				// The GPA elements participate in the card grid layout (see
+				// applyAestheticChanges), so toggling GPA on/off has to
+				// regenerate the grid CSS too.
 				if (options.card_grid === true) debouncedApplyAestheticChanges();
 				break;
 			case "gpa_calc_bounds":
@@ -6741,6 +6741,10 @@ function setupGPACalc() {
                         container.style.display = "none";
                         editBtn.textContent = "Edit Calculator";
                     }
+                    // Opening/closing changes the card grid's row composition
+                    // (the expanded calculator claims a full-width row), so
+                    // uneven-row centering has to recompute either way.
+                    requestAnimationFrame(centerUnevenGridRows);
                 });
 
                 container2.dataset.canvasrefinedGpaRendered = "true";
@@ -7232,11 +7236,12 @@ function applyAestheticChanges() {
     // justify-content:center.
     //
     // The GPA calculator elements live in this same container (appended by
-    // setupGPACalc), so when they're visible they get definite full-width
-    // rows past the card rows — otherwise they'd take grid cells, land in
-    // the middle of the card flow (they can be prepended), and throw off the
-    // row math. Two spare auto-height template rows host them; when the GPA
-    // feature is off they're display:none and the spare rows collapse to 0.
+    // setupGPACalc). Two spare auto-height template rows are reserved so the
+    // GPA card and its expanded calculator still get real rows when the
+    // course cards fill the whole card area (otherwise they'd land in the
+    // zero-height implicit rows that overflow-hidden clips away). When the
+    // GPA card instead flows into an open slot inside the card area, the
+    // spare rows stay empty and collapse to 0.
     if (options.card_grid === true) {
         const gridCols = Math.max(1, parseInt(options.card_grid_columns, 10) || 4);
         const gridRows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
@@ -7283,13 +7288,11 @@ function applyAestheticChanges() {
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1!important}`;
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
                 } else {
-                    // Bottom mode: no fixed spare rows (column count varies
-                    // with width). `order` places the GPA card after every
-                    // course card in the auto-placement sequence — it flows
-                    // right after the last card — and the expanded calculator
-                    // follows on a full-width row.
-                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{order:1!important}`;
-                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-column:1/-1!important;order:2!important}`;
+                    // Bottom mode: the GPA card auto-places in DOM order, so it
+                    // flows right after the last course card — filling the next
+                    // open slot instead of stranding below the grid — and the
+                    // expanded calculator follows on a full-width row.
+                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-column:1/-1!important}`;
                 }
             }
             // Step the column count down: m columns apply once m+1 no longer
@@ -7308,20 +7311,24 @@ function applyAestheticChanges() {
         } else {
             const totalRows = gridRows + (gpaOn ? 2 : 0);
             style.textContent += `.ic-DashboardCard__box__container{display:grid!important;grid-template-columns:repeat(${gridCols * 2},minmax(0,max-content))!important;grid-template-rows:repeat(${totalRows},minmax(0,auto))!important;grid-auto-rows:0!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important;overflow:hidden!important${centerGrid ? ";justify-content:center!important" : ""}}`;
-            style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard{grid-column:span 2!important}`;
+            style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-column:span 2!important}`;
             if (gpaOn) {
-                // "Move to top" (gpa_calc_prepend) decides where the GPA card sits
-                // in the grid: on -> first row, leftmost slot (the calculator row
-                // goes right below it, and cards auto-place around both); off ->
-                // spare rows past the card rows, anchored to the rightmost slot.
-                // In both cases the card spans one card width (2 sub-columns) and
-                // the expanded calculator spans the full grid width.
+                // "Move to top" (gpa_calc_prepend) decides where the GPA card
+                // sits: on -> pinned to the first slot (the expanded calculator
+                // takes the full second row, and cards auto-place around both);
+                // off -> the GPA card is a regular auto-placed item (one card
+                // slot wide via the span rule above), so it flows into the next
+                // open slot after the course cards — filling the leftover
+                // spaces of a partial last row instead of squatting alone in a
+                // dedicated row below the grid. The expanded calculator always
+                // takes a full-width row: auto-placed right after the GPA card
+                // in bottom mode, and display:none while collapsed so it
+                // consumes no cells.
                 if (gpaTop) {
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1/span 2!important}`;
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
                 } else {
-                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:${gridRows + 1}!important;grid-column:-3/span 2!important}`;
-                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:${gridRows + 2}!important;grid-column:1/-1!important}`;
+                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-column:1/-1!important}`;
                 }
             }
         }
@@ -7402,19 +7409,32 @@ hidden/unhidden, dashboard re-render, setting changes) start clean.
 function centerUnevenGridRows() {
     const container = document.querySelector(".ic-DashboardCard__box__container");
     if (!container) return;
-    const cards = Array.from(container.children).filter(el => el.classList && el.classList.contains("ic-DashboardCard"));
-    cards.forEach(card => card.style.removeProperty("grid-column"));
+    // Flow items: course cards plus the GPA card (it occupies a regular card
+    // slot — pinned first by "Move to top", otherwise auto-placed after the
+    // cards). DOM order matches auto-placement order, so chunking this list
+    // into rows of `cols` matches the real grid rows — including when the
+    // expanded calculator (a full-width row between chunks) is open.
+    const items = Array.from(container.children).filter(el => el.classList && (el.classList.contains("ic-DashboardCard") || el.classList.contains("canvasrefined-gpa-card")));
+    items.forEach(el => el.style.removeProperty("grid-column"));
     if (options.card_grid !== true || options.card_grid_center_rows !== true) return;
     // Flexible grid: the live column count changes with the window width, so
     // fixed sub-column offsets computed here would be wrong — skip centering.
     if (options.card_grid_flex === true) return;
     const cols = Math.max(1, parseInt(options.card_grid_columns, 10) || 4);
     const rows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
-    const visible = cards.filter(card => getComputedStyle(card).display !== "none");
+    const visible = items.filter(el => getComputedStyle(el).display !== "none");
     const count = visible.length;
-    // Overflowing the template: extra cards land in clipped implicit rows and
-    // the last explicit row is full, so there's nothing to center.
-    if (count === 0 || count >= cols * rows) return;
+    // Capacity: the explicit template rows (cards + the two GPA spare rows),
+    // minus a full row while the expanded calculator is open (it claims one
+    // for itself). Overflowing the template: extra items land in clipped
+    // implicit rows and the last explicit row is full, so there's nothing to
+    // center.
+    const gpaExpanded = options.gpa_calc === true && (() => {
+        const expanded = container.querySelector(":scope > .canvasrefined-gpa");
+        return !!expanded && getComputedStyle(expanded).display !== "none";
+    })();
+    const capacity = cols * (rows + (options.gpa_calc === true ? 2 : 0)) - (gpaExpanded ? cols : 0);
+    if (count === 0 || count > capacity) return;
     const lastRowStart = Math.floor((count - 1) / cols) * cols;
     const inLastRow = count - lastRowStart;
     if (inLastRow >= cols) return;
