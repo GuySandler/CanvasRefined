@@ -75,7 +75,7 @@
     "message": "ホバー時のみ表示"
   },
   "card_letter": {
-      "message": "成績をアルファベットで表示"
+    "message": "成績をアルファベットで表示"
   },
   "due": {
     "message": "期限"
@@ -253,5 +253,8 @@
   },
   "hide_new_canvas": {
     "message": "新しい Canvas を非表示"
+  },
+  "hide_completed_cards": {
+    "message": "完了した課題を非表示"
   }
 }

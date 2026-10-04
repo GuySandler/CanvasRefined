@@ -75,7 +75,7 @@
     "message": "Nur beim Hover anzeigen"
   },
   "card_letter": {
-      "message": "Notenbuchstaben anzeigen"
+    "message": "Notenbuchstaben anzeigen"
   },
   "due": {
     "message": "Fällig"
@@ -253,5 +253,8 @@
   },
   "hide_new_canvas": {
     "message": "Neues Canvas ausblenden"
+  },
+  "hide_completed_cards": {
+    "message": "Abgeschlossene ausblenden"
   }
 }

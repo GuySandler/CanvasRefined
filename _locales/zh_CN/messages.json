@@ -75,7 +75,7 @@
     "message": "仅在悬停时显示"
   },
   "card_letter": {
-      "message": "显示字母成绩"
+    "message": "显示字母成绩"
   },
   "due": {
     "message": "到期的"
@@ -253,5 +253,8 @@
   },
   "hide_new_canvas": {
     "message": "隐藏新版 Canvas"
+  },
+  "hide_completed_cards": {
+    "message": "隐藏已完成的作业"
   }
 }

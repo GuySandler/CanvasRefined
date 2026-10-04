@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <meta charset="utf-8">
     <title>Canvas Refined</title>
     <link href="../css/popup.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -120,6 +121,10 @@
                         <div class="sub-option">
                             <input type="checkbox" id="card_overdues" name="card_overdues">
                             <label for="card_overdues" class="sub-text" data-i18n="show_past_due">Show past due</label>
+                        </div>
+                        <div class="sub-option">
+                            <input type="checkbox" id="hide_completed_cards" name="hide_completed_cards">
+                            <label for="hide_completed_cards" class="sub-text" data-i18n="hide_completed_cards">Hide completed</label>
                         </div>
                         <div class="sub-option">
                             <input type="checkbox" id="relative_dues" name="relative_dues">
@@ -267,26 +272,7 @@
                         <span class="option-name" data-i18n="better_todo">Better Todo List</span>
                     </div>
                     <div class="sub-options">
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_separate_scrollbar" name="todo_separate_scrollbar">
-                            <label for="todo_separate_scrollbar" class="sub-text" data-i18n="todo_separate_scrollbar">Separate Scrollbar</label>
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_hr24" name="todo_hr24">
-                            <label for="todo_hr24" class="sub-text" data-i18n="24hrformat">Use 24hr format</label>
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_full_height" name="todo_full_height">
-                            <label for="todo_full_height" class="sub-text" data-i18n="todo_full_height">Force Full Height</label> <!-- TO REMOVE and replace with full height -->
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="hover_preview" name="hover_preview">
-                            <label for="hover_preview" class="sub-text" data-i18n="hover_preview">Previews on hover</label>
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_hide_feedback" name="todo_hide_feedback">
-                            <label for="todo_hide_feedback" class="sub-text" data-i18n="todo_hide_feedback">Hide Recent Feedback</label>
-                        </div>
+                        <!-- Frequently-changed options stay visible; rarer ones live in the collapsible "More options" section below -->
                         <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
                             <label for="todo_progress_rings" class="sub-text">Progress display</label>
                             <select id="todo_progress_rings" name="todo_progress_rings">
@@ -308,25 +294,61 @@
                             </select>
                         </div>
                         <div class="sub-option">
+                            <input type="checkbox" id="hover_preview" name="hover_preview">
+                            <label for="hover_preview" class="sub-text" data-i18n="hover_preview">Previews on hover</label>
+                        </div>
+                        <div class="sub-option">
+                            <input type="checkbox" id="todo_show_scores" name="todo_show_scores">
+                            <label for="todo_show_scores" class="sub-text">Show assignment scores</label>
+                        </div>
+                        <div class="sub-option">
                             <input type="checkbox" id="todo_confetti" name="todo_confetti">
                             <label for="todo_confetti" class="sub-text">Show confetti on complete</label>
                         </div>
-                        <div class="sub-option" id="todo_alternate_colors_wrap" style="display:none;">
-                            <input type="checkbox" id="todo_alternate_colors" name="todo_alternate_colors">
-                            <label for="todo_alternate_colors" class="sub-text" data-i18n="todo_alternate_colors">Alternate colors</label>
-                        </div>
                         <div class="sub-option">
-                            <input type="checkbox" id="todo_ignore_card_colors" name="todo_ignore_card_colors">
-                            <label for="todo_ignore_card_colors" class="sub-text">Ignore card colors</label>
-                        </div>
-                        <div class="sub-option">
-                            <input type="checkbox" id="todo_remove_icons" name="todo_remove_icons">
-                            <label for="todo_remove_icons" class="sub-text">Remove icons</label>
+                            <input type="checkbox" id="todo_hide_read" name="todo_hide_read">
+                            <label for="todo_hide_read" class="sub-text">Hide read announcements</label>
                         </div>
                         <div style="margin-top: 5px">
                             <span class="sub-text" data-i18n="max_items">Max items to show: </span><span
                                 id="numTodoItems"></span>
                             <input type="range" min="1" max="12" id="numTodoItemsSlider">
+                        </div>
+                        <div class="todo-more-options" id="todo-more-options">
+                            <div class="todo-more-toggle" id="todo-more-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="todo-more-items">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6l6 6l-6 6" /></svg>
+                                <span data-i18n="more_options">More options</span>
+                            </div>
+                            <div class="todo-more-items" id="todo-more-items">
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_separate_scrollbar" name="todo_separate_scrollbar">
+                                    <label for="todo_separate_scrollbar" class="sub-text" data-i18n="todo_separate_scrollbar">Separate Scrollbar</label>
+                                </div>
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_hr24" name="todo_hr24">
+                                    <label for="todo_hr24" class="sub-text" data-i18n="24hrformat">Use 24hr format</label>
+                                </div>
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_full_height" name="todo_full_height">
+                                    <label for="todo_full_height" class="sub-text" data-i18n="todo_full_height">Force Full Height</label> <!-- TO REMOVE and replace with full height -->
+                                </div>
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_hide_feedback" name="todo_hide_feedback">
+                                    <label for="todo_hide_feedback" class="sub-text" data-i18n="todo_hide_feedback">Hide Recent Feedback</label>
+                                </div>
+                                <div class="sub-option" id="todo_alternate_colors_wrap" style="display:none;">
+                                    <input type="checkbox" id="todo_alternate_colors" name="todo_alternate_colors">
+                                    <label for="todo_alternate_colors" class="sub-text" data-i18n="todo_alternate_colors">Alternate colors</label>
+                                </div>
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_ignore_card_colors" name="todo_ignore_card_colors">
+                                    <label for="todo_ignore_card_colors" class="sub-text">Ignore card colors</label>
+                                </div>
+                                <div class="sub-option">
+                                    <input type="checkbox" id="todo_remove_icons" name="todo_remove_icons">
+                                    <label for="todo_remove_icons" class="sub-text">Remove icons</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -349,6 +371,10 @@
                                 <div class="sliderbg"></div>
                             </div>
                             <span class="option-name" data-i18n="remlogo">Remove sidebar logo</span>
+                        </div>
+                        <div class="sub-option">
+                            <input type="checkbox" id="hide_navbar" name="hide_navbar">
+                            <label for="hide_navbar" class="sub-text" data-i18n="hide_navbar">Hide Navigation Bar</label>
                         </div>
                         <div style="margin-top: 5px" id="sidebarScaleSub">
                             <span class="sub-text">Sidebar scale: </span><span id="sidebarScaleValue"></span><span class="sub-text">%</span>
@@ -427,9 +453,15 @@
                 </div>
                 <div class="option-container">
                     <div class="customDomain">
-                        <span data-i18n="enter_url">Your Canvas URL:</span>
-                        <p style="font-size: 11px;color:#8d8d8d" data-i18n="enter_multiple">(Enter multiple with a comma)</p>
-                        <input type="text" id="customDomain" placeholder="Or just refresh your Canvas page!"></input>
+                        <span data-i18n="enter_url">Your Canvas URLs:</span>
+                        <div id="custom-domain-list"></div>
+                        <button id="add-domain-btn" class="customization-button" data-i18n="add_canvas">+ Add canvas</button>
+                        <div class="domain-toggles">
+                            <div class="sub-option">
+                                <input type="checkbox" id="auto_detect_disabled" name="auto_detect_disabled">
+                                <label for="auto_detect_disabled" class="sub-text" data-i18n="no_auto_detect">Don't auto detect canvases</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -828,6 +860,48 @@
 		</div>
 
         <div class="option-container">
+            <h3 class="header-small">Card Grid</h3>
+            <div class="sub-option">
+                <input type="checkbox" id="card_grid" name="card_grid">
+                <label for="card_grid" class="sub-text">Card Grid</label>
+            </div>
+            <div id="card-grid-options" style="display:none; margin-top:12px;">
+                <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;">
+                    <div id="card-grid-preview" title="Card grid preview" style="display:grid;gap:4px;padding:10px;background:#00000042;border:1px solid #3c3c3c;border-radius:10px;width:fit-content;"></div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="sub-text" style="width:90px;">Horizontal</span>
+                            <input type="number" id="card_grid_columns" class="card-input" min="1" max="12" value="4" style="width:80px;margin-top:0;">
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="sub-text" style="width:90px;">Vertical</span>
+                            <input type="number" id="card_grid_rows" class="card-input" min="1" max="12" value="3" style="width:80px;margin-top:0;">
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="sub-text" style="width:90px;">Column spacing</span>
+                            <input type="number" id="card_grid_column_gap" class="card-input" min="0" max="100" value="12" style="width:80px;margin-top:0;">
+                            <span class="sub-text">px</span>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="sub-text" style="width:90px;">Row spacing</span>
+                            <input type="number" id="card_grid_row_gap" class="card-input" min="0" max="100" value="12" style="width:80px;margin-top:0;">
+                            <span class="sub-text">px</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-option" style="margin-top:10px">
+                    <input type="checkbox" id="card_grid_center_rows" name="card_grid_center_rows">
+                    <label for="card_grid_center_rows" class="sub-text">Center uneven rows</label>
+                </div>
+                <div class="sub-option" style="margin-top:10px">
+                    <input type="checkbox" id="card_grid_flex" name="card_grid_flex">
+                    <label for="card_grid_flex" class="sub-text">Flexible grid</label>
+                </div>
+                <p id="card-grid-warning" style="display:none;margin:10px 0 0;color:#ffd166;font-size:12px;font-weight:600;"></p>
+            </div>
+        </div>
+
+        <div class="option-container">
             <h3 class="header-small">Missing cards?</h3>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="checkbox" id="card_method_dashboard"></input>
@@ -1058,6 +1132,10 @@
             <h3 class="header-small" id="fontsDropdown" style="cursor:pointer; display:flex; align-items:center; gap:8px;">
                 Dashboard Font
                 <img id="fontsDropdownArrow" style="transform:rotate(180deg);" src="../icon/dropdownArrow.svg" width="16px" height="16px">
+                <span style="margin-left:auto; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                    <input type="checkbox" id="custom_font_skip_p" name="custom_font_skip_p">
+                    <label for="custom_font_skip_p" class="sub-text" style="cursor:pointer;">Keep original assignment font</label>
+                </span>
             </h3>
             
             <div id="quick-fonts"></div>
@@ -1174,13 +1252,47 @@
             </div>
             <button class="big-button back-btn" data-i18n="back">Back</button>
         </div>
-        <p class="option-container">You can also email <b style="font-weight:600">sandlerguy5@gmail.com</b> for any issues or feedback. Thank you!</p>
+        <p class="option-container">Please join the discord server or create a Github issue for any issues, feedback, or suggestions. Thank you!</p>
+        <div class="option-container">
+            <h3 class="header-small">Privacy</h3>
+            <div class="option" id="hide_personal_details">
+                <input type="radio" id="off" name="hide_personal_details">
+                <input type="radio" id="on" name="hide_personal_details">
+                <div class="slider">
+                    <div class="sliderknob"></div>
+                    <div class="sliderbg"></div>
+                </div><span class="option-name">Hide personal details</span>
+            </div>
+            <p class="sub-text" style="margin-top:6px;">Replaces course names, teacher names, grades and assignment titles with fake data from a pregenerated list, on the dashboard cards, the Better Todo List and recent feedback. Perfect for screenshots — nothing real is shown. Turn it off to restore everything (no refresh needed).</p>
+            <div class="sub-options">
+                <div class="sub-option">
+                    <input type="checkbox" id="hide_course_images" name="hide_course_images">
+                    <label for="hide_course_images" class="sub-text">Temporarily remove all course images</label>
+                </div>
+            </div>
+        </div>
         <p id="dev-alert"></p>
         <div class="option-container">
             <h3 class="header-small">Storage reset</h3>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <button class="big-button" id="storage-reset-btn">Go</button>
                 <span>This will reset all settings to the default. You will need to refresh the page after.</span>
+            </div>
+        </div>
+        <div class="option-container">
+            <h3 class="header-small">Clear planner cache</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="big-button" id="planner-cache-clear-btn">Go</button>
+                <span>This deletes the cached to-do list data (assignments, announcements, reminders) so it is re-fetched fresh from Canvas. Open Canvas tabs update automatically.</span>
+            </div>
+        </div>
+        <div class="option-container">
+            <h3 class="header-small">Storage usage</h3>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+                <span class="sub-text">Settings (sync): <span id="storage-usage-sync">…</span></span>
+                <span class="sub-text">Planner cache: <span id="storage-usage-cache">…</span></span>
+                <span class="sub-text">Other local data: <span id="storage-usage-local">…</span></span>
+                <span class="sub-text">Local quota: <span id="storage-usage-quota">…</span></span>
             </div>
         </div>
         <div class="option-container">

@@ -75,7 +75,7 @@
     "message": "Afficher uniquement au survol"
   },
   "card_letter": {
-      "message": "Afficher la note en lettres"
+    "message": "Afficher la note en lettres"
   },
   "due": {
     "message": "Exigible"
@@ -253,5 +253,8 @@
   },
   "hide_new_canvas": {
     "message": "Masquer le nouveau Canvas"
+  },
+  "hide_completed_cards": {
+    "message": "Masquer les devoirs terminés"
   }
 }

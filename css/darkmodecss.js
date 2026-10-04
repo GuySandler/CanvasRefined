@@ -1,6 +1,7 @@
 const DARKMODE_CSS = `
 #announcementWrapper>div>div,
 #breadcrumbs,
+.ic-app-nav-toggle-and-crumbs,
 #calendar-app .fc-agendaWeek-view .fc-body,
 #calendar-app .fc-event,
 #calendar-app .fc-month-view .fc-body,
@@ -171,6 +172,7 @@ span[style*='background: #fff'],
 .fOyUs_dUgE,
 .fOyUs_bvKN,
 .css-1fwux0x-view--block,
+.css-1n94jrf-view,
 .css-1v8v5q1-optionItem,
 #comments-tray,
 .css-d76rpr-view--inlineBlock[data-testid='tool-bar'],
@@ -288,7 +290,11 @@ div[style*='background-color: rgb(245, 245, 245)'],
 #course_select_menu,
 .css-1dn3ise-textInput__facade,
 .css-1veueey-textInput__facade,
-.canvasrefined-todo-action:hover {
+.canvasrefined-todo-action:hover,
+.css-ywdg6k-view-rowHeader,
+#grades_summary a.toggle_comments_link,
+#grades_summary a.toggle_score_details_link,
+#grades_summary a.toggle_rubric_assessments_link {
     background:var(--bcbackground-1)!important
 }
 
@@ -463,7 +469,10 @@ textarea,
 .canvasrefined-gpa-edit-btn,
 .css-26xxi8-view--block,
 .css-9fqfm7-view--block,
-.canvasrefined-todo-actions {
+.canvasrefined-todo-actions,
+#grades_summary a.toggle_comments_link,
+#grades_summary a.toggle_score_details_link,
+#grades_summary a.toggle_rubric_assessments_link {
     border:1px solid var(--bcborders)!important
 }
 
@@ -658,7 +667,8 @@ ul.outcome-level {
 .ui-progressbar .ui-button.ui-widget-header,
 ::-webkit-scrollbar-thumb,
 .ic-unread-badge__total-count,
-#calendar-app .fc-month-view .fc-today {
+#calendar-app .fc-month-view .fc-today,
+.css-um72cs-view-cell {
     background:var(--bcbackground-2)!important
 }
 
@@ -742,7 +752,9 @@ h5,
 h6,
 #tinymce,
 .PlannerItem-styles__type > span,
-.canvasrefined-todo-actions {
+.canvasrefined-todo-actions,
+.css-md78hg-colHeader,
+.css-ywdg6k-view-rowHeader {
     color:var(--bctext-0)!important
 }
 
@@ -925,7 +937,8 @@ ic-tokeninput-input,
 .card,
 .ac-token,
 span[style='color: #000000;'],
-.canvasrefined-gpa-edit-btn {
+.canvasrefined-gpa-edit-btn,
+.css-um72cs-view-cell {
     color:var(--bctext-1)!important
 }
 
@@ -1262,6 +1275,16 @@ hr {
     background: transparent !important;
     box-shadow: none !important;
 }
+/* InstUI Button whose inner content span ships a light background and its
+   own border, which reads as a bright chip on the dark theme. Paint it with
+   the themed button surface, drop the border entirely, and force the theme
+   text color: Canvas sets its own dark ink color on the content span, which
+   left labels/icons dark-on-dark inside the dark chip. */
+.css-1ta5ds2-baseButton__content {
+    background: var(--bcbackground-1) !important;
+    border: none !important;
+    color: var(--bctext-0) !important;
+}
 /* Dashboard list-view trays ("Add To Do" / "My Grades" opened from the
    header buttons): Instructure UI renders Tray panels as body-level
    portals — body > span > span[...-tray] — with a hardcoded white
@@ -1274,6 +1297,24 @@ body > span > span[class*="-tray"] {
    #FFFFFF on its root. */
 .UpdateItemTray-styles__root {
     background: var(--bcbackground-0) !important;
+}
+/* Immersive Reader button (in the nav-toggle + breadcrumbs bar): an InstUI
+   Button whose emotion class hashes change between Canvas releases, so
+   target the stable mount point and attribute-suffix class names instead.
+   The button and its inner content span carry a light surface, dark ink
+   text and a black icon glyph, which are unreadable on the dark theme. */
+#immersive_reader_mount_point button[class$="-baseButton"],
+#immersive_reader_mount_point button[class$="-baseButton"] > span:first-child {
+    background: var(--bcbackground-1) !important;
+    color: var(--bctext-0) !important;
+    border: 1px solid var(--bcborders) !important;
+    box-shadow: none !important;
+}
+/* The icon glyph is hardcoded black (fill="#000000" attribute); recolor it
+   to the theme text color. The blue accent paths stay as-is — they read
+   fine on dark. */
+#immersive_reader_mount_point button[class$="-baseButton"] svg path[fill="#000000"] {
+    fill: var(--bctext-0) !important;
 }
 /* InstUI TextInput / Select facades (Title, Date, Time, Course fields):
    white surface, dark ink, gray border. Repaint with the theme surface,
@@ -1450,6 +1491,13 @@ div[class*='view-tabs__container']:has(#currentTab, #pastTab),
 .toggle_comments_link,
 .toggle_comments_link:hover {
     background: var(--bcbackground-2) !important;
+    border-color: var(--bcborders) !important;
+}
+/* Grades page rubric table borders are white by default. */
+.rating-tier,
+.react-rubric td,
+.react-rubric th,
+.rating-all-footer {
     border-color: var(--bcborders) !important;
 }
 /* Grades page "late"/"missing" status pills: InstUI renders the inner pill

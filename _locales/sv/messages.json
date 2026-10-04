@@ -75,7 +75,7 @@
     "message": "Visa endast vid svävning"
   },
   "card_letter": {
-      "message": "Visa bokstavsbetyg"
+    "message": "Visa bokstavsbetyg"
   },
   "due": {
     "message": "Förfaller"
@@ -253,5 +253,8 @@
   },
   "hide_new_canvas": {
     "message": "Dölj ny Canvas"
+  },
+  "hide_completed_cards": {
+    "message": "Dölj färdiga"
   }
 }

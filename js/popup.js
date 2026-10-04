@@ -1,7 +1,9 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
+	"hide_course_images",
 	"todo_hide_feedback",
+	"todo_hide_read",
 	"todo_full_height",
     "todo_confetti",
     "todo_progress_rings",
@@ -9,6 +11,7 @@ const syncedSubOptions = [
 	"device_dark",
 	"relative_dues",
 	"card_overdues",
+	"hide_completed_cards",
 	"equal_height_cards",
 	// "todo_overdues",
 	"gpa_calc_prepend",
@@ -17,6 +20,7 @@ const syncedSubOptions = [
 	"auto_dark",
 	"auto_dark_start",
 	"auto_dark_end",
+	"custom_font_skip_p",
 	"num_assignments",
 	"assignment_date_format",
 	"todo_hr24",
@@ -24,8 +28,10 @@ const syncedSubOptions = [
 	"todo_alternate_colors",
 	"todo_ignore_card_colors",
 	"todo_remove_icons",
+	"todo_show_scores",
 	"grade_hover",
 	"card_letter",
+	"auto_detect_disabled",
 	// "hide_completed",
 	"num_todo_items",
 	"hover_preview",
@@ -37,6 +43,16 @@ const syncedSubOptions = [
 	"cardWidth",
 	"cardHeight",
 	"cardPadding",
+	// Card Grid settings — included here so theme exports, saved themes and
+	// previous-theme snapshots actually read them from storage (getExport
+	// drops keys it wasn't given).
+	"card_grid",
+	"card_grid_columns",
+	"card_grid_rows",
+	"card_grid_column_gap",
+	"card_grid_row_gap",
+	"card_grid_center_rows",
+	"card_grid_flex",
 	"customBackgroundLink",
     "customBackgroundScale",
     "customBackgroundDaily",
@@ -55,10 +71,10 @@ const localSwitches = [];
 // Theme export only carries visual settings, never personal productivity data.
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
-const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding"];
-const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "tab_icons"];
+const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding", "card_grid", "card_grid_columns", "card_grid_rows", "card_grid_column_gap", "card_grid_row_gap", "card_grid_center_rows", "card_grid_flex"];
+const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
-const exportTodo = ["better_todo", "todo_hide_feedback", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "hover_preview"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
@@ -90,6 +106,8 @@ const defaultOptions = {
         },
         "new_install": true,
         "assignments_due": true,
+        "hide_personal_details": false,
+        "hide_course_images": false,
         "gpa_calc": false,
         "dark_mode": true,
         "gradent_cards": false,
@@ -99,6 +117,8 @@ const defaultOptions = {
         "auto_dark_end": { "hour": "08", "minute": "00" },
         "num_assignments": 4,
         "custom_domain": [""],
+        "custom_domain_denied": [],
+        "auto_detect_disabled": false,
         "assignments_done": [],
         "dashboard_grades": false,
         "assignment_date_format": false,
@@ -120,6 +140,8 @@ const defaultOptions = {
 		"todo_alternate_colors": false,
 		"todo_ignore_card_colors": false,
 		"todo_remove_icons": false,
+		"todo_show_scores": false,
+        "todo_hide_read": true,
         "condensed_cards": false,
         "center_cards": false,
         "custom_cards": {},
@@ -132,6 +154,7 @@ const defaultOptions = {
         // "hide_completed": false,
         "num_todo_items": 10,
         "custom_font": { "link": "", "family": "" },
+        "custom_font_skip_p": false,
         "hover_preview": true,
         "full_width": null,
         "remlogo": null,
@@ -152,10 +175,12 @@ const defaultOptions = {
         },
         // "todo_overdues": false,
         "card_overdues": false,
+        "hide_completed_cards": false,
         "relative_dues": false,
         "equal_height_cards": false,
         "hide_new_canvas": true,
         "hide_sequence_footer": false,
+        "hide_navbar": false,
         "grade_analytics_zones": false,
         "quiz_safe_mode": false,
         "dark_mode_fix": [],
@@ -165,6 +190,7 @@ const defaultOptions = {
 		"todo_full_height": false,
         "todo_progress_rings": "rings",
 		"todo_timeframe": "all",
+		"todo_more_expanded": false,
 		"todo_confetti": true,
         "device_dark": false,
         "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
@@ -179,6 +205,13 @@ const defaultOptions = {
         "cardWidth": 262,
         "cardHeight": 146,
         "cardPadding": 0,
+        "card_grid": false,
+        "card_grid_columns": 4,
+        "card_grid_rows": 3,
+        "card_grid_column_gap": 12,
+        "card_grid_row_gap": 12,
+        "card_grid_center_rows": false,
+        "card_grid_flex": false,
         "customCardStyles": false,
         "customBackgroundLink": "",
         "customBackgroundScale": 100,
@@ -194,11 +227,28 @@ sendFromPopup("getCards");
 // refresh the cards if new ones were just recieved
 chrome.storage.onChanged.addListener((changes) => {
     if (changes["custom_cards"]) {
-        if (Object.keys(changes["custom_cards"].oldValue).length !== Object.keys(changes["custom_cards"].newValue).length) {
+        if (Object.keys(changes["custom_cards"].oldValue || {}).length !== Object.keys(changes["custom_cards"].newValue || {}).length) {
             displayAdvancedCards();
         }
+        // Hidden-card edits from the card menu change how many cells the
+        // grid preview should mark as filled.
+        updateCardGridPreview();
+        scheduleGridPreviewFollowUp();
     }
 });
+
+// The live card count is read from the dashboard tab's DOM, which applies
+// display:none for a newly hidden card in its own storage listener — a race
+// against the popup's. One debounced follow-up render re-syncs the preview
+// (and the cut-off warning) right after a card edit settles.
+let gridPreviewFollowUpTimer = null;
+function scheduleGridPreviewFollowUp() {
+    if (gridPreviewFollowUpTimer) clearTimeout(gridPreviewFollowUpTimer);
+    gridPreviewFollowUpTimer = setTimeout(() => {
+        gridPreviewFollowUpTimer = null;
+        updateCardGridPreview();
+    }, 800);
+}
 
 function displayErrors() {
     chrome.storage.local.get("errors", storage => {
@@ -328,6 +378,31 @@ function setupProgressRingsSelect(initial) {
     });
 }
 
+// Collapsible "More options" section for the Better Todo List sub-options.
+// Persists whether it's expanded so the popup reopens in the same state.
+function setupTodoMoreOptions(initial) {
+    const wrap = document.getElementById("todo-more-options");
+    const toggle = document.getElementById("todo-more-toggle");
+    if (!wrap || !toggle) return;
+    const setExpanded = (expanded) => {
+        wrap.classList.toggle("expanded", expanded === true);
+        toggle.setAttribute("aria-expanded", expanded === true ? "true" : "false");
+    };
+    setExpanded(initial === true);
+    const flip = () => {
+        const expanded = !wrap.classList.contains("expanded");
+        setExpanded(expanded);
+        chrome.storage.sync.set({ "todo_more_expanded": expanded });
+    };
+    toggle.addEventListener("click", flip);
+    toggle.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            flip();
+        }
+    });
+}
+
 // Timeframe dropdown for the upcoming Tasks tab. Persisted so the Better Todo
 // List remembers the selected range across sessions.
 function setupTimeframeSelect(initial) {
@@ -440,6 +515,132 @@ function setupCardPaddingInput(initial) {
     el.value = initial;
     el.addEventListener("input", (e) => {
         debouncedCardStyleSet("cardPadding", e.target.value);
+    });
+}
+
+// Card Grid (dashboard card layout). The toggle lives in menu.checkboxes;
+// this wires the reveal of the options panel plus the squares preview and
+// the "some cards may be cut off" warning.
+function setupCardGrid(initial) {
+    const panel = document.getElementById("card-grid-options");
+    if (!panel) return;
+    panel.style.display = initial === true ? "" : "none";
+    // Defer the first render: setupCardGrid runs inside the special-options
+    // loop BEFORE the column/row/gap inputs get their stored values
+    // (setupCardGridCountInput), so an immediate render would use the HTML
+    // defaults and look wrong until a value changes. A 0ms timeout runs once
+    // the whole synchronous setup pass is done.
+    setTimeout(() => updateCardGridPreview(), 0);
+    document.getElementById("card_grid").addEventListener("change", (e) => {
+        panel.style.display = e.target.checked ? "" : "none";
+        if (e.target.checked) updateCardGridPreview();
+    });
+    // Row-centering only affects the preview's last-row offset.
+    document.getElementById("card_grid_center_rows").addEventListener("change", () => {
+        updateCardGridPreview();
+    });
+    // Flexible grid changes what the warning means (cards wrap instead of
+    // being cut off), so re-render it on toggle.
+    document.getElementById("card_grid_flex")?.addEventListener("change", () => {
+        updateCardGridPreview();
+    });
+}
+
+// Grid count/spacing inputs for the card grid. Update the preview
+// immediately on every keystroke, but debounce the storage write like the
+// other card style number inputs. `fallback` is used when the field is
+// cleared/invalid — 1 for counts, 0 for spacings.
+function setupCardGridCountInput(id, initial, fallback = 1) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = initial;
+    el.addEventListener("input", (e) => {
+        updateCardGridPreview();
+        const num = parseInt(e.target.value, 10);
+        debouncedCardStyleSet(id, isNaN(num) ? fallback : num);
+    });
+}
+
+// Fallback count of dashboard cards that will occupy grid cells, used only
+// when no dashboard tab answered the live "getGridCardCount" query (e.g. the
+// options page was opened outside a Canvas window). Every stored card that
+// isn't hidden via the card menu would be shown, so it doesn't take up a
+// grid slot. Treated as truthy so legacy string values ("true") count too.
+function countActiveDashboardCards(cards) {
+    return Object.values(cards || {}).filter(c => c && typeof c === "object" && !c.hidden && !c.hide).length;
+}
+
+// Squares preview: one square per grid cell. Filled squares = cells covered
+// by an active (non-hidden) card; dim squares = empty cells. Warns when the
+// grid can't fit every active card.
+function updateCardGridPreview() {
+    const panel = document.getElementById("card-grid-options");
+    const preview = document.getElementById("card-grid-preview");
+    if (!panel || !preview || panel.style.display === "none") return;
+    const cols = Math.max(1, parseInt(document.getElementById("card_grid_columns").value, 10) || 1);
+    const rows = Math.max(1, parseInt(document.getElementById("card_grid_rows").value, 10) || 1);
+    const colGapRaw = parseInt(document.getElementById("card_grid_column_gap").value, 10);
+    const colGap = Math.max(0, Math.min(10, isNaN(colGapRaw) ? 12 : colGapRaw));
+    const total = cols * rows;
+    preview.style.gridTemplateColumns = `repeat(${cols}, 18px)`;
+    // Echo the chosen column spacing in the preview (clamped so extreme
+    // values don't blow the layout out).
+    preview.style.columnGap = `${colGap}px`;
+    preview.style.rowGap = "4px";
+    preview.innerHTML = "";
+    chrome.storage.sync.get(["custom_cards", "gpa_calc"], async s => {
+        // Grid may have been toggled off while the storage read was pending.
+        if (document.getElementById("card-grid-options").style.display === "none") return;
+        // Prefer the live count from an open dashboard tab: the page itself
+        // knows exactly which cards are rendered and not display:none (hidden
+        // via the card menu), so the preview/warning can't drift out of sync
+        // with stored data (stale entries, other-domain cards, legacy values).
+        // Fall back to the storage-derived count when no dashboard answers.
+        const live = await sendFromPopup("getGridCardCount");
+        let active = (live && typeof live.count === "number" && live.count >= 0)
+            ? live.count
+            : countActiveDashboardCards(s.custom_cards);
+        // The GPA calculator card occupies one card slot in the grid too.
+        if (s.gpa_calc === true) active += 1;
+        // Uneven-row centering: the real grid shifts the last partial row in
+        // half-card steps (double sub-columns — see centerUnevenGridRows).
+        // In the preview that's a margin on every square of that row; since
+        // the squares shift into space where no neighbor sits, nothing
+        // overlaps.
+        let lastRowStart = -1, offset = 0;
+        if (document.getElementById("card_grid_center_rows")?.checked === true && active > 0 && active < total) {
+            lastRowStart = Math.floor((active - 1) / cols) * cols;
+            const inLastRow = active - lastRowStart;
+            if (inLastRow < cols) offset = cols - inLastRow;
+        }
+        for (let i = 0; i < total; i++) {
+            const inShiftedRow = lastRowStart !== -1 && i >= lastRowStart;
+            // The shifted row's empty cells aren't rendered — the row's filled
+            // squares carry the offset, so the empties would misrepresent it.
+            if (inShiftedRow && i >= active) continue;
+            const square = document.createElement("div");
+            square.style.cssText = "width:18px;height:18px;border-radius:4px;box-sizing:border-box;";
+            square.style.background = i < active ? "#56Caf0" : "#3c3c3c";
+            if (inShiftedRow && offset > 0) {
+                square.style.marginLeft = `${offset * (18 + colGap) / 2}px`;
+            }
+            preview.appendChild(square);
+        }
+        const warning = document.getElementById("card-grid-warning");
+        if (warning) {
+            if (s.card_grid_flex === true) {
+                // Flexible grid never clips: cards wrap into new rows as the
+                // window narrows, so the cut-off warning doesn't apply.
+                warning.textContent = "Flexible grid is on - cards wrap to fit narrow windows instead of being cut off.";
+                warning.style.display = "block";
+            } else if (active > total) {
+                const gpaNote = s.gpa_calc === true ? " (including the GPA calculator)" : "";
+                warning.textContent = `\u26A0 Your grid holds ${total} card${total === 1 ? "" : "s"} but you have ${active} card${active === 1 ? "" : "s"}${gpaNote} - some cards may be cut off.`;
+                warning.style.display = "block";
+            } else {
+                warning.style.display = "none";
+            }
+        }
     });
 }
 
@@ -585,7 +786,7 @@ function toggleAlternateColorsVisibility(darkModeOn) {
 
 // Hide a toggle's sub-options when it's off; auto_dark only hides its time clocks.
 function toggleSubOptionsVisibility(option, isOn) {
-    const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics"];
+    const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
     if (!togglesWithSubOptions.includes(option)) return;
     const optionEl = document.getElementById(option);
     if (!optionEl) return;
@@ -684,6 +885,12 @@ function setupFeatureSearch(menu) {
             if (node.style && node.style.display === "none") node.style.display = "";
             node = node.parentElement;
         }
+        // Expand the Better Todo "More options" collapsible if the target lives inside it.
+        const moreWrap = el.closest ? el.closest("#todo-more-options") : null;
+        if (moreWrap && !moreWrap.classList.contains("expanded")) {
+            const toggle = document.getElementById("todo-more-toggle");
+            if (toggle) toggle.click();
+        }
     }
 
     function highlight(el) {
@@ -748,8 +955,8 @@ function setupFeatureSearch(menu) {
             add({ key: "sub:" + keyIdOf(sub), text, el: sub, action: () => goToMainElement(sub) });
         });
 
-        // Home: custom Canvas URL
-        const customDomain = document.querySelector("#customDomain");
+        // Home: custom Canvas URLs
+        const customDomain = document.querySelector(".customDomain");
         if (customDomain && !shouldSkip(customDomain)) {
             const wrap = customDomain.closest(".customDomain");
             const label = wrap ? wrap.querySelector("[data-i18n='enter_url']") : null;
@@ -940,28 +1147,35 @@ function setup() {
     const menu = {
 		switches: syncedSwitches,
 		checkboxes: [
+			"hide_navbar",
 			"browser_show_likes",
 			"gpa_calc_weighted",
 			"gpa_calc_cumulative",
 			// /*'card_method_date',*/ "show_updates",
             "todo_hide_feedback",
+            "todo_hide_read",
             "todo_confetti",
 			"todo_full_height",
 			"device_dark",
 			"relative_dues",
 			"card_overdues",
+			"hide_completed_cards",
 			"equal_height_cards",
 			// "todo_overdues",
 			"gpa_calc_prepend",
 			"auto_dark",
 			"assignment_date_format",
+			"custom_font_skip_p",
 			"todo_hr24",
 			"todo_separate_scrollbar",
 			"todo_alternate_colors",
 			"todo_ignore_card_colors",
 			"todo_remove_icons",
+			"todo_show_scores",
 			"grade_hover",
 			"card_letter",
+			"auto_detect_disabled",
+			"hide_course_images",
 			// "hide_completed",
 			"hover_preview",
             "customBackgroundDaily",
@@ -969,6 +1183,9 @@ function setup() {
             "fitImageToScreen",
             "card_transparency",
 			"customCardStyles",
+			"card_grid",
+			"card_grid_center_rows",
+			"card_grid_flex",
 			"grade_analytics_zones",
 		],
 		tabs: {
@@ -1087,6 +1304,26 @@ function setup() {
 				setup: (initial) => setupCardPaddingInput(initial),
 			},
 			{
+				identifier: "card_grid",
+				setup: (initial) => setupCardGrid(initial),
+			},
+			{
+				identifier: "card_grid_columns",
+				setup: (initial) => setupCardGridCountInput("card_grid_columns", initial),
+			},
+			{
+				identifier: "card_grid_rows",
+				setup: (initial) => setupCardGridCountInput("card_grid_rows", initial),
+			},
+			{
+				identifier: "card_grid_column_gap",
+				setup: (initial) => setupCardGridCountInput("card_grid_column_gap", initial, 0),
+			},
+			{
+				identifier: "card_grid_row_gap",
+				setup: (initial) => setupCardGridCountInput("card_grid_row_gap", initial, 0),
+			},
+			{
 				identifier: "customBackgroundLink",
 				setup: (initial) => setupCustomBackgroundLink(initial),
 			},
@@ -1101,6 +1338,10 @@ function setup() {
 			{
 				identifier: "todo_timeframe",
 				setup: (initial) => setupTimeframeSelect(initial),
+			},
+			{
+				identifier: "todo_more_expanded",
+				setup: (initial) => setupTodoMoreOptions(initial),
 			},
 		],
 	};
@@ -1127,11 +1368,20 @@ function setup() {
                 if (option === "dark_mode") {
                     toggleAlternateColorsVisibility(status);
                 }
+                if (option === "hide_personal_details" && status === false) {
+                    // "Temporarily remove all course images" is a sub-option of
+                    // the privacy mode: switching the mode off restores the
+                    // images too (the content script listens for this key and
+                    // removes its hiding stylesheet).
+                    const imgCheckbox = document.getElementById("hide_course_images");
+                    if (imgCheckbox) imgCheckbox.checked = false;
+                    chrome.storage.sync.set({ "hide_course_images": false });
+                }
                 toggleSubOptionsVisibility(option, status);
             });
         });
         toggleBetterSidebarSubOptions(sync["better_sidebar"] === true);
-        ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics"].forEach(opt => {
+        ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
         toggleAlternateColorsVisibility(sync["dark_mode"] === true);
@@ -1249,30 +1499,182 @@ function setup() {
     // activate storage reset button
     document.querySelector("#storage-reset-btn").addEventListener("click", () => {
         chrome.storage.sync.set(defaultOptions["sync"]);
+        updateStorageUsage();
     });
 
-    // activate custom url input
-    document.querySelector('#customDomain').addEventListener('input', function () {
-        let domains = this.value.split(",");
-        domains.forEach((domain, index) => {
-            let val = domain.replace(" ", "");
-            if (val === "") return;
-            //if (!val.includes("https://") && !val.includes("http://")) val = "https://" + val;
+    // activate planner cache clear button (Report issue tab). Clears the
+    // cached planner items locally, then tells any open Canvas tabs to
+    // re-fetch fresh data so the clear takes effect without a refresh.
+    // Keep the key in sync with PLANNER_CACHE_KEY in content.js.
+    document.querySelector("#planner-cache-clear-btn").addEventListener("click", async () => {
+        displayAlert(false, "Planner cache cleared.");
+        try {
+            await chrome.storage.local.remove("planner_cache_v1");
+        } catch (e) { /* nothing stored yet */ }
+        await sendFromPopup("clearPlannerCache");
+        updateStorageUsage();
+    });
+
+    // ---- Storage usage display (Report issue tab) ----
+    // Shows how much space the extension's settings, planner cache, and
+    // other local data take, plus the storage quota available to it.
+    function formatStorageBytes(bytes) {
+        if (bytes == null) return "unknown";
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / 1048576).toFixed(2) + " MB";
+    }
+
+    // getBytesInUse is exact but not implemented everywhere (older Firefox),
+    // so fall back to measuring the serialized data as a Blob.
+    async function storageBytesInUse(area, keys) {
+        try {
+            const bytes = await area.getBytesInUse(keys ?? null);
+            if (typeof bytes === "number") return bytes;
+        } catch (e) { /* not supported */ }
+        try {
+            const data = await area.get(keys ?? null);
+            return new Blob([JSON.stringify(data)]).size;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function updateStorageUsage() {
+        const set = (id, text) => {
+            const el = document.querySelector(id);
+            if (el) el.textContent = text;
+        };
+
+        // Sync settings vs the 100 KB chrome.storage.sync quota.
+        const syncBytes = await storageBytesInUse(chrome.storage.sync);
+        set("#storage-usage-sync", syncBytes == null ? "unknown" : formatStorageBytes(syncBytes) + " of 100 KB quota");
+
+        // Planner cache: size plus item count, so users can see what the
+        // to-do cache actually costs (and that clearing it worked).
+        const cacheBytes = await storageBytesInUse(chrome.storage.local, "planner_cache_v1");
+        let cacheText = "empty";
+        if (cacheBytes) {
             try {
-                let url = new URL(val);
-                domains[index] = url.hostname;
-                clearAlert();
+                const result = await chrome.storage.local.get("planner_cache_v1");
+                const count = result?.["planner_cache_v1"]?.items?.length;
+                cacheText = formatStorageBytes(cacheBytes) + (typeof count === "number" ? ` (${count} items)` : "");
             } catch (e) {
-                domains[index] = val;
-                displayAlert(true, "The URL you entered appears to be invalid, so it might not work.");
+                cacheText = formatStorageBytes(cacheBytes);
+            }
+        }
+        set("#storage-usage-cache", cacheText);
+
+        // Everything else in local storage (settings the extension keeps
+        // locally, state like the analytics toggle, etc.).
+        const localBytes = await storageBytesInUse(chrome.storage.local);
+        if (localBytes == null) {
+            set("#storage-usage-local", "unknown");
+        } else {
+            const other = cacheBytes != null ? Math.max(localBytes - cacheBytes, 0) : null;
+            set("#storage-usage-local", other == null ? formatStorageBytes(localBytes) : formatStorageBytes(other));
+        }
+
+        // Quota available to the extension. With the unlimitedStorage
+        // permission this is a large slice of free disk space, so it reads
+        // big — that is expected.
+        try {
+            const est = await navigator.storage.estimate();
+            if (est && est.quota) {
+                set("#storage-usage-quota", formatStorageBytes(est.quota) + " available");
+            }
+        } catch (e) { /* estimate unsupported */ }
+    }
+    updateStorageUsage();
+
+    // Canvas URL list — each school gets its own text box
+    const domainListEl = document.querySelector("#custom-domain-list");
+    const addDomainBtn = document.querySelector("#add-domain-btn");
+
+    // Normalize a single entry: a full URL becomes its hostname, anything else
+    // is kept as typed. Idempotent — rows store bare hostnames
+    // ("canvas.school.edu"), which fail new URL() without a scheme, so they're
+    // validated as hostnames instead of re-flagged as invalid on every save.
+    function sanitizeDomainEntry(val, showAlert = true) {
+        let trimmed = val.trim().replace(/ /g, "");
+        if (trimmed === "") return "";
+        try {
+            const host = new URL(trimmed).hostname;
+            if (host) {
+                clearAlert();
+                return host;
+            }
+        } catch (e) { /* not a full URL — may still be a bare hostname */ }
+        // strip scheme/path if new URL couldn't parse it, then validate as a hostname
+        const host = trimmed.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+        if (host && /^[a-z0-9][a-z0-9.-]*$/i.test(host)) {
+            clearAlert();
+            return host;
+        }
+        if (showAlert) displayAlert(true, "The URL you entered appears to be invalid, so it might not work.");
+        return trimmed;
+    }
+
+    function saveDomainList() {
+        const domains = [];
+        domainListEl.querySelectorAll(".domain-row input").forEach(input => {
+            const val = sanitizeDomainEntry(input.value);
+            if (val !== "") domains.push(val);
+        });
+        // keep the legacy [""]-when-empty shape the rest of the code expects
+        chrome.storage.sync.set({ custom_domain: domains.length ? domains : [""] });
+    }
+
+    function makeDomainRow(value) {
+        const row = document.createElement("div");
+        row.className = "domain-row";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "canvas.myschool.edu";
+        input.value = value || "";
+        input.spellcheck = false;
+        input.addEventListener("input", saveDomainList);
+        input.addEventListener("blur", () => {
+            // normalize what's shown and drop rows left empty
+            if (input.value.trim() === "") {
+                if (domainListEl.querySelectorAll(".domain-row").length > 1) row.remove();
+            } else {
+                input.value = sanitizeDomainEntry(input.value);
+            }
+            saveDomainList();
+        });
+        const remove = document.createElement("button");
+        remove.className = "domain-remove";
+        remove.type = "button";
+        remove.textContent = "\u2715";
+        remove.title = "Remove";
+        remove.addEventListener("click", () => {
+            const val = sanitizeDomainEntry(input.value, false);
+            row.remove();
+            saveDomainList();
+            // clear any past "no thanks" for this canvas so the detection
+            // prompt can ask again if it's visited later
+            if (val) {
+                chrome.storage.sync.get(["custom_domain_denied"], storage => {
+                    const denied = (storage.custom_domain_denied || []).filter(d => d !== val);
+                    chrome.storage.sync.set({ custom_domain_denied: denied });
+                });
             }
         });
-        chrome.storage.sync.set({ custom_domain: domains });
+        row.appendChild(input);
+        row.appendChild(remove);
+        return row;
+    }
+
+    chrome.storage.sync.get(["custom_domain"], storage => {
+        const domains = (storage.custom_domain || []).filter(d => d && d.trim() !== "");
+        domains.forEach(d => domainListEl.appendChild(makeDomainRow(d)));
     });
 
-    // setup custom url
-    chrome.storage.sync.get(["custom_domain"], storage => {
-        document.querySelector("#customDomain").value = storage.custom_domain ? storage.custom_domain : "";
+    addDomainBtn.addEventListener("click", () => {
+        domainListEl.appendChild(makeDomainRow(""));
+        const rows = domainListEl.querySelectorAll(".domain-row input");
+        rows[rows.length - 1].focus();
     });
 
     // activate import input box
@@ -1324,11 +1726,17 @@ function setup() {
                             case "export-card-styles":
                                 final = { ...final, ...(await getExport(storage, exportCardStyles)) };
                                 break;
-                            case "export-customStyles":
-                                final = { ...final, ...(await getExport(storage, ["custom_styles"])) };
+                            case "export-customStyles": {
+                                // custom_styles is stored in storage.local
+                                // (see setupCustomStyle); fall back to the
+                                // legacy sync value for pre-migration themes.
+                                const localStyles = await chrome.storage.local.get("custom_styles");
+                                const styleSource = localStyles && localStyles["custom_styles"] !== undefined ? localStyles : storage;
+                                final = { ...final, ...(await getExport(styleSource, ["custom_styles"])) };
                                 break;
+                            }
                             case "export-font":
-                                final = { ...final, ...(await getExport(storage, ["custom_font"])) };
+                                final = { ...final, ...(await getExport(storage, ["custom_font", "custom_font_skip_p"])) };
                                 break;
                             case "export-background":
                                 final = { ...final, ...(await getExport(storage, exportBackground)) };
@@ -1602,6 +2010,13 @@ function setup() {
         chrome.storage.local.set({ [fontsDropdownStateKey]: nextOpen });
     });
 
+    // The "Keep original assignment font" toggle sits inline in the dropdown
+    // header; clicking it must not also collapse/expand the font dropdown.
+    const skipPToggle = document.getElementById("custom_font_skip_p");
+    if (skipPToggle) {
+        skipPToggle.closest("span").addEventListener("click", (e) => e.stopPropagation());
+    }
+
 }
 
 function applyGPAPreset(bounds) {
@@ -1612,9 +2027,15 @@ function applyGPAPreset(bounds) {
 
 function setupCustomStyle(initial) {
     const el = document.getElementById("custom-styles");
-    el.value = initial;
+    // Custom CSS lives in storage.local (unlimitedStorage) — storage.sync's
+    // 8KB per-item quota silently dropped long stylesheets. `initial` is the
+    // legacy sync value, used until the user saves again (migrated to local
+    // on first save; content.js also self-migrates on page load).
+    chrome.storage.local.get("custom_styles", local => {
+        el.value = local && local["custom_styles"] !== undefined ? local["custom_styles"] : (initial || "");
+    });
     el.addEventListener("change", (e) => {
-        chrome.storage.sync.set({ "custom_styles": e.target.value });
+        chrome.storage.local.set({ "custom_styles": e.target.value });
     });
 }
 
@@ -1754,8 +2175,11 @@ let fallback = false;
 
 function saveCurrentTheme() {
     const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
-    chrome.storage.local.get("saved_themes", local => {
+    chrome.storage.local.get(["saved_themes", "custom_styles"], local => {
         chrome.storage.sync.get(allOptions, async sync => {
+            // custom_styles is stored in storage.local (sync's 8KB per-item
+            // quota drops long stylesheets); merge it over the legacy sync one.
+            if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
             let current = await getExport(sync, allOptions);
             let trimmed = { 
                 "disable_color_overlay": current["disable_color_overlay"], 
@@ -1765,8 +2189,10 @@ function saveCurrentTheme() {
                 "custom_cards": current["custom_cards"],
                 "card_colors": current["card_colors"] === null ? [current["dark_preset"]["links"]] : current["card_colors"],
                 "custom_font": current["custom_font"],
+                "custom_font_skip_p": current["custom_font_skip_p"],
                 "better_todo": current["better_todo"],
                 "todo_hide_feedback": current["todo_hide_feedback"],
+                "todo_hide_read": current["todo_hide_read"] !== false,
                 "todo_full_height": current["todo_full_height"],
                 "todo_confetti": current["todo_confetti"],
                 "todo_progress_rings": current["todo_progress_rings"],
@@ -1776,6 +2202,7 @@ function saveCurrentTheme() {
                 "todo_alternate_colors": current["todo_alternate_colors"],
                 "todo_ignore_card_colors": current["todo_ignore_card_colors"],
                 "todo_remove_icons": current["todo_remove_icons"],
+                "todo_show_scores": current["todo_show_scores"],
                 "better_sidebar": current["better_sidebar"],
                 "sidebar_scale": current["sidebar_scale"],
 				"imageSize": current["imageSize"],
@@ -1784,6 +2211,15 @@ function saveCurrentTheme() {
 				"cardSpacing": current["cardSpacing"],
 				"cardWidth": current["cardWidth"],
 				"cardHeight": current["cardHeight"],
+				"cardPadding": current["cardPadding"],
+				// Card Grid (part of card styles): layout toggle, counts,
+				// spacing and uneven-row centering.
+				"card_grid": current["card_grid"],
+				"card_grid_columns": current["card_grid_columns"],
+				"card_grid_rows": current["card_grid_rows"],
+				"card_grid_column_gap": current["card_grid_column_gap"],
+				"card_grid_row_gap": current["card_grid_row_gap"],
+				"card_grid_center_rows": current["card_grid_center_rows"],
 				"custom_styles": current["custom_styles"],
 				"customCardStyles": current["customCardStyles"],
 				"customBackgroundLink": current["customBackgroundLink"],
@@ -1836,8 +2272,11 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
             themeBtn.addEventListener("click", () => {
                 const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
                 chrome.storage.sync.get(allOptions, sync => {
-                    chrome.storage.local.get(["previous_theme"], async local => {
+                    chrome.storage.local.get(["previous_theme", "custom_styles"], async local => {
                         if (local["previous_theme"] === null) {
+                            // custom_styles is stored in storage.local; merge it
+                            // in so saved themes keep the user's CSS.
+                            if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
                             let previous = await getExport(sync, allOptions);
                             chrome.storage.local.set({ "previous_theme": previous });
                         }
@@ -1911,6 +2350,7 @@ function importTheme(theme) {
     try {
         let keys = Object.keys(theme);
         let final = {};
+        let localFinal = null;
         chrome.storage.sync.get("custom_cards", sync => {
             keys.forEach(key => {
                 switch (key) {
@@ -1942,7 +2382,14 @@ function importTheme(theme) {
                         break;
                 }
             });
+            // custom_styles must go to storage.local — sync's 8KB per-item
+            // quota rejects (or truncates) large stylesheets from themes.
+            if (Object.prototype.hasOwnProperty.call(final, "custom_styles")) {
+                localFinal = { "custom_styles": final["custom_styles"] };
+                delete final["custom_styles"];
+            }
             chrome.storage.sync.set(final);
+            if (localFinal) chrome.storage.local.set(localFinal);
         });
     } catch (e) {
         console.log(e);
@@ -2125,7 +2572,7 @@ function createCourseButton(courseId, courseData) {
 	button.textContent = displayName;
 	button.dataset.courseId = courseId;
 
-	if (courseData.img || courseData.hidden || courseData.hide) {
+	if (courseData.img || courseData.hidden || courseData.hide || courseData.hide_todo) {
 		button.classList.add("customized");
 	}
 
@@ -2184,6 +2631,14 @@ function showCardEditMenu(courseId, courseData) {
             </div>
         </div>
         
+        <div class="card-edit-section">
+            <label class="card-edit-label">Better Todo List</label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="card-todo-hidden-input" ${courseData.hide_todo === true ? "checked" : ""}>
+                <span>Hide this course from the Better Todo list</span>
+            </div>
+        </div>
+        
         <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button class="big-button" id="save-card-btn">Save Changes</button>
             <button class="customization-button" id="reset-card-btn">Reset to Default</button>
@@ -2227,6 +2682,7 @@ function saveCardChanges(courseId) {
 	const codeInput = document.getElementById("card-code-input");
 	const imageInput = document.getElementById("card-image-input");
 	const hideInput = document.getElementById("card-hide-input");
+	const todoHiddenInput = document.getElementById("card-todo-hidden-input");
 
 	const updates = {
 		name: nameInput.value,
@@ -2234,6 +2690,7 @@ function saveCardChanges(courseId) {
 		img: imageInput.value,
 		hidden: hideInput.checked,
 		hide: hideInput.checked,
+		hide_todo: todoHiddenInput.checked,
 	};
 
 	if (imageInput.value !== "" && imageInput.value !== "none") {
@@ -2253,7 +2710,7 @@ function saveCardChanges(courseId) {
 
 
 function resetCardToDefault(courseId) {
-	updateCards(courseId, { name: "", code: "", img: "", hidden: false, hide: false });
+	updateCards(courseId, { name: "", code: "", img: "", hidden: false, hide: false, hide_todo: false });
 	displayAlert(false, "Card reset to default settings!");
 
 	setTimeout(() => {

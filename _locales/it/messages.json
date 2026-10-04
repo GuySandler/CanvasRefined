@@ -75,7 +75,7 @@
     "message": "Mostra solo al passaggio del mouse"
   },
   "card_letter": {
-      "message": "Mostra voto in lettere"
+    "message": "Mostra voto in lettere"
   },
   "due": {
     "message": "Dovuto"
@@ -253,5 +253,8 @@
   },
   "hide_new_canvas": {
     "message": "Nascondi nuovo Canvas"
+  },
+  "hide_completed_cards": {
+    "message": "Nascondi completati"
   }
 }

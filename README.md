@@ -217,6 +217,9 @@ If nobody is working on the feature, you can clone the dev branch and make your 
 
 - [Guy](https://github.com/guysandler)
 
+#### Fork Contributers
+- [TabulateJarl8](https://github.com/TabulateJarl8)
+
 #### Original Owner
 
 - [ksucpea](https://github.com/ksucpea)

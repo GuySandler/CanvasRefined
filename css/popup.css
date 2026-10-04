@@ -6,8 +6,9 @@ h1, h2, p, body{margin:0;padding:0}
 h1 {font-size:30px;}
 h2 {font-size:24px;}
 .option input{display:none;}
-.options input:nth-of-type(1).checked ~ .slider .sliderknob{background-color:#e1e1e12e;}
-.options input:nth-of-type(2).checked ~ .slider .sliderknob{transform:translate(18px);background-color:#8dd28d;}
+/* Knob state for every big toggle (main options AND tab pages like Report issue) */
+.option input:nth-of-type(1).checked ~ .slider .sliderknob{background-color:#e1e1e12e;}
+.option input:nth-of-type(2).checked ~ .slider .sliderknob{transform:translate(18px);background-color:#8dd28d;}
 .option{display:flex;align-items:center;}
 .option span{margin-left:8px;}
 .main{position: relative;padding: 20px}
@@ -34,6 +35,15 @@ a.option-container:hover {background: #333}
 .options-left {margin-right: 8px;}
 .options-left, .options-right {width: 50%;}
 .customDomain {font-weight:600}
+
+/* Canvas URL list — one text box per school */
+#custom-domain-list {display: flex;flex-direction: column;gap: 6px;margin-top: 8px}
+.domain-row {display: flex;gap: 6px;align-items: center}
+.domain-row input {flex: 1;min-width: 0;box-sizing: border-box;font-size: 12px;background: var(--inputbg);border: none;padding: 8px;color: #e2e2e2;border-radius: 7px;font-family: inherit}
+.domain-row .domain-remove {flex: none;width: 24px;height: 31px;padding: 0;border: none;border-radius: 6px;background: #2f2f2f;color: #a7a7a7;font-size: 13px;line-height: 1;cursor: pointer}
+.domain-row .domain-remove:hover {background: #3d3d3d;color: #fff}
+#add-domain-btn {margin-top: 8px;font-size: 12px;padding: 5px 12px}
+.domain-toggles {margin-top: 10px;display: flex;flex-direction: column}
 .changer {margin:0;margin-bottom: 0px;width:100%}
 .option-background {color: #fff}
 .color-changer { font-family: inherit;font-size: 20px;background: none;border: none;color: #000;height: 30px;width:100%;padding:10px 0px 10px 10px;}
@@ -74,6 +84,16 @@ h2 {margin-top: 20px;font-weight:600}
 #todo_timeframe option {background:#1e1e1e;color:#e2e2e2;}
 #todo_timeframe option:checked,
 #todo_timeframe option:hover {background:#2e2e2e;color:#fff;}
+/* Collapsible "More options" section for the Better Todo List sub-options */
+.todo-more-options {margin-top: 7px;}
+.todo-more-toggle {display: flex;align-items:center;gap:5px;font-size:12px;color:#a7a7a7;cursor:pointer;user-select:none;padding:3px 0;border-radius:5px;transition:color .1s;}
+.todo-more-toggle:hover {color:#e2e2e2;}
+.todo-more-toggle svg {flex:none;transition:transform .15s ease;}
+.todo-more-options.expanded .todo-more-toggle svg {transform: rotate(90deg);}
+.todo-more-toggle .todo-expanded-label {display:none;}
+.todo-more-options.expanded .todo-expanded-label {display:inline;}
+.todo-more-items {display:none;flex-direction:column;}
+.todo-more-options.expanded .todo-more-items {display:flex;padding-left:2px;}
 #advanced-settings, #gpa-bounds-btn, #custom-font-btn, #customize-dark-btn, #card-colors-btn {width: 100%;}
 .back-btn {width: 120px;height:100%;margin-top:0}
 .big-button {border: none;border-radius: 7px;background: var(--containerbg);color: #fff;font-family: inherit;padding: 12px 10px;font-weight:600}

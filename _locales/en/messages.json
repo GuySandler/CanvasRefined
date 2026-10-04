@@ -24,7 +24,19 @@
         "message": "Dark Mode"
     },
     "enter_url": {
-        "message": "Your Canvas url:"
+        "message": "Your Canvas URLs:"
+    },
+    "add_canvas": {
+        "message": "+ Add canvas"
+    },
+    "no_auto_detect": {
+        "message": "Don't auto detect canvases"
+    },
+    "add_to_list": {
+        "message": "Add to list"
+    },
+    "no_thanks": {
+        "message": "No thanks"
     },
     "card_grades": {
         "message": "Card Grades"
@@ -311,6 +323,9 @@
     "hide_sequence_footer": {
         "message": "Hide Next/Previous Buttons"
     },
+    "hide_navbar": {
+        "message": "Hide Navigation Bar"
+    },
     "global_search": {
         "message": "Global Canvas Search"
     },
@@ -322,5 +337,8 @@
     },
     "grade_analytics_zones": {
         "message": "Colored grade zones"
+    },
+    "hide_completed_cards": {
+        "message": "Hide Completed"
     }
 }
