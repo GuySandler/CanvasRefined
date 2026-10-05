@@ -985,8 +985,9 @@ span[style='color: #000000;'],
 ul#question_list.read_only li.seen,
 ul#question_list li.current_question,
 .css-1sr6v3o-text,
-[class$="-baseButton__content"],
+[data-testid="rubric-tab"] [class$="-baseButton__content"],
 [data-testid="rubric-tab"] [class$="-text"],
+button[data-cid~="CloseButton"] > [class$="-baseButton__content"],
 /* sidebar course listing */
 .css-8bodfv-text {
     color:var(--bctext-2)!important
