@@ -176,7 +176,8 @@ span[style*='background: #fff'],
 .css-d76rpr-view--inlineBlock[data-testid='tool-bar'],
 .css-vxe90h-view--inlineBlock,
 .canvasrefined-todo-actions,
-.css-sg1rn7-view {
+.css-sg1rn7-view,
+[class*="-baseButton"]:hover > [class$="-baseButton__content"] {
     background:var(--bcbackground-0)!important
 }
 
@@ -753,7 +754,11 @@ h6,
 .PlannerItem-styles__type > span,
 .canvasrefined-todo-actions,
 .css-md78hg-colHeader,
-.css-ywdg6k-view-rowHeader {
+.css-ywdg6k-view-rowHeader,
+/* Assignment page rubric styling */
+[data-testid="rubric-assessment-traditional-view"] > div:first-of-type [class$="-text"],
+[id^="rubric-header-"] [class$="-text"],
+[data-testid="rubric-assessment-traditional-view"] tbody tr td:first-child > div > div:first-child [class$="-text"] {
     color:var(--bctext-0)!important
 }
 
@@ -979,7 +984,11 @@ span[style='color: #000000;'],
 .yyQPt_blJt,
 ul#question_list.read_only li.seen,
 ul#question_list li.current_question,
-.css-1sr6v3o-text {
+.css-1sr6v3o-text,
+[class$="-baseButton__content"],
+[data-testid="rubric-tab"] [class$="-text"],
+/* sidebar course listing */
+.css-8bodfv-text {
     color:var(--bctext-2)!important
 }
 
@@ -1468,7 +1477,17 @@ div[class*='view-tabs__container']:has(#currentTab, #pastTab),
 .rating-tier,
 .react-rubric td,
 .react-rubric th,
-.rating-all-footer {
+.rating-all-footer,
+/* Assignment page rubric table borders */
+[data-testid="rubric-assessment-traditional-view"],
+[data-testid="rubric-assessment-traditional-view"] thead td,
+[data-testid="rubric-assessment-traditional-view"] tbody tr,
+[data-testid="rubric-assessment-traditional-view"] tbody td,
+[data-testid="traditional-view-criterion-ratings"] > div > div,
+/* Modals */
+[class$="-modal"],
+[class$="-modalHeader"]
+{
     border-color: var(--bcborders) !important;
 }
 /* Grades page "late"/"missing" status pills: InstUI renders the inner pill
@@ -1476,8 +1495,22 @@ div[class*='view-tabs__container']:has(#currentTab, #pastTab),
    Canvas releases, so match the stable "-pill" fragment scoped under the
    server-rendered status cell. */
 td.status [class*="-pill"],
-td.status [class*="-pill"]:hover {
+td.status [class*="-pill"]:hover,
+/* Assignment page rubric table body */
+[data-testid="rubric-assessment-traditional-view"] tbody {
     background: var(--bcbackground-2) !important;
     color: var(--bctext-1) !important;
+}
+/* Assignment page rubric headers and modal styling */
+[data-testid="rubric-assessment-traditional-view"] > div:first-of-type,
+[id^="rubric-header-"],
+[class$="-modal"],
+[class$="-modalHeader"] {
+  background: var(--bcbackground-1) !important;
+  color: var(--bctext-0) !important;
+}
+/* Modal overlay */
+[class*="-mask"] {
+  background: rgba(0, 0, 0, 0.60) !important;
 }
 `;
