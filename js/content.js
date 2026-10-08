@@ -4354,7 +4354,7 @@ function populateAnnouncements() {
 		}
 
 		announcement.innerHTML = `
-		<div style="display:flex;align-items:center;gap:5px;width:100%;height:60px;background:var(--bcbackground-2);border-radius:5px;${filter}">
+		<div style="display:flex;align-items:center;gap:5px;width:100%;height:60px;background:var(--bcbackground-2);border-radius:5px;transition:all .4s ease;overflow:hidden;${filter}">
 			<div style="width:40px;display:flex;align-items:center;justify-content:center;background-color:${courseColor};height:100%;border-radius:5px 0 0 5px;">
 				<div style="width:23px;height:23px;display:flex;margin-left:0px;">
 					${removeIcons ? "" : `<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="transition:all .3s ease;">
@@ -4551,13 +4551,19 @@ function markAs(item, element, makeComplete) {
     // call in the background for persistence.
     item.planner_override = item.planner_override || {};
     item.planner_override.marked_complete = completeState;
-    element.style.transform = "translate(100%)";
-    element.style.opacity = "0";
 
-    // fire confetti only when marking complete (not when unmarking)
+    // fire confetti only when marking complete (not when unmarking).
+    // Must happen BEFORE the slide-out transform below: the burst measures
+    // the element with getBoundingClientRect(), which reflects transforms —
+    // measuring after translate(100%) would place the origin one full card
+    // width to the right (off screen) whenever the transform applies
+    // instantly, i.e. on cards without a transition (announcements).
     if (completeState) {
         try { createConfettiBurst(element); } catch (e) { console.error('confetti trigger error', e); }
     }
+
+    element.style.transform = "translate(100%)";
+    element.style.opacity = "0";
 
     // update progress rings immediately so they animate while the item slides/fades
     const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
