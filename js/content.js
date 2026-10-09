@@ -803,7 +803,7 @@ function startReminderMode() {
 async function detectCanvasPage() {
     try {
         const courses = await getData(`${domain}/api/v1/courses?${/*enrollment_state=active&*/""}per_page=100`);
-        if (Array.isArray(courses) && courses.length) {
+        if (isCanvasCourseList(courses)) {
             return { isCanvas: true, courses };
         }
         console.log("Canvas Refined - this url doesn't seem to be a canvas url (1)");
@@ -812,6 +812,20 @@ async function detectCanvasPage() {
         console.log("Canvas Refined - this url doesn't seem to be a canvas url (2)");
         return { isCanvas: false, courses: null };
     }
+}
+
+// Verify the /api/v1/courses response actually looks like Canvas course
+// objects, not just "some JSON array". Real Canvas entries always carry a
+// numeric id, a name, and identifying fields (uuid/course_code/enrollments).
+// Without this check unrelated sites that coincidentally serve their own
+// JSON at the same path were misdetected as Canvas — e.g.
+// apstudents.collegeboard.org, whose AP-course list uses the shape
+// { course_id, course_name, course_url }.
+function isCanvasCourseList(courses) {
+    return Array.isArray(courses) && courses.length > 0 && courses.every(c =>
+        c && c.id != null && typeof c.name === "string" &&
+        (c.uuid != null || c.course_code != null || Array.isArray(c.enrollments))
+    );
 }
 
 // Register the domain in the canvas list. `courses` (from detectCanvasPage) is
