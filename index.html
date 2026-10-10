@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Canvas Refined — Even more feature packed extension for Canvas</title>
-<meta name="description" content="Canvas Refined is a 100% free, fully local extension that supercharges your Canvas experience. Dark mode, themes, GPA calculator, better todo list and much more.">
+<meta name="description" content="Canvas Refined is a free and open source, fully local extension that supercharges your Canvas experience. Dark mode, themes, GPA calculator, better todo list and much more.">
 <link rel="icon" type="image/png" href="icon/icon-32.png">
 <style>
   :root {
@@ -18,6 +18,7 @@
     --accent-2: #ff5200;
     --accent-3: #ff47ad;
     --green: #4ade80;
+    --discord: #5865F2;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -45,9 +46,15 @@
   nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
   .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; }
   .nav-logo img { height: 30px; }
-  .nav-links { display: flex; gap: 22px; font-size: .95rem; }
-  .nav-links a { text-decoration: none; color: var(--muted); transition: color .15s; }
+  .nav-links { display: flex; gap: 22px; font-size: .95rem; align-items: center; }
+  .nav-links a { text-decoration: none; color: var(--muted); transition: color .15s; display: inline-flex; align-items: center; gap: 6px; }
   .nav-links a:hover { color: var(--text); }
+  .nav-links svg { width: 18px; height: 18px; fill: var(--muted); transition: fill .15s; }
+  .nav-links a:hover svg { fill: var(--text); }
+  .nav-links svg.icon-discord { fill: #5865F2; }
+  .nav-links svg.icon-github { fill: #e6e6ec; }
+  .nav-links a:hover svg.icon-discord { fill: #7983F5; }
+  .nav-links a:hover svg.icon-github { fill: #ffffff; }
 
   /* ---------- Hero ---------- */
   header {
@@ -70,33 +77,40 @@
     background-clip: text;
     color: transparent;
   }
-  header p.tagline { color: var(--muted); font-size: 1.1rem; max-width: 620px; margin: 0 auto 34px; }
-  .btn-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  header p.tagline { color: var(--muted); font-size: 1.1rem; max-width: 620px; margin: 0 auto 12px; }
+  .foss {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--green); font-weight: 600; font-size: .95rem;
+    margin-bottom: 34px;
+  }
+  .foss svg { width: 17px; height: 17px; }
+  .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
   .btn {
     display: inline-flex; align-items: center; gap: 9px;
-    padding: 12px 24px; border-radius: 10px;
+    padding: 12px 24px; border-radius: 12px;
     font-weight: 600; font-size: 1rem; text-decoration: none;
-    transition: transform .12s, box-shadow .12s, background .15s;
-  }
-  .btn:hover { transform: translateY(-2px); }
-  .btn svg { width: 20px; height: 20px; fill: currentColor; }
-  .btn-primary {
-    background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-    color: #fff;
-    box-shadow: 0 4px 20px rgba(255,0,46,.35);
-  }
-  .btn-primary:hover { box-shadow: 0 6px 26px rgba(255,0,46,.5); }
-  .btn-secondary {
-    background: var(--card);
     color: var(--text);
-    border: 1px solid var(--border);
+    background: #232329;
+    border: 1px solid #3a3a44;
+    transition: transform .12s, box-shadow .12s, border-color .15s, background .15s;
   }
-  .btn-secondary:hover { border-color: var(--accent-3); }
-  .btn-discord {
-    background: #5865F2;
-    color: #fff;
-  }
+  .btn:hover { transform: translateY(-2px); background: #28282f; }
+  .btn svg { width: 19px; height: 19px; fill: var(--muted); transition: fill .15s, filter .15s; }
+  .btn.stroke svg { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .btn:hover svg { fill: var(--text); }
+  .btn.stroke:hover svg { stroke: var(--text); }
+
+  .btn-chrome { box-shadow: 0 0 0 0 rgba(66,133,244,0); }
+  .btn-chrome svg { fill: #6ea8ff; }
+  .btn-chrome:hover { border-color: #4285F4; box-shadow: 0 4px 18px rgba(66,133,244,.25); }
+  .btn-chrome:hover svg { fill: #8ab4f8; }
+  .btn-firefox svg { fill: #ff9a5c; }
+  .btn-firefox:hover { border-color: #FF7139; box-shadow: 0 4px 18px rgba(255,113,57,.25); }
+  .btn-firefox:hover svg { fill: #ff7139; }
+  .btn-github svg { fill: #dcdce2; }
+  .btn-github:hover { border-color: #8b949e; box-shadow: 0 4px 18px rgba(255,255,255,.12); }
+  .btn-github:hover svg { fill: #ffffff; }
 
   /* ---------- Sections ---------- */
   section { padding: 70px 0; }
@@ -104,34 +118,28 @@
   h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 10px; }
   .sub { color: var(--muted); max-width: 640px; margin-bottom: 34px; }
 
-  /* Feature grid */
-  .features {
+  /* ---------- Alternating feature rows ---------- */
+  .feat {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 14px;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+    padding: 36px 0;
   }
-  .feature {
-    background: var(--card);
-    border: 1px solid var(--border);
+  .feat + .feat { border-top: 1px solid var(--border); }
+  .feat .icon {
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
     border-radius: 12px;
-    padding: 16px 18px;
-    font-size: .95rem;
-    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,82,0,.12);
+    margin-bottom: 14px;
   }
-  .feature::before {
-    content: "★";
-    color: var(--accent-2);
-    flex-shrink: 0;
-  }
-
-  /* Demo placeholders */
-  .demos {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 18px;
-    margin-top: 30px;
-  }
-  .demo {
+  .feat .icon svg { width: 22px; height: 22px; stroke: var(--accent-2); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .feat:nth-child(even) .icon { background: rgba(255,71,173,.12); }
+  .feat:nth-child(even) .icon svg { stroke: var(--accent-3); }
+  .feat h3 { font-size: 1.3rem; margin-bottom: 8px; }
+  .feat p { color: var(--muted); }
+  .feat-img {
     background: var(--card);
     border: 2px dashed var(--border);
     border-radius: 14px;
@@ -141,32 +149,41 @@
     color: var(--muted);
     text-align: center;
     padding: 20px;
+    overflow: hidden;
   }
-  .demo .demo-icon { font-size: 2.2rem; opacity: .6; }
-  .demo .demo-title { font-weight: 600; color: var(--text); font-size: 1rem; }
-  .demo .demo-hint { font-size: .82rem; }
+  .feat-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+  .feat-img .ph-icon { width: 34px; height: 34px; stroke: var(--muted); opacity: .55; }
+  .feat-img .ph-title { font-weight: 600; color: var(--text); font-size: .95rem; }
+  .feat-img .ph-hint { font-size: .82rem; }
+  .feat.flip .feat-text { order: 2; }
+  .feat.flip .feat-img { order: 1; }
 
-  /* Free section */
+  /* ---------- Free section ---------- */
   .free-points { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
   .free-point {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 12px; padding: 20px;
   }
   .free-point h3 { font-size: 1.05rem; margin-bottom: 6px; }
+  .free-point h3 svg { width: 18px; height: 18px; stroke: var(--green); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; margin-right: 7px; }
   .free-point p { color: var(--muted); font-size: .92rem; }
-  .free-point .big { font-size: 1.6rem; display: block; margin-bottom: 8px; }
 
-  /* Support section */
+  /* ---------- Support section ---------- */
   .support-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
   .support-card {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 12px; padding: 22px;
   }
-  .support-card h3 { font-size: 1.1rem; margin-bottom: 8px; }
+  .support-card h3 { font-size: 1.1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 9px; }
+  .support-card h3 svg { width: 19px; height: 19px; fill: var(--muted); flex-shrink: 0; }
+  .support-card h3 svg.stroke { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .support-card p { color: var(--muted); font-size: .92rem; margin-bottom: 14px; }
-  .support-card a.btn { padding: 9px 18px; font-size: .9rem; }
-  .support-card a.text-link { color: var(--accent-3); text-decoration: none; }
-  .support-card a.text-link:hover { text-decoration: underline; }
+  .support-card a.link {
+    color: var(--accent-3); text-decoration: none; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .support-card a.link:hover { text-decoration: underline; }
+  .support-card a.link svg { width: 15px; height: 15px; }
 
   /* ---------- Comparison table ---------- */
   .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
@@ -182,8 +199,9 @@
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: rgba(255,255,255,.025); }
   td.check { text-align: center; width: 22%; font-weight: 700; font-size: 1.05rem; }
-  .yes { color: var(--green); }
-  .no { color: #f87171; }
+  td.check svg { width: 17px; height: 17px; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
+  .yes svg { stroke: var(--green); }
+  .no svg { stroke: #f87171; }
   .row-label { display: flex; flex-direction: column; }
   .row-label small { color: var(--muted); font-weight: 400; font-size: .78rem; }
 
@@ -199,8 +217,11 @@
   footer a { color: var(--muted); text-decoration: none; }
   footer a:hover { color: var(--text); }
 
-  @media (max-width: 600px) {
-    .nav-links { display: none; }
+  @media (max-width: 760px) {
+    .nav-links a span { display: none; }
+    .feat { grid-template-columns: 1fr; gap: 20px; }
+    .feat.flip .feat-text { order: 1; }
+    .feat.flip .feat-img { order: 2; }
     header { padding: 60px 20px 50px; }
   }
 </style>
@@ -214,11 +235,18 @@
       Canvas Refined
     </a>
     <div class="nav-links">
-      <a href="#what">What is this?</a>
-      <a href="#free">Free?</a>
-      <a href="#support">Support</a>
-      <a href="#compare">Us vs Them</a>
-      <a href="https://discord.com/invite/GjFh4JA3wh" target="_blank" rel="noopener">Discord</a>
+      <a href="#features"><span>Features</span></a>
+      <a href="#free"><span>Free???</span></a>
+      <a href="#support"><span>Support</span></a>
+      <a href="#compare"><span>Comparison</span></a>
+      <a href="https://github.com/GuySandler/CanvasRefined/" target="_blank" rel="noopener" title="GitHub">
+        <svg class="icon-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.06-1.86 3.75-3.64 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.995 7.995 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        <span>GitHub</span>
+      </a>
+      <a href="https://discord.com/invite/GjFh4JA3wh" target="_blank" rel="noopener" title="Discord">
+        <svg class="icon-discord" viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+        <span>Discord</span>
+      </a>
     </div>
   </div>
 </nav>
@@ -226,65 +254,102 @@
 <header id="top">
   <img class="logo" src="icon/NEWtitle.png" alt="Canvas Refined">
   <h1>The <span class="grad">even more feature packed</span> extension for Canvas</h1>
-  <p class="tagline">Dark mode, themes, a better todo list, GPA calculator, grade history and much more — 100% free, no account required, and everything stays on your device.</p>
+  <p class="tagline">Dark mode, themes, a better todo list, GPA calculator, grade history and much more</p>
+  <div class="foss">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
+    Free &amp; open source (FOSS) | MIT licensed
+  </div>
   <div class="btn-row">
-    <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/canvas-refined/ihienfbdfdamhmhhiokjnjmpjgbenedg" target="_blank" rel="noopener">
+    <a class="btn btn-chrome" href="https://chromewebstore.google.com/detail/canvas-refined/ihienfbdfdamhmhhiokjnjmpjgbenedg" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24"><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z"/></svg>
-      Add to Chrome
+      Chrome
     </a>
-    <a class="btn btn-primary" href="https://addons.mozilla.org/en-US/firefox/addon/canvas-refined/" target="_blank" rel="noopener">
+    <a class="btn btn-firefox" href="https://addons.mozilla.org/en-US/firefox/addon/canvas-refined/" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24"><path d="M20.452 3.445a11.002 11.002 0 00-2.482-1.908C16.944.997 15.098.093 12.477.032c-.734-.017-1.457.03-2.174.144-.72.114-1.398.292-2.118.56-1.017.377-1.996.975-2.574 1.554.583-.349 1.476-.733 2.55-.992a10.083 10.083 0 013.729-.167c2.341.34 4.178 1.381 5.48 2.625a8.066 8.066 0 011.298 1.587c1.468 2.382 1.33 5.376.184 7.142-.85 1.312-2.67 2.544-4.37 2.53-.583-.023-1.438-.152-2.25-.566-2.629-1.343-3.021-4.688-1.118-6.306-.632-.136-1.82.13-2.646 1.363-.742 1.107-.7 2.816-.242 4.028a6.473 6.473 0 01-.59-1.895 7.695 7.695 0 01.416-3.845A8.212 8.212 0 019.45 5.399c.896-1.069 1.908-1.72 2.75-2.005-.54-.471-1.411-.738-2.421-.767C8.31 2.583 6.327 3.061 4.7 4.41a8.148 8.148 0 00-1.976 2.414c-.455.836-.691 1.659-.697 1.678.122-1.445.704-2.994 1.248-4.055-.79.413-1.827 1.668-2.41 3.042C.095 9.37-.2 11.608.14 13.989c.966 5.668 5.9 9.982 11.843 9.982C18.62 23.971 24 18.591 24 11.956a11.93 11.93 0 00-3.548-8.511z"/></svg>
-      Add to Firefox
+      Firefox
     </a>
-    <a class="btn btn-discord" href="https://discord.com/invite/GjFh4JA3wh" target="_blank" rel="noopener">
-      <svg viewBox="0 0 24 24"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-      Join Discord
+    <a class="btn btn-github" href="https://github.com/GuySandler/CanvasRefined/" target="_blank" rel="noopener">
+      <svg class="gh" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.06-1.86 3.75-3.64 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.995 7.995 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      GitHub
     </a>
   </div>
 </header>
 
-<section id="what">
+<section id="features">
   <div class="wrap">
-    <h2>What is this?</h2>
-    <p class="sub">Canvas Refined is a feature packed browser extension that upgrades your school's Canvas. It started as a fork of BetterCanvas — after it went in a direction we didn't like, Canvas Refined kept the good parts, fixed what was broken, and added a lot more. It works on both Chrome and Firefox.</p>
-    <div class="features">
-      <div class="feature">Fully customizable dark mode</div>
-      <div class="feature">Automatic dark mode scheduling</div>
-      <div class="feature">Dashboard card color palettes</div>
-      <div class="feature">Custom backgrounds &amp; daily backgrounds</div>
-      <div class="feature">A brand new, better todo list</div>
-      <div class="feature">GPA calculator (high school &amp; college presets)</div>
-      <div class="feature">Better what-if grades</div>
-      <div class="feature">Grade analytics &amp; history</div>
-      <div class="feature">Assignments due list</div>
-      <div class="feature">Dashboard notes with markdown</div>
-      <div class="feature">Global Canvas search (Ctrl/Cmd + K)</div>
-      <div class="feature">Gradient &amp; advanced card customization</div>
-      <div class="feature">Custom fonts</div>
-      <div class="feature">Card styles (roundness, spacing, size &amp; more)</div>
-      <div class="feature">Preview assignments &amp; announcements from the dashboard</div>
-      <div class="feature">Browser-wide popup assignment reminders</div>
-      <div class="feature">Better sidebar</div>
-      <div class="feature">Quiz safe mode</div>
-      <div class="feature">Simplified UI that only shows what you need</div>
-      <div class="feature">...and more being added all the time!</div>
+    <h2>Key Features</h2>
+    <div class="feat">
+      <div class="feat-text">
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </div>
+        <h3>Dark mode &amp; themes</h3>
+        <p>Fully customizable dark mode. You can choose from many user-made themes or fine-tune every aspect yourself. You can even edit other people's themes for free.</p>
+      </div>
+      <div class="feat-img">
+        <svg class="ph-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <span class="ph-title">Dark mode screenshot</span>
+        <span class="ph-hint">placeholder — image coming soon</span>
+      </div>
     </div>
 
-    <div class="demos">
-      <div class="demo">
-        <span class="demo-icon">🖼️</span>
-        <span class="demo-title">Demo screenshot</span>
-        <span class="demo-hint">placeholder — image coming soon</span>
+    <div class="feat flip">
+      <div class="feat-text">
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><path d="M3 6h.01"/><path d="M8 6h13"/><path d="M3 12h.01"/><path d="M8 12h13"/><path d="M3 18h.01"/><path d="M8 18h13"/></svg>
+        </div>
+        <h3>A better todo list</h3>
+        <p>Keep track of everything you need to do. Assignments, due dates and your own tasks in one clean interactive list.</p>
       </div>
-      <div class="demo">
-        <span class="demo-icon">🖼️</span>
-        <span class="demo-title">Demo screenshot</span>
-        <span class="demo-hint">placeholder — image coming soon</span>
+      <div class="feat-img">
+        <svg class="ph-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <span class="ph-title">Todo list screenshot</span>
+        <span class="ph-hint">placeholder — image coming soon</span>
       </div>
-      <div class="demo">
-        <span class="demo-icon">🖼️</span>
-        <span class="demo-title">Demo screenshot</span>
-        <span class="demo-hint">placeholder — image coming soon</span>
+    </div>
+
+    <div class="feat">
+      <div class="feat-text">
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        </div>
+        <h3>GPA calculator</h3>
+        <p>See your GPA at a glance, with presets for both high school and college grading scales. No more guessing what your grades add up to.</p>
+      </div>
+      <div class="feat-img">
+        <svg class="ph-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <span class="ph-title">GPA calculator screenshot</span>
+        <span class="ph-hint">placeholder — image coming soon</span>
+      </div>
+    </div>
+
+    <div class="feat flip">
+      <div class="feat-text">
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3>Grade history &amp; analytics</h3>
+        <p>Watch how your grades change over time and dig into the details. Use Imagine-If grades to see exactly what that next assignment would do to your grade, even if it was not added by your teacher.</p>
+      </div>
+      <div class="feat-img">
+        <svg class="ph-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <span class="ph-title">Grade history screenshot</span>
+        <span class="ph-hint">placeholder — image coming soon</span>
+      </div>
+    </div>
+
+    <div class="feat">
+      <div class="feat-text">
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3>Make Canvas yours</h3>
+        <p>Custom backgrounds, dashboard notes with markdown, custom card styles, custom fonts, a better sidebar and global search across all your courses.</p>
+      </div>
+      <div class="feat-img">
+        <svg class="ph-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <span class="ph-title">Dashboard screenshot</span>
+        <span class="ph-hint">placeholder — image coming soon</span>
       </div>
     </div>
   </div>
@@ -293,27 +358,23 @@
 <section id="free">
   <div class="wrap">
     <h2>100% free? For real? No catch?</h2>
-    <p class="sub">Yes, really. Canvas Refined costs nothing, forever. No premium tier, no paywall, no "pro" version hiding the good stuff.</p>
+    <p class="sub">Yes, really! Canvas Refined costs nothing, forever. No premium tier, no paywall, no "pro" version hiding anything.</p>
     <div class="free-points">
       <div class="free-point">
-        <span class="big">💸</span>
-        <h3>No paid plans</h3>
-        <p>Every feature is free. There is nothing to buy — now or ever.</p>
+        <h3><svg viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M8.35 2.69A10 10 0 0 1 21.3 15.65"/><path d="M19.08 19.08A10 10 0 1 1 4.92 4.92"/></svg>No paid plans</h3>
+        <p>Every feature is free. There is nothing to buy - now or ever.</p>
       </div>
       <div class="free-point">
-        <span class="big">👤</span>
-        <h3>No account required</h3>
+        <h3><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="8" y2="13"/><line x1="22" x2="17" y1="8" y2="13"/></svg>No account required</h3>
         <p>Install it and it just works. No sign-ups, no logins, no emails.</p>
       </div>
       <div class="free-point">
-        <span class="big">🔒</span>
-        <h3>Fully local</h3>
-        <p>Your Canvas data is processed on your own device. Nothing is sent to us — check the <a href="PRIVACY_POLICY.md" style="color:var(--accent-3)">privacy policy</a>.</p>
+        <h3><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Fully local</h3>
+        <p>Your Canvas data is processed on your own device. Nothing is sent anywhere.</p>
       </div>
       <div class="free-point">
-        <span class="big">📜</span>
-        <h3>Open source &amp; MIT licensed</h3>
-        <p>The whole codebase is right here on GitHub. Read it, audit it, or contribute to it.</p>
+        <h3><svg viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>Open source</h3>
+        <p>The whole codebase is on GitHub under the MIT license. Read it, audit it, or contribute to it.</p>
       </div>
     </div>
   </div>
@@ -322,22 +383,27 @@
 <section id="support">
   <div class="wrap">
     <h2>Found a bug? Have an idea? Need help?</h2>
-    <p class="sub">We want to hear it. Canvas Refined improves largely from community feedback, so don't be shy.</p>
     <div class="support-cards">
       <div class="support-card">
-        <h3>💬 Discord (fastest)</h3>
+        <h3><svg viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>Discord (fastest)</h3>
         <p>Report bugs, suggest features, or just ask for help. The community and the developer are active here.</p>
-        <a class="btn btn-discord" href="https://discord.com/invite/GjFh4JA3wh" target="_blank" rel="noopener">Join the Discord</a>
+        <a class="link" href="https://discord.com/invite/GjFh4JA3wh" target="_blank" rel="noopener">Join the Discord
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+        </a>
       </div>
       <div class="support-card">
-        <h3>🐙 GitHub Issues</h3>
-        <p>Open an issue on the repository for bugs or feature requests — great for anything you want tracked.</p>
-        <a class="btn btn-secondary" href="https://github.com/TabulateJarl8/CanvasRefined/issues" target="_blank" rel="noopener">Open an issue</a>
+        <h3><svg class="gh" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.06-1.86 3.75-3.64 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.995 7.995 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>GitHub Issues</h3>
+        <p>Open an issue on the repository for bugs or feature requests.</p>
+        <a class="link" href="https://github.com/GuySandler/CanvasRefined/issues" target="_blank" rel="noopener">Open an issue
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+        </a>
       </div>
       <div class="support-card">
-        <h3>📧 Email</h3>
-        <p>Prefer email? Reach the developer directly at <a class="text-link" href="mailto:sandlerguy5@gmail.com">sandlerguy5@gmail.com</a>.</p>
-        <a class="btn btn-secondary" href="mailto:sandlerguy5@gmail.com">Send an email</a>
+        <h3><svg class="stroke" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Email</h3>
+        <p>Prefer email? Reach the developer directly at sandlerguy5@gmail.com.</p>
+        <a class="link" href="mailto:sandlerguy5@gmail.com">Send an email
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+        </a>
       </div>
     </div>
   </div>
@@ -345,7 +411,7 @@
 
 <section id="compare">
   <div class="wrap">
-    <h2>Us vs the competition</h2>
+    <h2>Canvas Refined vs the competition</h2>
     <p class="sub">A straight-up comparison with the other popular Canvas extension. Rows are grouped: things they have that we don't, things we both have, then things we have that they don't.</p>
     <div class="table-scroll">
       <table>
@@ -359,63 +425,63 @@
         <tbody>
           <!-- We don't have it, they do -->
           <tr>
-            <td><span class="row-label">Paid plan<small>they lock features behind a subscription</small></span></td>
-            <td class="check no">✗</td>
-            <td class="check yes">✓</td>
+            <td><span class="row-label">Paid plan</span></td>
+            <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
           </tr>
           <tr>
-            <td><span class="row-label">Account required to use all features<small>forced sign-ups to unlock everything</small></span></td>
-            <td class="check no">✗</td>
-            <td class="check yes">✓</td>
+            <td><span class="row-label">Account required to use all features</span></td>
+            <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
           </tr>
           <tr>
-            <td><span class="row-label">Collects your data<small>we don't — everything stays on your device</small></span></td>
-            <td class="check no">✗</td>
-            <td class="check yes">✓</td>
+            <td><span class="row-label">Collects your data</span></td>
+            <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
           </tr>
 
           <!-- Both have it -->
           <tr>
             <td>Themes</td>
-            <td class="check yes">✓</td>
-            <td class="check yes">✓</td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
           </tr>
           <tr>
             <td>Better todo list</td>
-            <td class="check yes">✓</td>
-            <td class="check yes">✓</td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
           </tr>
           <tr>
             <td>GPA calculator</td>
-            <td class="check yes">✓</td>
-            <td class="check yes">✓</td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
           </tr>
           <tr>
             <td>Grade history</td>
-            <td class="check yes">✓</td>
-            <td class="check yes">✓</td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
           </tr>
 
           <!-- We have it, they don't -->
           <tr>
-            <td>Changing other people's themes for free</td>
-            <td class="check yes">✓</td>
-            <td class="check no">✗</td>
+            <td>Modifying themes for free</td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
           </tr>
           <tr>
             <td>More free visuals</td>
-            <td class="check yes">✓</td>
-            <td class="check no">✗</td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
           </tr>
           <tr>
             <td>Better what-if grades</td>
-            <td class="check yes">✓</td>
-            <td class="check no">✗</td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
           </tr>
           <tr>
-            <td>Fully local<small>no data ever leaves your device</small></td>
-            <td class="check yes">✓</td>
-            <td class="check no">✗</td>
+            <td><span class="row-label">Fully local</span></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
           </tr>
         </tbody>
       </table>
@@ -428,10 +494,9 @@
     <a href="https://chromewebstore.google.com/detail/canvas-refined/ihienfbdfdamhmhhiokjnjmpjgbenedg" target="_blank" rel="noopener">Chrome Web Store</a>
     <a href="https://addons.mozilla.org/en-US/firefox/addon/canvas-refined/" target="_blank" rel="noopener">Firefox Add-ons</a>
     <a href="https://discord.com/invite/GjFh4JA3wh" target="_blank" rel="noopener">Discord</a>
-    <a href="https://github.com/TabulateJarl8/CanvasRefined" target="_blank" rel="noopener">GitHub</a>
-    <a href="PRIVACY_POLICY.md">Privacy Policy</a>
+    <a href="https://github.com/GuySandler/CanvasRefined/" target="_blank" rel="noopener">GitHub</a>
   </div>
-  <div>Canvas Refined — free, forever, for everyone.</div>
+  <div>Canvas Refined - free, forever, for everyone.</div>
 </footer>
 
 </body>
