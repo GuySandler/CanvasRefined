@@ -136,6 +136,13 @@ const defaultOptions = {
         "card_opacity": 80,
         "card_blur": 8,
         "todo_hr24": false,
+        "anon_grade_level": "high",
+        "anon_grade_seed": 0,
+        "anon_fake_todo": false,
+        "anon_fake_completed": 2,
+        "anon_progress_enabled": false,
+        "anon_progress_done": 12,
+        "anon_progress_total": 18,
 		"todo_separate_scrollbar": false,
 		"todo_alternate_colors": false,
 		"todo_ignore_card_colors": false,
@@ -413,6 +420,63 @@ function setupTimeframeSelect(initial) {
     el.value = value;
     el.addEventListener("change", function () {
         chrome.storage.sync.set({ "todo_timeframe": this.value });
+    });
+}
+
+// "Fake grade level" dropdown (Hide personal details). Controls the band the
+// generated fake grades fall into, so a screenshot can show all As, all Bs, etc.
+function setupAnonGradeSelect(initial) {
+    const el = document.querySelector("#anon_grade_preset");
+    if (!el) return;
+    const allowed = ["high", "medhigh", "med", "medlow"];
+    el.value = allowed.includes(initial) ? initial : "high";
+    el.addEventListener("change", function () {
+        chrome.storage.sync.set({ "anon_grade_level": this.value });
+    });
+}
+
+// "Fake tasks completed" spinner (Hide personal details → fake todo list).
+// Sets how many of the 7 fake tasks show as done, which drives the x/y in
+// the progress rings' "x/y done" readout.
+function setupAnonFakeCompleted(initial) {
+    const el = document.querySelector("#anon_fake_completed");
+    if (!el) return;
+    const clamp = (v) => Math.max(0, Math.min(7, v));
+    const parsed = parseInt(initial);
+    el.value = isNaN(parsed) ? 2 : clamp(parsed);
+    el.addEventListener("change", function () {
+        const v = clamp(parseInt(this.value));
+        this.value = v;
+        chrome.storage.sync.set({ "anon_fake_completed": v });
+    });
+}
+
+// The spinner only means something while "Fill the todo list with fake
+// courses" is on, so show/hide it with that checkbox.
+function toggleAnonFakeCompletedVisibility(show) {
+    const wrap = document.getElementById("anon_fake_completed_wrap");
+    if (wrap) wrap.style.display = show ? "flex" : "none";
+}
+
+// "Fake progress display" x/y inputs (Hide personal details). While enabled,
+// the todo list's progress readout reports exactly this many completed out
+// of this many total, regardless of the real counts.
+function setupAnonProgressInput(key, initial, isDone) {
+    const el = document.querySelector("#" + key);
+    if (!el) return;
+    const clamp = (v) => {
+        if (isDone) {
+            const total = parseInt(document.querySelector("#anon_progress_total")?.value) || 18;
+            return Math.max(0, Math.min(999, Math.min(total, v)));
+        }
+        return Math.max(1, Math.min(999, v));
+    };
+    const parsed = parseInt(initial);
+    el.value = isNaN(parsed) ? (isDone ? 12 : 18) : clamp(parsed);
+    el.addEventListener("change", function () {
+        const v = clamp(parseInt(this.value));
+        this.value = v;
+        chrome.storage.sync.set({ [key]: v });
     });
 }
 
@@ -1176,6 +1240,8 @@ function setup() {
 			"card_letter",
 			"auto_detect_disabled",
 			"hide_course_images",
+			"anon_fake_todo",
+			"anon_progress_enabled",
 			// "hide_completed",
 			"hover_preview",
             "customBackgroundDaily",
@@ -1340,6 +1406,22 @@ function setup() {
 				setup: (initial) => setupTimeframeSelect(initial),
 			},
 			{
+				identifier: "anon_grade_level",
+				setup: (initial) => setupAnonGradeSelect(initial),
+			},
+			{
+				identifier: "anon_fake_completed",
+				setup: (initial) => setupAnonFakeCompleted(initial),
+			},
+			{
+				identifier: "anon_progress_done",
+				setup: (initial) => setupAnonProgressInput("anon_progress_done", initial, true),
+			},
+			{
+				identifier: "anon_progress_total",
+				setup: (initial) => setupAnonProgressInput("anon_progress_total", initial, false),
+			},
+			{
 				identifier: "todo_more_expanded",
 				setup: (initial) => setupTodoMoreOptions(initial),
 			},
@@ -1402,6 +1484,9 @@ function setup() {
                 } else {
                     chrome.storage.sync.set(JSON.parse(`{"${option}": ${status}}`));
                 }
+                if (option === "anon_fake_todo") {
+                    toggleAnonFakeCompletedVisibility(status);
+                }
                 syncCustomBackgroundDailyState(document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true);
                 toggleOpacityOptions();
             });
@@ -1409,6 +1494,7 @@ function setup() {
             document.querySelector("#" + option).checked = value;
         });
         syncCustomBackgroundDailyState(sync.customBackgroundDaily === true || sync.customBackgroundNasaDaily === true);
+        toggleAnonFakeCompletedVisibility(sync["anon_fake_todo"] === true);
         toggleDarkModeDisable(sync.auto_dark);
         displayBackgroundPresets();
         toggleOpacityOptions();
@@ -1500,6 +1586,14 @@ function setup() {
     document.querySelector("#storage-reset-btn").addEventListener("click", () => {
         chrome.storage.sync.set(defaultOptions["sync"]);
         updateStorageUsage();
+    });
+
+    // "Reroll classes" (Report issue tab → Privacy). Bumps the fake-data seed;
+    // content scripts watch the key, so every open Canvas tab re-shuffles its
+    // fake courses/assignments/grades without a refresh.
+    document.querySelector("#anon-reroll-btn").addEventListener("click", () => {
+        chrome.storage.sync.set({ "anon_grade_seed": Math.floor(Math.random() * 1000000) });
+        displayAlert(false, "Fake classes rerolled.");
     });
 
     // activate planner cache clear button (Report issue tab). Clears the

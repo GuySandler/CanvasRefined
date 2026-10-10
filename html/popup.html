@@ -1263,11 +1263,39 @@
                     <div class="sliderbg"></div>
                 </div><span class="option-name">Hide personal details</span>
             </div>
-            <p class="sub-text" style="margin-top:6px;">Replaces course names, teacher names, grades and assignment titles with fake data from a pregenerated list, on the dashboard cards, the Better Todo List and recent feedback. Perfect for screenshots — nothing real is shown. Turn it off to restore everything (no refresh needed).</p>
             <div class="sub-options">
                 <div class="sub-option">
                     <input type="checkbox" id="hide_course_images" name="hide_course_images">
                     <label for="hide_course_images" class="sub-text">Temporarily remove all course images</label>
+                </div>
+                <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                    <label for="anon_grade_preset" class="sub-text">Fake grade level</label>
+                    <select id="anon_grade_preset" name="anon_grade_preset">
+                        <option value="high">High</option>
+                        <option value="medhigh">Med-High</option>
+                        <option value="med">Medium</option>
+                        <option value="medlow">Med-Low</option>
+                    </select>
+                </div>
+                <div class="sub-option">
+                    <input type="checkbox" id="anon_fake_todo" name="anon_fake_todo">
+                    <label for="anon_fake_todo" class="sub-text">Fill the todo list with fake courses</label>
+                </div>
+                <div class="sub-option" id="anon_fake_completed_wrap" style="display:none;align-items:center;">
+                    <span class="sub-text">Fake tasks completed:</span>
+                    <input type="number" id="anon_fake_completed" class="card-input" min="0" max="7" value="2" style="width:52px;margin-top:0;">
+                    <span class="sub-text">/ 7</span>
+                </div>
+                <div class="sub-option" style="align-items:center;flex-wrap:wrap;">
+                    <input type="checkbox" id="anon_progress_enabled" name="anon_progress_enabled">
+                    <label for="anon_progress_enabled" class="sub-text">Fake progress display:</label>
+                    <input type="number" id="anon_progress_done" class="card-input" min="0" max="999" value="12" style="width:52px;margin-top:0;">
+                    <span class="sub-text">/</span>
+                    <input type="number" id="anon_progress_total" class="card-input" min="1" max="999" value="18" style="width:52px;margin-top:0;">
+                    <span class="sub-text">complete</span>
+                </div>
+                <div class="sub-option">
+                    <button id="anon-reroll-btn" class="customization-button" style="width:100%;">Reroll classes</button>
                 </div>
             </div>
         </div>

@@ -76,10 +76,12 @@ h2 {margin-top: 20px;font-weight:600}
 .custom-card-hide {display: flex; align-items: center;}
 .option-name {font-weight: 600}
 .sub-text {font-size: 12px;color: #c7c7c7}
-#todo_progress_rings {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
-#todo_progress_rings option {background:#1e1e1e;color:#e2e2e2;}
+#todo_progress_rings, #anon_grade_preset {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
+#todo_progress_rings option, #anon_grade_preset option {background:#1e1e1e;color:#e2e2e2;}
 #todo_progress_rings option:checked,
-#todo_progress_rings option:hover {background:#2e2e2e;color:#fff;}
+#todo_progress_rings option:hover,
+#anon_grade_preset option:checked,
+#anon_grade_preset option:hover {background:#2e2e2e;color:#fff;}
 #todo_timeframe {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
 #todo_timeframe option {background:#1e1e1e;color:#e2e2e2;}
 #todo_timeframe option:checked,

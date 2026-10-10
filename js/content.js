@@ -1098,6 +1098,15 @@ function applyOptionsChanges(changes) {
 				}
 				break;
 			case "hide_personal_details":
+			case "anon_grade_level":
+			case "anon_grade_seed":
+				// "Reroll classes": the fake-course mapping is memoized, so a new
+				// seed has to reset it before anything re-renders.
+				if (key === "anon_grade_seed") anonCourseMap.clear();
+				// The GPA calculator caches its rendered state; drop the marker
+				// so setupGPACalc below rebuilds it with fake/real values instead
+				// of leaving the previous inputs in place.
+				document.querySelectorAll(".canvasrefined-gpa-card, .canvasrefined-gpa").forEach(el => el.removeAttribute("data-canvasrefined-gpa-rendered"));
 				// Starts/stops the DOM watcher; with it off, restores the real
 				// text/attributes stashed in dataset markers.
 				setupPersonalDetailsHiding();
@@ -1113,6 +1122,20 @@ function applyOptionsChanges(changes) {
 				insertGrades();
 				cardAssignments = preloadAssignmentEls();
 				loadCardAssignments();
+				break;
+			case "anon_fake_todo":
+			case "anon_fake_completed":
+			case "anon_progress_enabled":
+			case "anon_progress_done":
+			case "anon_progress_total":
+				// Adds/removes the fake todo items (or changes how many are done,
+				// or rewrites the progress readout) without touching anything else.
+				if (options.better_todo && document.getElementById("better-todo-main")) {
+					moreAnnouncementCount = 0;
+					moreAssignmentCount = 0;
+					clearTodoList();
+					createTodoSections(document.querySelector("#canvasrefined-todo-list"));
+				}
 				break;
 			case "hide_course_images":
 				applyCourseImageHiding();
@@ -1254,6 +1277,10 @@ function applyOptionsChanges(changes) {
                             assignments.then(data => {
                                 const courseId = getCurrentCourseId();
                                 const scopedData = getTodoScopedData(data, courseId);
+                                // Rings must match the list when fake items are shown.
+                                if (options.hide_personal_details === true && options.anon_fake_todo === true) {
+                                    scopedData.push(...buildFakeTodoItems());
+                                }
                                 renderProgressRings(placeholder, scopedData);
                             });
                         }
@@ -2909,6 +2936,54 @@ function renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent) 
     });
 }
 
+// "Fake progress display": rewrite the per-course completion entries so the
+// progress readout shows exactly `anon_progress_done` out of
+// `anon_progress_total`. Course totals are re-distributed proportionally to
+// their real share, completion ratios get a small per-course offset (seeded,
+// so rerolling varies it) so the rings look organic, and rounding drift is
+// corrected so the displayed sums add up to exactly the chosen numbers.
+function applyAnonProgressOverride(entries) {
+    const rawDone = parseInt(options.anon_progress_done);
+    const rawTotal = parseInt(options.anon_progress_total);
+    const total = isNaN(rawTotal) ? 18 : Math.max(1, Math.min(999, rawTotal));
+    const done = isNaN(rawDone) ? 12 : Math.max(0, Math.min(total, rawDone));
+
+    // Spread the faked total across courses in proportion to their real
+    // share of the workload (minimum 1 each so every ring stays visible).
+    const realTotal = entries.reduce((s, e) => s + e.total, 0) || 1;
+    let assignedTotal = 0;
+    entries.forEach((e, i) => {
+        if (i === entries.length - 1) {
+            e.total = Math.max(1, total - assignedTotal);
+        } else {
+            e.total = Math.max(1, Math.round((total * e.total) / realTotal));
+        }
+        assignedTotal += e.total;
+    });
+
+    // Completed counts: target ratio plus a seeded per-course offset so the
+    // rings don't all show the same fill.
+    const ratio = done / total;
+    let assignedDone = 0;
+    entries.forEach(e => {
+        const variation = ((anonSeededHash("ring:" + e.courseId) % 100) / 100 - 0.5) * 0.3;
+        e.completed = Math.max(0, Math.min(e.total, Math.round(e.total * (ratio + variation))));
+        assignedDone += e.completed;
+    });
+
+    // Correct rounding drift so the sums match the chosen x/y exactly.
+    let drift = done - assignedDone;
+    while (drift !== 0) {
+        let changed = false;
+        for (const e of entries) {
+            if (drift > 0 && e.completed < e.total) { e.completed++; drift--; changed = true; }
+            else if (drift < 0 && e.completed > 0) { e.completed--; drift++; changed = true; }
+            if (drift === 0) break;
+        }
+        if (!changed) break;
+    }
+}
+
 function renderProgressRings(container, scopedData) {
     const mode = getProgressRingMode();
     if (mode === "none") { container.innerHTML = ""; return; }
@@ -2973,6 +3048,15 @@ function renderProgressRings(container, scopedData) {
         return b.total - a.total;
     });
     const shown = entries.slice(0, 6);
+
+    // "Fake progress display" (Hide personal details): when enabled, the
+    // readout reports the user's chosen completed/total instead of the real
+    // counts. Per-course rings are re-distributed around that ratio (with a
+    // little per-course variation, so every ring isn't filled identically)
+    // and the sums are corrected to add up to exactly x/y.
+    if (options.hide_personal_details === true && options.anon_progress_enabled === true && shown.length > 0) {
+        applyAnonProgressOverride(shown);
+    }
 
     const totalAll = shown.reduce((s, e) => s + e.total, 0);
     const completedAll = shown.reduce((s, e) => s + e.completed, 0);
@@ -3650,6 +3734,12 @@ async function createTodoSections(location) {
 	    if (renderGen !== todoRenderGen) return;
         const courseId = getCurrentCourseId();
         const scopedData = getTodoScopedData(data, courseId);
+        // "Fill the todo list with fake courses": fake items join the same
+        // scoped pipeline as real ones, so the Tasks list AND the progress
+        // rings count them identically (rings read from scopedData too).
+        if (options.hide_personal_details === true && options.anon_fake_todo === true) {
+            scopedData.push(...buildFakeTodoItems());
+        }
 
         // Clicking a color in the progress display filters the list to that
         // one class. The filter only makes sense where multiple classes show
@@ -3956,6 +4046,9 @@ async function getTodoPreviewText(item) {
     const id = item.plannable_id;
     const key = type + ":" + id;
     if (todoPreviewCache.has(key)) return todoPreviewCache.get(key);
+    // Fake todo items ("Fill the todo list with fake courses") have no real
+    // Canvas page behind them, so never hit the API for them.
+    if (item.anonFake === true) return "No details given";
     // Custom task (planner note): the description is already on the planner
     // item as item.plannable.details, so no API call is needed.
     if (type === "planner_note" || (item.planner_override && item.planner_override.custom === true)) {
@@ -4215,10 +4308,12 @@ function populateAssignments(iscompleted = false) {
 		}
 
 		const courseColor =
-			options.custom_cards_3?.[String(item.course_id)]?.color ??
-			options.custom_cards_3?.[item.course_id]?.color ??
-			options.custom_cards_3?.[item.plannable.course_id]?.color ??
-			"#cccccc";
+			item.anonFake === true
+				? item.anonColor // fake items carry their (real) course color
+				: (options.custom_cards_3?.[String(item.course_id)]?.color ??
+				options.custom_cards_3?.[item.course_id]?.color ??
+				options.custom_cards_3?.[item.plannable.course_id]?.color ??
+				"#cccccc");
 
         // "Ignore card colors" (Better Todo List): when on, the class name is
         // rendered black in light mode or the theme text color in dark mode
@@ -4235,7 +4330,7 @@ function populateAssignments(iscompleted = false) {
         // list shows it regardless of the checkmark state, so the toggle is
         // disabled for it (see the checkmark listener below).
         const wasSubmitted = item.submissions?.submitted === true;
-        const taskHref = isCustomTask ? customTaskHref(item) : (domain + item.html_url);
+        const taskHref = isCustomTask ? customTaskHref(item) : (item.anonFake === true ? "#" : domain + item.html_url);
         const editButtonSvg = isCustomTask
             ? `<svg class="better-todo-assignment-edit" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:18px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="Edit this custom task"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
             : "";
@@ -4288,6 +4383,7 @@ function populateAssignments(iscompleted = false) {
 		// again (for genuinely submitted items this sets a local pin, since
 		// Canvas has no way to un-submit).
 		assignment.querySelector(".better-todo-assignment-checkmark").addEventListener("click", () => {
+			if (item.anonFake === true) return; // fake items can't be completed in Canvas
 			console.log("marking ", item.plannable.title, iscompleted ? "as incomplete" : "as complete");
 			markAs(item, assignment.firstElementChild, !iscompleted);
 		});
@@ -4593,6 +4689,10 @@ function markAs(item, element, makeComplete) {
                     scopedData[i].planner_override.marked_complete = item.planner_override.marked_complete;
                     break;
                 }
+            }
+            // Keep the rings consistent with the list when fake items are shown.
+            if (options.hide_personal_details === true && options.anon_fake_todo === true) {
+                scopedData.push(...buildFakeTodoItems());
             }
 
             renderProgressRings(progressPlaceholder, scopedData);
@@ -5280,6 +5380,13 @@ async function loadBetterTodo() {
             chrome.storage.sync.get(options.custom_assignments_overflow, storage => {
                 //assignmentData = assignmentData === null ? data : assignmentData;
                 let items = combineAssignments(data);
+                // Same "fill the todo list with fake courses" behavior as the
+                // modern renderer (see createTodoSections). Re-sorted so the
+                // fake items slot into chronological order like real ones.
+                if (options.hide_personal_details === true && options.anon_fake_todo === true) {
+                    items = items.concat(buildFakeTodoItems())
+                        .sort((a, b) => new Date(a.plannable_date) - new Date(b.plannable_date));
+                }
                 items.forEach((item, index) => {
                     let date = new Date(item.plannable_date);
                     let itemState = options.assignment_states[item.plannable_id];
@@ -5314,10 +5421,12 @@ async function loadBetterTodo() {
 
                     let listItem = listItemContainer.querySelector(".canvasrefined-todo-item");
                     const courseColor =
-                        options.custom_cards_3?.[String(item.course_id)]?.color ??
-                        options.custom_cards_3?.[item.course_id]?.color ??
-                        options.custom_cards_3?.[item.plannable?.course_id]?.color ??
-                        "#cccccc";
+                        item.anonFake === true
+                            ? item.anonColor // fake items carry their (real) course color
+                            : (options.custom_cards_3?.[String(item.course_id)]?.color ??
+                            options.custom_cards_3?.[item.course_id]?.color ??
+                            options.custom_cards_3?.[item.plannable?.course_id]?.color ??
+                            "#cccccc");
                     if (itemState?.["lbl"] && itemState["lbl"] !== "") {
                         makeElement("span", listItem.querySelector(".canvasrefined-todo-item-header"), { "className": "canvasrefined-todo-label", "textContent": itemState["lbl"] });
                     }
@@ -5343,6 +5452,12 @@ async function loadBetterTodo() {
                             delay = setTimeout(async () => {
                                 if (listItem.classList.contains("canvasrefined-todo-hover")) {
                                     previewTitle.textContent = item.plannable.title;
+                                    // Fake todo items have no Canvas page behind them.
+                                    if (item.anonFake === true) {
+                                        previewText.textContent = "No details given";
+                                        preview.style.display = "block";
+                                        return;
+                                    }
                                     // custom assignment (planner note): preview its description/details
                                     if (customItem) {
                                         const details = item.plannable && item.plannable.details ? item.plannable.details : "";
@@ -5931,6 +6046,12 @@ function anonHash(str) {
     return h >>> 0;
 }
 
+// Same hash, but mixed with the "Reroll classes" seed so the popup button can
+// reshuffle every fake course/assignment/grade at once without a page refresh.
+function anonSeededHash(key) {
+    return anonHash(String(key) + "/" + String(options.anon_grade_seed ?? 0));
+}
+
 // key -> index into FAKE_COURSES. Hash-based so a course keeps its fake name
 // across reloads, with linear probing so every real course gets a UNIQUE fake
 // course. Once the pool is exhausted (more than 15 courses), reuse is allowed.
@@ -5939,7 +6060,7 @@ function getAnonCourse(key) {
     const k = String(key ?? "unknown");
     if (!anonCourseMap.has(k)) {
         const used = new Set(anonCourseMap.values());
-        let idx = anonHash(k) % FAKE_COURSES.length;
+        let idx = anonSeededHash(k) % FAKE_COURSES.length;
         if (used.size < FAKE_COURSES.length) {
             while (used.has(idx)) idx = (idx + 1) % FAKE_COURSES.length;
         }
@@ -5954,25 +6075,78 @@ function fakeCourseLabel(key) {
 
 // "a:<assignment id>" when the id is known, "t:<title text>" otherwise.
 function fakeAssignmentTitle(key) {
-    return FAKE_ASSIGNMENT_TITLES[anonHash(String(key)) % FAKE_ASSIGNMENT_TITLES.length];
+    return FAKE_ASSIGNMENT_TITLES[anonSeededHash(key) % FAKE_ASSIGNMENT_TITLES.length];
 }
 function fakeFeedbackComment(key) {
-    return FAKE_FEEDBACK_COMMENTS[anonHash(String(key)) % FAKE_FEEDBACK_COMMENTS.length];
+    return FAKE_FEEDBACK_COMMENTS[anonSeededHash(key) % FAKE_FEEDBACK_COMMENTS.length];
 }
 
 // Deterministic fake "x out of 20" score for recent feedback entries.
 function fakeFeedbackScore(key) {
-    const earned = 13 + (anonHash(String(key)) % 8);
+    const earned = 13 + (anonSeededHash(key) % 8);
     return `${earned} out of 20`;
 }
 
-// Deterministic fake dashboard grade: a plausible percent plus the letter the
-// user's own GPA cutoffs would assign it (same scale their real grades show).
+// Letter-grade mixes for the "Fake grade level" dropdown. Each preset is a
+// general blend of letter grades centered on that level — real gradebooks
+// have spread, so a screenshot shows a believable mix (mostly that level,
+// with a tail of grades above and below) instead of a wall of identical
+// letters. Weights are percentages and sum to 100.
+const ANON_GRADE_MIXES = {
+    high:    [["A+", 16], ["A", 30], ["A-", 22], ["B+", 14], ["B", 10], ["B-", 8]],
+    medhigh: [["A", 5], ["A-", 13], ["B+", 22], ["B", 24], ["B-", 18], ["C+", 12], ["C", 6]],
+    med:     [["B", 5], ["B-", 12], ["C+", 21], ["C", 24], ["C-", 19], ["D+", 12], ["D", 7]],
+    medlow:  [["C", 5], ["C-", 12], ["D+", 20], ["D", 23], ["D-", 20], ["F", 20]],
+};
+
+// Letters ordered highest -> lowest, used to derive each letter's percent band
+// from the user's own GPA cutoffs (a "B+" lives at [B+.cutoff, A-.cutoff)).
+const ANON_LETTER_ORDER = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"];
+
+// Deterministic fake percent for a key: pick a letter from the selected
+// preset's mix, then a plausible percent inside that letter's band on the
+// user's own GPA scale, so the number and letter always agree (the GPA
+// calculator re-derives the letter from the percent).
+function fakeGradePercent(key) {
+    const mix = ANON_GRADE_MIXES[options.anon_grade_level] || ANON_GRADE_MIXES.high;
+    const bounds = options.gpa_calc_bounds;
+    // Letter pick and percent pick use different hash channels so two
+    // courses with the same letter still get different percentages.
+    let pick = anonSeededHash(key) % 100;
+    let letter = mix[mix.length - 1][0];
+    for (const [l, weight] of mix) {
+        if (pick < weight) { letter = l; break; }
+        pick -= weight;
+    }
+    // Small outlier chance: ~1 in 9 courses jumps two letters up or down
+    // from its drawn grade, like the one surprise class every real transcript
+    // seems to have. Outliers never leave the A..F range.
+    if (anonSeededHash(key + ":out") % 9 === 0) {
+        const dir = anonSeededHash(key + ":dir") % 2 === 0 ? -2 : 2;
+        const idx = ANON_LETTER_ORDER.indexOf(letter);
+        letter = ANON_LETTER_ORDER[Math.min(ANON_LETTER_ORDER.length - 1, Math.max(0, idx + dir))];
+    }
+    const idx = ANON_LETTER_ORDER.indexOf(letter);
+    const min = bounds && bounds[letter] ? Number(bounds[letter].cutoff) : 70;
+    const upper = bounds && idx > 0 && bounds[ANON_LETTER_ORDER[idx - 1]] ? Number(bounds[ANON_LETTER_ORDER[idx - 1]].cutoff) : 100;
+    const max = Math.max(min + 0.5, upper - 0.1); // never reach the next letter's cutoff
+    let percent = Math.round((min + (anonSeededHash(key + ":pct") % 997) / 1000 * (max - min)) * 10) / 10;
+    if (percent > max) percent = max;
+    return percent;
+}
+
 function fakeGradeText(key) {
-    const h = anonHash(String(key));
-    const percent = Math.round((70 + (h % 300) / 10) * 10) / 10;
+    const percent = fakeGradePercent(key);
     const letter = percentToLetterGrade(percent);
     return (letter ? `${letter} ` : "") + `${percent}%`;
+}
+
+// Fake GPA (out of 4) for the calculator's cumulative row: take the letter of
+// the fake grade and look up what the user's own GPA scale awards for it.
+function fakeCumulativeGpa() {
+    const letter = percentToLetterGrade(fakeGradePercent("cumulative"));
+    const bounds = options.gpa_calc_bounds;
+    return bounds && bounds[letter] ? bounds[letter].gpa : 3.5;
 }
 
 // Term strings look like "2026/2027 - Campolindo High School - Year": keep the
@@ -5988,13 +6162,105 @@ function anonFakeTerm(orig) {
 function anonCourseNameForItem(item) {
     const real = item?.context_name ?? "";
     if (options.hide_personal_details !== true) return real;
-    return fakeCourseLabel(item?.course_id ?? item?.context_id ?? "name:" + String(real).trim().toLowerCase());
+    const cid = item?.course_id ?? item?.context_id;
+    // Numeric course ids hash under the same "id:<n>" key the dashboard cards
+    // use, so a course shows the SAME fake name everywhere (card, todo list,
+    // fake items impersonating it).
+    const key = (cid != null && /^\d+$/.test(String(cid)))
+        ? "id:" + cid
+        : (cid != null ? String(cid) : "name:" + String(real).trim().toLowerCase());
+    return fakeCourseLabel(key);
 }
 function anonTitleForItem(item) {
     const real = item?.plannable?.title ?? "";
     if (options.hide_personal_details !== true) return real;
     const id = item?.plannable_id ?? item?.plannable?.id;
     return fakeAssignmentTitle(id != null ? "a:" + id : "t:" + String(real).trim());
+}
+
+// Fallback palette for fake todo items when the dashboard has no colored
+// cards to impersonate (fresh install / no card data).
+const ANON_FAKE_COLORS = ["#E24C4B", "#E28227", "#7A9E29", "#0B99AF", "#6A68D9", "#9B59D0", "#C24A9F", "#357FA3"];
+
+// Pool of real dashboard courses fake todo items impersonate. Using the
+// user's actual courses means fake items inherit their real card colors and
+// the same fake name their dashboard card shows, so the todo list matches
+// the dashboard in a screenshot. Courses hidden from the dashboard or from
+// the todo list are excluded so a fake item never appears for a course whose
+// real items wouldn't.
+function getAnonFakeCoursePool() {
+    const cards = options.custom_cards_3 || {};
+    const pool = [];
+    Object.keys(cards).forEach(id => {
+        const card = cards[id];
+        if (!card || typeof card !== "object") return;
+        if (!/^\d+$/.test(String(id))) return; // only real course ids
+        if (isCourseHidden(id) || isCourseTodoHidden(id)) return;
+        pool.push({ id: String(id), color: card.color || null });
+    });
+    return pool;
+}
+
+// "Fill the todo list with fake courses" (Hide personal details sub-option):
+// builds extra planner-style items impersonating the user's real dashboard
+// courses (same color, same fake name the card shows), so a screenshot of
+// the Better Todo List doesn't reveal how many real courses or assignments
+// exist. Items are deterministic per reroll seed and marked with anonFake so
+// click/hover handlers never hit the Canvas API with fake ids.
+function buildFakeTodoItems() {
+    const types = ["assignment", "quiz", "assignment", "discussion_topic", "assignment", "quiz", "assignment"];
+    const dayOffsets = [0, 1, 2, 3, 5, 8, 12];
+    const dueHours = [23, 23, 20, 23, 18, 23, 22];
+    const pool = getAnonFakeCoursePool();
+    const now = Date.now();
+    // "Fake tasks completed" (popup spinner): how many of the fake items show
+    // as done. The progress rings count them, so this sets the x/y in the
+    // rings' "x/y done" readout (and the Completed tab, if the user opens it).
+    const rawDone = parseInt(options.anon_fake_completed);
+    const doneCount = isNaN(rawDone) ? 2 : Math.max(0, Math.min(types.length, rawDone));
+    // Which items are done is a seeded shuffle so rerolling changes it too.
+    const doneSet = new Set(
+        types.map((_, i) => i)
+            .sort((a, b) => anonSeededHash("done:" + b) - anonSeededHash("done:" + a))
+            .slice(0, doneCount)
+    );
+    const items = [];
+    for (let i = 0; i < types.length; i++) {
+        let courseId, color;
+        if (pool.length > 0) {
+            // Each fake item is attributed to one of the user's real courses
+            // (picked per seed), so it inherits that course's dashboard color
+            // and its anonymized name.
+            const pick = pool[anonSeededHash("pick:" + i) % pool.length];
+            courseId = pick.id;
+            color = pick.color || ANON_FAKE_COLORS[anonSeededHash(String(courseId)) % ANON_FAKE_COLORS.length];
+        } else {
+            // No colored dashboard cards available — fall back to anonymous
+            // courses with a neutral palette.
+            courseId = "anonfake-" + i;
+            color = ANON_FAKE_COLORS[anonSeededHash(String(courseId)) % ANON_FAKE_COLORS.length];
+        }
+        const id = -(anonSeededHash("todoId:" + i) % 900000) - 1;
+        const due = new Date(now + dayOffsets[i] * 86400000);
+        due.setHours(dueHours[i], 59, 0, 0);
+        const isDone = doneSet.has(i);
+        items.push({
+            anonFake: true,
+            anonColor: color,
+            plannable_id: id,
+            plannable_type: types[i],
+            plannable_date: due.toISOString(),
+            plannable: { id: id, title: fakeAssignmentTitle("a:" + id) },
+            course_id: courseId,
+            context_id: courseId,
+            context_name: fakeCourseLabel(courseId),
+            html_url: "#",
+            // Done fake items carry a submitted+graded submission so both the
+            // rings and the Completed tab count them; unfinished ones don't.
+            submissions: isDone ? { submitted: true, graded: true } : { submitted: false },
+        });
+    }
+    return items;
 }
 
 // Marked-text helpers. Original text/attributes are stashed in dataset entries
@@ -6665,7 +6931,14 @@ function createGPACalcCourse(location, course) {
     let percent = makeElement("span", changerContainer, { "className": "canvasrefined-course-percent-sign", "textContent": course.id === "cumulative" ? "/4" : "%" });
     let courseGrade = course?.enrollments[0].has_grading_periods === true ? course.enrollments[0].current_period_computed_current_score : course.enrollments[0].computed_current_score;
 
-    if (customs["gr"] !== null) {
+    // "Hide personal details": the calculator gets the same fake grade the
+    // dashboard card shows for this course (same "id:<id>" key, so rerolling
+    // keeps them consistent). The cumulative row gets a fake GPA derived from
+    // the fake grade's letter on the user's own scale.
+    const anonGpa = options.hide_personal_details === true;
+    if (anonGpa) {
+        changer.value = course.id === "cumulative" ? fakeCumulativeGpa() : fakeGradePercent("id:" + course.id);
+    } else if (customs["gr"] !== null) {
         changer.value = customs["gr"];
     } else if (courseGrade) {
         changer.value = courseGrade;
@@ -6673,11 +6946,18 @@ function createGPACalcCourse(location, course) {
         changer.value = "--";
     }
 
+    // Same fake label the dashboard card uses for this course.
+    if (anonGpa && course.id !== "cumulative") {
+        courseName.textContent = fakeCourseLabel("id:" + course.id);
+    }
+
     if (course.id !== "cumulative") {
         let weightSelections = makeElement("form", courseContainer, { "className": "canvasrefined-course-weights" });
         weightSelections.innerHTML = '<select name="weight-selection" class="canvasrefined-course-weight"><option value="dnc">Do not count</option><option value="regular">Regular/College</option><option value="honors">Honors</option><option value="ap">AP/IB</option></select>';
         let weightChanger = weightSelections.querySelector(".canvasrefined-course-weight");
-        weightChanger.value = changer.value === "--" ? "dnc" : customs.weight;   
+        // Count the course only when it has a real grade (or a saved custom
+        // one) — a fake grade must not resurrect courses the user left blank.
+        weightChanger.value = (courseGrade || customs["gr"] !== null) ? customs.weight : "dnc";   
         weightChanger.addEventListener('change', () => changeGPASettings(course.id, { "weight": weightSelections.querySelector(".canvasrefined-course-weight").value }));
 
         let useCustomGr = makeElement("input", courseContainer, { "className": "canvasrefined-course-customgr", "type": "checkbox", "checked": customs.gr !== null ? true : false });
@@ -6691,10 +6971,19 @@ function createGPACalcCourse(location, course) {
                     changeGPASettings(course.id, { "gr": changer.value });
                 }
             }
+            // While personal details are hidden the input holds a fake grade;
+            // put it back so a stray toggle can't reveal (or save) the real one.
+            if (options.hide_personal_details === true) changer.value = fakeGradePercent("id:" + course.id);
         });
     }   
 
     changer.addEventListener('input', (e) => {
+        // While personal details are hidden the input shows a fake grade —
+        // recalculate the display but never persist fake values to storage.
+        if (options.hide_personal_details === true) {
+            calculateGPA2();
+            return;
+        }
         if (course.id === "cumulative" || (options["custom_cards"][course.id]["gr"] !== undefined && options["custom_cards"][course.id]["gr"] !== null)) {
             changeGPASettings(course.id, { "gr": e.target.value });
         } else {
