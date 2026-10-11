@@ -8,6 +8,8 @@ const syncedSubOptions = [
     "todo_confetti",
     "todo_progress_rings",
     "todo_timeframe",
+    "todo_timeframe_custom_past",
+    "todo_timeframe_custom_future",
 	"device_dark",
 	"relative_dues",
 	"card_overdues",
@@ -74,7 +76,7 @@ const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding", "card_grid", "card_grid_columns", "card_grid_rows", "card_grid_column_gap", "card_grid_row_gap", "card_grid_center_rows", "card_grid_flex"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
-const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
@@ -197,6 +199,8 @@ const defaultOptions = {
 		"todo_full_height": false,
         "todo_progress_rings": "rings",
 		"todo_timeframe": "all",
+		"todo_timeframe_custom_past": 7,
+		"todo_timeframe_custom_future": 14,
 		"todo_more_expanded": false,
 		"todo_confetti": true,
         "device_dark": false,
@@ -411,15 +415,39 @@ function setupTodoMoreOptions(initial) {
 }
 
 // Timeframe dropdown for the upcoming Tasks tab. Persisted so the Better Todo
-// List remembers the selected range across sessions.
+// List remembers the selected range across sessions. The "custom" option
+// reveals two number inputs (days ago / days from now) below the dropdown.
+function setTimeframeCustomVisibility(value) {
+    const wrap = document.getElementById("todo_timeframe_custom");
+    if (wrap) wrap.classList.toggle("visible", value === "custom");
+}
+
 function setupTimeframeSelect(initial) {
     const el = document.querySelector("#todo_timeframe");
     if (!el) return;
-    const allowed = ["all", "1week", "2week", "month", "2month"];
+    const allowed = ["all", "1week", "2week", "month", "2month", "custom"];
     let value = allowed.includes(initial) ? initial : "all";
     el.value = value;
+    setTimeframeCustomVisibility(value);
     el.addEventListener("change", function () {
         chrome.storage.sync.set({ "todo_timeframe": this.value });
+        setTimeframeCustomVisibility(this.value);
+    });
+}
+
+// Custom timeframe bounds (shown when Time frame is "custom"): the todo list
+// window runs from X days ago to Y days in the future. Clamped to 0-365 so a
+// typo can't hide every task.
+function setupCustomTimeframeInput(key, initial, fallback) {
+    const el = document.querySelector("#" + key);
+    if (!el) return;
+    const clamp = (v) => Math.max(0, Math.min(365, v));
+    const parsed = parseInt(initial);
+    el.value = isNaN(parsed) ? fallback : clamp(parsed);
+    el.addEventListener("change", function () {
+        const v = clamp(parseInt(this.value));
+        this.value = v;
+        chrome.storage.sync.set({ [key]: v });
     });
 }
 
@@ -1406,6 +1434,14 @@ function setup() {
 				setup: (initial) => setupTimeframeSelect(initial),
 			},
 			{
+				identifier: "todo_timeframe_custom_past",
+				setup: (initial) => setupCustomTimeframeInput("todo_timeframe_custom_past", initial, 7),
+			},
+			{
+				identifier: "todo_timeframe_custom_future",
+				setup: (initial) => setupCustomTimeframeInput("todo_timeframe_custom_future", initial, 14),
+			},
+			{
 				identifier: "anon_grade_level",
 				setup: (initial) => setupAnonGradeSelect(initial),
 			},
@@ -2291,6 +2327,8 @@ function saveCurrentTheme() {
                 "todo_confetti": current["todo_confetti"],
                 "todo_progress_rings": current["todo_progress_rings"],
                 "todo_timeframe": current["todo_timeframe"],
+                "todo_timeframe_custom_past": current["todo_timeframe_custom_past"],
+                "todo_timeframe_custom_future": current["todo_timeframe_custom_future"],
                 "todo_hr24": current["todo_hr24"],
                 "todo_separate_scrollbar": current["todo_separate_scrollbar"],
                 "todo_alternate_colors": current["todo_alternate_colors"],

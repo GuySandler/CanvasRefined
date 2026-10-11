@@ -1080,6 +1080,8 @@ function applyOptionsChanges(changes) {
 			case "num_todo_items":
 			case "hover_preview":
 			case "todo_timeframe":
+			case "todo_timeframe_custom_past":
+			case "todo_timeframe_custom_future":
 			// case "todo_overdues":
 			case "todo_hide_feedback":
 			case "todo_hide_read":
@@ -2236,9 +2238,10 @@ function updateIndicator(element) {
 // better todo html
 betterTodoFilter = "tasks";
 // Timeframe filter for the upcoming Tasks tab. "all" = no limit; otherwise
-// items are limited to those due on/before now+range (which also keeps
-// overdue items). Only affects the Tasks (upcoming) tab; announcements and
-// completed are unaffected because their dates are in the past.
+// items are limited to a window around now: one week of history back through
+// now+range (older overdue backlog is cut). Only affects the Tasks (upcoming)
+// tab; announcements and completed are unaffected because their dates are in
+// the past.
 let betterTodoTimeframe = "all";
 const BETTER_TODO_TIMEFRAME_DAYS = {
 	"1week": 7,
@@ -2246,6 +2249,10 @@ const BETTER_TODO_TIMEFRAME_DAYS = {
 	"month": 30,
 	"2month": 60,
 };
+// How much history the preset timeframes include: the current window starts
+// this many days in the past so recently overdue work stays visible while
+// older backlog is cut. Custom timeframes pick their own "days ago" bound.
+const TODO_TIMEFRAME_LOOKBACK_DAYS = 4;
 // Announcements older than this are never shown in the Better Todo list (and
 // never count toward the unread badge). Unlike assignments, an announcement
 // stops being an actionable to-do once it's old: the planner cache keeps a
@@ -2255,10 +2262,11 @@ const BETTER_TODO_TIMEFRAME_DAYS = {
 // available on the course's own Announcements page.
 const TODO_ANNOUNCEMENT_MAX_AGE_DAYS = 30;
 // Look-ahead paging for the timeframe window (arrow buttons under the Tasks
-// header). 0 = the current window (now through the timeframe cutoff, with
-// overdue items kept). Each press of the right arrow advances one full
-// window further out, e.g. a 1-week timeframe on offset 1 shows only items
-// due in week 2 (the current week is skipped over).
+// header). 0 = the current window (from the lookback bound — 1 week back for
+// presets, "X days ago" for custom — through the future edge). Each press of
+// the right arrow advances one full window further out, e.g. a 1-week
+// timeframe on offset 1 shows only items due in week 2 (the current window is
+// skipped over).
 let betterTodoTimeframeOffset = 0;
 // null = show every class; a string courseId = only that class's tasks.
 let betterTodoProgressFilter = null;
@@ -2267,25 +2275,73 @@ let domContainers = {};
 // Resolve the persisted todo_timeframe option to a valid key ("all" when
 // unset/unknown).
 function getTodoTimeframeKey() {
-    return (options.todo_timeframe && Object.prototype.hasOwnProperty.call(BETTER_TODO_TIMEFRAME_DAYS, options.todo_timeframe)) ? options.todo_timeframe : "all";
+    const allowed = ["all", "1week", "2week", "month", "2month", "custom"];
+    return allowed.includes(options.todo_timeframe) ? options.todo_timeframe : "all";
+}
+
+// Custom timeframe bounds ("custom" option): the window runs from X days ago
+// to Y days in the future. Clamped to 0-365 days; the defaults match the
+// popup's initial inputs (1 week of history, 2 weeks ahead).
+function getTodoCustomTimeframeDays() {
+    const past = parseInt(options.todo_timeframe_custom_past);
+    const future = parseInt(options.todo_timeframe_custom_future);
+    return {
+        past: isNaN(past) ? 7 : Math.max(0, Math.min(365, past)),
+        future: isNaN(future) ? 14 : Math.max(0, Math.min(365, future)),
+    };
+}
+
+// Total length of the current timeframe window in days ("all" = 0). Presets
+// cover their range ahead plus the shared 1-week lookback; custom windows are
+// as long as their past+future range. Either way the pager tiles windows back
+// to back.
+function getTodoTimeframeSpanDays() {
+    const tf = getTodoTimeframeKey();
+    if (tf === "all") return 0;
+    if (tf === "custom") {
+        const c = getTodoCustomTimeframeDays();
+        return Math.max(1, c.past + c.future);
+    }
+    return BETTER_TODO_TIMEFRAME_DAYS[tf] + TODO_TIMEFRAME_LOOKBACK_DAYS;
+}
+
+// Days before "now" where the current window starts. Presets start at the
+// shared 1-week lookback (recently overdue work is kept, older backlog is
+// cut); custom windows start `past` days in the past per the user's setting.
+function getTodoTimeframePastDays() {
+    const tf = getTodoTimeframeKey();
+    if (tf === "all") return 0;
+    if (tf === "custom") return getTodoCustomTimeframeDays().past;
+    return TODO_TIMEFRAME_LOOKBACK_DAYS;
 }
 
 // Better Todo timeframe filter, shared by the task list and the progress
 // display so their counts always agree: keeps items due inside the current
-// window. Offset 0 keeps everything on/before now+range (overdue items are
-// before now, so they are kept too); offset N>0 shows only the window
-// (now+N*range, now+(N+1)*range] so the current timeframe can be paged
+// window. Offset 0 runs from the lookback bound (1 week back for presets,
+// "X days ago" for custom) through the future edge, so recently overdue work
+// stays visible while older backlog is cut; offset N>0 shows only the strict
+// window (now+N*span, now+(N+1)*span] so the current timeframe can be paged
 // through with the look-ahead arrows. "all" keeps everything.
-function applyTodoTimeframe(items) {
+// `lenientPast` (Announcements / Completed tabs): on the current window those
+// tabs keep everything on/before the cutoff — completed history and unread
+// announcements older than the lookback are still meaningful there — while
+// paging forward uses the same strict windows as Tasks.
+function applyTodoTimeframe(items, lenientPast) {
     betterTodoTimeframe = getTodoTimeframeKey();
     if (betterTodoTimeframe === "all") return items;
-    const days = BETTER_TODO_TIMEFRAME_DAYS[betterTodoTimeframe];
+    const dayMs = 24 * 60 * 60 * 1000;
     const now = Date.now();
-    const cutoff = now + ((betterTodoTimeframeOffset + 1) * days * 24 * 60 * 60 * 1000);
-    if (betterTodoTimeframeOffset <= 0) {
+    const days = getTodoTimeframeSpanDays();
+    const pastDays = getTodoTimeframePastDays();
+    // End of the current window: the future edge (presets end `days` out,
+    // custom windows end `future` days out; span - past = future in both).
+    const cutoff = now + ((betterTodoTimeframeOffset + 1) * days - pastDays) * dayMs;
+    // Start of the current window: the lookback bound (skipped for the
+    // lenient tabs on the current window).
+    if (lenientPast === true && betterTodoTimeframeOffset <= 0) {
         return items.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
     }
-    const windowStart = now + (betterTodoTimeframeOffset * days * 24 * 60 * 60 * 1000);
+    const windowStart = now + (betterTodoTimeframeOffset * days - pastDays) * dayMs;
     return items.filter(item => {
         const t = new Date(item.plannable_date).getTime();
         return t > windowStart && t <= cutoff;
@@ -2297,11 +2353,12 @@ function applyTodoTimeframe(items) {
 // of items the list is currently filtered to.
 function getTodoTimeframeWindow() {
     const tf = getTodoTimeframeKey();
-    const days = tf === "all" ? 0 : BETTER_TODO_TIMEFRAME_DAYS[tf];
+    const days = getTodoTimeframeSpanDays();
     const offset = (tf === "all") ? 0 : betterTodoTimeframeOffset;
+    const pastDays = getTodoTimeframePastDays();
     const now = Date.now();
-    const start = new Date(now + (offset * days * 24 * 60 * 60 * 1000));
-    const end = new Date(now + ((offset + 1) * days * 24 * 60 * 60 * 1000));
+    const start = new Date(now + (offset * days - pastDays) * 24 * 60 * 60 * 1000);
+    const end = new Date(start.getTime() + days * 24 * 60 * 60 * 1000);
     const fmt = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     return { tf, range: fmt(start) + " \u2013 " + fmt(end) };
 }
@@ -2334,9 +2391,11 @@ function updateTodoTimeframeNav() {
 function getTodoTimeframeBounds() {
     const tf = getTodoTimeframeKey();
     if (tf === "all") return null;
-    const span = BETTER_TODO_TIMEFRAME_DAYS[tf] * 24 * 60 * 60 * 1000;
+    const spanDays = getTodoTimeframeSpanDays();
+    const pastDays = getTodoTimeframePastDays();
     const now = Date.now();
-    return { start: now + (betterTodoTimeframeOffset * span), end: now + ((betterTodoTimeframeOffset + 1) * span) };
+    const start = now + (betterTodoTimeframeOffset * spanDays - pastDays) * 24 * 60 * 60 * 1000;
+    return { start, end: start + spanDays * 24 * 60 * 60 * 1000 };
 }
 
 // true when `courseId` is the dimmed-out class because another class is selected.
@@ -2936,65 +2995,17 @@ function renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent) 
     });
 }
 
-// "Fake progress display": rewrite the per-course completion entries so the
-// progress readout shows exactly `anon_progress_done` out of
-// `anon_progress_total`. Course totals are re-distributed proportionally to
-// their real share, completion ratios get a small per-course offset (seeded,
-// so rerolling varies it) so the rings look organic, and rounding drift is
-// corrected so the displayed sums add up to exactly the chosen numbers.
-function applyAnonProgressOverride(entries) {
-    const rawDone = parseInt(options.anon_progress_done);
-    const rawTotal = parseInt(options.anon_progress_total);
-    const total = isNaN(rawTotal) ? 18 : Math.max(1, Math.min(999, rawTotal));
-    const done = isNaN(rawDone) ? 12 : Math.max(0, Math.min(total, rawDone));
-
-    // Spread the faked total across courses in proportion to their real
-    // share of the workload (minimum 1 each so every ring stays visible).
-    const realTotal = entries.reduce((s, e) => s + e.total, 0) || 1;
-    let assignedTotal = 0;
-    entries.forEach((e, i) => {
-        if (i === entries.length - 1) {
-            e.total = Math.max(1, total - assignedTotal);
-        } else {
-            e.total = Math.max(1, Math.round((total * e.total) / realTotal));
-        }
-        assignedTotal += e.total;
-    });
-
-    // Completed counts: target ratio plus a seeded per-course offset so the
-    // rings don't all show the same fill.
-    const ratio = done / total;
-    let assignedDone = 0;
-    entries.forEach(e => {
-        const variation = ((anonSeededHash("ring:" + e.courseId) % 100) / 100 - 0.5) * 0.3;
-        e.completed = Math.max(0, Math.min(e.total, Math.round(e.total * (ratio + variation))));
-        assignedDone += e.completed;
-    });
-
-    // Correct rounding drift so the sums match the chosen x/y exactly.
-    let drift = done - assignedDone;
-    while (drift !== 0) {
-        let changed = false;
-        for (const e of entries) {
-            if (drift > 0 && e.completed < e.total) { e.completed++; drift--; changed = true; }
-            else if (drift < 0 && e.completed > 0) { e.completed--; drift++; changed = true; }
-            if (drift === 0) break;
-        }
-        if (!changed) break;
-    }
-}
 
 function renderProgressRings(container, scopedData) {
     const mode = getProgressRingMode();
     if (mode === "none") { container.innerHTML = ""; return; }
 
     // Apply the same timeframe window the list pages through so the counts
-    // in the display match what's shown below it. Unlike the Tasks list —
-    // which keeps every overdue item — finished work from before the window
-    // is history, not current workload, so it never counts. Unfinished items
-    // from before the window still count on the current window (offset 0)
-    // because the Tasks tab shows them as overdue; later windows are strict
-    // slices, so the backlog only appears on the current one.
+    // in the display match what's shown below it. Unlike the Tasks tab —
+    // which keeps recently overdue work — finished work from before the
+    // window is history, not current workload, so it never counts. The
+    // window is a strict slice (from the lookback bound through the future
+    // edge), so the counts always match the Tasks tab exactly.
     const taskItems = scopedData.filter(item => isTodoTaskType(item));
     const bounds = getTodoTimeframeBounds();
     let allAssignments;
@@ -3004,8 +3015,7 @@ function renderProgressRings(container, scopedData) {
         const isDone = (item) => (item.submissions?.submitted || item.planner_override?.marked_complete === true) && !isPinnedIncomplete(item);
         allAssignments = taskItems.filter(item => {
             const t = new Date(item.plannable_date).getTime();
-            if (t > bounds.start && t <= bounds.end) return true;
-            return betterTodoTimeframeOffset === 0 && t <= bounds.start && !isDone(item);
+            return t > bounds.start && t <= bounds.end;
         });
     }
 
@@ -3785,15 +3795,16 @@ async function createTodoSections(location) {
         // The timeframe is a persisted Better Todo List sub-option set in the
         // popup. Read the current value each render so popup changes apply on
         // the next render. Every tab is paged through time: Tasks by due
-        // date, Announcements by posted date, Completed by due date. On the
-        // current window (offset 0) everything on/before the cutoff stays
-        // visible, so only paging forward narrows these two tabs.
+        // date, Announcements by posted date, Completed by due date. The
+        // Tasks tab bounds the past (1 week of history back), while
+        // Announcements/Completed keep their older history on the current
+        // window and only narrow when paged forward.
         // Pinned items ("sent back" submissions) bypass the window filter so
         // an old pinned item still shows up under Tasks.
         const pinnedItems = assignmentsDue.filter(item => isPinnedIncomplete(item));
-        assignmentsDue = applyTodoTimeframe(assignmentsDue.filter(item => !isPinnedIncomplete(item))).concat(pinnedItems);
-        announcements = applyTodoTimeframe(announcements);
-        completed = applyTodoTimeframe(completed);
+        assignmentsDue = applyTodoTimeframe(assignmentsDue.filter(item => !isPinnedIncomplete(item)), false).concat(pinnedItems);
+        announcements = applyTodoTimeframe(announcements, true);
+        completed = applyTodoTimeframe(completed, true);
 		// console.log("assignments", assignmentsDue);
 		// console.log("announcements", announcements);
 		// console.log("completed", completed);

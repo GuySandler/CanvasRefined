@@ -76,16 +76,22 @@ h2 {margin-top: 20px;font-weight:600}
 .custom-card-hide {display: flex; align-items: center;}
 .option-name {font-weight: 600}
 .sub-text {font-size: 12px;color: #c7c7c7}
-#todo_progress_rings, #anon_grade_preset {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
+#todo_progress_rings, #anon_grade_preset {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
 #todo_progress_rings option, #anon_grade_preset option {background:#1e1e1e;color:#e2e2e2;}
 #todo_progress_rings option:checked,
 #todo_progress_rings option:hover,
 #anon_grade_preset option:checked,
 #anon_grade_preset option:hover {background:#2e2e2e;color:#fff;}
-#todo_timeframe {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
+#todo_timeframe {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
 #todo_timeframe option {background:#1e1e1e;color:#e2e2e2;}
 #todo_timeframe option:checked,
 #todo_timeframe option:hover {background:#2e2e2e;color:#fff;}
+/* Custom timeframe inputs, shown under the Time frame dropdown when "Custom" is selected */
+.custom-tf-wrap {display:none;flex-direction:column;gap:6px;}
+.custom-tf-wrap.visible {display:flex;}
+.custom-tf-row {display:flex;align-items:center;gap:6px;}
+.custom-tf-row input {flex:none;width:58px;font-size:12px;background:var(--inputbg);border:none;padding:6px;color:#e2e2e2;border-radius:6px;font-family:inherit;text-align:right;box-sizing:border-box;color-scheme:dark;}
+.custom-tf-row input::-webkit-outer-spin-button, .custom-tf-row input::-webkit-inner-spin-button {opacity:1;}
 /* Collapsible "More options" section for the Better Todo List sub-options */
 .todo-more-options {margin-top: 7px;}
 .todo-more-toggle {display: flex;align-items:center;gap:5px;font-size:12px;color:#a7a7a7;cursor:pointer;user-select:none;padding:3px 0;border-radius:5px;transition:color .1s;}

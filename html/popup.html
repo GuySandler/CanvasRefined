@@ -291,7 +291,20 @@
                                 <option value="2week">2 weeks</option>
                                 <option value="month">Month</option>
                                 <option value="2month">2 months</option>
+                                <option value="custom">Custom</option>
                             </select>
+                            <div id="todo_timeframe_custom" class="custom-tf-wrap">
+                                <div class="custom-tf-row">
+                                    <span class="sub-text">From</span>
+                                    <input type="number" id="todo_timeframe_custom_past" min="0" max="365">
+                                    <span class="sub-text">days ago</span>
+                                </div>
+                                <div class="custom-tf-row">
+                                    <span class="sub-text">To</span>
+                                    <input type="number" id="todo_timeframe_custom_future" min="0" max="365">
+                                    <span class="sub-text">days from now</span>
+                                </div>
+                            </div>
                         </div>
                         <div class="sub-option">
                             <input type="checkbox" id="hover_preview" name="hover_preview">
