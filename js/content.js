@@ -4653,6 +4653,11 @@ function markAs(item, element, makeComplete) {
 	const csrfToken = CSRFtoken();
 	const completeState = makeComplete;
 
+    // Pre-click state, captured so the optimistic UI can be rolled back if
+    // the server definitively refuses the change (see revertOptimisticUI).
+    const previousComplete = item.planner_override ? item.planner_override.marked_complete === true : false;
+    const hadPin = isPinnedIncomplete(item);
+
     // Checking an item off clears any local incomplete pin; unchecking a
     // genuinely submitted item sets one, since the submission itself can't
     // be undone server-side.
@@ -4687,8 +4692,9 @@ function markAs(item, element, makeComplete) {
     element.style.opacity = "0";
 
     // update progress rings immediately so they animate while the item slides/fades
-    const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
-    if (progressPlaceholder && typeof assignments?.then === 'function' && progressRingsEnabled()) {
+    const refreshProgressRings = () => {
+        const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
+        if (!progressPlaceholder || typeof assignments?.then !== 'function' || !progressRingsEnabled()) return;
         assignments.then(data => {
             const courseId = getCurrentCourseId();
             const scopedData = getTodoScopedData(data.map(d => Object.assign({}, d)), courseId);
@@ -4708,7 +4714,36 @@ function markAs(item, element, makeComplete) {
 
             renderProgressRings(progressPlaceholder, scopedData);
         });
-    }
+    };
+    refreshProgressRings();
+
+    // --- Failure rollback ---
+    // Restores the pre-click state when the server definitively refuses the
+    // toggle: a POST 400 whose existing override can't be recovered, a failed
+    // PUT, or a network error. Canvas's planner_override uniqueness scope is
+    // (user, plannable_type, plannable_id) regardless of workflow_state, but
+    // soft-deleted override rows are invisible to BOTH read endpoints, so a
+    // dormant row can permanently block the POST with 400 "already exists".
+    // Without a rollback the optimistic UI would silently lie until the next
+    // reload, when the item reappears unchecked — the reported "cannot check
+    // off / won't move to Completed" bug.
+    const revertOptimisticUI = (reason) => {
+        item.planner_override = item.planner_override || {};
+        item.planner_override.marked_complete = previousComplete;
+        // undo the pin side effects of this toggle
+        if (completeState) {
+            if (hadPin) setPinnedIncomplete(item, true);
+        } else if (item.submissions?.submitted && !hadPin) {
+            setPinnedIncomplete(item, false);
+        }
+        console.warn("planner override not persisted, reverting UI:", reason);
+        // snap the card back if it is still in the DOM (before the 400ms swap)
+        element.style.transform = "";
+        element.style.opacity = "";
+        const loc = document.querySelector("#canvasrefined-todo-list");
+        if (loc) { clearTodoList(); createTodoSections(loc); }
+        refreshProgressRings();
+    };
 
     setTimeout(() => {
         clearTodoList();
@@ -4720,9 +4755,9 @@ function markAs(item, element, makeComplete) {
     // successful POST/PUT is stored on the in-memory item so subsequent
     // toggles PUT (update) instead of POSTing a duplicate. If a POST still
     // collides with an existing override (400 "already exists"), we look up
-    // the real id and retry with a PUT. Only if all of that fails is the
-    // response treated as a soft success: the UI already reflects the
-    // intended state, so we just log it.
+    // the real id and retry with a PUT. If every attempt fails, the
+    // optimistic UI is rolled back so the card visibly returns instead of
+    // silently dropping the check-off on the next reload.
     const sendOverride = (override) => fetch(domain + "/api/v1/planner/overrides" + (override && override.id ? "/" + override.id : ""), {
         method: override && override.id ? "PUT" : "POST",
         headers: {
@@ -4737,6 +4772,46 @@ function markAs(item, element, makeComplete) {
             plannable_type: item.plannable_type
         })
     });
+
+    // Loads every planner override the user has. The index endpoint is
+    // paginated at 10 items per page and only ever returns ACTIVE overrides —
+    // Canvas soft-deletes overrides (workflow_state="deleted") instead of
+    // removing the row, and those dormant rows still satisfy the
+    // (user, plannable_type, plannable_id) uniqueness constraint. A dormant
+    // row therefore makes POST create fail with 400 "already exists" while
+    // being unlistable, which is why items in some courses could never be
+    // checked off: the old recovery read a single un-paginated page, missed
+    // the row, and never PUT. Page through with per_page=100 following the
+    // Link header (same pattern as the planner items fetch). Returns null on
+    // any failure so the caller can distinguish "no match" from "unknown".
+    const fetchAllOverrides = async () => {
+        const all = [];
+        let url = domain + "/api/v1/planner/overrides?per_page=100";
+        for (let page = 0; page < 10 && url; page++) {
+            const pageResp = await fetch(url, { headers: { "accept": "application/json" } });
+            if (!pageResp.ok) return null;
+            const data = await pageResp.json();
+            if (!Array.isArray(data)) return null;
+            all.push(...data);
+            url = getNextPageUrl(pageResp.headers.get("Link"));
+        }
+        return all;
+    };
+
+    // A stored override may not carry the identity the planner items feed
+    // gave us: Canvas re-points overrides on save (discussion overrides move
+    // to the root topic id, assignment overrides can be re-typed to
+    // quiz/discussion_topic/wiki_page with a different id), so also match on
+    // the associated assignment_id as a fallback.
+    const matchesItem = (o) => {
+        if (!o) return false;
+        if (String(o.plannable_id) === String(item.plannable_id) &&
+            String(o.plannable_type).toLowerCase() === String(item.plannable_type).toLowerCase()) return true;
+        const assignmentId = item.plannable && item.plannable.assignment_id != null
+            ? item.plannable.assignment_id
+            : (item.plannable_type === "assignment" ? item.plannable_id : null);
+        return assignmentId != null && o.assignment_id != null && String(o.assignment_id) === String(assignmentId);
+    };
 
     sendOverride(item.planner_override)
     .then(async resp => {
@@ -4758,38 +4833,44 @@ function markAs(item, element, makeComplete) {
         }
         // A POST can return 400 because an override already exists server-side
         // under an id we never learned (e.g. it was created earlier without the
-        // response being captured). Look up the user's overrides, find the one
-        // for this item, and retry with a PUT so the toggle actually persists.
+        // response being captured, or a dormant soft-deleted row blocks it).
+        // Look up the user's overrides, find the one for this item, and retry
+        // with a PUT so the toggle actually persists.
         if (!(item.planner_override && item.planner_override.id)) {
             try {
-                const listResp = await fetch(domain + "/api/v1/planner/overrides", {
-                    headers: { "accept": "application/json" }
-                });
-                if (listResp.ok) {
-                    const overrides = await listResp.json();
-                    const match = (Array.isArray(overrides) ? overrides : []).find(o =>
-                        o &&
-                        String(o.plannable_id) === String(item.plannable_id) &&
-                        String(o.plannable_type).toLowerCase() === String(item.plannable_type).toLowerCase());
-                    if (match && match.id) {
-                        item.planner_override = item.planner_override || {};
-                        item.planner_override.id = match.id;
-                        const retry = await sendOverride(item.planner_override);
-                        if (!retry.ok) {
-                            console.warn("planner override PUT retry returned", retry.status);
-                        }
+                const overrides = await fetchAllOverrides();
+                const match = overrides && overrides.find(matchesItem);
+                if (match && match.id) {
+                    item.planner_override = item.planner_override || {};
+                    item.planner_override.id = match.id;
+                    const retry = await sendOverride(item.planner_override);
+                    if (retry.ok) {
+                        try {
+                            const saved = await retry.json();
+                            if (saved && saved.id) item.planner_override.id = saved.id;
+                        } catch (e) { /* id stays unknown */ }
+                        console.log("marked as complete (recovered override id)");
                         return;
                     }
+                    console.warn("planner override PUT retry returned", retry.status);
+                    return revertOptimisticUI("PUT retry returned " + retry.status);
                 }
+                // No matching override (or the listing failed): nothing to
+                // PUT against, so the change was never persisted.
+                return revertOptimisticUI("POST returned " + resp.status + " and no matching override was found");
             } catch (e) {
                 console.error("error recovering planner override id", e);
+                return revertOptimisticUI("override recovery failed: " + e);
             }
         }
-        // Still non-OK with nothing to recover: logged but not surfaced, the
-        // UI already reflects the intended state.
-        console.warn("planner override request returned", resp.status, "— UI already updated optimistically");
+        // A PUT on a known id failed (e.g. the override was removed
+        // server-side between our listing and the toggle): roll back.
+        return revertOptimisticUI("request returned " + resp.status);
     })
-    .catch(err => console.error("error marking as complete", err));
+    .catch(err => {
+        console.error("error marking as complete", err);
+        revertOptimisticUI(err);
+    });
 
 }
 
