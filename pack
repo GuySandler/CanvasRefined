@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Get version from line 5 of manifest.json and subtract 6 from the first number
+version_line=$(sed -n '5p' manifest.json)
+version=$(echo "$version_line" | grep -oP '"version"\s*:\s*"\K[^"]+')
+major=${version%%.*}
+major=$((major - 6))
+zipname="V${major}.${version#*.}"
+
+zip -r "$zipname.zip" js html css _locales icon manifest.json LICENSE-MIT
+
+echo "Created $zipname.zip"
