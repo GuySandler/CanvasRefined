@@ -2316,17 +2316,35 @@ function getTodoTimeframePastDays() {
     return TODO_TIMEFRAME_LOOKBACK_DAYS;
 }
 
+// True when the item's due date is before today (start of day), matching the
+// "Overdue" group (-1) in the task list. Used so overdue work bypasses the
+// timeframe window: overdue items are current workload and must always stay
+// visible, no matter which timeframe is selected (or how far the pager has
+// been advanced).
+function isTodoOverdueItem(item) {
+    const due = new Date(item?.plannable_date);
+    if (isNaN(due.getTime())) return false;
+    due.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return due.getTime() < today.getTime();
+}
+
 // Better Todo timeframe filter, shared by the task list and the progress
 // display so their counts always agree: keeps items due inside the current
 // window. Offset 0 runs from the lookback bound (1 week back for presets,
-// "X days ago" for custom) through the future edge, so recently overdue work
-// stays visible while older backlog is cut; offset N>0 shows only the strict
-// window (now+N*span, now+(N+1)*span] so the current timeframe can be paged
-// through with the look-ahead arrows. "all" keeps everything.
+// "X days ago" for custom) through the future edge; offset N>0 shows only the
+// strict window (now+N*span, now+(N+1)*span] so the current timeframe can be
+// paged through with the look-ahead arrows. "all" keeps everything. Overdue
+// items always pass the filter regardless of the window (see
+// isTodoOverdueItem) — the timeframe only bounds upcoming work, it never
+// hides overdue backlog.
 // `lenientPast` (Announcements / Completed tabs): on the current window those
 // tabs keep everything on/before the cutoff — completed history and unread
 // announcements older than the lookback are still meaningful there — while
-// paging forward uses the same strict windows as Tasks.
+// paging forward uses the same strict windows as Tasks. The overdue bypass
+// only applies to the Tasks tab: old announcements/completed history have
+// past dates but are not overdue work.
 function applyTodoTimeframe(items, lenientPast) {
     betterTodoTimeframe = getTodoTimeframeKey();
     if (betterTodoTimeframe === "all") return items;
@@ -2344,6 +2362,7 @@ function applyTodoTimeframe(items, lenientPast) {
     }
     const windowStart = now + (betterTodoTimeframeOffset * days - pastDays) * dayMs;
     return items.filter(item => {
+        if (lenientPast !== true && isTodoOverdueItem(item)) return true;
         const t = new Date(item.plannable_date).getTime();
         return t > windowStart && t <= cutoff;
     });
@@ -3002,19 +3021,21 @@ function renderProgressRings(container, scopedData) {
     if (mode === "none") { container.innerHTML = ""; return; }
 
     // Apply the same timeframe window the list pages through so the counts
-    // in the display match what's shown below it. Unlike the Tasks tab —
-    // which keeps recently overdue work — finished work from before the
-    // window is history, not current workload, so it never counts. The
-    // window is a strict slice (from the lookback bound through the future
-    // edge), so the counts always match the Tasks tab exactly.
+    // in the display match what's shown below it. Overdue work always counts
+    // (the Tasks tab never hides it, see isTodoOverdueItem); finished work
+    // from before the window is history, not current workload, so it never
+    // counts. The window is otherwise a strict slice (from the lookback bound
+    // through the future edge), so the counts always match the Tasks tab
+    // exactly.
     const taskItems = scopedData.filter(item => isTodoTaskType(item));
     const bounds = getTodoTimeframeBounds();
+    const isDone = (item) => (item.submissions?.submitted || item.planner_override?.marked_complete === true) && !isPinnedIncomplete(item);
     let allAssignments;
     if (!bounds) {
         allAssignments = taskItems;
     } else {
-        const isDone = (item) => (item.submissions?.submitted || item.planner_override?.marked_complete === true) && !isPinnedIncomplete(item);
         allAssignments = taskItems.filter(item => {
+            if (!isDone(item) && isTodoOverdueItem(item)) return true;
             const t = new Date(item.plannable_date).getTime();
             return t > bounds.start && t <= bounds.end;
         });
@@ -3799,9 +3820,10 @@ async function createTodoSections(location) {
         // date, Announcements by posted date, Completed by due date. The
         // Tasks tab bounds the past (1 week of history back), while
         // Announcements/Completed keep their older history on the current
-        // window and only narrow when paged forward.
-        // Pinned items ("sent back" submissions) bypass the window filter so
-        // an old pinned item still shows up under Tasks.
+        // window and only narrow when paged forward. Overdue items bypass
+        // the window filter entirely (isTodoOverdueItem) so overdue backlog
+        // always stays visible, and pinned items ("sent back" submissions)
+        // bypass it too so an old pinned item still shows up under Tasks.
         const pinnedItems = assignmentsDue.filter(item => isPinnedIncomplete(item));
         assignmentsDue = applyTodoTimeframe(assignmentsDue.filter(item => !isPinnedIncomplete(item)), false).concat(pinnedItems);
         announcements = applyTodoTimeframe(announcements, true);
