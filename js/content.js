@@ -4531,7 +4531,7 @@ function populateAnnouncements() {
 		announcement.querySelector(".better-todo-announcement-checkmark").addEventListener("click", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			markAs(item, announcement.firstElementChild, !(item.planner_override?.marked_complete === true));
+			markAs(item, announcement.firstElementChild, !(item.planner_override?.marked_complete === true), { celebrate: false });
 		});
 		attachTodoHoverPreview(announcement, item);
 	});
@@ -5097,9 +5097,19 @@ function createRocketCelebration(targetElement) {
         const scale = celebrationAmountScale();
         const start = performance.now();
         const flames = []; // tracked so expiry is swept in the same pass
-        // Pool cap scales with the amount tier so "crazy" never saturates and
-        // starves the trail (which made the thruster visibly cut out early).
-        const poolCap = Math.round(60 * Math.max(1, scale));
+        // Continuous emission: flames/sec = rate, so the trail never gaps.
+        // Spawning per-frame burst-saturated the pool cap at higher amounts,
+        // then paused until old flames expired — that read as broken
+        // segments with the thruster visibly switching off.
+        const flameRate = 26 * scale; // flames per second
+        // Base thrust: less/normal get a stronger base size than before
+        // (they looked weak); more/crazy scale up on top.
+        const sizeScale = scale >= 4 ? 3 : scale >= 2 ? 2.4 : scale >= 1 ? 1.8 : 1;
+        // Cap = steady-state concurrent flames (rate x max life) + headroom,
+        // so sustained emission never gets throttled into gaps.
+        const poolCap = Math.ceil(flameRate * 1.1) + 8;
+        let emitAcc = 0;
+        let lastEmit = start;
         let rafId = null;
         const tick = (now) => {
             let r;
@@ -5113,37 +5123,36 @@ function createRocketCelebration(targetElement) {
             }
             const gone = !r || r.width === 0 || r.bottom < -110 || r.top > window.innerHeight + 110;
             if (!gone && now - start < flightMs + 150) {
-                // Spawn every frame while the pool has room; flames live
-                // ~0.5-1s so the trail stays continuous until the card is
-                // fully offscreen.
-                if (flames.length < poolCap) {
-                    const climb = Math.max(0.35, Math.min(1, (now - start) / 500)); // throttle ramps up after liftoff
-                    // Capped: extra tier budget goes into flame size/length,
-                    // not into an ever-growing per-frame spawn rate.
-                    const jets = Math.min(8, Math.max(2, Math.round((4 + Math.random() * 2) * Math.sqrt(scale))));
-                    for (let i = 0; i < jets; i++) {
-                        // Amount tier drives thruster particle size and flame length.
-                        const size = (3 + Math.random() * 6) * scale;
-                        const life = (380 + Math.random() * 380) * (scale >= 4 ? 1.3 : 1);
-                        const el = document.createElement('div');
-                        el.className = 'canvasrefined-rocket-flame';
-                        el.style.width = (size * (0.8 + climb * 0.5)).toFixed(1) + 'px';
-                        el.style.height = (size * (1.4 + Math.random() * 1.2) * (0.8 + climb * 0.5)).toFixed(1) + 'px';
-                        el.style.left = Math.round(r.left + r.width * (0.38 + Math.random() * 0.24)) + 'px';
-                        el.style.top = Math.round(r.bottom - 4) + 'px';
-                        el.style.background = colors[(Math.random() * colors.length) | 0];
-                        // WAAPI: compositor-run motion; flame travel distance
-                        // scales with the amount tier so the exhaust keeps up
-                        // with bigger/faster rockets.
-                        const fx = (Math.random() - 0.5) * 28 * scale;
-                        const fy = 30 * scale;
-                        el.animate([
-                            { transform: 'translate(0px, 0px) scale(1)', opacity: 0.95 },
-                            { transform: 'translate(' + fx.toFixed(1) + 'px, ' + fy + 'px) scale(0.15)', opacity: 0 }
-                        ], { duration: Math.round(life), easing: 'ease-out', fill: 'forwards' });
-                        container.appendChild(el);
-                        flames.push({ el, expire: now + life + 120 });
-                    }
+                const climb = Math.max(0.45, Math.min(1, (now - start) / 500)); // throttle ramps up after liftoff
+                // Accumulate emission time and spawn the owed flames — a
+                // steady stream whose density is set by the amount tier,
+                // never bursts that exhaust (and starves) the pool.
+                const dt = Math.min(0.1, (now - lastEmit) / 1000);
+                lastEmit = now;
+                emitAcc = Math.min(emitAcc + flameRate * dt, 3); // don't bank a backlog
+                while (emitAcc >= 1 && flames.length < poolCap) {
+                    emitAcc -= 1;
+                    // Amount tier drives thruster particle size and flame length.
+                    const size = (5 + Math.random() * 7) * sizeScale;
+                    const life = (520 + Math.random() * 300) * (scale >= 4 ? 1.3 : 1);
+                    const el = document.createElement('div');
+                    el.className = 'canvasrefined-rocket-flame';
+                    el.style.width = (size * (0.8 + climb * 0.4)).toFixed(1) + 'px';
+                    el.style.height = (size * (1.4 + Math.random() * 1.2) * (0.8 + climb * 0.4)).toFixed(1) + 'px';
+                    el.style.left = Math.round(r.left + r.width * (0.38 + Math.random() * 0.24)) + 'px';
+                    el.style.top = Math.round(r.bottom - 4) + 'px';
+                    el.style.background = colors[(Math.random() * colors.length) | 0];
+                    // WAAPI: compositor-run motion; flame travel distance
+                    // scales with the amount tier so the exhaust keeps up
+                    // with bigger/faster rockets.
+                    const fx = (Math.random() - 0.5) * 28 * scale;
+                    const fy = 30 * scale;
+                    el.animate([
+                        { transform: 'translate(0px, 0px) scale(1)', opacity: 0.95 },
+                        { transform: 'translate(' + fx.toFixed(1) + 'px, ' + fy + 'px) scale(0.15)', opacity: 0 }
+                    ], { duration: Math.round(life), easing: 'ease-out', fill: 'forwards' });
+                    container.appendChild(el);
+                    flames.push({ el, expire: now + life + 120 });
                 }
                 rafId = requestAnimationFrame(tick);
             } else {
@@ -5268,7 +5277,11 @@ function setPinnedIncomplete(item, pinned) {
     chrome.storage.sync.set({ todo_force_incomplete: pins });
 }
 
-function markAs(item, element, makeComplete) {
+// opts.celebrate === false suppresses the completion celebration — used for
+// announcement "mark as seen", which shares the marked-complete plumbing but
+// isn't a task the user finished, and keeps celebrations strictly on task
+// completion (never on uncompleting, which is already gated by completeState).
+function markAs(item, element, makeComplete, opts = {}) {
 	const csrfToken = CSRFtoken();
 	const completeState = makeComplete;
 
@@ -5313,7 +5326,7 @@ function markAs(item, element, makeComplete) {
     // instantly, i.e. on cards without a transition (announcements).
     let exitStyle = "slide";
     let exitDelay = 0;
-    if (completeState) {
+    if (completeState && opts.celebrate !== false) {
         try {
             const celebration = runCelebration(element);
             exitStyle = celebration.style;
