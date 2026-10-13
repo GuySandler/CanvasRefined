@@ -94,6 +94,26 @@ h2 {margin-top: 20px;font-weight:600}
 .custom-tf-row input::-webkit-outer-spin-button, .custom-tf-row input::-webkit-inner-spin-button {opacity:1;}
 /* Collapsible "More options" section for the Better Todo List sub-options */
 .todo-more-options {margin-top: 7px;}
+/* Celebrations box — effect picker + amount for task completion animations */
+/* The big "Celebration" toggle is the whole box header; type/amount rows hide when it's off. */
+/* The two controls below mirror #todo_timeframe exactly (same font, padding,
+   radius, colors and full-width stacked layout) so they read like the popup's
+   other dropdowns. */
+.celebration-multiselect {position:relative;}
+.celebration-multiselect-btn {display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;cursor:pointer;text-align:left;}
+.celebration-multiselect-btn svg {flex:none;transition:transform .15s ease;}
+.celebration-multiselect.open .celebration-multiselect-btn svg {transform:rotate(-180deg);}
+.celebration-multiselect-menu {display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;background:#1e1e1e;border-radius:7px;padding:5px 0;max-height:180px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.45);}
+.celebration-multiselect.open .celebration-multiselect-menu {display:block;}
+.celebration-multiselect.flip-up .celebration-multiselect-menu {top:auto;bottom:calc(100% + 4px);}
+/* Menu rows mirror the native option colors (#1e1e1e idle, #2e2e2e hover) used by the other dropdowns */
+.celebration-option {display:flex;align-items:center;gap:7px;padding:5px 10px;font-size:12px;color:#e2e2e2;cursor:pointer;white-space:nowrap;user-select:none;}
+.celebration-option:hover {background:#2e2e2e;color:#fff;}
+.celebration-option input {accent-color:#56caf0;cursor:pointer;margin:0;}
+#todo_celebration_amount {font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
+#todo_celebration_amount option {background:#1e1e1e;color:#e2e2e2;}
+#todo_celebration_amount option:checked,
+#todo_celebration_amount option:hover {background:#2e2e2e;color:#fff;}
 .todo-more-toggle {display: flex;align-items:center;gap:5px;font-size:12px;color:#a7a7a7;cursor:pointer;user-select:none;padding:3px 0;border-radius:5px;transition:color .1s;}
 .todo-more-toggle:hover {color:#e2e2e2;}
 .todo-more-toggle svg {flex:none;transition:transform .15s ease;}

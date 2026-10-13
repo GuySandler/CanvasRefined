@@ -315,10 +315,6 @@
                             <label for="todo_show_scores" class="sub-text">Show assignment scores</label>
                         </div>
                         <div class="sub-option">
-                            <input type="checkbox" id="todo_confetti" name="todo_confetti">
-                            <label for="todo_confetti" class="sub-text">Show confetti on complete</label>
-                        </div>
-                        <div class="sub-option">
                             <input type="checkbox" id="todo_hide_read" name="todo_hide_read">
                             <label for="todo_hide_read" class="sub-text">Hide read announcements</label>
                         </div>
@@ -364,6 +360,37 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="option-container" id="celebrations-container">
+                    <div class="option" id="todo_celebrations_enabled" style="margin-top:0">
+                        <input type="radio" id="off" name="todo_celebrations_enabled">
+                        <input type="radio" id="on" name="todo_celebrations_enabled">
+                        <div class="slider">
+                            <div class="sliderknob"></div>
+                            <div class="sliderbg"></div>
+                        </div>
+                        <span class="option-name">Celebration</span>
+                    </div>
+                    <div class="sub-option celebration-sub" id="celebration-type-row" style="margin-top:6px;flex-direction:column;align-items:stretch;gap:4px;">
+                        <span class="sub-text">Celebration type</span>
+                        <div class="celebration-multiselect" id="todo_celebrations">
+                            <button type="button" class="celebration-multiselect-btn" id="todo_celebrations_btn" aria-haspopup="listbox" aria-expanded="false">
+                                <span id="todo_celebrations_label">Confetti</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 9l6 6 6-6" /></svg>
+                            </button>
+                            <div class="celebration-multiselect-menu" id="todo_celebrations_menu" role="listbox" aria-multiselectable="true"></div>
+                        </div>
+                    </div>
+                    <div class="sub-option celebration-sub" id="celebration-amount-row" style="flex-direction:column;align-items:stretch;gap:4px;">
+                        <label for="todo_celebration_amount" class="sub-text">Amount</label>
+                        <select id="todo_celebration_amount" name="todo_celebration_amount">
+                            <option value="less">Less</option>
+                            <option value="normal">Normal</option>
+                            <option value="more">More</option>
+                            <option value="crazy">Crazy</option>
+                        </select>
+                    </div>
+                    <button type="button" id="celebration-preview-btn" class="customization-button celebration-sub" style="margin-top:8px;width:100%;">Preview celebration</button>
                 </div>
                 <div class="option-container">
                     <div class="option" id="better_sidebar">

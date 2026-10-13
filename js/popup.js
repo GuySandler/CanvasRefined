@@ -1,12 +1,13 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
 	"hide_course_images",
 	"todo_hide_feedback",
 	"todo_hide_read",
 	"todo_full_height",
-    "todo_confetti",
-    "todo_progress_rings",
+	"todo_celebrations",
+	"todo_celebration_amount",
+	"todo_progress_rings",
     "todo_timeframe",
     "todo_timeframe_custom_past",
     "todo_timeframe_custom_future",
@@ -76,7 +77,7 @@ const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding", "card_grid", "card_grid_columns", "card_grid_rows", "card_grid_column_gap", "card_grid_row_gap", "card_grid_center_rows", "card_grid_flex"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
-const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
@@ -202,7 +203,9 @@ const defaultOptions = {
 		"todo_timeframe_custom_past": 7,
 		"todo_timeframe_custom_future": 14,
 		"todo_more_expanded": false,
-		"todo_confetti": true,
+		"todo_celebrations_enabled": true,
+		"todo_celebrations": ["confetti"],
+		"todo_celebration_amount": "normal",
         "device_dark": false,
         "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
         // "show_updates": false,
@@ -387,6 +390,128 @@ function setupProgressRingsSelect(initial) {
     el.addEventListener("change", function () {
         chrome.storage.sync.set({ "todo_progress_rings": this.value });
     });
+}
+
+// Celebration effects for task completion. `todo_celebrations` holds the
+// selected effect ids (multi-select); a random one runs each time a task is
+// marked complete. `todo_celebration_amount` scales intensity ("normal" only
+// for now, kept as a string so more tiers can be added later).
+const CELEBRATION_TYPES = [
+    { id: "confetti", label: "Confetti" },
+    { id: "fireworks", label: "Fireworks" },
+    { id: "sparkles", label: "Sparkle burst" },
+    { id: "hearts", label: "Rising hearts" },
+    { id: "rocket", label: "Rocket" },
+];
+
+// Resolves the stored celebrations value to a list of valid effect ids.
+// Handles the legacy single "show confetti on complete" checkbox
+// (todo_confetti false meant "off") and drops unknown/legacy ids.
+function resolveCelebrations(raw, legacyConfetti) {
+    if (Array.isArray(raw)) {
+        return [...new Set(raw.filter(id => CELEBRATION_TYPES.some(t => t.id === id)))];
+    }
+    return legacyConfetti === false ? [] : ["confetti"];
+}
+
+function setupCelebrationsSelect(initial) {
+    const wrap = document.getElementById("todo_celebrations");
+    const btn = document.getElementById("todo_celebrations_btn");
+    const menu = document.getElementById("todo_celebrations_menu");
+    const label = document.getElementById("todo_celebrations_label");
+    if (!wrap || !btn || !menu || !label) return;
+
+    let selected = [];
+    const renderMenu = () => {
+        menu.innerHTML = CELEBRATION_TYPES.map(t => `
+            <label class="celebration-option">
+                <input type="checkbox" value="${t.id}" ${selected.includes(t.id) ? "checked" : ""}>
+                <span>${t.label}</span>
+            </label>
+        `).join("");
+        menu.querySelectorAll("input").forEach(input => {
+            input.addEventListener("change", () => {
+                if (input.checked) {
+                    if (!selected.includes(input.value)) selected.push(input.value);
+                } else {
+                    selected = selected.filter(id => id !== input.value);
+                }
+                updateLabel();
+                chrome.storage.sync.set({ "todo_celebrations": selected });
+            });
+        });
+    };
+    const updateLabel = () => {
+        if (selected.length === 0) label.textContent = "None";
+        else if (selected.length === 1) label.textContent = CELEBRATION_TYPES.find(t => t.id === selected[0])?.label || "None";
+        else label.textContent = `${selected.length} selected`;
+    };
+
+    // Read the legacy key so users upgrading from the old "show confetti"
+    // toggle keep their setting (the special handler only passes the new key).
+    chrome.storage.sync.get("todo_confetti", legacy => {
+        selected = resolveCelebrations(initial, legacy && legacy["todo_confetti"]);
+        renderMenu();
+        updateLabel();
+    });
+
+    btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const open = wrap.classList.toggle("open");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        // The box sits low in the popup, so the menu often has more room
+        // above it — flip upward whenever opening downward would overflow.
+        if (open) {
+            const mr = menu.getBoundingClientRect();
+            if (mr.bottom > window.innerHeight - 8) wrap.classList.add("flip-up");
+            else wrap.classList.remove("flip-up");
+        }
+    });
+    menu.addEventListener("click", (e) => e.stopPropagation());
+    document.addEventListener("click", (e) => {
+        if (!wrap.contains(e.target)) {
+            wrap.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+        }
+    });
+}
+
+function setupCelebrationAmount(initial) {
+    const el = document.getElementById("todo_celebration_amount");
+    if (!el) return;
+    const allowed = ["less", "normal", "more", "crazy"];
+    el.value = allowed.includes(initial) ? initial : "normal";
+    el.addEventListener("change", function () {
+        chrome.storage.sync.set({ "todo_celebration_amount": this.value });
+    });
+}
+
+// "Preview celebration": asks Canvas tabs to run the current effect + amount
+// against a disposable fake task. Only enabled rows respond; if none respond
+// (no Canvas tab open) tell the user instead of failing silently.
+function setupCelebrationPreview() {
+    const btn = document.getElementById("celebration-preview-btn");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+        const res = await sendFromPopup("previewCelebration");
+        if (!res || res.ok !== true) {
+            displayAlert(true, "Open a Canvas page to preview celebrations.");
+        }
+    });
+}
+
+// The Celebrations master toggle hides the type/amount rows when off.
+function toggleCelebrationOptionsVisibility(enabled) {
+    document.querySelectorAll("#celebrations-container .celebration-sub").forEach(row => {
+        row.style.display = enabled ? "" : "none";
+    });
+}
+
+// The Celebrations box only makes sense with the Better Todo List, since
+// celebrations fire when its tasks are marked complete.
+function toggleCelebrationsVisibility(betterTodoOn) {
+    const el = document.getElementById("celebrations-container");
+    if (el) el.style.display = betterTodoOn ? "" : "none";
 }
 
 // Collapsible "More options" section for the Better Todo List sub-options.
@@ -1246,7 +1371,6 @@ function setup() {
 			// /*'card_method_date',*/ "show_updates",
             "todo_hide_feedback",
             "todo_hide_read",
-            "todo_confetti",
 			"todo_full_height",
 			"device_dark",
 			"relative_dues",
@@ -1426,6 +1550,18 @@ function setup() {
                 setup: (initial) => setupCustomBackgroundScale(initial),
             },
 			{
+				identifier: "todo_celebrations",
+				setup: (initial) => setupCelebrationsSelect(initial),
+			},
+			{
+				identifier: "todo_celebration_amount",
+				setup: (initial) => setupCelebrationAmount(initial),
+			},
+			{
+				identifier: "celebration_preview",
+				setup: () => setupCelebrationPreview(),
+			},
+			{
 				identifier: "todo_progress_rings",
 				setup: (initial) => setupProgressRingsSelect(initial),
 			},
@@ -1467,7 +1603,7 @@ function setup() {
     chrome.storage.sync.get(menu.switches, sync => {
         menu.switches.forEach(option => {
             let optionSwitch = document.getElementById(option);
-            let status = sync[option] === true ? "#on" : "#off";
+            let status = (sync[option] !== undefined ? sync[option] === true : defaultOptions.sync[option] === true) ? "#on" : "#off";
             optionSwitch.querySelector(status).checked = true;
             optionSwitch.querySelector(status).classList.add('checked');
 
@@ -1482,6 +1618,12 @@ function setup() {
                 }
                 if (option === "better_sidebar") {
                     toggleBetterSidebarSubOptions(status);
+                }
+                if (option === "better_todo") {
+                    toggleCelebrationsVisibility(status);
+                }
+                if (option === "todo_celebrations_enabled") {
+                    toggleCelebrationOptionsVisibility(status);
                 }
                 if (option === "dark_mode") {
                     toggleAlternateColorsVisibility(status);
@@ -1499,6 +1641,10 @@ function setup() {
             });
         });
         toggleBetterSidebarSubOptions(sync["better_sidebar"] === true);
+        toggleCelebrationsVisibility(sync["better_todo"] === true);
+        chrome.storage.sync.get("todo_celebrations_enabled", v => {
+            toggleCelebrationOptionsVisibility(v["todo_celebrations_enabled"] !== false);
+        });
         ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
@@ -2324,7 +2470,9 @@ function saveCurrentTheme() {
                 "todo_hide_feedback": current["todo_hide_feedback"],
                 "todo_hide_read": current["todo_hide_read"] !== false,
                 "todo_full_height": current["todo_full_height"],
-                "todo_confetti": current["todo_confetti"],
+                "todo_celebrations_enabled": current["todo_celebrations_enabled"],
+                "todo_celebrations": current["todo_celebrations"],
+                "todo_celebration_amount": current["todo_celebration_amount"],
                 "todo_progress_rings": current["todo_progress_rings"],
                 "todo_timeframe": current["todo_timeframe"],
                 "todo_timeframe_custom_past": current["todo_timeframe_custom_past"],
@@ -2509,6 +2657,11 @@ function importTheme(theme) {
                         }
                         break;
                     }
+                    case "todo_confetti":
+                        // Legacy setting: map the old confetti toggle onto the
+                        // celebrations list ("false" meant celebrations off).
+                        final["todo_celebrations"] = theme["todo_confetti"] === false ? [] : ["confetti"];
+                        break;
                     default:
                         final[key] = theme[key];
                         break;

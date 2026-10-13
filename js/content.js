@@ -1956,6 +1956,7 @@ function recieveMessage(request, sender, sendResponse) {
             break;
         }
         case ("inspect"): sendResponse(inspectDarkMode(true)); break;
+        case ("previewCelebration"): sendResponse(runCelebrationPreview()); break;
         case ("fixdm"): sendResponse(runDarkModeFixer(true)); break;
 		case ("updateBackground"): applyCustomBackground(); sendResponse(true); break;
         case ("clearPlannerCache"):
@@ -4514,118 +4515,714 @@ function populateAnnouncements() {
 	});
 }
 
+// Particle effects (confetti, fireworks, sparkles) render into ONE fullscreen
+// <canvas> per burst instead of individual DOM elements. Dozens of animated
+// layers compositing over Canvas's blurred dashboard is itself the lag; a
+// single canvas is one layer with cheap 2D draws, so even "crazy" volumes
+// stay smooth.
+function celebrationCanvas() {
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:2147483647;';
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(window.innerWidth * dpr);
+    canvas.height = Math.round(window.innerHeight * dpr);
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { canvas, ctx, w: window.innerWidth, h: window.innerHeight };
+}
+
+// Shared rAF driver: runs `step(now)` until it returns false, then removes
+// the canvas (after a grace period so trailing fades finish).
+function runCelebrationCanvas(view, step, graceMs) {
+    let rafId = null;
+    const loop = (now) => {
+        try {
+            if (step(now)) rafId = requestAnimationFrame(loop);
+            else {
+                setTimeout(() => { try { view.canvas.remove(); } catch (e) { /* ignore */ } }, graceMs || 100);
+            }
+        } catch (e) {
+            try { view.canvas.remove(); } catch (err) { /* ignore */ }
+        }
+    };
+    rafId = requestAnimationFrame(loop);
+    // Hard stop so a backgrounded tab (rAF throttling) can't leak the canvas.
+    setTimeout(() => { try { rafId && cancelAnimationFrame(rafId); view.canvas.remove(); } catch (e) { /* ignore */ } }, 9000);
+}
+
 function createConfettiBurst(targetElement, opts = {}) {
     try {
-        if (options.todo_confetti === false) return;
-
-        const count = opts.count || 48;
+        const amountScale = celebrationAmountScale();
+        const count = Math.min(220, Math.round((opts.count || 48) * amountScale * (amountScale >= 4 ? 1.25 : amountScale >= 2 ? 1.2 : 1)));
+        const durationFactor = amountScale >= 4 ? 1.6 : amountScale >= 2 ? 1.35 : amountScale < 1 ? 0.85 : 1;
+        // Fan the burst out as the amount grows so bigger bursts don't read
+        // as one dense clump.
+        const spread = (opts.spread || 110) * (amountScale >= 4 ? 1.9 : amountScale >= 2 ? 1.45 : 1);
         const colors = opts.colors || ['#ff4d4f', '#ffc107', '#28a745', '#17a2b8', '#6f42c1', '#ff6b6b', '#ff8a65', '#ffd54f'];
         const rect = targetElement.getBoundingClientRect();
-        const container = document.createElement('div');
-        container.className = 'canvasrefined-confetti-container';
-        container.style.position = 'fixed';
-        container.style.left = '0';
-        container.style.top = '0';
-        container.style.pointerEvents = 'none';
-        container.style.overflow = 'visible';
-        container.style.zIndex = '2147483647';
-        document.body.appendChild(container);
+        const view = celebrationCanvas();
+        const ctx = view.ctx;
 
         const originX = rect.left + rect.width / 2;
         const originY = rect.top + rect.height * 0.35;
-        const particles = [];
+        const pieceScale = amountScale >= 4 ? 1.6 : amountScale >= 2 ? 1.35 : 1;
+        const pieces = [];
+        let maxEnd = 0;
 
         for (let i = 0; i < count; i++) {
-            const el = document.createElement('div');
-            el.className = 'canvasrefined-confetti';
-            const w = 4 + Math.floor(Math.random() * 7); // smaller pieces
+            const bigPiece = Math.random() < 0.25 && pieceScale > 1 ? 1.9 : 1;
+            const w = (4 + Math.floor(Math.random() * 7)) * pieceScale * bigPiece;
             const h = Math.max(3, Math.floor(w * (0.4 + Math.random() * 0.8)));
-            el.style.position = 'absolute';
-            el.style.width = w + 'px';
-            el.style.height = h + 'px';
-            el.style.background = colors[Math.floor(Math.random() * colors.length)];
-            el.style.left = (originX - w / 2) + 'px';
-            el.style.top = (originY - h / 2) + 'px';
-            el.style.opacity = '1';
-            el.style.borderRadius = Math.random() > 0.75 ? '50%' : '2px';
-            el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.18)';
-            el.style.transformOrigin = 'center center';
-            el.style.willChange = 'transform, opacity';
-            container.appendChild(el);
-
-            const duration = 850 + Math.floor(Math.random() * 500);
-            const delay = Math.floor(Math.random() * 90);
-            const spread = opts.spread || 110;
+            const duration = Math.round((850 + Math.random() * 500) * durationFactor);
+            const delay = Math.floor(Math.random() * 160);
             const horizontalBias = (Math.random() - 0.5) * 2;
-
-            // Arc stays lower and wider than the old cone-shaped burst.
             const endX = originX + horizontalBias * (spread * (0.7 + Math.random() * 0.6));
             const endY = originY - (16 + Math.random() * 34);
             const ctrlX = originX + horizontalBias * (spread * 0.25) + (Math.random() - 0.5) * 14;
-            const ctrlY = originY - (30 + Math.random() * 55);
-
-            particles.push({
-                el,
+            const ctrlY = originY - (30 + Math.random() * 55) * (amountScale >= 2 ? 1.4 : 1);
+            pieces.push({
                 delay,
                 duration,
-                originX,
-                originY,
-                ctrlX,
-                ctrlY,
-                endX,
-                endY,
-                rotate: (Math.random() * 260) - 130,
-                scale: 0.8 + Math.random() * 0.5,
+                ox: originX - w / 2,
+                oy: originY - h / 2,
+                endX, endY, ctrlX, ctrlY,
+                w, h,
+                rot: (Math.random() * 260) - 130,
+                round: Math.random() > 0.75,
+                sc: 0.8 + Math.random() * 0.5,
+                color: colors[(Math.random() * colors.length) | 0],
+            });
+            const end = delay + duration;
+            if (end > maxEnd) maxEnd = end;
+        }
+
+        const startTime = performance.now();
+        runCelebrationCanvas(view, (now) => {
+            ctx.clearRect(0, 0, view.w, view.h);
+            let active = false;
+            for (let i = 0; i < pieces.length; i++) {
+                const pc = pieces[i];
+                const elapsed = now - startTime - pc.delay;
+                if (elapsed < 0) { active = true; continue; }
+                const p = Math.min(1, elapsed / pc.duration);
+                if (p < 1) active = true;
+                // Same arc as before: fast rise through the bezier peak, then
+                // settle into the end point while fading out.
+                const eased = 1 - Math.pow(1 - p, 3);
+                const inv = 1 - eased;
+                const x = inv * inv * pc.ox + 2 * inv * eased * pc.ctrlX + eased * eased * pc.endX;
+                const y = inv * inv * pc.oy + 2 * inv * eased * pc.ctrlY + eased * eased * pc.endY;
+                const sc = pc.sc * (1 - eased * 0.15);
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, 1 - p);
+                ctx.translate(x, y);
+                ctx.rotate((pc.rot * eased * Math.PI) / 180);
+                ctx.scale(sc, sc);
+                ctx.fillStyle = pc.color;
+                if (pc.round) {
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, pc.w / 2, pc.h / 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(-pc.w / 2, -pc.h / 2, pc.w, pc.h);
+                }
+                ctx.restore();
+            }
+            return active;
+        }, 150);
+    } catch (e) {
+        console.error('confetti error', e);
+    }
+}
+
+// --- Completion celebrations ------------------------------------------------
+// Every effect renders into its own fixed-position container (pointer-events
+// none, topmost z-index) so it ignores page scroll and layout. Overlay-particle
+// effects keep the default task exit (slide right); "rocket" replaces the
+// task's own exit animation by flying the element off the page, so
+// runCelebration returns which exit the caller should apply.
+const CELEBRATION_EFFECT_IDS = ["confetti", "fireworks", "sparkles", "hearts", "rocket"];
+
+// Intensity tiers for the Celebrations "Amount" dropdown. "less" halves the
+// particle counts; "more" doubles them and enlarges fireworks/hearts; "crazy"
+// quadruples with even bigger visuals. Rocket uses the raw factor for its
+// thruster size/length at every tier.
+const CELEBRATION_AMOUNT_SCALES = { less: 0.5, normal: 1, more: 2, crazy: 4 };
+function celebrationAmountScale() {
+    const v = options.todo_celebration_amount;
+    return CELEBRATION_AMOUNT_SCALES[v] || 1;
+}
+
+function enabledCelebrationTypes() {
+    // Master Celebrations toggle (default on).
+    if (options.todo_celebrations_enabled === false) return [];
+    // Legacy migration: before the Celebrations box there was a single
+    // "show confetti on complete" checkbox (todo_confetti).
+    const list = options.todo_celebrations;
+    if (Array.isArray(list)) return list.filter(t => CELEBRATION_EFFECT_IDS.includes(t));
+    return options.todo_confetti === false ? [] : ["confetti"];
+}
+
+// Picks a random enabled effect and runs it against the task element.
+// Returns the exit animation for the task element:
+// "slide" (default slide-out), "wave", "rocket" or "rainbow".
+// Small pause before the celebration fires and the exit animation starts, so
+// the task is actually seen before everything happens (without it, overlay
+// effects fired while the slide-out was already running, so the card seemed
+// to never appear).
+const CELEBRATION_LEAD_IN = 250;
+// How long after the effect starts the task begins its exit.
+const CELEBRATION_SLIDE_AFTER = 200;
+
+// Picks a random enabled effect and schedules it against the task element.
+// Returns the task's exit as { style, delay, startDelay, start }: "slide" is
+// the default slide-out, "rocket" flies the card off page. start/startDelay
+// run the overlay effect; delay holds the exit back so the effect can play
+// out first (hearts stay while they float).
+function runCelebration(targetElement) {
+    const types = enabledCelebrationTypes();
+    if (!types.length) return { style: "slide", delay: 0 };
+    const type = types[Math.floor(Math.random() * types.length)];
+    ensureCelebrationStyles();
+    const lead = CELEBRATION_LEAD_IN;
+    switch (type) {
+        case "confetti": return { style: "slide", delay: lead + CELEBRATION_SLIDE_AFTER, startDelay: lead, start: () => createConfettiBurst(targetElement) };
+        case "fireworks": return { style: "slide", delay: lead + 350, startDelay: lead, start: () => createFireworksBurst(targetElement) };
+        case "sparkles": return { style: "slide", delay: lead + CELEBRATION_SLIDE_AFTER, startDelay: lead, start: () => createSparkleBurst(targetElement) };
+        // Keep the task on screen a little longer so the hearts get going,
+        // but only about half their runtime — don't hold it hostage.
+        case "hearts": return { style: "slide", delay: lead + Math.round(risingHeartsRuntime() * 0.5), startDelay: lead, start: () => createRisingHearts(targetElement) };
+        // The exhaust trail is spawned by applyTodoExitAnimation once the
+        // flying clone exists (it needs to track the clone's position), so
+        // the rocket has no separate start fn — its whole exit IS the effect.
+        case "rocket": return { style: "rocket", delay: lead, startDelay: lead, start: null };
+    }
+    return { style: "slide", delay: 0 };
+}
+
+// Duration (ms) of each exit style's task-element animation. The todo list
+// re-render waits at least this long so the element isn't ripped out of the
+// DOM mid-animation ("slide" keeps the previous 400ms behavior).
+const CELEBRATION_EXIT_DURATIONS = { slide: 400, rocket: 1250 };
+// Small headroom after the slide's transition ends before the list re-render
+// swaps the DOM, so the swipe always plays out fully.
+const CELEBRATION_EXIT_SETTLE = 60;
+function celebrationExitDuration(exitStyle, delay) {
+    return (delay || 0) + (CELEBRATION_EXIT_DURATIONS[exitStyle] || CELEBRATION_EXIT_DURATIONS.slide) + CELEBRATION_EXIT_SETTLE;
+}
+
+function applyTodoExitAnimation(element, exitStyle, delay) {
+    const run = () => {
+        if (element.__crCelebrationCancelled === true) return;
+    try {
+        if (exitStyle === "rocket") {
+            // The task launches off the page. The list container clips
+            // overflow, so animating the real element would cut it off
+            // halfway up — instead a fixed-position clone of the card is
+            // flown off screen while the original just disappears in place.
+            const rect = element.getBoundingClientRect();
+            // Crazy rockets fly farther (and their exhaust travels farther to
+            // keep up with the higher speed).
+            const distF = celebrationAmountScale() >= 4 ? 1.9 : 1;
+            const clone = element.cloneNode(true);
+            clone.classList.remove("canvasrefined-rocket-exit");
+            clone.style.setProperty("--cr-rx1", (2.5 * distF).toFixed(2) + "vw");
+            clone.style.setProperty("--cr-ry1", Math.round(-55 * distF) + "vh");
+            clone.style.setProperty("--cr-rx2", (8 * distF).toFixed(2) + "vw");
+            clone.style.setProperty("--cr-ry2", Math.round(-125 * distF) + "vh");
+            clone.style.position = "fixed";
+            clone.style.left = rect.left + "px";
+            clone.style.top = rect.top + "px";
+            clone.style.width = rect.width + "px";
+            clone.style.height = rect.height + "px";
+            clone.style.margin = "0";
+            clone.style.boxSizing = "border-box";
+            clone.style.pointerEvents = "none";
+            clone.style.zIndex = "2147483646";
+            document.body.appendChild(clone);
+            element.__crRocketClone = clone;
+            element.style.transition = "none";
+            element.style.opacity = "0";
+            requestAnimationFrame(() => clone.classList.add("canvasrefined-rocket-exit"));
+            // Exhaust flames track the flying clone.
+            createRocketCelebration(clone);
+            setTimeout(() => {
+                try { clone.remove(); } catch (e) { /* ignore */ }
+                if (element.__crRocketClone === clone) element.__crRocketClone = null;
+            }, 1500);
+        } else {
+            // Slide-out (delay was already consumed by the wrapper above).
+            // The swipe relies on the row's inline "transition: all .4s ease";
+            // if that's missing (e.g. cleared by an earlier revert on this
+            // element) the card would teleport instead of sliding, so make
+            // sure a transition exists before moving it.
+            if (getComputedStyle(element).transitionDuration === "0s") {
+                element.style.transition = "transform .4s ease, opacity .4s ease";
+            }
+            // Double rAF so the slide always starts from the painted state.
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                element.style.transform = "translate(100%)";
+                element.style.opacity = "0";
+            }));
+        }
+    } catch (e) {
+        element.style.transform = "translate(100%)";
+        element.style.opacity = "0";
+    }
+    };
+    if (delay > 0) {
+        if (element.__crExitTimer) clearTimeout(element.__crExitTimer);
+        element.__crExitTimer = setTimeout(() => {
+            element.__crExitTimer = null;
+            run();
+        }, delay);
+    } else {
+        run();
+    }
+}
+
+let celebrationStylesEl = null;
+function ensureCelebrationStyles() {
+    if (celebrationStylesEl && document.getElementById("canvasrefined-celebration-styles")) return;
+    celebrationStylesEl = document.createElement("style");
+    celebrationStylesEl.id = "canvasrefined-celebration-styles";
+    celebrationStylesEl.textContent = `
+@keyframes canvasrefined-rocket-exit {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  12%  { transform: translate(0, 12px) rotate(0deg); opacity: 1; }
+  60%  { transform: translate(var(--cr-rx1, 2.5vw), var(--cr-ry1, -55vh)) rotate(4deg); opacity: 1; }
+  100% { transform: translate(var(--cr-rx2, 8vw), var(--cr-ry2, -125vh)) rotate(8deg); opacity: 1; }
+}
+.canvasrefined-rocket-exit { animation: canvasrefined-rocket-exit 1.2s cubic-bezier(.55, 0, .85, .4) forwards !important; }
+/* Rocket exhaust flames are animated with the Web Animations API
+   (el.animate): literal keyframe values, so Chrome always runs them on the
+   compositor. Confetti, firework and sparkle particles are canvas-rendered
+   instead (see celebrationCanvas). */
+.canvasrefined-rocket-flame { position: fixed; border-radius: 50%; pointer-events: none; z-index: 2147483647; }
+/* Sparkle bursts are canvas-rendered now (see celebrationCanvas); no DOM
+   sparkle elements or keyframes are needed anymore. */
+/* Outer span rises + fades; inner span sways side to side on an eased
+   alternate loop, so the float reads as one smooth sinusoidal drift
+   (single-element keyframes made the sway/rotation visibly change
+   direction mid-flight). */
+@keyframes canvasrefined-heart-rise {
+  0%   { transform: translateY(6px) scale(.55); opacity: 0; animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+  6%   { transform: translateY(0) scale(var(--cr-s, 1)); opacity: 1; animation-timing-function: cubic-bezier(.3, .6, .5, 1); }
+  /* fast launch: a quarter of the climb happens in the first ~15% */
+  15%  { transform: translateY(calc(var(--cr-hy, -160px) * .28)) scale(var(--cr-s, 1)); }
+  80%  { opacity: .92; }
+  100% { transform: translateY(var(--cr-hy, -160px)) scale(var(--cr-s, 1)); opacity: 0; }
+}
+@keyframes canvasrefined-heart-sway {
+  0%   { transform: translateX(calc(var(--cr-hx, 14px) * -.5)) rotate(calc(var(--cr-rot, 9deg) * -1)); }
+  100% { transform: translateX(calc(var(--cr-hx, 14px) * .5)) rotate(var(--cr-rot, 9deg)); }
+}
+.canvasrefined-heart { position: absolute; pointer-events: none; line-height: 1; will-change: transform, opacity; animation: canvasrefined-heart-rise var(--cr-dur, 1400ms) var(--cr-cdelay, 0ms) both; }
+.canvasrefined-heart-inner { display: inline-block; animation: canvasrefined-heart-sway calc(var(--cr-dur, 1400ms) * .55) ease-in-out infinite alternate; }
+`;
+    (document.head || document.documentElement).appendChild(celebrationStylesEl);
+}
+
+function celebrationContainer() {
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '0';
+    container.style.top = '0';
+    container.style.pointerEvents = 'none';
+    container.style.overflow = 'visible';
+    container.style.zIndex = '2147483647';
+    document.body.appendChild(container);
+    return container;
+}
+
+function createFireworksBurst(targetElement) {
+    try {
+        const rect = targetElement.getBoundingClientRect();
+        const view = celebrationCanvas();
+        const ctx = view.ctx;
+        const colors = ['#ff4d4f', '#ffc107', '#4dd0e1', '#7c4dff', '#ff6ec7', '#ffd54f', '#69f0ae'];
+        const originX = rect.left + rect.width / 2;
+        const originY = rect.top + rect.height * 0.4;
+        const scale = celebrationAmountScale();
+        // more/crazy launch more shells AND bigger bursts; less only trims.
+        const burstScale = scale > 1 ? (scale >= 4 ? 2.2 : 1.5) : 1;
+        const shellCount = Math.max(1, Math.round(3 * scale));
+        const shellGap = 260 / Math.sqrt(scale);
+        const shells = [];
+        const sparks = [];
+        const flashes = [];
+        for (let i = 0; i < shellCount; i++) {
+            shells.push({
+                start: i * shellGap + Math.random() * 130,
+                apexX: originX + (Math.random() - 0.5) * 90 * burstScale,
+                // Lower bursts overall, with per-shell height variation.
+                apexY: originY - (55 + Math.random() * 110) * burstScale,
+                duration: 320 + Math.random() * 160,
+                color: colors[(Math.random() * colors.length) | 0],
+            });
+        }
+
+        const explode = (shell, now) => {
+            flashes.push({ x: shell.apexX, y: shell.apexY, r: 26 * burstScale, born: now });
+            const count = Math.min(48, Math.round((26 + Math.random() * 12) * scale));
+            const life = 700 + Math.random() * 500;
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count + Math.random() * 0.35;
+                const speed = (60 + Math.random() * 100) * burstScale;
+                sparks.push({
+                    x: shell.apexX,
+                    y: shell.apexY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 25 * burstScale,
+                    size: (2 + Math.random() * 3) * burstScale,
+                    born: now,
+                    duration: life,
+                    color: shell.color,
+                });
+            }
+        };
+
+        const startTime = performance.now();
+        let last = startTime;
+        let remainingShells = shells.length;
+        runCelebrationCanvas(view, (now) => {
+            const dt = Math.min(50, now - last) / 1000;
+            last = now;
+            ctx.clearRect(0, 0, view.w, view.h);
+            let active = false;
+
+            // shells climb from the task toward their apex
+            for (let i = shells.length - 1; i >= 0; i--) {
+                const sh = shells[i];
+                const elapsed = now - startTime - sh.start;
+                if (elapsed < 0) { active = true; continue; }
+                const p = Math.min(1, elapsed / sh.duration);
+                const eased = 1 - Math.pow(1 - p, 2);
+                const x = originX + (sh.apexX - originX) * eased;
+                const y = originY + (sh.apexY - originY) * (1 - Math.pow(1 - eased, 1.6));
+                ctx.beginPath();
+                ctx.fillStyle = '#fffbe6';
+                ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                if (p >= 1) { explode(sh, now); shells.splice(i, 1); }
+                else active = true;
+            }
+
+            // soft radial flashes at each burst point
+            for (let i = flashes.length - 1; i >= 0; i--) {
+                const f = flashes[i];
+                const p = (now - f.born) / 300;
+                if (p >= 1) { flashes.splice(i, 1); continue; }
+                active = true;
+                const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+                g.addColorStop(0, 'rgba(255,255,255,' + (0.85 * (1 - p)).toFixed(3) + ')');
+                g.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // sparks: simple ballistic drift with gravity + drag
+            const gravity = 300;
+            for (let i = sparks.length - 1; i >= 0; i--) {
+                const sp = sparks[i];
+                const p = (now - sp.born) / sp.duration;
+                if (p >= 1) { sparks.splice(i, 1); continue; }
+                active = true;
+                sp.x += sp.vx * dt;
+                sp.y += sp.vy * dt;
+                sp.vy += gravity * dt;
+                sp.vx *= (1 - 1.1 * dt);
+                ctx.globalAlpha = Math.max(0, 1 - p);
+                ctx.fillStyle = sp.color;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, sp.size * (1 - p * 0.6), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            return active || shells.length > 0 || (remainingShells-- > 0 && now - startTime < shellCount * shellGap + 1500);
+        }, 200);
+    } catch (e) {
+        console.error('fireworks error', e);
+    }
+}
+
+function createSparkleBurst(targetElement) {
+    try {
+        const rect = targetElement.getBoundingClientRect();
+        const view = celebrationCanvas();
+        const ctx = view.ctx;
+        const colors = ['#ffe082', '#fff59d', '#ffd54f', '#ffffff', '#ff8ab5', '#b388ff'];
+        const originX = rect.left + rect.width / 2;
+        const originY = rect.top + rect.height * 0.4;
+        const scale = celebrationAmountScale();
+        const sparkCount = Math.min(80, Math.round(22 * scale));
+        const sizeScale = scale >= 4 ? 1.5 : scale >= 2 ? 1.25 : 1;
+        const sparks = [];
+        for (let i = 0; i < sparkCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 40 + Math.random() * 95;
+            sparks.push({
+                dx: Math.cos(angle) * dist,
+                dy: Math.sin(angle) * dist * 0.7 - 18,
+                size: (6 + Math.random() * 10) * sizeScale,
+                rot: Math.random() * 360,
+                dur: 700 + Math.random() * 500,
+                delay: Math.floor(Math.random() * 120),
+                color: colors[(Math.random() * colors.length) | 0],
             });
         }
 
         const startTime = performance.now();
-        let rafId = null;
-
-        const animate = now => {
+        runCelebrationCanvas(view, (now) => {
+            ctx.clearRect(0, 0, view.w, view.h);
             let active = false;
+            for (let i = 0; i < sparks.length; i++) {
+                const sp = sparks[i];
+                const elapsed = now - startTime - sp.delay;
+                if (elapsed < 0) { active = true; continue; }
+                const p = Math.min(1, elapsed / sp.dur);
+                if (p < 1) active = true;
+                // ease-out drift to the end point while scaling up then down
+                const eased = 1 - Math.pow(1 - p, 2.2);
+                const scalePulse = p < 0.3 ? 0.2 + (p / 0.3) * 0.8 : Math.max(0.1, 1 - ((p - 0.3) / 0.7) * 0.9);
+                const x = originX + sp.dx * eased;
+                const y = originY + sp.dy * eased;
+                const r = sp.size * scalePulse;
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, 1 - p * p);
+                ctx.translate(x, y);
+                ctx.rotate(((sp.rot + 220 * p) * Math.PI) / 180);
+                // 4-point star path
+                const q = r * 0.38;
+                ctx.fillStyle = sp.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -r);
+                ctx.quadraticCurveTo(q * 0.3, -q * 0.3, r, 0);
+                ctx.quadraticCurveTo(q * 0.3, q * 0.3, 0, r);
+                ctx.quadraticCurveTo(-q * 0.3, q * 0.3, -r, 0);
+                ctx.quadraticCurveTo(-q * 0.3, -q * 0.3, 0, -r);
+                ctx.fill();
+                ctx.restore();
+            }
+            return active;
+        }, 120);
+    } catch (e) {
+        console.error('sparkle error', e);
+    }
+}
 
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const particle = particles[i];
-                const elapsed = now - startTime - particle.delay;
-                if (elapsed < 0) {
-                    active = true;
-                    continue;
-                }
+// Total ms until the last heart finishes rising (used to hold the task's
+// exit animation until the hearts have almost finished). Computed from the
+// same formula the effect uses, so it's known before the effect starts.
+function risingHeartsRuntime() {
+    const heartCount = Math.round(13 * celebrationAmountScale());
+    return Math.min(2200, (heartCount - 1) * 20 + 1500) + 300;
+}
 
-                const progress = Math.min(1, elapsed / particle.duration);
-                const eased = 1 - Math.pow(1 - progress, 3);
+function createRisingHearts(targetElement) {
+    try {
+        const rect = targetElement.getBoundingClientRect();
+        const container = celebrationContainer();
+        const scale = celebrationAmountScale();
+        const heartScale = scale >= 4 ? 2.2 : scale >= 2 ? 1.5 : 1;
+        const colors = ['#ff5c8a', '#ff80ab', '#f06292', '#ff4081', '#e91e63'];
+        const heartCount = Math.round(13 * scale);
+        for (let i = 0; i < heartCount; i++) {
+            const el = document.createElement('span');
+            el.className = 'canvasrefined-heart';
+            const inner = document.createElement('span');
+            inner.className = 'canvasrefined-heart-inner';
+            inner.textContent = '\u2764';
+            el.appendChild(inner);
+            const size = (10 + Math.random() * 14) * heartScale;
+            el.style.fontSize = size + 'px';
+            inner.style.color = colors[Math.floor(Math.random() * colors.length)];
+            el.style.left = Math.round(rect.left + rect.width * 0.14 + Math.random() * rect.width * 0.72) + 'px';
+            el.style.top = Math.round(rect.top + rect.height - 8) + 'px';
+            inner.style.textShadow = '0 1px 4px rgba(0,0,0,.25)';
+            el.style.setProperty('--cr-hy', '-' + Math.round(90 + Math.random() * 150) + 'px');
+            el.style.setProperty('--cr-hx', (10 + Math.random() * 22).toFixed(1) + 'px');
+            el.style.setProperty('--cr-s', (0.8 + Math.random() * 0.7).toFixed(2));
+            el.style.setProperty('--cr-rot', Math.round(6 + Math.random() * 8) + 'deg');
+            el.style.setProperty('--cr-dur', (900 + Math.random() * 600) + 'ms');
+            // Lead the slide-away: hearts pop out instantly (fill-mode "both"
+            // keeps them hidden during their delay) and stream up in tight
+            // succession — the task is still on screen while they launch.
+            el.style.setProperty('--cr-cdelay', Math.round(i * (i < 3 ? 16 : 20)) + 'ms');
+            container.appendChild(el);
+        }
+        // The container removal clears every heart; no per-heart timers needed.
+        // Scale the timeout with the count so big amounts aren't cut off.
+        setTimeout(() => { try { container.remove(); } catch (e) { /* ignore */ } }, 2400 + heartCount * 20);
+        return risingHeartsRuntime();
+    } catch (e) {
+        console.error('hearts error', e);
+    }
+}
 
-                const x = (1 - eased) * (1 - eased) * particle.originX + 2 * (1 - eased) * eased * particle.ctrlX + eased * eased * particle.endX;
-                const y = (1 - eased) * (1 - eased) * particle.originY + 2 * (1 - eased) * eased * particle.ctrlY + eased * eased * particle.endY;
-
-                particle.el.style.transform = `translate(${Math.round(x - particle.originX)}px, ${Math.round(y - particle.originY)}px) rotate(${particle.rotate * eased}deg) scale(${particle.scale * (1 - eased * 0.15)})`;
-                particle.el.style.opacity = String(1 - progress);
-
-                if (progress < 1) {
-                    active = true;
-                } else {
-                    particle.el.remove();
-                    particles.splice(i, 1);
+// The rocket exit flies the task element itself off the page (via the
+// canvasrefined-rocket-exit keyframes applied by applyTodoExitAnimation);
+// this spawns the exhaust flame trail that follows the flying card.
+function createRocketCelebration(targetElement) {
+    try {
+        const container = celebrationContainer();
+        const colors = ['#ffb74d', '#ff9800', '#ff7043', '#ffd54f', '#eceff1', '#ffcc80'];
+        const flightMs = 1200;
+        const scale = celebrationAmountScale();
+        const start = performance.now();
+        const flames = []; // tracked so expiry is swept in the same pass
+        // Pool cap scales with the amount tier so "crazy" never saturates and
+        // starves the trail (which made the thruster visibly cut out early).
+        const poolCap = Math.round(60 * Math.max(1, scale));
+        let rafId = null;
+        const tick = (now) => {
+            let r;
+            try { r = targetElement.getBoundingClientRect(); } catch (e) { r = null; }
+            // retire expired flames in the same pass (no per-flame timers)
+            for (let i = flames.length - 1; i >= 0; i--) {
+                if (now >= flames[i].expire) {
+                    flames[i].el.remove();
+                    flames.splice(i, 1);
                 }
             }
-
-            if (active) {
-                rafId = requestAnimationFrame(animate);
+            const gone = !r || r.width === 0 || r.bottom < -110 || r.top > window.innerHeight + 110;
+            if (!gone && now - start < flightMs + 150) {
+                // Spawn every frame while the pool has room; flames live
+                // ~0.5-1s so the trail stays continuous until the card is
+                // fully offscreen.
+                if (flames.length < poolCap) {
+                    const climb = Math.max(0.35, Math.min(1, (now - start) / 500)); // throttle ramps up after liftoff
+                    // Capped: extra tier budget goes into flame size/length,
+                    // not into an ever-growing per-frame spawn rate.
+                    const jets = Math.min(8, Math.max(2, Math.round((4 + Math.random() * 2) * Math.sqrt(scale))));
+                    for (let i = 0; i < jets; i++) {
+                        // Amount tier drives thruster particle size and flame length.
+                        const size = (3 + Math.random() * 6) * scale;
+                        const life = (380 + Math.random() * 380) * (scale >= 4 ? 1.3 : 1);
+                        const el = document.createElement('div');
+                        el.className = 'canvasrefined-rocket-flame';
+                        el.style.width = (size * (0.8 + climb * 0.5)).toFixed(1) + 'px';
+                        el.style.height = (size * (1.4 + Math.random() * 1.2) * (0.8 + climb * 0.5)).toFixed(1) + 'px';
+                        el.style.left = Math.round(r.left + r.width * (0.38 + Math.random() * 0.24)) + 'px';
+                        el.style.top = Math.round(r.bottom - 4) + 'px';
+                        el.style.background = colors[(Math.random() * colors.length) | 0];
+                        // WAAPI: compositor-run motion; flame travel distance
+                        // scales with the amount tier so the exhaust keeps up
+                        // with bigger/faster rockets.
+                        const fx = (Math.random() - 0.5) * 28 * scale;
+                        const fy = 30 * scale;
+                        el.animate([
+                            { transform: 'translate(0px, 0px) scale(1)', opacity: 0.95 },
+                            { transform: 'translate(' + fx.toFixed(1) + 'px, ' + fy + 'px) scale(0.15)', opacity: 0 }
+                        ], { duration: Math.round(life), easing: 'ease-out', fill: 'forwards' });
+                        container.appendChild(el);
+                        flames.push({ el, expire: now + life + 120 });
+                    }
+                }
+                rafId = requestAnimationFrame(tick);
             } else {
-                try { container.remove(); } catch (e) { /* ignore */ }
-                if (rafId) cancelAnimationFrame(rafId);
+                // Let the last flames finish, then drop the whole container.
+                setTimeout(() => { try { container.remove(); } catch (e) { /* ignore */ } }, 1100);
             }
         };
-
-        rafId = requestAnimationFrame(animate);
-
-        // cleanup container after animations
-        setTimeout(() => {
-            try { container.remove(); } catch (e) { /* ignore */ }
-        }, 2400);
+        rafId = requestAnimationFrame(tick);
     } catch (e) {
-        console.error('confetti error', e);
+        console.error('rocket celebration error', e);
+    }
+}
+
+// --- Celebration preview -----------------------------------------------------
+// "Preview" (popup Celebrations box): runs the currently selected effect +
+// amount against a disposable fake task so the user can see what they'll get
+// without completing a real task. The fake card drops into the real todo list
+// when it's rendered here, or floats top-right as a fallback.
+function runCelebrationPreview() {
+    try {
+        if (enabledCelebrationTypes().length === 0) return { ok: false, reason: "disabled" };
+
+        // Clean up any preview that's still playing.
+        const stale = document.getElementById("canvasrefined-celebration-preview");
+        if (stale) stale.remove();
+
+        // Drop the fake task into the "Due Today" group so the celebration
+        // plays exactly where a real completion happens. The preview card
+        // reuses the real task-row markup (colored strip, title, due date)
+        // so its size/position matches an actual task.
+        const todayContainer = domContainers["0"];
+        const listEl = document.getElementById("canvasrefined-todo-list");
+        const onTasksTab = betterTodoFilter === "tasks" && todayContainer && todayContainer.wrapper.isConnected && listEl;
+        const card = document.createElement("div");
+        card.id = "canvasrefined-celebration-preview";
+        card.className = "better-todo-assignment";
+        card.style.overflowX = "hidden";
+        card.innerHTML = `
+		<div style="display:flex;align-items:center;gap:5px;width:100%;height:60px;background:var(--bcbackground-2);border-radius:5px;transition:all .4s ease;overflow:hidden;">
+			<div style="width:40px;display:flex;align-items:center;justify-content:center;background-color:#56caf0;height:100%;border-radius:5px 0 0 5px;">
+				<div style="width:20px;height:20px;display:flex;margin-left:5px;">
+					<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
+						<path d="M1468.214 0v551.145L840.27 1179.089c-31.623 31.623-49.693 74.54-49.693 119.715v395.289h395.288c45.176 0 88.093-18.07 119.716-49.694l162.633-162.633v438.206H0V0h1468.214Zm129.428 581.3c22.137-22.136 57.825-22.136 79.962 0l225.879 225.879c22.023 22.023 22.023 57.712 0 79.848l-677.638 677.637c-10.616 10.503-24.96 16.49-39.98 16.49H903.516v-282.35c0-15.02 5.986-29.364 16.49-39.867Zm-920.005 548.095H338.82v112.94h338.818v-112.94Zm225.88-225.879H338.818v112.94h564.697v-112.94Zm734.106-202.5-89.561 89.56 146.03 146.031 89.562-89.56-146.031-146.031Zm-508.228-362.197H338.82v338.818h790.576V338.82Z" fill-rule="evenodd"></path>
+					</svg>
+				</div>
+			</div>
+			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;position:relative;">
+				<div style="display:flex;flex-direction:column;gap:3px;">
+					<span style="color:var(--bctext-0);font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">Celebration preview</span>
+					<span style="color:inherit;text-decoration:none;font-weight:bold;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;padding-right:28px;margin-top:-5px;">Sample task</span>
+					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">Due today</span>
+				</div>
+			</div>
+		</div>`;
+
+        let restoreWrapper = null;
+        if (onTasksTab) {
+            const groupList = todayContainer.wrapper.querySelector(".todo-group-list");
+            if (groupList) groupList.insertBefore(card, groupList.firstChild);
+            // Force the Due Today group visible for the preview, but remember
+            // its previous state: when the group has no real items it starts
+            // hidden, and without restoring it the empty "Due Today" header
+            // would stay behind after the sample card leaves.
+            restoreWrapper = {
+                wrapper: todayContainer.wrapper,
+                display: todayContainer.wrapper.style.display,
+                hadVisible: todayContainer.wrapper.hasAttribute("data-has-visible"),
+            };
+            todayContainer.wrapper.style.display = "block";
+            todayContainer.wrapper.setAttribute("data-has-visible", "true");
+        } else {
+            // Tasks tab not rendered here (other filter, other page) — float
+            // the sample card top-right so a preview is still possible.
+            card.style.cssText += "position:fixed;top:70px;right:16px;width:300px;z-index:2147483646;box-shadow:0 2px 10px rgba(0,0,0,.25);";
+            document.body.appendChild(card);
+        }
+
+        // Same flow as a real completion: pick a random enabled effect with
+        // the current amount, then apply the matching exit animation. The
+        // effect start honours the lead-in pause and is skipped if the sample
+        // card is gone by then (e.g. an immediate re-preview).
+        const celebration = runCelebration(card);
+        if (celebration.start) {
+            const startFn = celebration.start;
+            setTimeout(() => { if (card.isConnected) startFn(); }, celebration.startDelay || 0);
+        }
+        applyTodoExitAnimation(card, celebration.style, celebration.delay);
+        setTimeout(() => {
+            try { card.remove(); } catch (e) { /* ignore */ }
+            // Put the Due Today group back the way we found it.
+            if (restoreWrapper) {
+                try {
+                    restoreWrapper.wrapper.style.display = restoreWrapper.display;
+                    if (!restoreWrapper.hadVisible) restoreWrapper.wrapper.removeAttribute("data-has-visible");
+                } catch (e) { /* wrapper re-rendered away already */ }
+            }
+        }, celebrationExitDuration(celebration.style, celebration.delay) + 120);
+        return { ok: true };
+    } catch (e) {
+        console.error("celebration preview error", e);
+        return { ok: false, reason: "error" };
     }
 }
 
@@ -4678,18 +5275,50 @@ function markAs(item, element, makeComplete) {
     item.planner_override = item.planner_override || {};
     item.planner_override.marked_complete = completeState;
 
-    // fire confetti only when marking complete (not when unmarking).
-    // Must happen BEFORE the slide-out transform below: the burst measures
-    // the element with getBoundingClientRect(), which reflects transforms —
+    // A previous markAs on this same element may still have celebration or
+    // exit timers pending (fast double-click). Cancel them so the new action
+    // starts clean instead of racing the old one's scheduled effect/exit.
+    element.__crCelebrationCancelled = true;
+    if (element.__crExitTimer) { clearTimeout(element.__crExitTimer); element.__crExitTimer = null; }
+    if (element.__crCelebTimer) { clearTimeout(element.__crCelebTimer); element.__crCelebTimer = null; }
+    element.__crCelebrationCancelled = false;
+
+    // Celebrate only when marking complete (not when unmarking).
+    // Must happen BEFORE the exit animation below: the effects measure the
+    // element with getBoundingClientRect(), which reflects transforms —
     // measuring after translate(100%) would place the origin one full card
     // width to the right (off screen) whenever the transform applies
     // instantly, i.e. on cards without a transition (announcements).
+    let exitStyle = "slide";
+    let exitDelay = 0;
     if (completeState) {
-        try { createConfettiBurst(element); } catch (e) { console.error('confetti trigger error', e); }
+        try {
+            const celebration = runCelebration(element);
+            exitStyle = celebration.style;
+            exitDelay = celebration.delay || 0;
+            // Overlay effects (confetti/fireworks/sparkles/hearts) fire after
+            // the lead-in pause; the exit is scheduled separately. Both are
+            // cancelled if the optimistic UI gets reverted meanwhile.
+            if (celebration.start) {
+                const startFn = celebration.start;
+                const fire = () => {
+                    if (element.__crCelebrationCancelled === true || !element.isConnected) return;
+                    startFn();
+                };
+                if (celebration.startDelay > 0) {
+                    if (element.__crCelebTimer) clearTimeout(element.__crCelebTimer);
+                    element.__crCelebTimer = setTimeout(() => {
+                        element.__crCelebTimer = null;
+                        fire();
+                    }, celebration.startDelay);
+                } else {
+                    fire();
+                }
+            }
+        } catch (e) { console.error('celebration trigger error', e); }
     }
 
-    element.style.transform = "translate(100%)";
-    element.style.opacity = "0";
+    applyTodoExitAnimation(element, exitStyle, exitDelay);
 
     // update progress rings immediately so they animate while the item slides/fades
     const refreshProgressRings = () => {
@@ -4737,9 +5366,26 @@ function markAs(item, element, makeComplete) {
             setPinnedIncomplete(item, false);
         }
         console.warn("planner override not persisted, reverting UI:", reason);
-        // snap the card back if it is still in the DOM (before the 400ms swap)
+        // snap the card back if it is still in the DOM (before the swap);
+        // also undo any celebration exit animation applied to it
         element.style.transform = "";
         element.style.opacity = "";
+        element.style.transition = "";
+        element.style.visibility = "";
+        element.classList.remove("canvasrefined-rocket-exit");
+        element.__crCelebrationCancelled = true;
+        if (element.__crExitTimer) {
+            clearTimeout(element.__crExitTimer);
+            element.__crExitTimer = null;
+        }
+        if (element.__crCelebTimer) {
+            clearTimeout(element.__crCelebTimer);
+            element.__crCelebTimer = null;
+        }
+        if (element.__crRocketClone) {
+            try { element.__crRocketClone.remove(); } catch (e) { /* ignore */ }
+            element.__crRocketClone = null;
+        }
         const loc = document.querySelector("#canvasrefined-todo-list");
         if (loc) { clearTodoList(); createTodoSections(loc); }
         refreshProgressRings();
@@ -4748,7 +5394,7 @@ function markAs(item, element, makeComplete) {
     setTimeout(() => {
         clearTodoList();
         createTodoSections(document.querySelector("#canvasrefined-todo-list"));
-    }, 400);
+    }, celebrationExitDuration(exitStyle, exitDelay));
 
     // --- Persistence (background, best-effort) ---
     // Toggle the planner override server-side. The override id returned by a
