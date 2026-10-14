@@ -1544,4 +1544,37 @@ td.status [class*="-pill"]:hover,
 [class*="-mask"] {
   background: rgba(0, 0, 0, 0.60) !important;
 }
+
+[data-testid="similarity-pledge"] label,
+[data-testid="similarity-pledge"] label span,
+[data-testid="similarity-pledge"] label div,
+[data-testid="similarity-pledge-comments"],
+[data-testid="similarity-pledge-comments"] :is(span, p, strong, b, em),
+label:has(input:is([name="turnitin_pledge"], [name="vericite_pledge"])),
+label:has(input:is([name="turnitin_pledge"], [name="vericite_pledge"])) :is(span, div, p, strong, b, em) {
+    color: var(--bctext-1) !important;
+}
+[data-testid="similarity-pledge"] a,
+label:has(input:is([name="turnitin_pledge"], [name="vericite_pledge"])) a {
+    color: var(--bclinks) !important;
+}
+input[type="checkbox"]:is([name="turnitin_pledge"], [name="vericite_pledge"]) {
+    color-scheme: light !important;
+    accent-color: #000000 !important;
+}
+[data-testid="similarity-pledge"] [class*="-checkboxFacade__facade"] {
+    background: #ffffff !important;
+    border-color: var(--bctext-1) !important;
+    color: #ffffff !important;
+}
+[data-testid="similarity-pledge"] [class*="-checkboxFacade__facade"]:has(svg) {
+    background: #000000 !important;
+}
+[data-testid="similarity-pledge"] [class*="-checkboxFacade__facade"] svg {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+[data-testid="similarity-pledge"] [class*="-checkboxFacade__facade"]::before {
+    border-color: var(--bclinks) !important;
+}
 `;
