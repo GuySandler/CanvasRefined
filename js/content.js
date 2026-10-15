@@ -1023,7 +1023,20 @@ function applyOptionsChanges(changes) {
 			case "dashboard_notes":
 			case "dashboard_notes_text":
 			case "dashboard_notes_mode":
+			case "dashboard_notes_position":
 				loadDashboardNotes();
+				break;
+			case "widget_order":
+				["top", "below"].forEach(area => {
+					const row = document.querySelector(".canvasrefined-widget-row[data-area='" + area + "']");
+					if (row) applyWidgetRowLayout(row, area);
+				});
+				// A widget moved between areas (or joined/left a shared row) needs
+				// the OTHER widgets to re-place too: each widget only repositions
+				// itself on its own position key, so without this the widget left
+				// behind would keep the old layout until reload.
+				if (options.dashboard_notes === true) loadDashboardNotes();
+				if (options.gpa_calc === true && current_page === "/") setupGPACalc();
 				break;
 			case "dashboard_grades":
 			case "grade_hover":
@@ -1144,6 +1157,7 @@ function applyOptionsChanges(changes) {
 				break;
 			case "gpa_calc":
 			case "gpa_calc_prepend":
+			case "gpa_calc_position":
 			case "gpa_calc_weighted":
 			case "gpa_calc_cumulative":
 				if (!grades) getGrades();
@@ -1155,6 +1169,10 @@ function applyOptionsChanges(changes) {
 				break;
 			case "gpa_calc_bounds":
 				calculateGPA2();
+				{
+					const modal = document.getElementById("canvasrefined-gpa-modal");
+					if (modal) renderGpaBoundsEditor(modal.querySelector(".cr-gpa-modal-bounds"));
+				}
 				break;
 			case "custom_font":
 			case "custom_font_skip_p":
@@ -7598,6 +7616,7 @@ GPA calculator
 function calculateGPA2() {
     let qualityPoints = 0, numCredits = 0, weightedQualityPoints = 0, cumulativePoints = 0, cumulativeCredits = 0;
     document.querySelectorAll('.canvasrefined-gpa-course').forEach(course => {
+        course.dataset.gradeLetter = "--";
         const weight = course.querySelector('.canvasrefined-course-weight').value;
         const credits = parseFloat(course.querySelector('.canvasrefined-course-credit').value);
         const grade = parseFloat(course.querySelector('.canvasrefined-course-percent').value);
@@ -7645,6 +7664,7 @@ function calculateGPA2() {
             gpa = options.gpa_calc_bounds["F"].gpa;
         }
             course.querySelector(".canvasrefined-gpa-letter-grade").textContent = letter;
+            course.dataset.gradeLetter = letter;
 
             let weightMultiplier = 0;
             if (weight === "ap") {
@@ -7659,12 +7679,19 @@ function calculateGPA2() {
 
 
     });
-    document.querySelector("#canvasrefined-gpa-unweighted").textContent = (qualityPoints / numCredits).toFixed(2);
-    document.querySelector("#canvasrefined-gpa-weighted").textContent = (weightedQualityPoints / numCredits).toFixed(2);
+    document.querySelector("#canvasrefined-gpa-unweighted").textContent = Number.isFinite(qualityPoints / numCredits) ? (qualityPoints / numCredits).toFixed(2) : "--";
+    document.querySelector("#canvasrefined-gpa-weighted").textContent = Number.isFinite(weightedQualityPoints / numCredits) ? (weightedQualityPoints / numCredits).toFixed(2) : "--";
     const cGPA = document.querySelector("#canvasrefined-cumulative-gpa");
     const g = parseFloat(cGPA.querySelector(".canvasrefined-course-percent").value);
     const c = parseInt(cGPA.querySelector(".canvasrefined-course-credit").value);
-    document.querySelector("#canvasrefined-gpa-cumulative").textContent = (((options.gpa_calc_weighted === true ? weightedQualityPoints : qualityPoints) + (g * c)) / (numCredits + c)).toFixed(2);
+    const cumulativeTotal = (options.gpa_calc_weighted === true ? weightedQualityPoints : qualityPoints) + (g * c);
+    document.querySelector("#canvasrefined-gpa-cumulative").textContent = Number.isFinite(cumulativeTotal / (numCredits + c)) ? (cumulativeTotal / (numCredits + c)).toFixed(2) : "--";
+    // Mirror the live results into the open calculator modal's header tiles.
+    const gpaModal = document.getElementById("canvasrefined-gpa-modal");
+    if (gpaModal) gpaModal.querySelectorAll("[data-gpa-mirror]").forEach(tile => {
+        const src = document.getElementById("canvasrefined-gpa-" + tile.dataset.gpaMirror);
+        if (src) tile.querySelector(".cr-gpa-result-value").textContent = src.textContent;
+    });
 }
 
 function changeGPASettings(course_id, update) {
@@ -7768,6 +7795,357 @@ function createGPACalcCourse(location, course) {
     return courseContainer;
 }
 
+// Widgets tab position for the GPA widget. Falls back to the legacy "Move to
+// top" checkbox for users who set it before the dropdown existed.
+function gpaCalcPosition() {
+    if (options.gpa_calc_position !== undefined) return options.gpa_calc_position;
+    return options.gpa_calc_prepend === true ? "cards_start" : "cards_end";
+}
+
+// Place the GPA card (container2) and its expanded calculator (container) at
+// the position chosen in the Widgets tab. Guards avoid re-inserting nodes
+// that are already in place — re-inserting would ping the dashboard mutation
+// observer and retrigger this whole pass.
+function placeGPAElements(dashboardContainer, container, container2) {
+    // While the calculator is hosted in the open modal, leave it alone — a
+    // dashboard setup pass must not yank it out from under the user.
+    if (container.closest && container.closest("#canvasrefined-gpa-modal")) return;
+    const pos = gpaCalcPosition();
+    const containerMode = pos === "top" || pos === "below";
+    container.classList.toggle("container-mode", containerMode);
+    container2.classList.toggle("container-mode", containerMode);
+    const parent = dashboardContainer.parentNode;
+    if (containerMode) {
+        placeWidgetInRow("gpa_calc", pos, [container2, container], dashboardContainer);
+        return;
+    }
+    releaseWidgetFromRow("gpa_calc", [container2, container], dashboardContainer);
+    if (pos === "cards_start") {
+        if (dashboardContainer.children[0] !== container || dashboardContainer.children[1] !== container2) {
+            dashboardContainer.insertBefore(container, dashboardContainer.firstChild);
+            dashboardContainer.insertBefore(container2, container.nextSibling);
+        }
+    } else if (pos === "cards_end") {
+        if (dashboardContainer.lastElementChild !== container || container2.nextElementSibling !== container) {
+            dashboardContainer.appendChild(container2);
+            dashboardContainer.appendChild(container);
+        }
+    } else if (pos === "top") {
+        if (container2.parentNode !== parent || container2.nextElementSibling !== container || container.nextElementSibling !== dashboardContainer) {
+            if (parent) {
+                parent.insertBefore(container2, dashboardContainer);
+                parent.insertBefore(container, container2.nextSibling);
+            } else {
+                dashboardContainer.prepend(container2);
+                dashboardContainer.prepend(container);
+            }
+        }
+    } else { // below
+        if (container2.parentNode !== parent || dashboardContainer.nextElementSibling !== container2 || container2.nextElementSibling !== container) {
+            if (parent) {
+                parent.insertBefore(container2, dashboardContainer.nextSibling);
+                parent.insertBefore(container, container2.nextSibling);
+            } else {
+                dashboardContainer.appendChild(container2);
+                dashboardContainer.appendChild(container);
+            }
+        }
+    }
+}
+
+// Shared full-width container ("top"/"below" positions): widgets live in a
+// flex row; each widget's slot width is the % chosen in the Widgets tab.
+function containerWidgetOrder(area) {
+    const saved = options.widget_order && options.widget_order[area];
+    if (!Array.isArray(saved)) return [];
+    return saved.map(e => {
+        if (typeof e === "string") return { id: e, size: null };
+        if (e && typeof e === "object" && e.id) {
+            const n = Number(e.size);
+            return { id: e.id, size: Number.isFinite(n) && n > 0 ? n : null };
+        }
+        return null;
+    }).filter(e => e && (e.id === "dashboard_notes" || e.id === "gpa_calc"));
+}
+
+// Both widgets must share one row: normalize the anchor to the outer
+// DashboardCard_Container. The GPA's dashboardContainer can be the inner
+// .ic-DashboardCard__box__container, whose parent is INSIDE the card
+// container — that's what caused GPA and Notes to build two separate rows.
+function widgetContainerAnchor(container) {
+    if (container && container.id === "DashboardCard_Container") return container;
+    return document.querySelector("#DashboardCard_Container") || container;
+}
+
+function ensureWidgetRow(area, container) {
+    const parent = container.parentNode;
+    if (!parent) return null;
+    let row = parent.querySelector(":scope > .canvasrefined-widget-row[data-area='" + area + "']");
+    if (!row) {
+        row = document.createElement("div");
+        row.className = "canvasrefined-widget-row";
+        row.dataset.area = area;
+        if (area === "top") parent.insertBefore(row, container);
+        else parent.insertBefore(row, container.nextSibling);
+    }
+    return row;
+}
+
+// Lay out a widget row: order slots per the saved order, size each slot by
+// its saved % (normalized across the widgets actually present).
+function applyWidgetRowLayout(row, area) {
+    const slots = [...row.querySelectorAll(":scope > .canvasrefined-widget-slot")];
+    if (!slots.length) { row.remove(); return; }
+    const entries = containerWidgetOrder(area);
+    const byId = {};
+    slots.forEach(slot => { byId[slot.dataset.widget] = slot; });
+    const order = entries.map(e => e.id).filter(id => byId[id]);
+    slots.forEach(slot => { if (!order.includes(slot.dataset.widget)) order.push(slot.dataset.widget); });
+
+    // Only re-append when the DOM order differs, so our own layout pass
+    // doesn't ping the dashboard mutation observer into another pass.
+    const currentOrder = slots.map(s => s.dataset.widget);
+    if (currentOrder.join("|") !== order.join("|")) {
+        order.forEach(id => row.appendChild(byId[id]));
+    }
+
+    // Stale dividers from a previous layout are rebuilt below.
+    row.querySelectorAll(":scope > .canvasrefined-widget-divider").forEach(d => d.remove());
+
+    // Sizing: saved % values are normalized across the widgets actually in
+    // the row, so when one widget leaves (or a new one joins) the rest
+    // instantly redistribute to fill the freed space. flex-grow weights do
+    // that redistribution automatically in CSS.
+    const present = entries.filter(e => order.includes(e.id));
+    const defined = present.filter(e => Number.isFinite(e.size) && e.size > 0);
+    let weights;
+    if (defined.length === 0) {
+        weights = order.map(() => 1);
+    } else {
+        const totalDefined = defined.reduce((a, e) => a + e.size, 0);
+        const undefinedIds = order.filter(id => !defined.some(e => e.id === id));
+        const byIdEntry = Object.fromEntries(present.map(e => [e.id, e]));
+        weights = order.map(id => {
+            const e = byIdEntry[id];
+            if (e && Number.isFinite(e.size) && e.size > 0) return e.size / totalDefined;
+            return undefinedIds.length ? Math.max(0, 100 - totalDefined) / undefinedIds.length / 100 : 0.01;
+        });
+    }
+    order.forEach((id, i) => {
+        byId[id].dataset.sizePct = weights[i] * 100;
+        byId[id].style.flex = weights[i] + " 1 0%";
+        byId[id].style.minWidth = "0";
+    });
+}
+
+// Put a widget (one or more elements forming one unit) into its slot in the
+// shared top/below container row.
+function placeWidgetInRow(id, area, els, container) {
+    const row = ensureWidgetRow(area, widgetContainerAnchor(container));
+    if (!row) return;
+    let slot = row.querySelector(":scope > .canvasrefined-widget-slot[data-widget='" + id + "']");
+    if (!slot) {
+        slot = document.createElement("div");
+        slot.className = "canvasrefined-widget-slot";
+        slot.dataset.widget = id;
+        row.appendChild(slot);
+    }
+    // If the widget sat in a slot of a DIFFERENT row (moving top <-> below),
+    // drop that old slot first: appendChild moves the element but leaves the
+    // empty slot behind, still reserving its old % width.
+    const first = els[0];
+    const oldSlot = first && first.closest && first.closest(".canvasrefined-widget-slot");
+    if (oldSlot && oldSlot !== slot) {
+        const oldRow = oldSlot.parentNode;
+        oldSlot.remove();
+        if (oldRow && oldRow !== row) applyWidgetRowLayout(oldRow, oldRow.dataset.area);
+    }
+    els.forEach(el => { if (el.parentNode !== slot) slot.appendChild(el); });
+    applyWidgetRowLayout(row, area);
+}
+
+// Take a widget back out of a container row (e.g. moved into the card grid).
+function releaseWidgetFromRow(id, els, container) {
+    const first = els[0];
+    const slot = first && first.closest && first.closest(".canvasrefined-widget-slot");
+    if (!slot) return;
+    const row = slot.parentNode;
+    const parent = row.parentNode;
+    const ref = row.dataset.area === "top" ? row.nextSibling : row;
+    els.forEach(el => { if (el.parentNode === slot) parent.insertBefore(el, ref); });
+    slot.remove();
+    if (row && !row.querySelector(":scope > .canvasrefined-widget-slot")) row.remove();
+    else if (row) applyWidgetRowLayout(row, row.dataset.area);
+}
+
+// GPA calculator modal: the "Edit Calculator" button opens a centered modal
+// combining the course calculator with the grade-scale editor. Built fresh
+// per open (no shared state with the dashboard DOM except the calculator
+// body, which is moved in/out), and everything syncs through chrome.storage
+// (gpa_calc_bounds / custom_cards / cumulative_gpa).
+const GPA_BOUNDS_ORDER = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"];
+
+const GPA_PLUS_MINUS_PRESET = {
+    "A+": { "cutoff": 97, "gpa": 4.0 },
+    "A": { "cutoff": 93, "gpa": 4.0 },
+    "A-": { "cutoff": 90, "gpa": 3.7 },
+    "B+": { "cutoff": 87, "gpa": 3.3 },
+    "B": { "cutoff": 83, "gpa": 3.0 },
+    "B-": { "cutoff": 80, "gpa": 2.7 },
+    "C+": { "cutoff": 77, "gpa": 2.3 },
+    "C": { "cutoff": 73, "gpa": 2.0 },
+    "C-": { "cutoff": 70, "gpa": 1.7 },
+    "D+": { "cutoff": 67, "gpa": 1.3 },
+    "D": { "cutoff": 63, "gpa": 1.0 },
+    "D-": { "cutoff": 60, "gpa": 0.7 },
+    "F": { "cutoff": 0, "gpa": 0 }
+};
+
+const GPA_BY_LETTER_PRESET = {
+    "A+": { "cutoff": 97, "gpa": 4.0 },
+    "A": { "cutoff": 93, "gpa": 4.0 },
+    "A-": { "cutoff": 90, "gpa": 4.0 },
+    "B+": { "cutoff": 87, "gpa": 3.0 },
+    "B": { "cutoff": 83, "gpa": 3.0 },
+    "B-": { "cutoff": 80, "gpa": 3.0 },
+    "C+": { "cutoff": 77, "gpa": 2.0 },
+    "C": { "cutoff": 73, "gpa": 2.0 },
+    "C-": { "cutoff": 70, "gpa": 2.0 },
+    "D+": { "cutoff": 67, "gpa": 1.0 },
+    "D": { "cutoff": 63, "gpa": 1.0 },
+    "D-": { "cutoff": 60, "gpa": 1.0 },
+    "F": { "cutoff": 0, "gpa": 0 }
+};
+
+// Grade-scale editor: rows of letter | min % | GPA points. Writes the
+// gpa_calc_bounds key; the modal re-renders on storage changes (which also
+// re-syncs which preset button is highlighted).
+function renderGpaBoundsEditor(host) {
+    if (!host.isConnected) return;
+    chrome.storage.sync.get(["gpa_calc_bounds"], storage => {
+        const bounds = storage["gpa_calc_bounds"];
+        if (!bounds || !host.isConnected) return;
+        host.textContent = "";
+        GPA_BOUNDS_ORDER.forEach(key => {
+            const row = document.createElement("label");
+            row.className = "cr-gpa-row";
+            row.innerHTML =
+                '<span class="cr-gpa-chip">' + key + '</span>' +
+                '<span class="cr-gpa-field"><input class="cr-gpa-input" data-field="cutoff" type="text" inputmode="decimal"><span class="cr-gpa-suffix">%</span></span>' +
+                '<span class="cr-gpa-field"><input class="cr-gpa-input" data-field="gpa" type="text" inputmode="decimal"><span class="cr-gpa-suffix">pts</span></span>';
+            const [cutoff, gpa] = row.querySelectorAll("input");
+            cutoff.value = bounds[key].cutoff;
+            gpa.value = bounds[key].gpa;
+            const save = field => () => {
+                chrome.storage.sync.get(["gpa_calc_bounds"], existing => {
+                    chrome.storage.sync.set({ "gpa_calc_bounds": { ...existing["gpa_calc_bounds"], [key]: { ...existing["gpa_calc_bounds"][key], [field]: parseFloat(field === "cutoff" ? cutoff.value : gpa.value) } } });
+                });
+            };
+            cutoff.addEventListener("change", save("cutoff"));
+            gpa.addEventListener("change", save("gpa"));
+            host.appendChild(row);
+        });
+        // Highlight the preset that currently matches the saved scale, if either does.
+        const modal = host.closest("#canvasrefined-gpa-modal");
+        if (modal) {
+            const json = JSON.stringify(bounds);
+            modal.querySelectorAll(".cr-gpa-preset").forEach(btn => {
+                const preset = btn.dataset.preset === "letter" ? GPA_BY_LETTER_PRESET : GPA_PLUS_MINUS_PRESET;
+                btn.classList.toggle("active", JSON.stringify(preset) === json);
+            });
+        }
+    });
+}
+
+function closeGpaModal(dashboardContainer, container, container2) {
+    const modal = document.getElementById("canvasrefined-gpa-modal");
+    if (modal) {
+        if (modal.__crKeyHandler) document.removeEventListener("keydown", modal.__crKeyHandler);
+        modal.remove();
+    }
+    // Return the calculator body to its resting spot next to the GPA card;
+    // placeGPAElements corrects the position for the current widget placement.
+    if (container2.parentNode) container2.parentNode.insertBefore(container, container2.nextSibling);
+    container.style.display = "none";
+    placeGPAElements(dashboardContainer, container, container2);
+}
+
+function openGpaModal(dashboardContainer, container, container2) {
+    closeGpaModal(dashboardContainer, container, container2);
+
+    const modal = document.createElement("div");
+    modal.id = "canvasrefined-gpa-modal";
+    modal.innerHTML = `
+        <div class="cr-gpa-modal" role="dialog" aria-modal="true" aria-label="GPA Calculator">
+            <header class="cr-gpa-head">
+                <div class="cr-gpa-head-titles">
+                    <span class="cr-gpa-title">GPA Calculator</span>
+                    <span class="cr-gpa-subtitle">Changes save automatically</span>
+                </div>
+                <div class="cr-gpa-results">
+                    <div class="cr-gpa-result" data-gpa-mirror="unweighted"><span class="cr-gpa-result-value">--</span><span class="cr-gpa-result-label">Current</span></div>
+                    <div class="cr-gpa-result" data-gpa-mirror="weighted"><span class="cr-gpa-result-value">--</span><span class="cr-gpa-result-label">Weighted</span></div>
+                    <div class="cr-gpa-result" data-gpa-mirror="cumulative"><span class="cr-gpa-result-value">--</span><span class="cr-gpa-result-label">Cumulative</span></div>
+                </div>
+                <button class="cr-gpa-close" type="button" aria-label="Close">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </header>
+            <div class="cr-gpa-body">
+                <section class="cr-gpa-pane cr-gpa-pane-courses">
+                    <div class="cr-gpa-pane-head">Courses</div>
+                    <div class="cr-gpa-colhead" aria-hidden="true"><span></span><span>Course</span><span>Grade</span><span>Credits</span><span>Course type</span><span class="cr-gpa-colhead-custom">Custom grade</span></div>
+                    <div class="cr-gpa-courses-host"></div>
+                </section>
+                <aside class="cr-gpa-pane cr-gpa-pane-scale">
+                    <div class="cr-gpa-pane-head">Grade scale</div>
+                    <div class="cr-gpa-seg">
+                        <button class="cr-gpa-preset" data-preset="plusminus" type="button">+/- Scale</button>
+                        <button class="cr-gpa-preset" data-preset="letter" type="button">Letter only</button>
+                    </div>
+                    <div class="cr-gpa-scale-head" aria-hidden="true"><span></span><span>Min %</span><span>GPA</span></div>
+                    <div class="cr-gpa-modal-bounds"></div>
+                    <p class="cr-gpa-note">A percentage earns the GPA of the first row whose Min % is at or below it. If your school doesn't use +/- grades, set the Min % of the +/- rows to 101 to take them out of the math.</p>
+                </aside>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    // Only show the result tiles the user actually tracks on the card.
+    if (options.gpa_calc_weighted !== true) modal.querySelector('[data-gpa-mirror="weighted"]').style.display = "none";
+    if (options.gpa_calc_cumulative !== true) modal.querySelector('[data-gpa-mirror="cumulative"]').style.display = "none";
+
+    // Seed the result tiles from the card's current numbers; calculateGPA2
+    // keeps them live from here on (see its mirror block).
+    modal.querySelectorAll("[data-gpa-mirror]").forEach(tile => {
+        const src = document.getElementById("canvasrefined-gpa-" + tile.dataset.gpaMirror);
+        if (src) tile.querySelector(".cr-gpa-result-value").textContent = src.textContent || "--";
+    });
+
+    // The calculator body (with all its wired course rows) MOVES into the
+    // modal while open — one set of course nodes in the DOM, and
+    // calculateGPA2 keeps working unchanged.
+    modal.querySelector(".cr-gpa-courses-host").appendChild(container);
+    container.style.display = "block";
+
+    const boundsHost = modal.querySelector(".cr-gpa-modal-bounds");
+    renderGpaBoundsEditor(boundsHost);
+    modal.querySelector('[data-preset="plusminus"]').addEventListener("click", () => {
+        chrome.storage.sync.set({ "gpa_calc_bounds": GPA_PLUS_MINUS_PRESET }, () => renderGpaBoundsEditor(boundsHost));
+    });
+    modal.querySelector('[data-preset="letter"]').addEventListener("click", () => {
+        chrome.storage.sync.set({ "gpa_calc_bounds": GPA_BY_LETTER_PRESET }, () => renderGpaBoundsEditor(boundsHost));
+    });
+
+    const close = () => closeGpaModal(dashboardContainer, container, container2);
+    // Escape closes from anywhere (the old modal only caught keys while it
+    // itself held focus).
+    modal.__crKeyHandler = (e) => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", modal.__crKeyHandler);
+    modal.querySelector(".cr-gpa-close").addEventListener("click", close);
+    modal.addEventListener("mousedown", (e) => { if (e.target === modal) close(); });
+}
+
 function setupGPACalc() {
     if (current_page !== "/" && current_page !== "") return;
     try {
@@ -7798,13 +8176,9 @@ function setupGPACalc() {
 
                 container.innerHTML = '<h3 class="canvasrefined-gpa-header">GPA Calculator</h3><div class="canvasrefined-gpa-courses-container"><div class="canvasrefined-gpa-courses"></div></div>';
 
-                if (options.gpa_calc_prepend === true) {
-                    dashboardContainer.prepend(container2);
-                    dashboardContainer.prepend(container);
-                } else {
-                    dashboardContainer.appendChild(container2);
-                    dashboardContainer.appendChild(container);
-                }
+                placeGPAElements(dashboardContainer, container, container2);
+                editBtn.textContent = "Edit Calculator";
+                editBtn.addEventListener("click", () => openGpaModal(dashboardContainer, container, container2));
 
                 let location = document.querySelector(".canvasrefined-gpa-courses");
                 if (!location) return;
@@ -7815,20 +8189,6 @@ function setupGPACalc() {
 
                 container.style.display = "none";
 
-                editBtn.addEventListener("click", () => {
-                    if (container.style.display === "none") {
-                        container.style.display = "inline-block";
-                        editBtn.textContent = "Close Calculator";
-                    } else {
-                        container.style.display = "none";
-                        editBtn.textContent = "Edit Calculator";
-                    }
-                    // Opening/closing changes the card grid's row composition
-                    // (the expanded calculator claims a full-width row), so
-                    // uneven-row centering has to recompute either way.
-                    requestAnimationFrame(centerUnevenGridRows);
-                });
-
                 container2.dataset.canvasrefinedGpaRendered = "true";
                 container.dataset.canvasrefinedGpaRendered = "true";
             } else {
@@ -7837,18 +8197,7 @@ function setupGPACalc() {
                 if (weighted) weighted.style.display = options.gpa_calc_weighted ? "block" : "none";
                 if (cumulative) cumulative.style.display = options.gpa_calc_cumulative ? "block" : "none";
 
-                const shouldPrepend = options.gpa_calc_prepend === true;
-                if (shouldPrepend) {
-                    if (dashboardContainer.children[0] !== container || dashboardContainer.children[1] !== container2) {
-                        dashboardContainer.insertBefore(container, dashboardContainer.firstChild);
-                        dashboardContainer.insertBefore(container2, container.nextSibling);
-                    }
-                } else {
-                    if (dashboardContainer.lastElementChild !== container || container2.nextElementSibling !== container) {
-                        dashboardContainer.appendChild(container2);
-                        dashboardContainer.appendChild(container);
-                    }
-                }
+                placeGPAElements(dashboardContainer, container, container2);
             }
 
             try {
@@ -8142,6 +8491,30 @@ function wireDashboardNotes(notes) {
     });
 }
 
+// Mount the notes at the position chosen in the Widgets tab:
+//   top    — full-width container above the card grid
+//   cards_start / cards_end — card-shaped cell inside the grid, before/after cards
+//   below  — full-width container below the grid, with some margin
+function placeDashboardNotes(notes, container) {
+    const pos = options.dashboard_notes_position || "top";
+    if (notes.dataset.crPos === pos) return;
+    notes.classList.toggle("in-cards", pos === "cards_start" || pos === "cards_end");
+    const parent = container.parentNode;
+    if (pos === "top" || pos === "below") {
+        // Full-width container above/below the cards; shares the row with any
+        // other container-mode widget, widths from the Widgets tab.
+        placeWidgetInRow("dashboard_notes", pos, [notes], container);
+    } else {
+        releaseWidgetFromRow("dashboard_notes", [notes], container);
+        if (pos === "cards_start") {
+            container.prepend(notes);
+        } else {
+            container.appendChild(notes);
+        }
+    }
+    notes.dataset.crPos = pos;
+}
+
 function loadDashboardNotes() {
     const container = document.querySelector("#DashboardCard_Container");
     if (options.dashboard_notes === true) {
@@ -8156,11 +8529,6 @@ function loadDashboardNotes() {
             notes = document.createElement("div");
             notes.classList.add("canvasrefined-dashboard-notes");
             notes.innerHTML = DASHBOARD_NOTES_HTML;
-            // Mount as a full-width sibling above the card grid. Prepending inside the
-            // DashboardCard_Container makes the notes a masonry/grid cell (narrow & broken).
-            const parent = container.parentNode;
-            if (parent) parent.insertBefore(notes, container);
-            else container.prepend(notes);
             wireDashboardNotes(notes);
         } else {
             notes.style.display = "";
@@ -8174,6 +8542,7 @@ function loadDashboardNotes() {
                 renderDashboardNotesPreview(rendered, editor ? editor.value : "");
             }
         }
+        placeDashboardNotes(notes, container);
     } else {
         let notes = document.querySelector('.canvasrefined-dashboard-notes');
         if (notes) notes.style.display = "none";
@@ -8339,7 +8708,9 @@ function applyAestheticChanges() {
         style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{margin-top:0!important;margin-left:0!important}`;
         const centerGrid = options.center_cards === true;
         const gpaOn = options.gpa_calc === true;
-        const gpaTop = options.gpa_calc_prepend === true;
+        const gpaPos = gpaCalcPosition();
+        const gpaInsideGrid = gpaPos === "cards_start" || gpaPos === "cards_end";
+        const gpaFirst = gpaPos === "cards_start";
         const flexGrid = options.card_grid_flex === true;
         if (flexGrid) {
             // Flexible grid: fixed-width tracks (cards keep their natural
@@ -8363,17 +8734,17 @@ function applyAestheticChanges() {
             // Grid gaps alone control spacing (beats the customCardStyles
             // margin rules emitted later via higher specificity).
             style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{margin-right:0!important;margin-bottom:0!important}`;
-            if (gpaOn) {
-                if (gpaTop) {
-                    // Top mode: definite first-row placement, one track wide;
-                    // the expanded calculator takes the full second row.
+            if (gpaOn && gpaInsideGrid) {
+                if (gpaFirst) {
+                    // "Before cards": definite first-row placement, one track
+                    // wide; the expanded calculator takes the full second row.
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1!important}`;
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
                 } else {
-                    // Bottom mode: the GPA card auto-places in DOM order, so it
-                    // flows right after the last course card — filling the next
-                    // open slot instead of stranding below the grid — and the
-                    // expanded calculator follows on a full-width row.
+                    // "After cards": the GPA card auto-places in DOM order, so
+                    // it flows right after the last course card — filling the
+                    // next open slot instead of stranding below the grid — and
+                    // the expanded calculator follows on a full-width row.
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-column:1/-1!important}`;
                 }
             }
@@ -8385,28 +8756,30 @@ function applyAestheticChanges() {
             for (let m = gridCols - 1; m >= 1; m--) {
                 const tooWideFor = (m + 1) * cardW + m * gridColGap;
                 if (m === 1) {
-                    style.textContent += `@container (max-width:${tooWideFor - 1}px){.ic-DashboardCard__box__container{grid-template-columns:minmax(0,1fr)!important}.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{width:100%!important;min-width:0!important}}`;
+                    style.textContent += `@container (max-width:${tooWideFor - 1}px){.ic-DashboardCard__box__container{grid-template-columns:minmax(0,1fr)!important}.ic-DashboardCard__box__container > .ic-DashboardCard${gpaInsideGrid ? ",.ic-DashboardCard__box__container > .canvasrefined-gpa-card" : ""}{width:100%!important;min-width:0!important}}`;
                 } else {
                     style.textContent += `@container (max-width:${tooWideFor - 1}px){.ic-DashboardCard__box__container{grid-template-columns:repeat(${m},${cardW}px)!important}}`;
                 }
             }
         } else {
-            const totalRows = gridRows + (gpaOn ? 2 : 0);
+            const totalRows = gridRows + (gpaOn && gpaInsideGrid ? 2 : 0);
             style.textContent += `.ic-DashboardCard__box__container{display:grid!important;grid-template-columns:repeat(${gridCols * 2},minmax(0,max-content))!important;grid-template-rows:repeat(${totalRows},minmax(0,auto))!important;grid-auto-rows:0!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important;overflow:hidden!important${centerGrid ? ";justify-content:center!important" : ""}}`;
             style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-column:span 2!important}`;
-            if (gpaOn) {
-                // "Move to top" (gpa_calc_prepend) decides where the GPA card
-                // sits: on -> pinned to the first slot (the expanded calculator
-                // takes the full second row, and cards auto-place around both);
-                // off -> the GPA card is a regular auto-placed item (one card
-                // slot wide via the span rule above), so it flows into the next
-                // open slot after the course cards — filling the leftover
-                // spaces of a partial last row instead of squatting alone in a
-                // dedicated row below the grid. The expanded calculator always
-                // takes a full-width row: auto-placed right after the GPA card
-                // in bottom mode, and display:none while collapsed so it
-                // consumes no cells.
-                if (gpaTop) {
+            if (gpaOn && gpaInsideGrid) {
+                // The Widgets position dropdown decides where the GPA card
+                // sits: "Start of cards" -> pinned to the first slot (the
+                // expanded calculator takes the full second row, and cards
+                // auto-place around both); "End of cards" -> the GPA card is a
+                // regular auto-placed item (one card slot wide via the span
+                // rule above), so it flows into the next open slot after the
+                // course cards — filling the leftover spaces of a partial last
+                // row instead of squatting alone in a dedicated row below the
+                // grid. The expanded calculator always takes a full-width row:
+                // auto-placed right after the GPA card in end mode, and
+                // display:none while collapsed so it consumes no cells.
+                // "Top of page"/"Below cards" place the GPA elements outside
+                // the grid container entirely, so no grid rules are needed.
+                if (gpaFirst) {
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1/span 2!important}`;
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
                 } else {

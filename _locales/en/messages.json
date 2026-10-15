@@ -125,6 +125,33 @@
     "gpa_calculator": {
         "message": "GPA Calculator"
     },
+    "widgets": {
+        "message": "Widgets"
+    },
+    "widget_position": {
+        "message": "Position"
+    },
+    "widget_order_top": {
+        "message": "Top container order"
+    },
+    "widget_order_bottom": {
+        "message": "Bottom container order"
+    },
+    "grade_settings": {
+        "message": "Grade Settings"
+    },
+    "pos_top": {
+        "message": "Top"
+    },
+    "pos_cards_start": {
+        "message": "Before cards"
+    },
+    "pos_cards_end": {
+        "message": "After cards"
+    },
+    "pos_below": {
+        "message": "Bottom"
+    },
     "gpa_settings": {
         "message": "GPA Settings"
     },
@@ -163,9 +190,6 @@
     },
     "themes": {
         "message": "Themes"
-    },
-    "move_top": {
-        "message": "Move To Top"
     },
     "show_past_due": {
         "message": "Show Past Due"

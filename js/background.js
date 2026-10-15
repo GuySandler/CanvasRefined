@@ -40,6 +40,8 @@ chrome.runtime.onInstalled.addListener(function () {
             "dashboard_notes": false,
             "dashboard_notes_text": "",
             "dashboard_notes_mode": "edit",
+            "dashboard_notes_position": "top",
+            "widget_order": {},
             "better_todo": true,
             "todo_hr24": false,
 			"todo_separate_scrollbar": false,

@@ -128,6 +128,8 @@ const defaultOptions = {
         "dashboard_notes": false,
         "dashboard_notes_text": "",
         "dashboard_notes_mode": "edit",
+        "dashboard_notes_position": "top",
+        "gpa_calc_position": "cards_end",
         "better_todo": true,
         "better_sidebar": false,
         "sidebar_scale": 100,
@@ -1001,9 +1003,219 @@ function toggleAlternateColorsVisibility(darkModeOn) {
     if (wrap) wrap.style.display = darkModeOn ? "none" : "";
 }
 
-// Hide a toggle's sub-options when it's off; auto_dark only hides its time clocks.
+// Widgets tab: position dropdowns for widgets that support placement.
+const WIDGET_LIST = [
+    { id: "dashboard_notes", nameKey: "dashboard_notes" },
+    { id: "gpa_calc", nameKey: "gpa_calculator" },
+];
+
+function widgetPosFromSync(id, sync) {
+    if (id === "dashboard_notes") return sync.dashboard_notes_position || "top";
+    if (id === "gpa_calc") {
+        if (sync.gpa_calc_position !== undefined) return sync.gpa_calc_position;
+        return sync.gpa_calc_prepend === true ? "cards_start" : "cards_end";
+    }
+    return "top";
+}
+
+const WIDGET_ORDER_MIN_PCT = 15;
+const WIDGET_ORDER_SNAP_PCT = 4;
+
+// widget_order entries: [{id, size}] where size is the widget's % width of
+// the shared container. Legacy plain-id arrays are treated as equal sizes.
+function parseWidgetOrderEntries(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.map(e => {
+        if (typeof e === "string") return { id: e, size: null };
+        if (e && typeof e === "object" && e.id) {
+            const n = Number(e.size);
+            return { id: e.id, size: Number.isFinite(n) && n > 0 ? n : null };
+        }
+        return null;
+    }).filter(e => e && WIDGET_LIST.some(w => w.id === e.id));
+}
+
+function widgetDisplayName(id) {
+    const info = WIDGET_LIST.find(w => w.id === id);
+    return (info && chrome.i18n.getMessage(info.nameKey)) || id;
+}
+
+function setupWidgetOrder() {
+    const wrap = document.getElementById("widget-order-container");
+    if (!wrap) return;
+
+    const KEYS = ["dashboard_notes", "gpa_calc", "dashboard_notes_position", "gpa_calc_position", "gpa_calc_prepend", "widget_order"];
+
+    const render = (sync) => {
+        const areas = { top: [], below: [] };
+        WIDGET_LIST.forEach(w => {
+            if (sync[w.id] !== true) return;
+            const pos = widgetPosFromSync(w.id, sync);
+            if (pos === "top" || pos === "below") areas[pos].push(w.id);
+        });
+        let any = false;
+        ["top", "below"].forEach(area => {
+            const strip = document.getElementById("widget-order-" + area);
+            const wrapEl = document.getElementById("widget-order-" + area + "-wrap");
+            if (!strip || !wrapEl) return;
+            strip.dataset.area = area;
+            const ids = areas[area];
+            if (ids.length < 2) {
+                wrapEl.style.display = "none";
+                return;
+            }
+            any = true;
+            wrapEl.style.display = "";
+            // Saved entries first (order + widths), then any newcomers.
+            const entries = parseWidgetOrderEntries((sync.widget_order || {})[area]).filter(e => ids.includes(e.id));
+            ids.forEach(id => { if (!entries.some(e => e.id === id)) entries.push({ id, size: null }); });
+            renderWidgetOrderStrip(strip, entries);
+        });
+        wrap.style.display = any ? "" : "none";
+    };
+
+    // Reordering: drag a box horizontally past a neighbor.
+    ["top", "below"].forEach(area => {
+        const strip = document.getElementById("widget-order-" + area);
+        if (!strip) return;
+        strip.addEventListener("dragover", e => {
+            e.preventDefault();
+            const dragging = strip.querySelector(".wos-item.dragging");
+            if (!dragging) return;
+            let ref = null;
+            for (const el of strip.querySelectorAll(".wos-item:not(.dragging)")) {
+                const box = el.getBoundingClientRect();
+                if (e.clientX < box.left + box.width / 2) { ref = el; break; }
+            }
+            if (ref) strip.insertBefore(dragging, ref);
+            else strip.appendChild(dragging);
+        });
+        strip.addEventListener("drop", e => e.preventDefault());
+    });
+
+    const refresh = () => chrome.storage.sync.get(KEYS, render);
+
+    refresh();
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "sync") return;
+        if (KEYS.some(k => changes[k])) refresh();
+    });
+}
+
+function renderWidgetOrderStrip(strip, entries) {
+    strip.textContent = "";
+    entries.forEach((entry, i) => {
+        if (i > 0) {
+            const divider = document.createElement("div");
+            divider.className = "wos-divider";
+            wireWidgetOrderDivider(strip, divider);
+            strip.appendChild(divider);
+        }
+        const item = document.createElement("div");
+        item.className = "wos-item";
+        item.dataset.id = entry.id;
+        item.dataset.size = entry.size == null ? (100 / entries.length) : entry.size;
+        item.style.flexBasis = item.dataset.size + "%";
+        item.draggable = true;
+        item.textContent = widgetDisplayName(entry.id);
+        item.addEventListener("dragstart", e => {
+            item.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+            try { e.dataTransfer.setData("text/plain", entry.id); } catch (_) {}
+        });
+        item.addEventListener("dragend", () => {
+            item.classList.remove("dragging");
+            saveWidgetStrip(strip.dataset.area, strip);
+        });
+        strip.appendChild(item);
+    });
+}
+
+// Dragging a divider resizes its two neighboring boxes; the divider position
+// is exactly the % split between them.
+function wireWidgetOrderDivider(strip, divider) {
+    divider.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        try { divider.setPointerCapture(e.pointerId); } catch (_) {}
+        const idx = [...strip.children].indexOf(divider);
+        const prev = strip.children[idx - 1];
+        const next = strip.children[idx + 1];
+        if (!prev || !next || !prev.classList.contains("wos-item") || !next.classList.contains("wos-item")) return;
+        const stripWidth = strip.getBoundingClientRect().width || 1;
+        const startX = e.clientX;
+        const p0 = parseFloat(prev.dataset.size);
+        const n0 = parseFloat(next.dataset.size);
+        const onMove = ev => {
+            const dx = (ev.clientX - startX) / stripWidth * 100;
+            let p = p0 + dx;
+            p = Math.max(WIDGET_ORDER_MIN_PCT, Math.min(p, p0 + n0 - WIDGET_ORDER_MIN_PCT));
+            // Snap to even fractions of the widget count: with 2 widgets the
+            // bar snaps to 50/50, with 3 to the 1/3 and 2/3 marks, etc.
+            const count = strip.querySelectorAll(".wos-item").length;
+            for (let k = 1; k < count; k++) {
+                const mark = k / count * 100;
+                if (Math.abs(p - mark) < WIDGET_ORDER_SNAP_PCT) { p = mark; break; }
+            }
+            const n = p0 + n0 - p;
+            prev.dataset.size = p;
+            next.dataset.size = n;
+            prev.style.flexBasis = p + "%";
+            next.style.flexBasis = n + "%";
+        };
+        const onUp = () => {
+            divider.removeEventListener("pointermove", onMove);
+            divider.removeEventListener("pointerup", onUp);
+            divider.removeEventListener("pointercancel", onUp);
+            saveWidgetStrip(strip.dataset.area, strip);
+        };
+        divider.addEventListener("pointermove", onMove);
+        divider.addEventListener("pointerup", onUp);
+        divider.addEventListener("pointercancel", onUp);
+    });
+}
+
+function saveWidgetStrip(area, strip) {
+    const items = [...strip.querySelectorAll(".wos-item")];
+    if (items.length < 2) return;
+    let sizes = items.map(el => parseFloat(el.dataset.size) || 100 / items.length);
+    const total = sizes.reduce((a, b) => a + b, 0) || 100;
+    sizes = sizes.map(v => v / total * 100);
+    const rounded = sizes.map(v => Math.round(v));
+    rounded[rounded.length - 1] += 100 - rounded.reduce((a, b) => a + b, 0);
+    const order = items.map((el, i) => ({ id: el.dataset.id, size: rounded[i] }));
+    chrome.storage.sync.get(["widget_order"], sync => {
+        const wo = Object.assign({}, sync.widget_order || {});
+        wo[area] = order;
+        chrome.storage.sync.set({ widget_order: wo });
+    });
+}
+
+function setupWidgetPosition() {
+    [
+        { select: "dashboard_notes_position", key: "dashboard_notes_position" },
+        { select: "gpa_calc_position", key: "gpa_calc_position" },
+    ].forEach(({ select, key }) => {
+        const el = document.getElementById(select);
+        if (!el) return;
+        chrome.storage.sync.get([key, "gpa_calc_prepend"], sync => {
+            let value = sync[key];
+            if (value === undefined && key === "gpa_calc_position") {
+                // Legacy "Move to top" checkbox -> equivalent dropdown position.
+                value = sync["gpa_calc_prepend"] === true ? "cards_start" : "cards_end";
+                chrome.storage.sync.set({ [key]: value });
+            }
+            el.value = value || defaultOptions.sync[key] || "top";
+        });
+        el.addEventListener("change", function () {
+            chrome.storage.sync.set({ [key]: this.value });
+        });
+    });
+}
+
+// Hide a toggle's sub-options when it's off; auto_dark only hides its time
+// clocks.
 function toggleSubOptionsVisibility(option, isOn) {
-    const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
+    const togglesWithSubOptions = ["dashboard_notes", "gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
     if (!togglesWithSubOptions.includes(option)) return;
     const optionEl = document.getElementById(option);
     if (!optionEl) return;
@@ -1162,6 +1374,15 @@ function setupFeatureSearch(menu) {
             add({ key: "option:" + opt.id, text: name.textContent.trim(), el: opt, action: () => goToMainElement(opt) });
         });
 
+        // Tabs: option toggles that live inside a tab (e.g. Dashboard Notes in Widgets)
+        document.querySelectorAll(".tab .option").forEach(opt => {
+            if (!opt.id) return;
+            const name = opt.querySelector(".option-name");
+            if (!name) return;
+            if (shouldSkip(opt)) return;
+            add({ key: "option:" + opt.id, text: name.textContent.trim(), el: opt, action: () => goToTabElement(opt) });
+        });
+
         // Home: sub-options / timesets / labelled rows (e.g. "Use dd/mm", "Start time", max-items)
         document.querySelectorAll(".options .sub-option, .options .timeset, .options .sub-options > div").forEach(sub => {
             if (shouldSkip(sub)) return;
@@ -1230,7 +1451,7 @@ function setupFeatureSearch(menu) {
         });
 
         // Tab: standalone action buttons with distinct labels (GPA scale presets, revert colors).
-        ["gpa-plus-minus", "gpa-by-letter", "revert-colors", "clearCustomBackground"].forEach(id => {
+        ["revert-colors", "clearCustomBackground"].forEach(id => {
             const btn = document.getElementById(id);
             if (!btn || shouldSkip(btn)) return;
             const text = btn.textContent.trim();
@@ -1378,7 +1599,6 @@ function setup() {
 			"hide_completed_cards",
 			"equal_height_cards",
 			// "todo_overdues",
-			"gpa_calc_prepend",
 			"auto_dark",
 			"assignment_date_format",
 			"custom_font_skip_p",
@@ -1411,13 +1631,14 @@ function setup() {
 				setup: displayAdvancedCards,
 				tab: ".advanced",
 			},
-			"gpa-bounds-btn": {
-				setup: displayGPABounds,
-				tab: ".gpa-bounds-container",
-			},
+			
 			"custom-font-btn": {
 				setup: displayCustomFont,
 				tab: ".custom-font-container",
+			},
+			"gpa-bounds-btn": {
+				setup: null,
+				tab: ".gpa-bounds-container",
 			},
 			"card-colors-btn": { setup: null, tab: ".card-colors-container" },
 			"customize-dark-btn": {
@@ -1645,11 +1866,14 @@ function setup() {
         chrome.storage.sync.get("todo_celebrations_enabled", v => {
             toggleCelebrationOptionsVisibility(v["todo_celebrations_enabled"] !== false);
         });
-        ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
+        ["dashboard_notes", "gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
         toggleAlternateColorsVisibility(sync["dark_mode"] === true);
     });
+
+    setupWidgetPosition();
+    setupWidgetOrder();
 
     chrome.storage.sync.get(menu.checkboxes, sync => {
         menu.checkboxes.forEach(option => {
@@ -2208,41 +2432,6 @@ function setup() {
 
     document.getElementById("submit-form-btn").addEventListener("click", displayThemeSubmissionForm);
 
-    document.getElementById("gpa-plus-minus").addEventListener("click", () => {
-        applyGPAPreset({
-            "A+": { "cutoff": 97, "gpa": 4.0 },
-            "A": { "cutoff": 93, "gpa": 4.0 },
-            "A-": { "cutoff": 90, "gpa": 3.7 },
-            "B+": { "cutoff": 87, "gpa": 3.3 },
-            "B": { "cutoff": 83, "gpa": 3.0 },
-            "B-": { "cutoff": 80, "gpa": 2.7 },
-            "C+": { "cutoff": 77, "gpa": 2.3 },
-            "C": { "cutoff": 73, "gpa": 2.0 },
-            "C-": { "cutoff": 70, "gpa": 1.7 },
-            "D+": { "cutoff": 67, "gpa": 1.3 },
-            "D": { "cutoff": 63, "gpa": 1.0 },
-            "D-": { "cutoff": 60, "gpa": 0.7 },
-            "F": { "cutoff": 0, "gpa": 0 }
-        });
-    });
-    document.getElementById("gpa-by-letter").addEventListener("click", () => {
-        applyGPAPreset({
-            "A+": { "cutoff": 97, "gpa": 4.0 },
-            "A": { "cutoff": 93, "gpa": 4.0 },
-            "A-": { "cutoff": 90, "gpa": 4.0 },
-            "B+": { "cutoff": 87, "gpa": 3.0 },
-            "B": { "cutoff": 83, "gpa": 3.0 },
-            "B-": { "cutoff": 80, "gpa": 3.0 },
-            "C+": { "cutoff": 77, "gpa": 2.0 },
-            "C": { "cutoff": 73, "gpa": 2.0 },
-            "C-": { "cutoff": 70, "gpa": 2.0 },
-            "D+": { "cutoff": 67, "gpa": 1.0 },
-            "D": { "cutoff": 63, "gpa": 1.0 },
-            "D-": { "cutoff": 60, "gpa": 1.0 },
-            "F": { "cutoff": 0, "gpa": 0 }
-        });
-    });
-
     // Note: the card-style number inputs (imageSize, cardRoundness,
     // imageRoundness, cardSpacing, cardWidth, cardHeight, cardPadding) are wired
     // via their setup*Input
@@ -2292,13 +2481,6 @@ function setup() {
     if (skipPToggle) {
         skipPToggle.closest("span").addEventListener("click", (e) => e.stopPropagation());
     }
-
-}
-
-function applyGPAPreset(bounds) {
-    chrome.storage.sync.set({ "gpa_calc_bounds": bounds }, () => {
-        displayGPABounds();
-    });
 }
 
 function setupCustomStyle(initial) {
@@ -2722,33 +2904,6 @@ function displayCustomFont() {
                 let linkVal = font.replace(" ", "+") + ":wght@400;700";
                 chrome.storage.sync.set({ "custom_font": { "link": linkVal, "family": "'" + font + "'" } });
                 link.value = linkVal;
-            });
-        });
-    });
-}
-
-function displayGPABounds() {
-    chrome.storage.sync.get(["gpa_calc_bounds"], storage => {
-        const order = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"];
-        const el = document.querySelector(".gpa-bounds");
-        el.textContent = "";
-        order.forEach(key => {
-            let inputs = makeElement("div", el, { "className": "gpa-bounds-item" });
-            inputs.innerHTML += '<div><span class="gpa-bounds-grade"></span><input class="gpa-bounds-input gpa-bounds-cutoff" type="text"></input><span style="margin-left:6px;margin-right:6px;">%</span><input class="gpa-bounds-input gpa-bounds-gpa" type="text" value=></input><span style="margin-left:6px">GPA</span></div>';
-            inputs.querySelector(".gpa-bounds-grade").textContent = key;
-            inputs.querySelector(".gpa-bounds-cutoff").value = storage["gpa_calc_bounds"][key].cutoff;
-            inputs.querySelector(".gpa-bounds-gpa").value = storage["gpa_calc_bounds"][key].gpa;
-
-            inputs.querySelector(".gpa-bounds-cutoff").addEventListener("change", function (e) {
-                chrome.storage.sync.get(["gpa_calc_bounds"], existing => {
-                    chrome.storage.sync.set({ "gpa_calc_bounds": { ...existing["gpa_calc_bounds"], [key]: { ...existing["gpa_calc_bounds"][key], "cutoff": parseFloat(e.target.value) } } });
-                });
-            });
-
-            inputs.querySelector(".gpa-bounds-gpa").addEventListener("change", function (e) {
-                chrome.storage.sync.get(["gpa_calc_bounds"], existing => {
-                    chrome.storage.sync.set({ "gpa_calc_bounds": { ...existing["gpa_calc_bounds"], [key]: { ...existing["gpa_calc_bounds"][key], "gpa": parseFloat(e.target.value) } } });
-                });
             });
         });
     });

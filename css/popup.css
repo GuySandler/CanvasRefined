@@ -122,7 +122,7 @@ h2 {margin-top: 20px;font-weight:600}
 .todo-more-options.expanded .todo-expanded-label {display:inline;}
 .todo-more-items {display:none;flex-direction:column;}
 .todo-more-options.expanded .todo-more-items {display:flex;padding-left:2px;}
-#advanced-settings, #gpa-bounds-btn, #custom-font-btn, #customize-dark-btn, #card-colors-btn {width: 100%;}
+#advanced-settings, #custom-font-btn, #customize-dark-btn, #card-colors-btn {width: 100%;}
 .back-btn {width: 120px;height:100%;margin-top:0}
 .big-button {border: none;border-radius: 7px;background: var(--containerbg);color: #fff;font-family: inherit;padding: 12px 10px;font-weight:600}
 .social-buttons {display: flex;gap: 8px;margin-top: 8px;}
@@ -138,9 +138,6 @@ h2 {margin-top: 20px;font-weight:600}
 .social-toggle:hover {color: #e2e2e2}
 .social-buttons.hidden {display: none}
 #setSingleColor, #setGradientColor {padding: 8px 20px;margin-top:5px;}
-.gpa-bounds-input {font-size: 14px;background: var(--inputbg); border: none;padding:6px;color: #e2e2e2;margin-top: 6px;border-radius: 6px; font-family: inherit; width: 55px; box-sizing: border-box;text-align: right}
-.gpa-bounds span {font-size: 16px; width: 25px;display: inline-block}
-.gpa-bounds-explanation {width:200px;height:100%;flex: 1;}
 .tab-header {display: flex;justify-content: space-between;gap:20px;align-items:center}
 .custom-font-flex {display: flex; align-items: center;font-size: 11px;}
 #custom-font-family, #custom-font-link {width:150px}
@@ -381,3 +378,17 @@ input[type="checkbox"]:checked {background: #8dd28d;}
 }
 .cr-info-bubble:hover .cr-info-bubble-text,
 .cr-info-bubble:focus .cr-info-bubble-text { visibility: visible; opacity: 1; }
+
+/* Widget container-order strips (Widgets tab): boxes sized by each widget's
+   % of the shared container, separated by draggable dividers. */
+.widget-order-strip {display:flex;align-items:stretch;width:100%;height:64px;margin-top:8px;}
+.wos-item {border:1px solid #ffffff2e;background:var(--inputbg);border-radius:7px;display:flex;align-items:center;padding:0 10px;font-size:12px;color:#e2e2e2;min-width:0;overflow:hidden;white-space:nowrap;cursor:grab;user-select:none;}
+.wos-item.dragging {opacity:.45;}
+.wos-divider {flex:0 0 6px;width:6px;align-self:stretch;margin:0 5px;border-radius:3px;background:#8a8a8a;cursor:col-resize;}
+.wos-divider:hover {background:#e2e2e2;}
+/* Widget position dropdowns (Widgets tab) — mirror #todo_timeframe exactly:
+   same font, padding, radius, colors and full-width stacked layout. */
+.widget-pos {font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
+.widget-pos option {background:#1e1e1e;color:#e2e2e2;}
+.widget-pos option:checked,
+.widget-pos option:hover {background:#2e2e2e;color:#fff;}

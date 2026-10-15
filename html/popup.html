@@ -37,7 +37,7 @@
                     <span data-i18n="edit_dark_mode">Edit Dark Mode</span>
                 </button>
                 <button id="advanced-settings" class="big-button tab-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"></path><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"></path><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"></path><path d="M14 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"></path></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4H14C17.7712 4 19.6569 4 20.8284 5.17157C22 6.34315 22 8.22876 22 12C22 15.7712 22 17.6569 20.8284 18.8284C19.6569 20 17.7712 20 14 20H10C6.22876 20 4.34315 20 3.17157 18.8284C2 17.6569 2 15.7712 2 12Z"></path><path d="M10 16H6"></path><path d="M14 16H12.5"></path><path d="M2 10L22 10"></path></svg>
                     <span data-i18n="card_customization">Card Customization</span>
                 </button>
                 <!-- <button id="card-colors-btn" class="big-button tab-btn">
@@ -53,8 +53,8 @@
                     <span data-i18n="styles">Styles</span>
                 </button>
                 <button id="gpa-bounds-btn" class="big-button tab-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M22 9l-10 -4l-10 4l10 4l10 -4v6"></path><path d="M6 10.6v5.4a6 3 0 0 0 12 0v-5.4"></path></svg>
-                    <span data-i18n="gpa_settings">GPA Settings</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><path d="M17.5 14.0002L17.5 21.0004"></path><path d="M21.0001 17.5001L14 17.5001"></path></svg>
+                    <span data-i18n="widgets">Widgets</span>
                 </button>
                 <button id="report-issue-btn" class="big-button tab-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 9v4"></path><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"></path><path d="M12 16h.01"></path></svg>
@@ -142,31 +142,6 @@
                     </div>
                 </div>
                 <div class="option-container">
-                    <div class="option" id="gpa_calc">
-                        <input type="radio" id="off" name="gpa_calc">
-                        <input type="radio" id="on" name="gpa_calc">
-                        <div class="slider">
-                            <div class="sliderknob"></div>
-                            <div class="sliderbg"></div>
-                        </div>
-                        <span class="option-name" data-i18n="gpa_calculator">GPA calculator</span>
-                    </div>
-                    <div class="sub-options">
-                        <div class="sub-option" style="margin-top:5px">
-                            <input type="checkbox" id="gpa_calc_prepend" name="gpa_calc_prepend">
-                            <label for="gpa_calc_prepend" class="sub-text" data-i18n="move_top">Move to top</label>
-                        </div>
-                        <div class="sub-option" style="margin-top:5px">
-                            <input type="checkbox" id="gpa_calc_cumulative" name="gpa_calc_cumulative">
-                            <label for="gpa_calc_cumulative" class="sub-text" data-i18n="gpa_calc_cumulative">Show cumulative GPA</label>
-                        </div>
-                        <div class="sub-option" style="margin-top:5px">
-                            <input type="checkbox" id="gpa_calc_weighted" name="gpa_calc_weighted">
-                            <label for="gpa_calc_weighted" class="sub-text" data-i18n="gpa_calc_weighted">Show weighted GPA</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="option-container">
                     <div class="option" id="dashboard_grades">
                         <input type="radio" id="off" name="dashboard_grades">
                         <input type="radio" id="on" name="dashboard_grades">
@@ -211,14 +186,6 @@
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                             <span class="cr-info-bubble-text" data-i18n="quiz_safe_mode_desc">Turns off most Canvas Refined features on quiz pages so you get the default Canvas quiz experience.</span>
                         </span>
-                    </div>
-                    <div class="option" id="dashboard_notes">
-                        <input type="radio" id="off" name="dashboard_notes">
-                        <input type="radio" id="on" name="dashboard_notes">
-                        <div class="slider">
-                            <div class="sliderknob"></div>
-                            <div class="sliderbg"></div>
-                        </div><span class="option-name" data-i18n="dashboard_notes">Dashboard Notes</span>
                     </div>
                     <div class="option" id="global_search">
                         <input type="radio" id="off" name="global_search">
@@ -1143,20 +1110,71 @@
 
     <div class="gpa-bounds-container tab" style="display:none">
         <div class="tab-header">
-            <h2 style="margin-top: 0" data-i18n="gpa_settings">GPA Calculator Bounds</h2>
+            <h2 style="margin-top: 0" data-i18n="widgets">Widgets</h2>
             <button class="big-button back-btn" data-i18n="back">Back</button>
         </div>
-        <div style="display: flex;gap: 8px;">
-            <div class="gpa-bounds option-container"></div>
-            <div class="gpa-bounds-explanation option-container">
-                The letter grade will be calculated as greater than or equal to the percentage given. <br><br>
-                If your school doesn't use the +/- system, you can enter 101 for those grades to remove them from the
-                calculation. (for example A+ = 101, A = 90, A- = 101)
-                <h3 class="header-small" style="margin-top: 20px;">GPA Scale Presets 0-4</h3>
-                <button class="big-button" id="gpa-plus-minus">+/- GPA Scale</button>
-                <button class="big-button" id="gpa-by-letter">By Letter GPA Scale</button>
+        <!-- Widget ordering: shown only when 2+ widgets share the top/bottom container -->
+        <div class="option-container" id="widget-order-container" style="display:none">
+            <div id="widget-order-top-wrap" style="display:none">
+                <h3 class="header-small" data-i18n="widget_order_top">Top container order</h3>
+                <div class="widget-order-strip" id="widget-order-top"></div>
             </div>
-            
+            <div id="widget-order-below-wrap" style="display:none">
+                <h3 class="header-small" data-i18n="widget_order_bottom">Bottom container order</h3>
+                <div class="widget-order-strip" id="widget-order-below"></div>
+            </div>
+        </div>
+        <!-- Widgets: add one option-container per widget here -->
+        <div class="option-container">
+            <div class="option" id="dashboard_notes">
+                <input type="radio" id="off" name="dashboard_notes">
+                <input type="radio" id="on" name="dashboard_notes">
+                <div class="slider">
+                    <div class="sliderknob"></div>
+                    <div class="sliderbg"></div>
+                </div><span class="option-name" data-i18n="dashboard_notes">Dashboard Notes</span>
+            </div>
+            <div class="sub-options">
+                <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                    <label for="dashboard_notes_position" class="sub-text" data-i18n="widget_position">Position</label>
+                    <select id="dashboard_notes_position" class="widget-pos">
+                        <option value="top" data-i18n="pos_top">Top</option>
+                        <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
+                        <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
+                        <option value="below" data-i18n="pos_below">Bottom</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="option-container">
+            <div class="option" id="gpa_calc">
+                <input type="radio" id="off" name="gpa_calc">
+                <input type="radio" id="on" name="gpa_calc">
+                <div class="slider">
+                    <div class="sliderknob"></div>
+                    <div class="sliderbg"></div>
+                </div>
+                <span class="option-name" data-i18n="gpa_calculator">GPA calculator</span>
+            </div>
+            <div class="sub-options">
+                <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                    <label for="gpa_calc_position" class="sub-text" data-i18n="widget_position">Position</label>
+                    <select id="gpa_calc_position" class="widget-pos">
+                        <option value="top" data-i18n="pos_top">Top</option>
+                        <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
+                        <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
+                        <option value="below" data-i18n="pos_below">Bottom</option>
+                    </select>
+                </div>
+                <div class="sub-option" style="margin-top:5px">
+                    <input type="checkbox" id="gpa_calc_cumulative" name="gpa_calc_cumulative">
+                    <label for="gpa_calc_cumulative" class="sub-text" data-i18n="gpa_calc_cumulative">Show cumulative GPA</label>
+                </div>
+                <div class="sub-option" style="margin-top:5px">
+                    <input type="checkbox" id="gpa_calc_weighted" name="gpa_calc_weighted">
+                    <label for="gpa_calc_weighted" class="sub-text" data-i18n="gpa_calc_weighted">Show weighted GPA</label>
+                </div>
+            </div>
         </div>
     </div>
 
