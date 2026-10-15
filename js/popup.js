@@ -1005,8 +1005,8 @@ function toggleAlternateColorsVisibility(darkModeOn) {
 
 // Widgets tab: position dropdowns for widgets that support placement.
 const WIDGET_LIST = [
-    { id: "dashboard_notes", nameKey: "dashboard_notes" },
-    { id: "gpa_calc", nameKey: "gpa_calculator" },
+    { id: "dashboard_notes", nameKey: "dashboard_notes", shortKey: "widget_short_notes" },
+    { id: "gpa_calc", nameKey: "gpa_calculator", shortKey: "widget_short_gpa" },
 ];
 
 function widgetPosFromSync(id, sync) {
@@ -1037,8 +1037,14 @@ function parseWidgetOrderEntries(raw) {
 
 function widgetDisplayName(id) {
     const info = WIDGET_LIST.find(w => w.id === id);
-    return (info && chrome.i18n.getMessage(info.nameKey)) || id;
+    return (info && chrome.i18n.getMessage(info.shortKey || info.nameKey)) || id;
 }
+
+// Live-refresh hook for the widget-order UI, set by setupWidgetOrder and
+// called directly after the popup itself changes a widget's position or
+// enabled state — so the order box updates instantly without waiting for
+// the storage.onChanged round-trip.
+let refreshWidgetOrder = null;
 
 function setupWidgetOrder() {
     const wrap = document.getElementById("widget-order-container");
@@ -1046,28 +1052,35 @@ function setupWidgetOrder() {
 
     const KEYS = ["dashboard_notes", "gpa_calc", "dashboard_notes_position", "gpa_calc_position", "gpa_calc_prepend", "widget_order"];
 
+    const AREAS = ["top", "cards_start", "cards_end", "below"];
+
     const render = (sync) => {
-        const areas = { top: [], below: [] };
+        const areas = { top: [], cards_start: [], cards_end: [], below: [] };
         WIDGET_LIST.forEach(w => {
             if (sync[w.id] !== true) return;
             const pos = widgetPosFromSync(w.id, sync);
-            if (pos === "top" || pos === "below") areas[pos].push(w.id);
+            if (areas[pos]) areas[pos].push(w.id);
         });
         let any = false;
-        ["top", "below"].forEach(area => {
+        AREAS.forEach(area => {
             const strip = document.getElementById("widget-order-" + area);
             const wrapEl = document.getElementById("widget-order-" + area + "-wrap");
             if (!strip || !wrapEl) return;
             strip.dataset.area = area;
             const ids = areas[area];
+            // A section only makes sense once 2+ widgets share the same
+            // position — with a single widget there is nothing to order.
             if (ids.length < 2) {
                 wrapEl.style.display = "none";
                 return;
             }
             any = true;
             wrapEl.style.display = "";
-            // Saved entries first (order + widths), then any newcomers.
-            const entries = parseWidgetOrderEntries((sync.widget_order || {})[area]).filter(e => ids.includes(e.id));
+            // Saved entries first (order + widths), then any newcomers. The
+            // before/after groups share the single "cards" saved order; each
+            // strip only shows the widgets actually in its group.
+            const saved = (sync.widget_order || {})[area.startsWith("cards") ? "cards" : area];
+            const entries = parseWidgetOrderEntries(saved).filter(e => ids.includes(e.id));
             ids.forEach(id => { if (!entries.some(e => e.id === id)) entries.push({ id, size: null }); });
             renderWidgetOrderStrip(strip, entries);
         });
@@ -1075,7 +1088,7 @@ function setupWidgetOrder() {
     };
 
     // Reordering: drag a box horizontally past a neighbor.
-    ["top", "below"].forEach(area => {
+    AREAS.forEach(area => {
         const strip = document.getElementById("widget-order-" + area);
         if (!strip) return;
         strip.addEventListener("dragover", e => {
@@ -1094,6 +1107,7 @@ function setupWidgetOrder() {
     });
 
     const refresh = () => chrome.storage.sync.get(KEYS, render);
+    refreshWidgetOrder = refresh;
 
     refresh();
     chrome.storage.onChanged.addListener((changes, area) => {
@@ -1104,8 +1118,10 @@ function setupWidgetOrder() {
 
 function renderWidgetOrderStrip(strip, entries) {
     strip.textContent = "";
+    // Before/after strips are sequence only — no width resizing, no dividers.
+    const resizable = !strip.dataset.area.startsWith("cards");
     entries.forEach((entry, i) => {
-        if (i > 0) {
+        if (resizable && i > 0) {
             const divider = document.createElement("div");
             divider.className = "wos-divider";
             wireWidgetOrderDivider(strip, divider);
@@ -1114,8 +1130,10 @@ function renderWidgetOrderStrip(strip, entries) {
         const item = document.createElement("div");
         item.className = "wos-item";
         item.dataset.id = entry.id;
-        item.dataset.size = entry.size == null ? (100 / entries.length) : entry.size;
-        item.style.flexBasis = item.dataset.size + "%";
+        if (resizable) {
+            item.dataset.size = entry.size == null ? (100 / entries.length) : entry.size;
+            item.style.flexBasis = item.dataset.size + "%";
+        }
         item.draggable = true;
         item.textContent = widgetDisplayName(entry.id);
         item.addEventListener("dragstart", e => {
@@ -1177,15 +1195,26 @@ function wireWidgetOrderDivider(strip, divider) {
 function saveWidgetStrip(area, strip) {
     const items = [...strip.querySelectorAll(".wos-item")];
     if (items.length < 2) return;
-    let sizes = items.map(el => parseFloat(el.dataset.size) || 100 / items.length);
-    const total = sizes.reduce((a, b) => a + b, 0) || 100;
-    sizes = sizes.map(v => v / total * 100);
-    const rounded = sizes.map(v => Math.round(v));
-    rounded[rounded.length - 1] += 100 - rounded.reduce((a, b) => a + b, 0);
-    const order = items.map((el, i) => ({ id: el.dataset.id, size: rounded[i] }));
+    const order = items.map(el => ({ id: el.dataset.id }));
+    // Before/after strips both save into the shared "cards" order, merged
+    // with the entries of the other group so nothing is lost.
+    const storageArea = area.startsWith("cards") ? "cards" : area;
     chrome.storage.sync.get(["widget_order"], sync => {
         const wo = Object.assign({}, sync.widget_order || {});
-        wo[area] = order;
+        if (storageArea === "cards") {
+            const ids = new Set(order.map(e => e.id));
+            const other = (sync.widget_order && Array.isArray(sync.widget_order.cards) ? sync.widget_order.cards : [])
+                .filter(e => e && !ids.has(e.id));
+            wo.cards = other.concat(order);
+        } else {
+            // Container rows still carry each widget's % width.
+            let sizes = items.map(el => parseFloat(el.dataset.size) || 100 / items.length);
+            const total = sizes.reduce((a, b) => a + b, 0) || 100;
+            sizes = sizes.map(v => v / total * 100);
+            const rounded = sizes.map(v => Math.round(v));
+            rounded[rounded.length - 1] += 100 - rounded.reduce((a, b) => a + b, 0);
+            wo[storageArea] = items.map((el, i) => ({ id: el.dataset.id, size: rounded[i] }));
+        }
         chrome.storage.sync.set({ widget_order: wo });
     });
 }
@@ -1859,6 +1888,9 @@ function setup() {
                     chrome.storage.sync.set({ "hide_course_images": false });
                 }
                 toggleSubOptionsVisibility(option, status);
+                if (option === "dashboard_notes" || option === "gpa_calc") {
+                    if (refreshWidgetOrder) refreshWidgetOrder();
+                }
             });
         });
         toggleBetterSidebarSubOptions(sync["better_sidebar"] === true);

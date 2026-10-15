@@ -131,11 +131,14 @@
     "widget_position": {
         "message": "Position"
     },
-    "widget_order_top": {
-        "message": "Top container order"
+    "widget_order_title": {
+        "message": "Widget order"
     },
-    "widget_order_bottom": {
-        "message": "Bottom container order"
+    "widget_short_notes": {
+        "message": "Notes"
+    },
+    "widget_short_gpa": {
+        "message": "GPA"
     },
     "grade_settings": {
         "message": "Grade Settings"

@@ -1031,6 +1031,7 @@ function applyOptionsChanges(changes) {
 					const row = document.querySelector(".canvasrefined-widget-row[data-area='" + area + "']");
 					if (row) applyWidgetRowLayout(row, area);
 				});
+				applyCardWidgetOrder(document.querySelector(".ic-DashboardCard__box__container"));
 				// A widget moved between areas (or joined/left a shared row) needs
 				// the OTHER widgets to re-place too: each widget only repositions
 				// itself on its own position key, so without this the widget left
@@ -7825,11 +7826,13 @@ function placeGPAElements(dashboardContainer, container, container2) {
             dashboardContainer.insertBefore(container, dashboardContainer.firstChild);
             dashboardContainer.insertBefore(container2, container.nextSibling);
         }
+        applyCardWidgetOrder(dashboardContainer);
     } else if (pos === "cards_end") {
         if (dashboardContainer.lastElementChild !== container || container2.nextElementSibling !== container) {
             dashboardContainer.appendChild(container2);
             dashboardContainer.appendChild(container);
         }
+        applyCardWidgetOrder(dashboardContainer);
     } else if (pos === "top") {
         if (container2.parentNode !== parent || container2.nextElementSibling !== container || container.nextElementSibling !== dashboardContainer) {
             if (parent) {
@@ -7866,6 +7869,72 @@ function containerWidgetOrder(area) {
         }
         return null;
     }).filter(e => e && (e.id === "dashboard_notes" || e.id === "gpa_calc"));
+}
+
+// Card-grid order ("Before cards"/"After cards" positions): saved order of
+// the card-shaped widgets living inside the card grid, used to decide which
+// one comes first when several share the same anchor.
+function cardWidgetOrder() {
+    const saved = options.widget_order && options.widget_order.cards;
+    if (!Array.isArray(saved)) return [];
+    return saved.map(e => {
+        if (typeof e === "string") return e;
+        if (e && typeof e === "object" && e.id) return e.id;
+        return null;
+    }).filter(id => id === "dashboard_notes" || id === "gpa_calc");
+}
+
+// Normalize the relative order of card-shaped widgets inside the card grid.
+// Each widget keeps its own anchor (before vs. after the course cards);
+// widgets sharing an anchor are sequenced by the saved card order. Only
+// re-inserts when the DOM order is actually wrong, so idle passes don't ping
+// the dashboard mutation observer into another pass.
+function applyCardWidgetOrder(grid) {
+    if (!grid) return;
+    const saved = cardWidgetOrder();
+    const units = [];
+    const notes = grid.querySelector(":scope > .canvasrefined-dashboard-notes");
+    if (notes && notes.classList.contains("in-cards")) {
+        units.push({
+            id: "dashboard_notes",
+            anchor: options.dashboard_notes_position === "cards_start" ? "start" : "end",
+            els: [notes]
+        });
+    }
+    const gpaCard = grid.querySelector(":scope > .canvasrefined-gpa-card");
+    if (gpaCard && !gpaCard.classList.contains("container-mode")) {
+        const pos = gpaCalcPosition();
+        const anchor = pos === "cards_start" ? "start" : "end";
+        // The GPA renders as two adjacent direct children (hidden calculator
+        // + visible card). Keep the pair in its natural placement order so
+        // the check below doesn't fight the placement code.
+        const calc = grid.querySelector(":scope > .canvasrefined-gpa");
+        const els = calc ? (anchor === "start" ? [calc, gpaCard] : [gpaCard, calc]) : [gpaCard];
+        units.push({ id: "gpa_calc", anchor, els });
+    }
+    if (units.length < 2) return;
+    const rank = id => {
+        const i = saved.indexOf(id);
+        return i === -1 ? saved.length : i;
+    };
+    ["start", "end"].forEach(anchor => {
+        const group = units.filter(u => u.anchor === anchor)
+            .sort((a, b) => rank(a.id) - rank(b.id));
+        if (group.length < 2) return;
+        const desired = group.flatMap(u => u.els);
+        const positions = desired.map(el => [...grid.children].indexOf(el));
+        const sorted = [...positions].sort((a, b) => a - b);
+        const inOrder = desired.every((_, i) =>
+            anchor === "start" ? positions[i] === sorted[i] : positions[i] === sorted[sorted.length - 1 - i]);
+        if (inOrder) return;
+        if (anchor === "start") {
+            // Insert in reverse so the first widget of the group ends up
+            // leftmost, right before the course cards.
+            for (let i = desired.length - 1; i >= 0; i--) grid.insertBefore(desired[i], grid.firstChild);
+        } else {
+            desired.forEach(el => grid.appendChild(el));
+        }
+    });
 }
 
 // Both widgets must share one row: normalize the anchor to the outer
@@ -8493,24 +8562,41 @@ function wireDashboardNotes(notes) {
 
 // Mount the notes at the position chosen in the Widgets tab:
 //   top    — full-width container above the card grid
-//   cards_start / cards_end — card-shaped cell inside the grid, before/after cards
+//   cards_start / cards_end — card-shaped cell inside the card grid (same
+//                             grid the GPA card uses), before/after cards
 //   below  — full-width container below the grid, with some margin
 function placeDashboardNotes(notes, container) {
     const pos = options.dashboard_notes_position || "top";
-    if (notes.dataset.crPos === pos) return;
-    notes.classList.toggle("in-cards", pos === "cards_start" || pos === "cards_end");
-    const parent = container.parentNode;
     if (pos === "top" || pos === "below") {
+        notes.classList.remove("in-cards");
+        const slot = notes.closest && notes.closest(".canvasrefined-widget-slot");
+        const row = slot && slot.parentNode;
+        // Already in the right shared row? Leave it alone.
+        if (notes.dataset.crPos === pos && row && row.dataset.area === pos && slot.dataset.widget === "dashboard_notes") return;
         // Full-width container above/below the cards; shares the row with any
         // other container-mode widget, widths from the Widgets tab.
         placeWidgetInRow("dashboard_notes", pos, [notes], container);
     } else {
+        notes.classList.add("in-cards");
+        // Same container the GPA card uses for before/after-cards placement,
+        // resolved here (not at call sites) so every entry path lands in the
+        // real card grid.
+        const grid = document.querySelector(".ic-DashboardCard__box__container") || container;
+        if (notes.dataset.crPos === pos && notes.parentNode === grid) return;
         releaseWidgetFromRow("dashboard_notes", [notes], container);
         if (pos === "cards_start") {
-            container.prepend(notes);
+            grid.prepend(notes);
         } else {
-            container.appendChild(notes);
+            grid.appendChild(notes);
         }
+        applyCardWidgetOrder(grid);
+        // The card grid is Canvas's jQuery sortable list; refresh it so our
+        // injected cell is recognized when cards are drag-reordered.
+        try {
+            if (grid !== container && window.jQuery && window.jQuery.fn && window.jQuery.fn.sortable) {
+                window.jQuery(grid).sortable('refresh');
+            }
+        } catch (e) {}
     }
     notes.dataset.crPos = pos;
 }

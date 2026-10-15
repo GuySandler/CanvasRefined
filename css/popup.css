@@ -381,11 +381,27 @@ input[type="checkbox"]:checked {background: #8dd28d;}
 
 /* Widget container-order strips (Widgets tab): boxes sized by each widget's
    % of the shared container, separated by draggable dividers. */
-.widget-order-strip {display:flex;align-items:stretch;width:100%;height:64px;margin-top:8px;}
+.widget-order-strip {display:flex;align-items:stretch;width:100%;height:44px;margin-top:6px;}
 .wos-item {border:1px solid #ffffff2e;background:var(--inputbg);border-radius:7px;display:flex;align-items:center;padding:0 10px;font-size:12px;color:#e2e2e2;min-width:0;overflow:hidden;white-space:nowrap;cursor:grab;user-select:none;}
 .wos-item.dragging {opacity:.45;}
 .wos-divider {flex:0 0 6px;width:6px;align-self:stretch;margin:0 5px;border-radius:3px;background:#8a8a8a;cursor:col-resize;}
 .wos-divider:hover {background:#e2e2e2;}
+/* Widget order box (Widgets tab): one shared "Widget order" rectangle with
+   a section per area (Top / Before cards / After cards / Bottom); each
+   section shows only when 2+ enabled widgets share that area. */
+.widget-order-section + .widget-order-section {margin-top: 16px;}
+.widget-order-label {font-size: 12px;color: #c7c7c7;}
+.widget-order-strip {margin-top: 6px;}
+/* Before/after strips: sequence only, so boxes share the width evenly with
+   a gap between them instead of draggable dividers. */
+.widget-order-strip[data-area="cards_start"],
+.widget-order-strip[data-area="cards_end"] {column-gap: 8px;}
+.widget-order-strip[data-area="cards_start"] .wos-item,
+.widget-order-strip[data-area="cards_end"] .wos-item {flex: 1 1 0;}
+/* Widget sections (Widgets tab): two side-by-side columns; add future
+   widgets as one more .option-container inside .widgets-grid. */
+.widgets-grid {display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch;margin-top:8px;}
+.widgets-grid .option-container {margin-top:0;box-sizing:border-box;}
 /* Widget position dropdowns (Widgets tab) — mirror #todo_timeframe exactly:
    same font, padding, radius, colors and full-width stacked layout. */
 .widget-pos {font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}

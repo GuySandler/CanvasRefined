@@ -1113,66 +1113,78 @@
             <h2 style="margin-top: 0" data-i18n="widgets">Widgets</h2>
             <button class="big-button back-btn" data-i18n="back">Back</button>
         </div>
-        <!-- Widget ordering: shown only when 2+ widgets share the top/bottom container -->
+        <!-- Widget ordering: one shared box titled "Widget order"; each area
+             section shows only when 2+ enabled widgets share that area -->
         <div class="option-container" id="widget-order-container" style="display:none">
-            <div id="widget-order-top-wrap" style="display:none">
-                <h3 class="header-small" data-i18n="widget_order_top">Top container order</h3>
+            <h3 class="header-small" data-i18n="widget_order_title">Widget order</h3>
+            <div class="widget-order-section" id="widget-order-top-wrap" style="display:none">
+                <div class="widget-order-label" data-i18n="pos_top">Top</div>
                 <div class="widget-order-strip" id="widget-order-top"></div>
             </div>
-            <div id="widget-order-below-wrap" style="display:none">
-                <h3 class="header-small" data-i18n="widget_order_bottom">Bottom container order</h3>
+            <div class="widget-order-section" id="widget-order-cards_start-wrap" style="display:none">
+                <div class="widget-order-label" data-i18n="pos_cards_start">Before cards</div>
+                <div class="widget-order-strip" id="widget-order-cards_start"></div>
+            </div>
+            <div class="widget-order-section" id="widget-order-cards_end-wrap" style="display:none">
+                <div class="widget-order-label" data-i18n="pos_cards_end">After cards</div>
+                <div class="widget-order-strip" id="widget-order-cards_end"></div>
+            </div>
+            <div class="widget-order-section" id="widget-order-below-wrap" style="display:none">
+                <div class="widget-order-label" data-i18n="pos_below">Bottom</div>
                 <div class="widget-order-strip" id="widget-order-below"></div>
             </div>
         </div>
-        <!-- Widgets: add one option-container per widget here -->
-        <div class="option-container">
-            <div class="option" id="dashboard_notes">
-                <input type="radio" id="off" name="dashboard_notes">
-                <input type="radio" id="on" name="dashboard_notes">
-                <div class="slider">
-                    <div class="sliderknob"></div>
-                    <div class="sliderbg"></div>
-                </div><span class="option-name" data-i18n="dashboard_notes">Dashboard Notes</span>
-            </div>
-            <div class="sub-options">
-                <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
-                    <label for="dashboard_notes_position" class="sub-text" data-i18n="widget_position">Position</label>
-                    <select id="dashboard_notes_position" class="widget-pos">
-                        <option value="top" data-i18n="pos_top">Top</option>
-                        <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
-                        <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
-                        <option value="below" data-i18n="pos_below">Bottom</option>
-                    </select>
+        <!-- Widgets: two-column grid; add one option-container per widget here -->
+        <div class="widgets-grid">
+            <div class="option-container">
+                <div class="option" id="dashboard_notes">
+                    <input type="radio" id="off" name="dashboard_notes">
+                    <input type="radio" id="on" name="dashboard_notes">
+                    <div class="slider">
+                        <div class="sliderknob"></div>
+                        <div class="sliderbg"></div>
+                    </div><span class="option-name" data-i18n="dashboard_notes">Dashboard Notes</span>
+                </div>
+                <div class="sub-options">
+                    <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                        <label for="dashboard_notes_position" class="sub-text" data-i18n="widget_position">Position</label>
+                        <select id="dashboard_notes_position" class="widget-pos">
+                            <option value="top" data-i18n="pos_top">Top</option>
+                            <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
+                            <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
+                            <option value="below" data-i18n="pos_below">Bottom</option>
+                        </select>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="option-container">
-            <div class="option" id="gpa_calc">
-                <input type="radio" id="off" name="gpa_calc">
-                <input type="radio" id="on" name="gpa_calc">
-                <div class="slider">
-                    <div class="sliderknob"></div>
-                    <div class="sliderbg"></div>
+            <div class="option-container">
+                <div class="option" id="gpa_calc">
+                    <input type="radio" id="off" name="gpa_calc">
+                    <input type="radio" id="on" name="gpa_calc">
+                    <div class="slider">
+                        <div class="sliderknob"></div>
+                        <div class="sliderbg"></div>
+                    </div>
+                    <span class="option-name" data-i18n="gpa_calculator">GPA calculator</span>
                 </div>
-                <span class="option-name" data-i18n="gpa_calculator">GPA calculator</span>
-            </div>
-            <div class="sub-options">
-                <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
-                    <label for="gpa_calc_position" class="sub-text" data-i18n="widget_position">Position</label>
-                    <select id="gpa_calc_position" class="widget-pos">
-                        <option value="top" data-i18n="pos_top">Top</option>
-                        <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
-                        <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
-                        <option value="below" data-i18n="pos_below">Bottom</option>
-                    </select>
-                </div>
-                <div class="sub-option" style="margin-top:5px">
-                    <input type="checkbox" id="gpa_calc_cumulative" name="gpa_calc_cumulative">
-                    <label for="gpa_calc_cumulative" class="sub-text" data-i18n="gpa_calc_cumulative">Show cumulative GPA</label>
-                </div>
-                <div class="sub-option" style="margin-top:5px">
-                    <input type="checkbox" id="gpa_calc_weighted" name="gpa_calc_weighted">
-                    <label for="gpa_calc_weighted" class="sub-text" data-i18n="gpa_calc_weighted">Show weighted GPA</label>
+                <div class="sub-options">
+                    <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                        <label for="gpa_calc_position" class="sub-text" data-i18n="widget_position">Position</label>
+                        <select id="gpa_calc_position" class="widget-pos">
+                            <option value="top" data-i18n="pos_top">Top</option>
+                            <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
+                            <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
+                            <option value="below" data-i18n="pos_below">Bottom</option>
+                        </select>
+                    </div>
+                    <div class="sub-option" style="margin-top:5px">
+                        <input type="checkbox" id="gpa_calc_cumulative" name="gpa_calc_cumulative">
+                        <label for="gpa_calc_cumulative" class="sub-text" data-i18n="gpa_calc_cumulative">Show cumulative GPA</label>
+                    </div>
+                    <div class="sub-option" style="margin-top:5px">
+                        <input type="checkbox" id="gpa_calc_weighted" name="gpa_calc_weighted">
+                        <label for="gpa_calc_weighted" class="sub-text" data-i18n="gpa_calc_weighted">Show weighted GPA</label>
+                    </div>
                 </div>
             </div>
         </div>
