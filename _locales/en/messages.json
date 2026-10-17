@@ -140,6 +140,30 @@
     "widget_short_gpa": {
         "message": "GPA"
     },
+    "focus_timer": {
+        "message": "Focus Timer"
+    },
+    "breathing_breaks": {
+        "message": "Breathing Breaks"
+    },
+    "music": {
+        "message": "Music"
+    },
+    "daily_quotes": {
+        "message": "Daily Quotes"
+    },
+    "widget_short_focus": {
+        "message": "Focus"
+    },
+    "widget_short_music": {
+        "message": "Music"
+    },
+    "widget_short_breathing": {
+        "message": "Breathing"
+    },
+    "widget_short_quotes": {
+        "message": "Quotes"
+    },
     "grade_settings": {
         "message": "Grade Settings"
     },

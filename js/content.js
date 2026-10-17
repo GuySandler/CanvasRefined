@@ -1026,6 +1026,33 @@ function applyOptionsChanges(changes) {
 			case "dashboard_notes_position":
 				loadDashboardNotes();
 				break;
+			case "focus_timer":
+			case "focus_timer_position":
+			case "focus_timer_preset_1":
+			case "focus_timer_preset_2":
+			case "focus_timer_preset_3":
+				loadFocusTimer();
+				break;
+			case "music":
+			case "music_position":
+			case "music_spotify_url":
+			case "music_apple_url":
+			case "music_youtube_url":
+			case "music_thumb_bg":
+			case "music_no_thumb":
+				loadMusicWidget();
+				break;
+			case "breathing":
+			case "breathing_position":
+			case "breathing_preset_1":
+			case "breathing_preset_2":
+			case "breathing_preset_3":
+				loadBreathingWidget();
+				break;
+			case "daily_quotes":
+			case "daily_quotes_position":
+				loadDailyQuotesWidget();
+				break;
 			case "widget_order":
 				["top", "below"].forEach(area => {
 					const row = document.querySelector(".canvasrefined-widget-row[data-area='" + area + "']");
@@ -1038,6 +1065,7 @@ function applyOptionsChanges(changes) {
 				// behind would keep the old layout until reload.
 				if (options.dashboard_notes === true) loadDashboardNotes();
 				if (options.gpa_calc === true && current_page === "/") setupGPACalc();
+				loadAllSimpleWidgets();
 				break;
 			case "dashboard_grades":
 			case "grade_hover":
@@ -1917,6 +1945,7 @@ function checkDashboardReady() {
                         insertGrades();
                         loadDashboardNotes();
                         setupGPACalc();
+                        loadAllSimpleWidgets();
                         showUpdateMsg();
                         createNasaInfoOverlay();
                     }
@@ -7856,6 +7885,14 @@ function placeGPAElements(dashboardContainer, container, container2) {
     }
 }
 
+// Every dashboard widget known to the placement system. Kept in one place so
+// the ordering/filtering helpers don't each hardcode their own list.
+const CR_WIDGET_IDS = ["dashboard_notes", "gpa_calc", "focus_timer", "music", "breathing", "daily_quotes"];
+// Widgets rendered by the generic card loader (single root element, no GPA-style
+// paired elements).
+const CR_SIMPLE_WIDGET_IDS = ["focus_timer", "music", "breathing", "daily_quotes"];
+function isCRWidget(id) { return CR_WIDGET_IDS.indexOf(id) !== -1; }
+
 // Shared full-width container ("top"/"below" positions): widgets live in a
 // flex row; each widget's slot width is the % chosen in the Widgets tab.
 function containerWidgetOrder(area) {
@@ -7868,7 +7905,7 @@ function containerWidgetOrder(area) {
             return { id: e.id, size: Number.isFinite(n) && n > 0 ? n : null };
         }
         return null;
-    }).filter(e => e && (e.id === "dashboard_notes" || e.id === "gpa_calc"));
+    }).filter(e => e && isCRWidget(e.id));
 }
 
 // Card-grid order ("Before cards"/"After cards" positions): saved order of
@@ -7881,7 +7918,7 @@ function cardWidgetOrder() {
         if (typeof e === "string") return e;
         if (e && typeof e === "object" && e.id) return e.id;
         return null;
-    }).filter(id => id === "dashboard_notes" || id === "gpa_calc");
+    }).filter(id => isCRWidget(id));
 }
 
 // Normalize the relative order of card-shaped widgets inside the card grid.
@@ -7893,6 +7930,14 @@ function applyCardWidgetOrder(grid) {
     if (!grid) return;
     const saved = cardWidgetOrder();
     const units = [];
+    // Simple card widgets (focus timer, music, breathing, quotes) are a
+    // single element each, so they join the ordering straight from the DOM.
+    grid.querySelectorAll(":scope > .canvasrefined-widget-card[data-cr-widget]").forEach(el => {
+        if (!el.classList.contains("in-cards")) return;
+        const id = el.dataset.crWidget;
+        if (CR_SIMPLE_WIDGET_IDS.indexOf(id) === -1) return;
+        units.push({ id, anchor: (options[id + "_position"] === "cards_start") ? "start" : "end", els: [el] });
+    });
     const notes = grid.querySelector(":scope > .canvasrefined-dashboard-notes");
     if (notes && notes.classList.contains("in-cards")) {
         units.push({
@@ -8633,6 +8678,569 @@ function loadDashboardNotes() {
         let notes = document.querySelector('.canvasrefined-dashboard-notes');
         if (notes) notes.style.display = "none";
     }
+}
+
+/*
+Generic dashboard widgets (Focus Timer, Music, Breathing Breaks, Daily Quote)
+
+These share the placement/ordering machinery built for Dashboard Notes and the
+GPA calculator, but render from one element each (see CR_SIMPLE_WIDGET_IDS).
+*/
+
+const CR_WIDGET_DEFAULT_POSITION = {
+    dashboard_notes: "top",
+    gpa_calc: "cards_end",
+    focus_timer: "cards_end",
+    music: "cards_end",
+    breathing: "cards_end",
+    daily_quotes: "top",
+};
+
+function crWidgetPosition(id) {
+    const v = options[id + "_position"];
+    if (v === "top" || v === "below" || v === "cards_start" || v === "cards_end") return v;
+    return CR_WIDGET_DEFAULT_POSITION[id] || "cards_end";
+}
+
+// Move a single-element widget to its configured spot, mirroring the Notes/GPA
+// placement rules: top/below join the shared full-width row, cards_* sit in the
+// course-card grid before/after the cards.
+function placeSimpleWidget(id, el, container) {
+    const pos = crWidgetPosition(id);
+    if (pos === "top" || pos === "below") {
+        el.classList.remove("in-cards");
+        el.classList.add("container-mode");
+        const slot = el.closest && el.closest(".canvasrefined-widget-slot");
+        const row = slot && slot.parentNode;
+        if (el.dataset.crPos === pos && row && row.dataset.area === pos && slot.dataset.widget === id) return;
+        placeWidgetInRow(id, pos, [el], container);
+    } else {
+        el.classList.add("in-cards");
+        el.classList.remove("container-mode");
+        const grid = document.querySelector(".ic-DashboardCard__box__container") || container;
+        if (el.dataset.crPos === pos && el.parentNode === grid) return;
+        releaseWidgetFromRow(id, [el], container);
+        if (pos === "cards_start") grid.prepend(el);
+        else grid.appendChild(el);
+        applyCardWidgetOrder(grid);
+        try {
+            if (grid !== container && window.jQuery && window.jQuery.fn && window.jQuery.fn.sortable) {
+                window.jQuery(grid).sortable('refresh');
+            }
+        } catch (e) {}
+    }
+    el.dataset.crPos = pos;
+}
+
+// Create (once), show/hide and place one generic widget from its spec.
+function crLoadWidget(id, spec) {
+    const existing = document.querySelector("." + spec.className);
+    if (options[id] !== true) {
+        if (existing) existing.style.display = "none";
+        return;
+    }
+    const container = document.querySelector("#DashboardCard_Container");
+    if (!container) return;
+    let el = existing;
+    if (!el) {
+        el = document.createElement("div");
+        el.className = "canvasrefined-widget-card " + spec.className;
+        el.dataset.crWidget = id;
+        el.innerHTML = spec.html;
+        try { if (spec.wire) spec.wire(el); } catch (e) { logError(e); }
+    } else {
+        el.style.display = "";
+        try { if (spec.update) spec.update(el); } catch (e) { logError(e); }
+    }
+    placeSimpleWidget(id, el, container);
+}
+
+/* ---- Shared timer engine (Focus Timer + Breathing Breaks) ---- */
+
+const crTimers = {};
+function crTimer(id) {
+    if (!crTimers[id]) crTimers[id] = { total: 0, remaining: 0, running: false, raf: null, endTime: 0 };
+    return crTimers[id];
+}
+// Countdown readout: ceil so a fresh 25:00 only shows 24:59 after a full second.
+function crTimerFormat(sec) {
+    const s = Math.max(0, Math.ceil(sec - 0.001));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const r = s % 60;
+    if (h > 0) return h + ":" + String(m).padStart(2, "0") + ":" + String(r).padStart(2, "0");
+    return String(m).padStart(2, "0") + ":" + String(r).padStart(2, "0");
+}
+// Human label for a preset button ("15 min", "1h 30m", "45s").
+function crFormatDuration(sec) {
+    const s = Math.max(0, Math.round(sec));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const r = s % 60;
+    if (h && m) return h + "h " + m + "m";
+    if (h) return h + "h" + (r ? " " + r + "s" : "");
+    if (m && r) return m + "m " + r + "s";
+    if (m) return m + " min";
+    return r + "s";
+}
+function crTimerCancel(st) {
+    if (st && st.raf) { cancelAnimationFrame(st.raf); st.raf = null; }
+}
+function crTimerRender(id, el) {
+    const st = crTimer(id);
+    const disp = el.querySelector(".cr-timer-time") || el.querySelector(".cr-timer-display");
+    if (disp) {
+        const txt = crTimerFormat(st.remaining);
+        if (disp.textContent !== txt) disp.textContent = txt;
+    }
+    const start = el.querySelector(".cr-timer-start");
+    if (start) {
+        const label = st.running ? "Pause" : "Start";
+        if (start.textContent !== label) start.textContent = label;
+    }
+    el.classList.toggle("is-running", st.running);
+    const bar = el.querySelector(".cr-timer-progress-bar");
+    if (bar) bar.style.width = (st.total ? ((st.total - st.remaining) / st.total) * 100 : 0) + "%";
+    const presets = [...el.querySelectorAll(".cr-timer-preset[data-slot]")];
+    const totals = presets.map(b => parseInt(b.dataset.sec, 10));
+    const matched = totals.indexOf(st.total) !== -1;
+    presets.forEach((btn, i) => btn.classList.toggle("active", !st.running && totals[i] === st.total));
+    const customBtn = el.querySelector(".cr-timer-custom");
+    if (customBtn) customBtn.classList.toggle("active", !st.running && !matched && st.total > 0);
+}
+// rAF loop: the bar (and the readout) are driven by real elapsed time, so the
+// fill moves continuously instead of stepping once a second.
+function crTimerFrame(id, el) {
+    const st = crTimer(id);
+    if (!st.running) return;
+    st.remaining = Math.max(0, (st.endTime - Date.now()) / 1000);
+    if (st.remaining <= 0) {
+        st.remaining = 0;
+        st.running = false;
+        st.raf = null;
+    }
+    crTimerRender(id, el);
+    if (st.running) st.raf = requestAnimationFrame(() => crTimerFrame(id, el));
+}
+function crTimerStart(id, el) {
+    const st = crTimer(id);
+    if (st.running || st.remaining <= 0) return;
+    st.running = true;
+    st.endTime = Date.now() + st.remaining * 1000;
+    crTimerCancel(st);
+    st.raf = requestAnimationFrame(() => crTimerFrame(id, el));
+    crTimerRender(id, el);
+}
+function crTimerPause(id, el) {
+    const st = crTimer(id);
+    if (st.running) st.remaining = Math.max(0, (st.endTime - Date.now()) / 1000);
+    st.running = false;
+    crTimerCancel(st);
+    crTimerRender(id, el);
+}
+function crTimerSet(id, el, seconds) {
+    const st = crTimer(id);
+    st.running = false;
+    crTimerCancel(st);
+    st.total = Math.max(1, Math.round(seconds));
+    st.remaining = st.total;
+    crTimerRender(id, el);
+}
+function crTimerReset(id, el) {
+    const st = crTimer(id);
+    st.running = false;
+    crTimerCancel(st);
+    st.remaining = st.total;
+    crTimerRender(id, el);
+}
+// Only the three preset slots are configurable; Custom is typed on the widget.
+function crTimerApplyCfg(el, cfg) {
+    el.querySelectorAll(".cr-timer-preset[data-slot]").forEach(btn => {
+        const slot = parseInt(btn.dataset.slot, 10);
+        const sec = cfg.presets[slot - 1];
+        btn.dataset.sec = sec;
+        btn.textContent = crFormatDuration(sec);
+    });
+}
+function crTimerHideCustom(el) {
+    const row = el.querySelector(".cr-timer-custom-row");
+    if (row) row.hidden = true;
+}
+// Read the h/m/s custom fields as a whole number of seconds.
+function crTimerCustomSeconds(el) {
+    const num = (sel) => {
+        const v = parseInt((el.querySelector(sel) || {}).value, 10);
+        return Number.isFinite(v) && v > 0 ? v : 0;
+    };
+    const h = Math.min(99, num(".cr-tf-h"));
+    const m = Math.min(59, num(".cr-tf-m"));
+    const s = Math.min(59, num(".cr-tf-s"));
+    return h * 3600 + m * 60 + s;
+}
+// Listeners are wired once (update passes only refresh config labels).
+function crTimerWireControls(id, el) {
+    el.querySelectorAll(".cr-timer-preset[data-slot]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const sec = parseInt(btn.dataset.sec, 10);
+            if (Number.isFinite(sec) && sec > 0) crTimerSet(id, el, sec);
+            crTimerHideCustom(el);
+        });
+    });
+
+    // Custom: reveal inline hours/minutes/seconds fields.
+    const customBtn = el.querySelector(".cr-timer-custom");
+    const row = el.querySelector(".cr-timer-custom-row");
+    const applyCustom = () => {
+        const sec = crTimerCustomSeconds(el);
+        if (sec <= 0) {
+            const mInput = el.querySelector(".cr-tf-m");
+            if (mInput) { mInput.focus(); mInput.select(); }
+            return;
+        }
+        crTimerSet(id, el, sec);
+        crTimerHideCustom(el);
+    };
+    if (customBtn && row) customBtn.addEventListener("click", () => {
+        if (!row.hidden) { crTimerHideCustom(el); return; }
+        row.hidden = false;
+        const mInput = el.querySelector(".cr-tf-m");
+        if (mInput) { mInput.focus(); mInput.select(); }
+    });
+    el.querySelectorAll(".cr-timer-custom-row .cr-tf").forEach(inp => inp.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); applyCustom(); }
+        else if (e.key === "Escape") { e.preventDefault(); crTimerHideCustom(el); }
+    }));
+    const go = el.querySelector(".cr-timer-custom-go");
+    if (go) go.addEventListener("click", applyCustom);
+
+    const start = el.querySelector(".cr-timer-start");
+    if (start) start.addEventListener("click", () => {
+        const st = crTimer(id);
+        if (st.running) crTimerPause(id, el);
+        else crTimerStart(id, el);
+    });
+    const reset = el.querySelector(".cr-timer-reset");
+    if (reset) reset.addEventListener("click", () => crTimerReset(id, el));
+}
+function crTimerInitial(id, el, cfg) {
+    const st = crTimer(id);
+    if (!st.total) { st.total = cfg.presets[1]; st.remaining = st.total; }
+    crTimerRender(id, el);
+}
+// Presets now store {h,m,s}; legacy values were plain minutes, so a number is
+// read as minutes. `fallback` is in seconds.
+function crTimerReadSlots(prefix, fallback) {
+    return [1, 2, 3].map(i => {
+        const v = options[prefix + "_preset_" + i];
+        if (v && typeof v === "object") {
+            const h = Math.max(0, parseInt(v.h, 10) || 0);
+            const m = Math.max(0, parseInt(v.m, 10) || 0);
+            const s = Math.max(0, parseInt(v.s, 10) || 0);
+            const total = h * 3600 + m * 60 + s;
+            if (total > 0) return total;
+        } else {
+            const n = parseInt(v, 10);
+            if (Number.isFinite(n) && n > 0) return n * 60;
+        }
+        return fallback[i - 1];
+    });
+}
+
+/* ---- Focus Timer ---- */
+
+const FOCUS_TIMER_DEFAULT_PRESETS = [15 * 60, 25 * 60, 45 * 60];
+
+function focusTimerCfg() {
+    return { presets: crTimerReadSlots("focus_timer", FOCUS_TIMER_DEFAULT_PRESETS) };
+}
+
+const FOCUS_TIMER_HTML = `
+    <div class="cr-widget-head"><span class="cr-widget-title">Focus Timer</span></div>
+    <div class="cr-time-box cr-focus-display">
+        <div class="cr-time-fill cr-timer-progress-bar"></div>
+        <div class="cr-timer-time cr-timer-display" aria-live="polite">25:00</div>
+    </div>
+    <div class="cr-timer-presets">
+        <button type="button" class="cr-timer-preset" data-slot="1">15 min</button>
+        <button type="button" class="cr-timer-preset" data-slot="2">25 min</button>
+        <button type="button" class="cr-timer-preset" data-slot="3">45 min</button>
+        <button type="button" class="cr-timer-preset cr-timer-custom">Custom</button>
+    </div>
+    <div class="cr-timer-custom-row" hidden>
+        <div class="cr-time-fields">
+            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-h" min="0" max="99" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">h</span></label>
+            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-m" min="0" max="59" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">m</span></label>
+            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-s" min="0" max="59" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">s</span></label>
+        </div>
+        <button type="button" class="cr-widget-btn cr-timer-custom-go">Set</button>
+    </div>
+    <div class="cr-timer-controls">
+        <button type="button" class="cr-widget-btn cr-timer-start">Start</button>
+        <button type="button" class="cr-widget-btn cr-widget-btn-ghost cr-timer-reset">Reset</button>
+    </div>
+`;
+
+function wireFocusTimer(el) {
+    crTimerApplyCfg(el, focusTimerCfg());
+    crTimerWireControls("focus_timer", el);
+    crTimerInitial("focus_timer", el, focusTimerCfg());
+}
+function updateFocusTimer(el) {
+    crTimerApplyCfg(el, focusTimerCfg());
+    crTimerRender("focus_timer", el);
+}
+function loadFocusTimer() {
+    crLoadWidget("focus_timer", {
+        className: "canvasrefined-focus-timer",
+        html: FOCUS_TIMER_HTML,
+        wire: wireFocusTimer,
+        update: updateFocusTimer,
+    });
+}
+
+/* ---- Breathing Breaks (a zen timer) ---- */
+
+const BREATHING_DEFAULT_PRESETS = [3 * 60, 5 * 60, 10 * 60];
+
+function breathingCfg() {
+    return { presets: crTimerReadSlots("breathing", BREATHING_DEFAULT_PRESETS) };
+}
+
+const BREATHING_HTML = `
+    <div class="cr-widget-head"><span class="cr-widget-title">Breathing Breaks</span></div>
+    <div class="cr-breath-stage">
+        <div class="cr-breath-circle">
+            <span class="cr-breath-phase cr-breath-phase-in">Breathe in</span>
+            <span class="cr-breath-phase cr-breath-phase-out">Breathe out</span>
+            <span class="cr-breath-idle">Ready</span>
+        </div>
+    </div>
+    <div class="cr-timer-time cr-timer-display cr-breath-display" aria-live="polite">05:00</div>
+    <div class="cr-timer-presets">
+        <button type="button" class="cr-timer-preset" data-slot="1">3 min</button>
+        <button type="button" class="cr-timer-preset" data-slot="2">5 min</button>
+        <button type="button" class="cr-timer-preset" data-slot="3">10 min</button>
+        <button type="button" class="cr-timer-preset cr-timer-custom">Custom</button>
+    </div>
+    <div class="cr-timer-custom-row" hidden>
+        <div class="cr-time-fields">
+            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-h" min="0" max="99" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">h</span></label>
+            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-m" min="0" max="59" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">m</span></label>
+            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-s" min="0" max="59" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">s</span></label>
+        </div>
+        <button type="button" class="cr-widget-btn cr-timer-custom-go">Set</button>
+    </div>
+    <div class="cr-timer-controls">
+        <button type="button" class="cr-widget-btn cr-timer-start">Start</button>
+        <button type="button" class="cr-widget-btn cr-widget-btn-ghost cr-timer-reset">Reset</button>
+    </div>
+`;
+
+function wireBreathingWidget(el) {
+    crTimerApplyCfg(el, breathingCfg());
+    crTimerWireControls("breathing", el);
+    crTimerInitial("breathing", el, breathingCfg());
+}
+function updateBreathingWidget(el) {
+    crTimerApplyCfg(el, breathingCfg());
+    crTimerRender("breathing", el);
+}
+function loadBreathingWidget() {
+    crLoadWidget("breathing", {
+        className: "canvasrefined-breathing",
+        html: BREATHING_HTML,
+        wire: wireBreathingWidget,
+        update: updateBreathingWidget,
+    });
+}
+
+/* ---- Music (looks only) ---- */
+
+const MUSIC_PLATFORMS = [
+    { id: "spotify", name: "Spotify", option: "music_spotify_url", color: "#1DB954" },
+    { id: "apple", name: "Apple Music", option: "music_apple_url", color: "#FA243C" },
+    { id: "youtube", name: "YouTube", option: "music_youtube_url", color: "#FF0000" },
+];
+
+const MUSIC_ICONS = {
+    spotify: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#1DB954"/><path d="M7 9.6c3.3-1 7-.6 9.8 1M7.4 12.6c2.6-.8 5.4-.4 7.6 .9M8 15.5c2-.6 4-.3 5.6 .7" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>',
+    apple: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#FA243C"/><path d="M15.2 6.5l-5 1.1a.8.8 0 0 0-.6.8v5.2a2 2 0 1 0 .9 1.7V9.3l4-0.9v3.6a2 2 0 1 0 .9 1.7V7.3a.8.8 0 0 0-.2-.8z" fill="#fff"/></svg>',
+    youtube: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="1.5" y="5" width="21" height="14" rx="4" fill="#FF0000"/><path d="M10 9l5 3-5 3z" fill="#fff"/></svg>',
+    note: '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M20 3v11.6a3.6 3.6 0 1 1-2-3.2V6.3l-8 1.6v8.7a3.6 3.6 0 1 1-2-3.2V5.4L20 3z"/></svg>',
+    prev: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M6 6h2v12H6zM20 6v12l-9-6z"/></svg>',
+    play: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
+    next: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M16 6h2v12h-2zM4 6v12l9-6z"/></svg>',
+};
+
+function musicPlatformLabel(url) {
+    try {
+        const host = new URL(url).hostname.replace(/^www\./, "");
+        return host || "Open playlist";
+    } catch (e) {
+        return "Open playlist";
+    }
+}
+
+// Sample library used by the switcher drawer until playback is wired up.
+const MUSIC_SAMPLE_PLAYLISTS = {
+    spotify: ["Focus Flow", "Lo-fi Study"],
+    apple: ["Morning Mix", "Reading Room"],
+    youtube: ["Study With Me", "Ambient Spaces"],
+};
+const MUSIC_SAMPLE_SONGS = [
+    { title: "Golden Hour", artist: "Ambient Co.", len: "3:12" },
+    { title: "Slow Tide", artist: "Nova", len: "4:05" },
+    { title: "Paper Planes", artist: "The Loft", len: "2:48" },
+    { title: "Night Drive", artist: "Kite", len: "3:57" },
+    { title: "Warm Static", artist: "Halcyon", len: "5:21" },
+];
+
+const MUSIC_HTML = `
+    <div class="cr-widget-head">
+        <span class="cr-widget-title">Music</span>
+        <button type="button" class="cr-music-list-btn">Playlists <span class="cr-music-caret" aria-hidden="true">&#9662;</span></button>
+    </div>
+    <div class="cr-player">
+        <div class="cr-player-thumb" aria-hidden="true"><span class="cr-player-thumb-mark">${MUSIC_ICONS.note}</span></div>
+        <div class="cr-player-body">
+            <div class="cr-player-art" aria-hidden="true">${MUSIC_ICONS.note}</div>
+            <div class="cr-player-info">
+                <div class="cr-player-title">Nothing playing</div>
+                <div class="cr-player-sub">Pick a playlist</div>
+            </div>
+        </div>
+    </div>
+    <div class="cr-player-progress"><div class="cr-player-progress-fill"></div></div>
+    <div class="cr-player-times"><span>0:00</span><span>0:00</span></div>
+    <div class="cr-player-controls">
+        <button type="button" class="cr-player-btn" aria-label="Previous track">${MUSIC_ICONS.prev}</button>
+        <button type="button" class="cr-player-btn cr-player-play" aria-label="Play">${MUSIC_ICONS.play}</button>
+        <button type="button" class="cr-player-btn" aria-label="Next track">${MUSIC_ICONS.next}</button>
+    </div>
+    <div class="cr-music-drawer" aria-hidden="true">
+        <div class="cr-drawer-head">
+            <span class="cr-drawer-title">Library</span>
+            <button type="button" class="cr-drawer-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="cr-drawer-tabs">
+            <button type="button" class="cr-drawer-tab active" data-tab="platforms">Platforms</button>
+            <button type="button" class="cr-drawer-tab" data-tab="playlists">Playlists</button>
+            <button type="button" class="cr-drawer-tab" data-tab="songs">Songs</button>
+        </div>
+        <div class="cr-drawer-body">
+            <div class="cr-drawer-pane" data-pane="platforms">
+                ${MUSIC_PLATFORMS.map(p => `
+                <div class="cr-drawer-row cr-drawer-platform" data-platform="${p.id}">
+                    <span class="cr-drawer-icon">${MUSIC_ICONS[p.id]}</span>
+                    <span class="cr-drawer-meta"><span class="cr-drawer-name">${p.name}</span><span class="cr-drawer-sub" data-role="platform-sub">Not linked</span></span>
+                    <span class="cr-drawer-chevron" aria-hidden="true">&#8250;</span>
+                </div>`).join("")}
+            </div>
+            <div class="cr-drawer-pane" data-pane="playlists" hidden>
+                ${MUSIC_PLATFORMS.map(p => `
+                <div class="cr-drawer-row cr-drawer-playlist" data-platform="${p.id}">
+                    <span class="cr-drawer-icon cr-drawer-icon-pl">${MUSIC_ICONS[p.id]}</span>
+                    <span class="cr-drawer-meta"><span class="cr-drawer-name" data-role="playlist-name">${MUSIC_SAMPLE_PLAYLISTS[p.id][0]}</span><span class="cr-drawer-sub">${p.name}</span></span>
+                    <span class="cr-drawer-chevron" aria-hidden="true">&#8250;</span>
+                </div>`).join("")}
+            </div>
+            <div class="cr-drawer-pane" data-pane="songs" hidden>
+                ${MUSIC_SAMPLE_SONGS.map((s, i) => `
+                <div class="cr-drawer-row cr-drawer-song">
+                    <span class="cr-drawer-index">${i + 1}</span>
+                    <span class="cr-drawer-meta"><span class="cr-drawer-name">${s.title}</span><span class="cr-drawer-sub">${s.artist}</span></span>
+                    <span class="cr-drawer-len">${s.len}</span>
+                </div>`).join("")}
+            </div>
+        </div>
+    </div>
+`;
+
+// No playback yet: this only keeps the look in sync with the saved links and
+// display options.
+function updateMusicWidget(el) {
+    const noThumb = options.music_no_thumb === true;
+    const thumbBg = !noThumb && options.music_thumb_bg !== false;
+    el.classList.toggle("no-thumb", noThumb);
+    el.classList.toggle("thumb-bg", thumbBg);
+
+    const configured = [];
+    MUSIC_PLATFORMS.forEach(p => {
+        const url = (options[p.option] || "").trim();
+        if (url) configured.push({ p, url });
+        const sub = el.querySelector('.cr-drawer-platform[data-platform="' + p.id + '"] [data-role="platform-sub"]');
+        if (sub) sub.textContent = url ? musicPlatformLabel(url) : "Not linked";
+        const plName = el.querySelector('.cr-drawer-playlist[data-platform="' + p.id + '"] [data-role="playlist-name"]');
+        if (plName) plName.textContent = url ? musicPlatformLabel(url) : MUSIC_SAMPLE_PLAYLISTS[p.id][0];
+    });
+
+    // Mirror the first configured playlist into the player header.
+    const titleEl = el.querySelector(".cr-player-title");
+    const subEl = el.querySelector(".cr-player-sub");
+    const artEl = el.querySelector(".cr-player-art");
+    const first = configured[0];
+    if (first) {
+        if (titleEl) titleEl.textContent = first.p.name + " playlist";
+        if (subEl) subEl.textContent = musicPlatformLabel(first.url);
+        if (artEl) artEl.innerHTML = MUSIC_ICONS[first.p.id];
+        el.style.setProperty("--cr-thumb-color", first.p.color);
+    } else {
+        if (titleEl) titleEl.textContent = "Nothing playing";
+        if (subEl) subEl.textContent = "Pick a playlist";
+        if (artEl) artEl.innerHTML = MUSIC_ICONS.note;
+        el.style.removeProperty("--cr-thumb-color");
+    }
+}
+function wireMusicWidget(el) {
+    const btn = el.querySelector(".cr-music-list-btn");
+    const drawer = el.querySelector(".cr-music-drawer");
+    const setOpen = (v) => {
+        el.classList.toggle("is-drawer-open", v);
+        if (drawer) drawer.setAttribute("aria-hidden", v ? "false" : "true");
+    };
+    if (btn && drawer) btn.addEventListener("click", () => setOpen(!el.classList.contains("is-drawer-open")));
+    const close = el.querySelector(".cr-drawer-close");
+    if (close) close.addEventListener("click", () => setOpen(false));
+    el.querySelectorAll(".cr-drawer-tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+            const name = tab.dataset.tab;
+            el.querySelectorAll(".cr-drawer-tab").forEach(t => t.classList.toggle("active", t === tab));
+            el.querySelectorAll(".cr-drawer-pane").forEach(p => { p.hidden = p.dataset.pane !== name; });
+        });
+    });
+    updateMusicWidget(el);
+}
+function loadMusicWidget() {
+    crLoadWidget("music", {
+        className: "canvasrefined-music",
+        html: MUSIC_HTML,
+        wire: wireMusicWidget,
+        update: updateMusicWidget,
+    });
+}
+
+/* ---- Daily Quote (looks only, content comes later) ---- */
+
+const QUOTES_HTML = `
+    <div class="cr-widget-head"><span class="cr-widget-title">Daily Quote</span></div>
+    <div class="cr-quote-body">
+        <span class="cr-quote-mark" aria-hidden="true">&#8220;</span>
+        <p class="cr-quote-text">The secret of getting ahead is getting started.</p>
+        <span class="cr-quote-author">&mdash; Mark Twain</span>
+    </div>
+`;
+function loadDailyQuotesWidget() {
+    crLoadWidget("daily_quotes", {
+        className: "canvasrefined-quotes",
+        html: QUOTES_HTML,
+    });
+}
+
+function loadAllSimpleWidgets() {
+    loadFocusTimer();
+    loadMusicWidget();
+    loadBreathingWidget();
+    loadDailyQuotesWidget();
 }
 
 

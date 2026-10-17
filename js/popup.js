@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'music', 'breathing', 'daily_quotes', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
 	"hide_course_images",
@@ -20,6 +20,21 @@ const syncedSubOptions = [
 	"gpa_calc_prepend",
 	"gpa_calc_cumulative",
 	"gpa_calc_weighted",
+	"focus_timer_position",
+	"focus_timer_preset_1",
+	"focus_timer_preset_2",
+	"focus_timer_preset_3",
+	"music_position",
+	"music_spotify_url",
+	"music_apple_url",
+	"music_youtube_url",
+	"music_thumb_bg",
+	"music_no_thumb",
+	"breathing_position",
+	"breathing_preset_1",
+	"breathing_preset_2",
+	"breathing_preset_3",
+	"daily_quotes_position",
 	"auto_dark",
 	"auto_dark_start",
 	"auto_dark_end",
@@ -130,6 +145,25 @@ const defaultOptions = {
         "dashboard_notes_mode": "edit",
         "dashboard_notes_position": "top",
         "gpa_calc_position": "cards_end",
+        "focus_timer": false,
+        "focus_timer_position": "cards_end",
+        "focus_timer_preset_1": { "h": 0, "m": 15, "s": 0 },
+        "focus_timer_preset_2": { "h": 0, "m": 25, "s": 0 },
+        "focus_timer_preset_3": { "h": 0, "m": 45, "s": 0 },
+        "music": false,
+        "music_position": "cards_end",
+        "music_spotify_url": "",
+        "music_apple_url": "",
+        "music_youtube_url": "",
+        "music_thumb_bg": true,
+        "music_no_thumb": false,
+        "breathing": false,
+        "breathing_position": "cards_end",
+        "breathing_preset_1": { "h": 0, "m": 3, "s": 0 },
+        "breathing_preset_2": { "h": 0, "m": 5, "s": 0 },
+        "breathing_preset_3": { "h": 0, "m": 10, "s": 0 },
+        "daily_quotes": false,
+        "daily_quotes_position": "top",
         "better_todo": true,
         "better_sidebar": false,
         "sidebar_scale": 100,
@@ -1007,6 +1041,10 @@ function toggleAlternateColorsVisibility(darkModeOn) {
 const WIDGET_LIST = [
     { id: "dashboard_notes", nameKey: "dashboard_notes", shortKey: "widget_short_notes" },
     { id: "gpa_calc", nameKey: "gpa_calculator", shortKey: "widget_short_gpa" },
+    { id: "focus_timer", nameKey: "focus_timer", shortKey: "widget_short_focus" },
+    { id: "music", nameKey: "music", shortKey: "widget_short_music" },
+    { id: "breathing", nameKey: "breathing_breaks", shortKey: "widget_short_breathing" },
+    { id: "daily_quotes", nameKey: "daily_quotes", shortKey: "widget_short_quotes" },
 ];
 
 function widgetPosFromSync(id, sync) {
@@ -1015,7 +1053,7 @@ function widgetPosFromSync(id, sync) {
         if (sync.gpa_calc_position !== undefined) return sync.gpa_calc_position;
         return sync.gpa_calc_prepend === true ? "cards_start" : "cards_end";
     }
-    return "top";
+    return sync[id + "_position"] || (defaultOptions.sync[id + "_position"]) || "top";
 }
 
 const WIDGET_ORDER_MIN_PCT = 15;
@@ -1037,7 +1075,11 @@ function parseWidgetOrderEntries(raw) {
 
 function widgetDisplayName(id) {
     const info = WIDGET_LIST.find(w => w.id === id);
-    return (info && chrome.i18n.getMessage(info.shortKey || info.nameKey)) || id;
+    const msg = info && chrome.i18n.getMessage(info.shortKey || info.nameKey);
+    if (msg) return msg;
+    // Locales that predate a widget have no message: show a friendly label
+    // instead of the raw storage id.
+    return id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
 // Live-refresh hook for the widget-order UI, set by setupWidgetOrder and
@@ -1050,7 +1092,9 @@ function setupWidgetOrder() {
     const wrap = document.getElementById("widget-order-container");
     if (!wrap) return;
 
-    const KEYS = ["dashboard_notes", "gpa_calc", "dashboard_notes_position", "gpa_calc_position", "gpa_calc_prepend", "widget_order"];
+    const KEYS = WIDGET_LIST.map(w => w.id)
+        .concat(WIDGET_LIST.map(w => w.id + "_position"))
+        .concat(["gpa_calc_prepend", "widget_order"]);
 
     const AREAS = ["top", "cards_start", "cards_end", "below"];
 
@@ -1223,6 +1267,10 @@ function setupWidgetPosition() {
     [
         { select: "dashboard_notes_position", key: "dashboard_notes_position" },
         { select: "gpa_calc_position", key: "gpa_calc_position" },
+        { select: "focus_timer_position", key: "focus_timer_position" },
+        { select: "music_position", key: "music_position" },
+        { select: "breathing_position", key: "breathing_position" },
+        { select: "daily_quotes_position", key: "daily_quotes_position" },
     ].forEach(({ select, key }) => {
         const el = document.getElementById(select);
         if (!el) return;
@@ -1241,10 +1289,48 @@ function setupWidgetPosition() {
     });
 }
 
+// Hours/minutes/seconds widgets settings (Focus Timer / Breathing presets).
+function setupWidgetTimeInput(prefix, initial) {
+    const hEl = document.getElementById(prefix + "_h");
+    const mEl = document.getElementById(prefix + "_m");
+    const sEl = document.getElementById(prefix + "_s");
+    if (!hEl || !mEl || !sEl) return;
+    let v = initial;
+    if (!v || typeof v !== "object") {
+        // Legacy plain-minutes value.
+        const n = parseInt(v, 10);
+        v = Number.isFinite(n) && n > 0 ? { h: 0, m: n, s: 0 } : (defaultOptions.sync[prefix] || { h: 0, m: 0, s: 0 });
+    }
+    hEl.value = v.h || 0;
+    mEl.value = v.m || 0;
+    sEl.value = v.s || 0;
+    const save = () => {
+        const clamp = (el, max) => Math.min(max, Math.max(0, parseInt(el.value, 10) || 0));
+        let h = clamp(hEl, 99), m = clamp(mEl, 59), s = clamp(sEl, 59);
+        if (h === 0 && m === 0 && s === 0) {
+            const d = defaultOptions.sync[prefix] || { h: 0, m: 5, s: 0 };
+            h = d.h; m = d.m; s = d.s;
+        }
+        hEl.value = h; mEl.value = m; sEl.value = s;
+        chrome.storage.sync.set({ [prefix]: { h, m, s } });
+    };
+    [hEl, mEl, sEl].forEach(el => el.addEventListener("change", save));
+}
+
+// Text/URL widget settings (Music playlist links).
+function setupWidgetTextInput(id, initial) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = initial || "";
+    el.addEventListener("change", function () {
+        chrome.storage.sync.set({ [id]: this.value.trim() });
+    });
+}
+
 // Hide a toggle's sub-options when it's off; auto_dark only hides its time
 // clocks.
 function toggleSubOptionsVisibility(option, isOn) {
-    const togglesWithSubOptions = ["dashboard_notes", "gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
+    const togglesWithSubOptions = ["dashboard_notes", "gpa_calc", "focus_timer", "music", "breathing", "daily_quotes", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
     if (!togglesWithSubOptions.includes(option)) return;
     const optionEl = document.getElementById(option);
     if (!optionEl) return;
@@ -1649,6 +1735,8 @@ function setup() {
             "customBackgroundNasaDaily",
             "fitImageToScreen",
             "card_transparency",
+            "music_thumb_bg",
+            "music_no_thumb",
 			"customCardStyles",
 			"card_grid",
 			"card_grid_center_rows",
@@ -1844,6 +1932,42 @@ function setup() {
 				setup: (initial) => setupAnonProgressInput("anon_progress_total", initial, false),
 			},
 			{
+				identifier: "focus_timer_preset_1",
+				setup: (initial) => setupWidgetTimeInput("focus_timer_preset_1", initial),
+			},
+			{
+				identifier: "focus_timer_preset_2",
+				setup: (initial) => setupWidgetTimeInput("focus_timer_preset_2", initial),
+			},
+			{
+				identifier: "focus_timer_preset_3",
+				setup: (initial) => setupWidgetTimeInput("focus_timer_preset_3", initial),
+			},
+			{
+				identifier: "breathing_preset_1",
+				setup: (initial) => setupWidgetTimeInput("breathing_preset_1", initial),
+			},
+			{
+				identifier: "breathing_preset_2",
+				setup: (initial) => setupWidgetTimeInput("breathing_preset_2", initial),
+			},
+			{
+				identifier: "breathing_preset_3",
+				setup: (initial) => setupWidgetTimeInput("breathing_preset_3", initial),
+			},
+			{
+				identifier: "music_spotify_url",
+				setup: (initial) => setupWidgetTextInput("music_spotify_url", initial),
+			},
+			{
+				identifier: "music_apple_url",
+				setup: (initial) => setupWidgetTextInput("music_apple_url", initial),
+			},
+			{
+				identifier: "music_youtube_url",
+				setup: (initial) => setupWidgetTextInput("music_youtube_url", initial),
+			},
+			{
 				identifier: "todo_more_expanded",
 				setup: (initial) => setupTodoMoreOptions(initial),
 			},
@@ -1888,7 +2012,7 @@ function setup() {
                     chrome.storage.sync.set({ "hide_course_images": false });
                 }
                 toggleSubOptionsVisibility(option, status);
-                if (option === "dashboard_notes" || option === "gpa_calc") {
+                if (option === "dashboard_notes" || option === "gpa_calc" || option === "focus_timer" || option === "music" || option === "breathing" || option === "daily_quotes") {
                     if (refreshWidgetOrder) refreshWidgetOrder();
                 }
             });
@@ -1898,7 +2022,7 @@ function setup() {
         chrome.storage.sync.get("todo_celebrations_enabled", v => {
             toggleCelebrationOptionsVisibility(v["todo_celebrations_enabled"] !== false);
         });
-        ["dashboard_notes", "gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
+        ["dashboard_notes", "gpa_calc", "focus_timer", "music", "breathing", "daily_quotes", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
         toggleAlternateColorsVisibility(sync["dark_mode"] === true);

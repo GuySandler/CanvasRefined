@@ -1187,6 +1187,158 @@
                     </div>
                 </div>
             </div>
+            <div class="option-container">
+                <div class="option" id="focus_timer">
+                    <input type="radio" id="off" name="focus_timer">
+                    <input type="radio" id="on" name="focus_timer">
+                    <div class="slider">
+                        <div class="sliderknob"></div>
+                        <div class="sliderbg"></div>
+                    </div><span class="option-name" data-i18n="focus_timer">Focus Timer</span>
+                </div>
+                <div class="sub-options">
+                    <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                        <label for="focus_timer_position" class="sub-text" data-i18n="widget_position">Position</label>
+                        <select id="focus_timer_position" class="widget-pos">
+                            <option value="top" data-i18n="pos_top">Top</option>
+                            <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
+                            <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
+                            <option value="below" data-i18n="pos_below">Bottom</option>
+                        </select>
+                    </div>
+                    <div class="sub-option" style="margin-top:6px;flex-direction:column;align-items:stretch;gap:3px;">
+                        <span class="sub-text">Button 1</span>
+                        <div style="display:flex;gap:5px;align-items:center;">
+                            <input type="number" id="focus_timer_preset_1_h" class="card-input" min="0" max="99" value="0" style="width:46px;margin-top:0;"><span class="sub-text">h</span>
+                            <input type="number" id="focus_timer_preset_1_m" class="card-input" min="0" max="59" value="15" style="width:46px;margin-top:0;"><span class="sub-text">m</span>
+                            <input type="number" id="focus_timer_preset_1_s" class="card-input" min="0" max="59" value="0" style="width:46px;margin-top:0;"><span class="sub-text">s</span>
+                        </div>
+                    </div>
+                    <div class="sub-option" style="margin-top:6px;flex-direction:column;align-items:stretch;gap:3px;">
+                        <span class="sub-text">Button 2</span>
+                        <div style="display:flex;gap:5px;align-items:center;">
+                            <input type="number" id="focus_timer_preset_2_h" class="card-input" min="0" max="99" value="0" style="width:46px;margin-top:0;"><span class="sub-text">h</span>
+                            <input type="number" id="focus_timer_preset_2_m" class="card-input" min="0" max="59" value="25" style="width:46px;margin-top:0;"><span class="sub-text">m</span>
+                            <input type="number" id="focus_timer_preset_2_s" class="card-input" min="0" max="59" value="0" style="width:46px;margin-top:0;"><span class="sub-text">s</span>
+                        </div>
+                    </div>
+                    <div class="sub-option" style="margin-top:6px;flex-direction:column;align-items:stretch;gap:3px;">
+                        <span class="sub-text">Button 3</span>
+                        <div style="display:flex;gap:5px;align-items:center;">
+                            <input type="number" id="focus_timer_preset_3_h" class="card-input" min="0" max="99" value="0" style="width:46px;margin-top:0;"><span class="sub-text">h</span>
+                            <input type="number" id="focus_timer_preset_3_m" class="card-input" min="0" max="59" value="45" style="width:46px;margin-top:0;"><span class="sub-text">m</span>
+                            <input type="number" id="focus_timer_preset_3_s" class="card-input" min="0" max="59" value="0" style="width:46px;margin-top:0;"><span class="sub-text">s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="option-container">
+                <div class="option" id="breathing">
+                    <input type="radio" id="off" name="breathing">
+                    <input type="radio" id="on" name="breathing">
+                    <div class="slider">
+                        <div class="sliderknob"></div>
+                        <div class="sliderbg"></div>
+                    </div><span class="option-name" data-i18n="breathing_breaks">Breathing Breaks</span>
+                </div>
+                <div class="sub-options">
+                    <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                        <label for="breathing_position" class="sub-text" data-i18n="widget_position">Position</label>
+                        <select id="breathing_position" class="widget-pos">
+                            <option value="top" data-i18n="pos_top">Top</option>
+                            <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
+                            <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
+                            <option value="below" data-i18n="pos_below">Bottom</option>
+                        </select>
+                    </div>
+                    <div class="sub-option" style="margin-top:6px;flex-direction:column;align-items:stretch;gap:3px;">
+                        <span class="sub-text">Button 1</span>
+                        <div style="display:flex;gap:5px;align-items:center;">
+                            <input type="number" id="breathing_preset_1_h" class="card-input" min="0" max="99" value="0" style="width:46px;margin-top:0;"><span class="sub-text">h</span>
+                            <input type="number" id="breathing_preset_1_m" class="card-input" min="0" max="59" value="3" style="width:46px;margin-top:0;"><span class="sub-text">m</span>
+                            <input type="number" id="breathing_preset_1_s" class="card-input" min="0" max="59" value="0" style="width:46px;margin-top:0;"><span class="sub-text">s</span>
+                        </div>
+                    </div>
+                    <div class="sub-option" style="margin-top:6px;flex-direction:column;align-items:stretch;gap:3px;">
+                        <span class="sub-text">Button 2</span>
+                        <div style="display:flex;gap:5px;align-items:center;">
+                            <input type="number" id="breathing_preset_2_h" class="card-input" min="0" max="99" value="0" style="width:46px;margin-top:0;"><span class="sub-text">h</span>
+                            <input type="number" id="breathing_preset_2_m" class="card-input" min="0" max="59" value="5" style="width:46px;margin-top:0;"><span class="sub-text">m</span>
+                            <input type="number" id="breathing_preset_2_s" class="card-input" min="0" max="59" value="0" style="width:46px;margin-top:0;"><span class="sub-text">s</span>
+                        </div>
+                    </div>
+                    <div class="sub-option" style="margin-top:6px;flex-direction:column;align-items:stretch;gap:3px;">
+                        <span class="sub-text">Button 3</span>
+                        <div style="display:flex;gap:5px;align-items:center;">
+                            <input type="number" id="breathing_preset_3_h" class="card-input" min="0" max="99" value="0" style="width:46px;margin-top:0;"><span class="sub-text">h</span>
+                            <input type="number" id="breathing_preset_3_m" class="card-input" min="0" max="59" value="10" style="width:46px;margin-top:0;"><span class="sub-text">m</span>
+                            <input type="number" id="breathing_preset_3_s" class="card-input" min="0" max="59" value="0" style="width:46px;margin-top:0;"><span class="sub-text">s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="option-container">
+                <div class="option" id="music">
+                    <input type="radio" id="off" name="music">
+                    <input type="radio" id="on" name="music">
+                    <div class="slider">
+                        <div class="sliderknob"></div>
+                        <div class="sliderbg"></div>
+                    </div><span class="option-name" data-i18n="music">Music</span>
+                </div>
+                <div class="sub-options">
+                    <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                        <label for="music_position" class="sub-text" data-i18n="widget_position">Position</label>
+                        <select id="music_position" class="widget-pos">
+                            <option value="top" data-i18n="pos_top">Top</option>
+                            <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
+                            <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
+                            <option value="below" data-i18n="pos_below">Bottom</option>
+                        </select>
+                    </div>
+                    <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;margin-top:6px;">
+                        <label for="music_spotify_url" class="sub-text">Spotify playlist</label>
+                        <input type="text" id="music_spotify_url" class="card-input" placeholder="https://open.spotify.com/playlist/...">
+                    </div>
+                    <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;margin-top:6px;">
+                        <label for="music_apple_url" class="sub-text">Apple Music playlist</label>
+                        <input type="text" id="music_apple_url" class="card-input" placeholder="https://music.apple.com/...">
+                    </div>
+                    <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;margin-top:6px;">
+                        <label for="music_youtube_url" class="sub-text">YouTube playlist</label>
+                        <input type="text" id="music_youtube_url" class="card-input" placeholder="https://youtube.com/playlist?...">
+                    </div>
+                    <div class="sub-option" style="margin-top:9px">
+                        <input type="checkbox" id="music_thumb_bg" name="music_thumb_bg">
+                        <label for="music_thumb_bg" class="sub-text">Thumbnail background</label>
+                    </div>
+                    <div class="sub-option" style="margin-top:5px">
+                        <input type="checkbox" id="music_no_thumb" name="music_no_thumb">
+                        <label for="music_no_thumb" class="sub-text">Remove thumbnail</label>
+                    </div>
+                </div>
+            </div>
+            <div class="option-container">
+                <div class="option" id="daily_quotes">
+                    <input type="radio" id="off" name="daily_quotes">
+                    <input type="radio" id="on" name="daily_quotes">
+                    <div class="slider">
+                        <div class="sliderknob"></div>
+                        <div class="sliderbg"></div>
+                    </div><span class="option-name" data-i18n="daily_quotes">Daily Quotes</span>
+                </div>
+                <div class="sub-options">
+                    <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
+                        <label for="daily_quotes_position" class="sub-text" data-i18n="widget_position">Position</label>
+                        <select id="daily_quotes_position" class="widget-pos">
+                            <option value="top" data-i18n="pos_top">Top</option>
+                            <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
+                            <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
+                            <option value="below" data-i18n="pos_below">Bottom</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
