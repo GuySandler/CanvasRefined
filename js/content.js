@@ -1024,26 +1024,20 @@ function applyOptionsChanges(changes) {
 			case "dashboard_notes_text":
 			case "dashboard_notes_mode":
 			case "dashboard_notes_position":
+			case "dashboard_notes_height":
 				loadDashboardNotes();
 				break;
 			case "focus_timer":
 			case "focus_timer_position":
+			case "focus_timer_height":
 			case "focus_timer_preset_1":
 			case "focus_timer_preset_2":
 			case "focus_timer_preset_3":
 				loadFocusTimer();
 				break;
-			case "music":
-			case "music_position":
-			case "music_spotify_url":
-			case "music_apple_url":
-			case "music_youtube_url":
-			case "music_thumb_bg":
-			case "music_no_thumb":
-				loadMusicWidget();
-				break;
 			case "breathing":
 			case "breathing_position":
+			case "breathing_height":
 			case "breathing_preset_1":
 			case "breathing_preset_2":
 			case "breathing_preset_3":
@@ -1051,7 +1045,14 @@ function applyOptionsChanges(changes) {
 				break;
 			case "daily_quotes":
 			case "daily_quotes_position":
+			case "daily_quotes_height":
 				loadDailyQuotesWidget();
+				break;
+			case "daily_quote":
+				// Background refreshed the cached quote for today.
+				document.querySelectorAll(".canvasrefined-quotes").forEach(el => {
+					renderDailyQuote(el, changes["daily_quote"].newValue);
+				});
 				break;
 			case "widget_order":
 				["top", "below"].forEach(area => {
@@ -1066,6 +1067,11 @@ function applyOptionsChanges(changes) {
 				if (options.dashboard_notes === true) loadDashboardNotes();
 				if (options.gpa_calc === true && current_page === "/") setupGPACalc();
 				loadAllSimpleWidgets();
+				break;
+			case "widget_row_height":
+				document.querySelectorAll(".canvasrefined-widget-row").forEach(row => {
+					applyWidgetRowLayout(row, row.dataset.area);
+				});
 				break;
 			case "dashboard_grades":
 			case "grade_hover":
@@ -1187,6 +1193,7 @@ function applyOptionsChanges(changes) {
 			case "gpa_calc":
 			case "gpa_calc_prepend":
 			case "gpa_calc_position":
+			case "gpa_calc_height":
 			case "gpa_calc_weighted":
 			case "gpa_calc_cumulative":
 				if (!grades) getGrades();
@@ -1974,6 +1981,11 @@ function checkDashboardReady() {
 
     const observer = new MutationObserver(callback);
     observer.observe(document.documentElement, { childList: true, subtree: true });
+    // On a fast load (or cached dashboard) Canvas can finish rendering before
+    // this observer is attached, so no structural mutation would ever trigger
+    // the setup pass and widgets (notably the GPA card) would only appear on
+    // the next unrelated DOM change. Kick one pass immediately.
+    callback([{ type: "childList" }]);
 }
 
 function recieveMessage(request, sender, sendResponse) {
@@ -7644,6 +7656,9 @@ GPA calculator
 */
 
 function calculateGPA2() {
+    // The shell renders before the grades data arrives; nothing to compute until
+    // the cumulative row exists (populated by setupGPACalc).
+    if (!document.querySelector("#canvasrefined-cumulative-gpa")) return;
     let qualityPoints = 0, numCredits = 0, weightedQualityPoints = 0, cumulativePoints = 0, cumulativeCredits = 0;
     document.querySelectorAll('.canvasrefined-gpa-course').forEach(course => {
         course.dataset.gradeLetter = "--";
@@ -7840,8 +7855,14 @@ function placeGPAElements(dashboardContainer, container, container2) {
     // While the calculator is hosted in the open modal, leave it alone — a
     // dashboard setup pass must not yank it out from under the user.
     if (container.closest && container.closest("#canvasrefined-gpa-modal")) return;
+    // Disabled: make sure the pair isn't still reserving a slot in a shared row.
+    if (options.gpa_calc !== true) {
+        releaseWidgetFromRow("gpa_calc", [container2, container], dashboardContainer);
+        return;
+    }
     const pos = gpaCalcPosition();
     const containerMode = pos === "top" || pos === "below";
+    crApplyCardHeight("gpa_calc", container2, !containerMode);
     container.classList.toggle("container-mode", containerMode);
     container2.classList.toggle("container-mode", containerMode);
     const parent = dashboardContainer.parentNode;
@@ -7887,10 +7908,10 @@ function placeGPAElements(dashboardContainer, container, container2) {
 
 // Every dashboard widget known to the placement system. Kept in one place so
 // the ordering/filtering helpers don't each hardcode their own list.
-const CR_WIDGET_IDS = ["dashboard_notes", "gpa_calc", "focus_timer", "music", "breathing", "daily_quotes"];
+const CR_WIDGET_IDS = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes"];
 // Widgets rendered by the generic card loader (single root element, no GPA-style
 // paired elements).
-const CR_SIMPLE_WIDGET_IDS = ["focus_timer", "music", "breathing", "daily_quotes"];
+const CR_SIMPLE_WIDGET_IDS = ["focus_timer", "breathing", "daily_quotes"];
 function isCRWidget(id) { return CR_WIDGET_IDS.indexOf(id) !== -1; }
 
 // Shared full-width container ("top"/"below" positions): widgets live in a
@@ -7930,7 +7951,7 @@ function applyCardWidgetOrder(grid) {
     if (!grid) return;
     const saved = cardWidgetOrder();
     const units = [];
-    // Simple card widgets (focus timer, music, breathing, quotes) are a
+    // Simple card widgets (focus timer, breathing, quotes) are a
     // single element each, so they join the ordering straight from the DOM.
     grid.querySelectorAll(":scope > .canvasrefined-widget-card[data-cr-widget]").forEach(el => {
         if (!el.classList.contains("in-cards")) return;
@@ -8010,6 +8031,11 @@ function ensureWidgetRow(area, container) {
 function applyWidgetRowLayout(row, area) {
     const slots = [...row.querySelectorAll(":scope > .canvasrefined-widget-slot")];
     if (!slots.length) { row.remove(); return; }
+    // Shared Top/Bottom row height (px; 0 = auto). Applied to the row so every
+    // widget in it matches; cards in container-mode stretch to fill it.
+    const rowHeight = parseInt(options.widget_row_height, 10);
+    if (Number.isFinite(rowHeight) && rowHeight > 0) row.style.height = rowHeight + "px";
+    else row.style.height = "";
     const entries = containerWidgetOrder(area);
     const byId = {};
     slots.forEach(slot => { byId[slot.dataset.widget] = slot; });
@@ -8027,24 +8053,19 @@ function applyWidgetRowLayout(row, area) {
     row.querySelectorAll(":scope > .canvasrefined-widget-divider").forEach(d => d.remove());
 
     // Sizing: saved % values are normalized across the widgets actually in
-    // the row, so when one widget leaves (or a new one joins) the rest
-    // instantly redistribute to fill the freed space. flex-grow weights do
-    // that redistribution automatically in CSS.
-    const present = entries.filter(e => order.includes(e.id));
-    const defined = present.filter(e => Number.isFinite(e.size) && e.size > 0);
-    let weights;
-    if (defined.length === 0) {
-        weights = order.map(() => 1);
-    } else {
-        const totalDefined = defined.reduce((a, e) => a + e.size, 0);
-        const undefinedIds = order.filter(id => !defined.some(e => e.id === id));
-        const byIdEntry = Object.fromEntries(present.map(e => [e.id, e]));
-        weights = order.map(id => {
-            const e = byIdEntry[id];
-            if (e && Number.isFinite(e.size) && e.size > 0) return e.size / totalDefined;
-            return undefinedIds.length ? Math.max(0, 100 - totalDefined) / undefinedIds.length / 100 : 0.01;
-        });
-    }
+    // the row. A widget with no saved size (e.g. just enabled) borrows the
+    // average of the sized ones, so the weights ALWAYS sum to 1 — otherwise a
+    // mix of sized + new widgets could exceed 100% or collapse a slot to 0.
+    const byIdEntry = Object.fromEntries(entries.map(e => [e.id, e]));
+    const raw = order.map(id => {
+        const e = byIdEntry[id];
+        return e && Number.isFinite(e.size) && e.size > 0 ? e.size : null;
+    });
+    const known = raw.filter(v => v !== null);
+    const fallback = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 1;
+    const rawFilled = raw.map(v => v === null ? fallback : v);
+    const totalWeight = rawFilled.reduce((a, b) => a + b, 0) || 1;
+    const weights = rawFilled.map(v => v / totalWeight);
     order.forEach((id, i) => {
         byId[id].dataset.sizePct = weights[i] * 100;
         byId[id].style.flex = weights[i] + " 1 0%";
@@ -8260,66 +8281,87 @@ function openGpaModal(dashboardContainer, container, container2) {
     modal.addEventListener("mousedown", (e) => { if (e.target === modal) close(); });
 }
 
+// Bounded retry while Canvas finishes rendering the dashboard container, so
+// the GPA card doesn't wait for the next MutationObserver pass.
+let gpaSetupRetryTimer = null;
+let gpaSetupAttempts = 0;
 function setupGPACalc() {
     if (current_page !== "/" && current_page !== "") return;
     try {
+        const sortableContainer = document.querySelector(".ic-DashboardCard__box__container");
+        const dashboardContainer = sortableContainer || document.querySelector("#DashboardCard_Container");
+        if (!dashboardContainer) {
+            // The dashboard DOM isn't there yet (Canvas renders it async).
+            // Retry briefly instead of silently giving up, otherwise the GPA
+            // card waits for the next mutation pass to show up.
+            if (!gpaSetupRetryTimer && gpaSetupAttempts < 20) {
+                gpaSetupAttempts++;
+                gpaSetupRetryTimer = setTimeout(() => {
+                    gpaSetupRetryTimer = null;
+                    setupGPACalc();
+                }, 150);
+            }
+            return;
+        }
+        gpaSetupAttempts = 0;
+
+        let container2 = document.querySelector(".canvasrefined-gpa-card");
+        let container = document.querySelector(".canvasrefined-gpa");
+        const alreadyRendered = container2?.dataset?.canvasrefinedGpaRendered === "true" && container?.dataset?.canvasrefinedGpaRendered === "true";
+
+        if (!container2) {
+            container2 = document.createElement("div");
+            container2.className = "canvasrefined-gpa-card";
+        }
+        if (!container) {
+            container = document.createElement("div");
+            container.className = "canvasrefined-gpa";
+        }
+
+        container2.style.display = options.gpa_calc === true ? "inline-block" : "none";
+
+        if (!alreadyRendered) {
+            // Render the shell immediately (with "--" placeholders) so the GPA
+            // card joins the dashboard at the same time as every other widget.
+            // The numbers and course rows are filled in when the grades API
+            // resolves, which is the only part that actually needs the data.
+            container2.innerHTML = `<h3 class="canvasrefined-gpa-header">GPA</h3><div><div><p id="canvasrefined-gpa-unweighted">--</p><p>Current</p></div><div style="display:${options["gpa_calc_weighted"] ? "block" : "none"}"><p id="canvasrefined-gpa-weighted">--</p><p>Weighted</p></div><div style="display:${options["gpa_calc_cumulative"] ? "block" : "none"}"><p id="canvasrefined-gpa-cumulative">--</p><p>Cumulative</p></div></div>`;
+            let editBtn = makeElement("button", container2, { "className": "canvasrefined-gpa-edit-btn", "textContent": "Edit Calculator" });
+
+            container.innerHTML = '<h3 class="canvasrefined-gpa-header">GPA Calculator</h3><div class="canvasrefined-gpa-courses-container"><div class="canvasrefined-gpa-courses"></div></div>';
+
+            editBtn.addEventListener("click", () => openGpaModal(dashboardContainer, container, container2));
+
+            container.style.display = "none";
+
+            container2.dataset.canvasrefinedGpaRendered = "true";
+            container.dataset.canvasrefinedGpaRendered = "true";
+        } else {
+            const weighted = container2.querySelector("#canvasrefined-gpa-weighted")?.parentElement;
+            const cumulative = container2.querySelector("#canvasrefined-gpa-cumulative")?.parentElement;
+            if (weighted) weighted.style.display = options.gpa_calc_weighted ? "block" : "none";
+            if (cumulative) cumulative.style.display = options.gpa_calc_cumulative ? "block" : "none";
+        }
+
+        placeGPAElements(dashboardContainer, container, container2);
+
+        try {
+            if (sortableContainer && window.jQuery && window.jQuery.fn && window.jQuery.fn.sortable) {
+                window.jQuery(sortableContainer).sortable('refresh');
+            }
+        } catch (e) {}
+
+        // Populate course rows + numbers once the grades request resolves.
         grades?.then(result => {
-
-            const sortableContainer = document.querySelector(".ic-DashboardCard__box__container");
-            const dashboardContainer = sortableContainer || document.querySelector("#DashboardCard_Container");
-            if (!dashboardContainer) return;
-
-            let container2 = document.querySelector(".canvasrefined-gpa-card");
-            let container = document.querySelector(".canvasrefined-gpa");
-            const alreadyRendered = container2?.dataset?.canvasrefinedGpaRendered === "true" && container?.dataset?.canvasrefinedGpaRendered === "true";
-
-            if (!container2) {
-                container2 = document.createElement("div");
-                container2.className = "canvasrefined-gpa-card";
-            }
-            if (!container) {
-                container = document.createElement("div");
-                container.className = "canvasrefined-gpa";
-            }
-
-            container2.style.display = options.gpa_calc === true ? "inline-block" : "none";
-
-            if (!alreadyRendered) {
-                container2.innerHTML = `<h3 class="canvasrefined-gpa-header">GPA</h3><div><div><p id="canvasrefined-gpa-unweighted"></p><p>Current</p></div><div style="display:${options["gpa_calc_weighted"] ? "block" : "none"}"><p id="canvasrefined-gpa-weighted"></p><p>Weighted</p></div><div style="display:${options["gpa_calc_cumulative"] ? "block" : "none"}"><p id="canvasrefined-gpa-cumulative"></p><p>Cumulative</p></div></div>`;
-                let editBtn = makeElement("button", container2, { "className": "canvasrefined-gpa-edit-btn", "textContent": "Edit Calculator" });
-
-                container.innerHTML = '<h3 class="canvasrefined-gpa-header">GPA Calculator</h3><div class="canvasrefined-gpa-courses-container"><div class="canvasrefined-gpa-courses"></div></div>';
-
-                placeGPAElements(dashboardContainer, container, container2);
-                editBtn.textContent = "Edit Calculator";
-                editBtn.addEventListener("click", () => openGpaModal(dashboardContainer, container, container2));
-
-                let location = document.querySelector(".canvasrefined-gpa-courses");
-                if (!location) return;
-
-                let cumulative = createGPACalcCourse(location, { "id": "cumulative", "enrollments": [{ "has_grading_periods": true, "current_period_computed_current_score": 0 }] });
-                cumulative.id = "canvasrefined-cumulative-gpa";
+            const location = container.querySelector(".canvasrefined-gpa-courses");
+            if (!location || !container.isConnected) return;
+            if (container.dataset.canvasrefinedGpaPopulated !== "true") {
+                location.textContent = "";
+                const cumulative = createGPACalcCourse(location, { "id": "cumulative", "enrollments": [{ "has_grading_periods": true, "current_period_computed_current_score": 0 }] });
+                if (cumulative) cumulative.id = "canvasrefined-cumulative-gpa";
                 result.forEach(course => createGPACalcCourse(location, course));
-
-                container.style.display = "none";
-
-                container2.dataset.canvasrefinedGpaRendered = "true";
-                container.dataset.canvasrefinedGpaRendered = "true";
-            } else {
-                const weighted = container2.querySelector("#canvasrefined-gpa-weighted")?.parentElement;
-                const cumulative = container2.querySelector("#canvasrefined-gpa-cumulative")?.parentElement;
-                if (weighted) weighted.style.display = options.gpa_calc_weighted ? "block" : "none";
-                if (cumulative) cumulative.style.display = options.gpa_calc_cumulative ? "block" : "none";
-
-                placeGPAElements(dashboardContainer, container, container2);
+                container.dataset.canvasrefinedGpaPopulated = "true";
             }
-
-            try {
-                if (sortableContainer && window.jQuery && window.jQuery.fn && window.jQuery.fn.sortable) {
-                    window.jQuery(sortableContainer).sortable('refresh');
-                }
-            } catch (e) {}
-
             calculateGPA2();
         }).catch(e => logError(e));
     } catch (e) {
@@ -8612,6 +8654,7 @@ function wireDashboardNotes(notes) {
 //   below  — full-width container below the grid, with some margin
 function placeDashboardNotes(notes, container) {
     const pos = options.dashboard_notes_position || "top";
+    crApplyCardHeight("dashboard_notes", notes, pos === "cards_start" || pos === "cards_end");
     if (pos === "top" || pos === "below") {
         notes.classList.remove("in-cards");
         const slot = notes.closest && notes.closest(".canvasrefined-widget-slot");
@@ -8676,12 +8719,16 @@ function loadDashboardNotes() {
         placeDashboardNotes(notes, container);
     } else {
         let notes = document.querySelector('.canvasrefined-dashboard-notes');
-        if (notes) notes.style.display = "none";
+        if (notes) {
+            notes.style.display = "none";
+            // Give its width back to the other widgets sharing the row.
+            releaseWidgetFromRow("dashboard_notes", [notes]);
+        }
     }
 }
 
 /*
-Generic dashboard widgets (Focus Timer, Music, Breathing Breaks, Daily Quote)
+Generic dashboard widgets (Focus Timer, Breathing Breaks, Daily Quote)
 
 These share the placement/ordering machinery built for Dashboard Notes and the
 GPA calculator, but render from one element each (see CR_SIMPLE_WIDGET_IDS).
@@ -8691,7 +8738,6 @@ const CR_WIDGET_DEFAULT_POSITION = {
     dashboard_notes: "top",
     gpa_calc: "cards_end",
     focus_timer: "cards_end",
-    music: "cards_end",
     breathing: "cards_end",
     daily_quotes: "top",
 };
@@ -8702,11 +8748,27 @@ function crWidgetPosition(id) {
     return CR_WIDGET_DEFAULT_POSITION[id] || "cards_end";
 }
 
+// Per-widget height used when the widget sits before/after the course cards
+// (px; 0 = auto). Cleared in container (Top/Bottom) mode so the shared row
+// height controls that layout instead.
+function crApplyCardHeight(id, el, inCards) {
+    if (!el) return;
+    const h = parseInt(options[id + "_height"], 10);
+    if (inCards && Number.isFinite(h) && h > 0) {
+        el.style.height = h + "px";
+        el.style.minHeight = h + "px";
+    } else {
+        el.style.height = "";
+        el.style.minHeight = "";
+    }
+}
+
 // Move a single-element widget to its configured spot, mirroring the Notes/GPA
 // placement rules: top/below join the shared full-width row, cards_* sit in the
 // course-card grid before/after the cards.
 function placeSimpleWidget(id, el, container) {
     const pos = crWidgetPosition(id);
+    crApplyCardHeight(id, el, pos === "cards_start" || pos === "cards_end");
     if (pos === "top" || pos === "below") {
         el.classList.remove("in-cards");
         el.classList.add("container-mode");
@@ -8736,7 +8798,11 @@ function placeSimpleWidget(id, el, container) {
 function crLoadWidget(id, spec) {
     const existing = document.querySelector("." + spec.className);
     if (options[id] !== true) {
-        if (existing) existing.style.display = "none";
+        if (existing) {
+            existing.style.display = "none";
+            // Give its width back to the other widgets sharing the row.
+            releaseWidgetFromRow(id, [existing]);
+        }
         return;
     }
     const container = document.querySelector("#DashboardCard_Container");
@@ -8866,16 +8932,26 @@ function crTimerHideCustom(el) {
     const row = el.querySelector(".cr-timer-custom-row");
     if (row) row.hidden = true;
 }
-// Read the h/m/s custom fields as a whole number of seconds.
+// Read the compact h:mm:ss custom fields as a whole number of seconds.
 function crTimerCustomSeconds(el) {
     const num = (sel) => {
         const v = parseInt((el.querySelector(sel) || {}).value, 10);
         return Number.isFinite(v) && v > 0 ? v : 0;
     };
-    const h = Math.min(99, num(".cr-tf-h"));
-    const m = Math.min(59, num(".cr-tf-m"));
-    const s = Math.min(59, num(".cr-tf-s"));
-    return h * 3600 + m * 60 + s;
+    return Math.min(99, num(".cr-tf-h")) * 3600
+        + Math.min(59, num(".cr-tf-m")) * 60
+        + Math.min(59, num(".cr-tf-s"));
+}
+// Seed the compact fields from the current timer length, two digits each.
+function crTimerFillCustom(el, totalSec) {
+    const secs = Math.max(0, Math.round(totalSec || 0));
+    const put = (sel, v) => {
+        const inp = el.querySelector(sel);
+        if (inp) inp.value = String(v).padStart(2, "0");
+    };
+    put(".cr-tf-h", Math.min(99, Math.floor(secs / 3600)));
+    put(".cr-tf-m", Math.floor((secs % 3600) / 60));
+    put(".cr-tf-s", secs % 60);
 }
 // Listeners are wired once (update passes only refresh config labels).
 function crTimerWireControls(id, el) {
@@ -8887,29 +8963,49 @@ function crTimerWireControls(id, el) {
         });
     });
 
-    // Custom: reveal inline hours/minutes/seconds fields.
+    // Custom: a compact h:mm:ss entry. Click a segment to edit it, Tab / arrows
+    // move between segments, typing a second digit auto-advances, Enter sets.
     const customBtn = el.querySelector(".cr-timer-custom");
     const row = el.querySelector(".cr-timer-custom-row");
+    const fields = [...el.querySelectorAll(".cr-timer-custom-row .cr-tf")];
+    const focusField = (i) => {
+        const inp = fields[i];
+        if (inp) { inp.focus(); inp.select(); }
+    };
     const applyCustom = () => {
         const sec = crTimerCustomSeconds(el);
         if (sec <= 0) {
-            const mInput = el.querySelector(".cr-tf-m");
-            if (mInput) { mInput.focus(); mInput.select(); }
+            focusField(fields.length - 1);
             return;
         }
         crTimerSet(id, el, sec);
         crTimerHideCustom(el);
     };
-    if (customBtn && row) customBtn.addEventListener("click", () => {
-        if (!row.hidden) { crTimerHideCustom(el); return; }
+    const openCustom = () => {
+        crTimerFillCustom(el, crTimer(id).total);
         row.hidden = false;
-        const mInput = el.querySelector(".cr-tf-m");
-        if (mInput) { mInput.focus(); mInput.select(); }
+        // Start on minutes when present, otherwise the first field.
+        const mi = fields.findIndex(f => f.classList.contains("cr-tf-m"));
+        focusField(mi === -1 ? 0 : mi);
+    };
+    if (customBtn && row) customBtn.addEventListener("click", () => {
+        if (row.hidden) openCustom();
+        else crTimerHideCustom(el);
     });
-    el.querySelectorAll(".cr-timer-custom-row .cr-tf").forEach(inp => inp.addEventListener("keydown", e => {
-        if (e.key === "Enter") { e.preventDefault(); applyCustom(); }
-        else if (e.key === "Escape") { e.preventDefault(); crTimerHideCustom(el); }
-    }));
+    fields.forEach((inp, i) => {
+        inp.addEventListener("focus", () => inp.select());
+        inp.addEventListener("input", () => {
+            inp.value = inp.value.replace(/[^0-9]/g, "").slice(0, 2);
+            if (inp.value.length >= 2 && i < fields.length - 1) focusField(i + 1);
+        });
+        inp.addEventListener("keydown", e => {
+            if (e.key === "Enter") { e.preventDefault(); applyCustom(); }
+            else if (e.key === "Escape") { e.preventDefault(); crTimerHideCustom(el); }
+            else if ((e.key === "ArrowRight" || e.key === "Tab" && !e.shiftKey) && i < fields.length - 1) { e.preventDefault(); focusField(i + 1); }
+            else if ((e.key === "ArrowLeft" || e.key === "Tab" && e.shiftKey) && i > 0) { e.preventDefault(); focusField(i - 1); }
+            else if (e.key === "Backspace" && inp.value === "" && i > 0) { e.preventDefault(); focusField(i - 1); }
+        });
+    });
     const go = el.querySelector(".cr-timer-custom-go");
     if (go) go.addEventListener("click", applyCustom);
 
@@ -8967,10 +9063,12 @@ const FOCUS_TIMER_HTML = `
         <button type="button" class="cr-timer-preset cr-timer-custom">Custom</button>
     </div>
     <div class="cr-timer-custom-row" hidden>
-        <div class="cr-time-fields">
-            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-h" min="0" max="99" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">h</span></label>
-            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-m" min="0" max="59" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">m</span></label>
-            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-s" min="0" max="59" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">s</span></label>
+        <div class="cr-time-input">
+            <input type="text" class="cr-tf cr-tf-h" inputmode="numeric" maxlength="2" value="00" aria-label="Hours">
+            <span class="cr-tf-colon" aria-hidden="true">:</span>
+            <input type="text" class="cr-tf cr-tf-m" inputmode="numeric" maxlength="2" value="00" aria-label="Minutes">
+            <span class="cr-tf-colon" aria-hidden="true">:</span>
+            <input type="text" class="cr-tf cr-tf-s" inputmode="numeric" maxlength="2" value="00" aria-label="Seconds">
         </div>
         <button type="button" class="cr-widget-btn cr-timer-custom-go">Set</button>
     </div>
@@ -9008,31 +9106,37 @@ function breathingCfg() {
 
 const BREATHING_HTML = `
     <div class="cr-widget-head"><span class="cr-widget-title">Breathing Breaks</span></div>
-    <div class="cr-breath-stage">
-        <div class="cr-breath-circle">
-            <span class="cr-breath-phase cr-breath-phase-in">Breathe in</span>
-            <span class="cr-breath-phase cr-breath-phase-out">Breathe out</span>
-            <span class="cr-breath-idle">Ready</span>
+    <div class="cr-breath-layout">
+        <div class="cr-breath-left">
+            <div class="cr-breath-stage">
+                <div class="cr-breath-circle">
+                    <span class="cr-breath-phase cr-breath-phase-in">Breathe in</span>
+                    <span class="cr-breath-phase cr-breath-phase-out">Breathe out</span>
+                    <span class="cr-breath-idle">Ready</span>
+                </div>
+            </div>
+            <div class="cr-timer-time cr-timer-display cr-breath-display" aria-live="polite">05:00</div>
         </div>
-    </div>
-    <div class="cr-timer-time cr-timer-display cr-breath-display" aria-live="polite">05:00</div>
-    <div class="cr-timer-presets">
-        <button type="button" class="cr-timer-preset" data-slot="1">3 min</button>
-        <button type="button" class="cr-timer-preset" data-slot="2">5 min</button>
-        <button type="button" class="cr-timer-preset" data-slot="3">10 min</button>
-        <button type="button" class="cr-timer-preset cr-timer-custom">Custom</button>
-    </div>
-    <div class="cr-timer-custom-row" hidden>
-        <div class="cr-time-fields">
-            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-h" min="0" max="99" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">h</span></label>
-            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-m" min="0" max="59" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">m</span></label>
-            <label class="cr-tf-box"><input type="number" class="cr-tf cr-tf-s" min="0" max="59" inputmode="numeric" placeholder="0"><span class="cr-tf-unit">s</span></label>
+        <div class="cr-breath-right">
+            <div class="cr-timer-presets">
+                <button type="button" class="cr-timer-preset" data-slot="1">3 min</button>
+                <button type="button" class="cr-timer-preset" data-slot="2">5 min</button>
+                <button type="button" class="cr-timer-preset" data-slot="3">10 min</button>
+                <button type="button" class="cr-timer-preset cr-timer-custom">Custom</button>
+            </div>
+            <div class="cr-timer-custom-row" hidden>
+                <div class="cr-time-input">
+                    <input type="text" class="cr-tf cr-tf-m" inputmode="numeric" maxlength="2" value="00" aria-label="Minutes">
+                    <span class="cr-tf-colon" aria-hidden="true">:</span>
+                    <input type="text" class="cr-tf cr-tf-s" inputmode="numeric" maxlength="2" value="00" aria-label="Seconds">
+                </div>
+                <button type="button" class="cr-widget-btn cr-timer-custom-go">Set</button>
+            </div>
+            <div class="cr-timer-controls">
+                <button type="button" class="cr-widget-btn cr-timer-start">Start</button>
+                <button type="button" class="cr-widget-btn cr-widget-btn-ghost cr-timer-reset">Reset</button>
+            </div>
         </div>
-        <button type="button" class="cr-widget-btn cr-timer-custom-go">Set</button>
-    </div>
-    <div class="cr-timer-controls">
-        <button type="button" class="cr-widget-btn cr-timer-start">Start</button>
-        <button type="button" class="cr-widget-btn cr-widget-btn-ghost cr-timer-reset">Reset</button>
     </div>
 `;
 
@@ -9054,191 +9158,67 @@ function loadBreathingWidget() {
     });
 }
 
-/* ---- Music (looks only) ---- */
+/* ---- Daily Quote (stoic.tekloon.net, refreshed once a day) ---- */
 
-const MUSIC_PLATFORMS = [
-    { id: "spotify", name: "Spotify", option: "music_spotify_url", color: "#1DB954" },
-    { id: "apple", name: "Apple Music", option: "music_apple_url", color: "#FA243C" },
-    { id: "youtube", name: "YouTube", option: "music_youtube_url", color: "#FF0000" },
-];
-
-const MUSIC_ICONS = {
-    spotify: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#1DB954"/><path d="M7 9.6c3.3-1 7-.6 9.8 1M7.4 12.6c2.6-.8 5.4-.4 7.6 .9M8 15.5c2-.6 4-.3 5.6 .7" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>',
-    apple: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#FA243C"/><path d="M15.2 6.5l-5 1.1a.8.8 0 0 0-.6.8v5.2a2 2 0 1 0 .9 1.7V9.3l4-0.9v3.6a2 2 0 1 0 .9 1.7V7.3a.8.8 0 0 0-.2-.8z" fill="#fff"/></svg>',
-    youtube: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="1.5" y="5" width="21" height="14" rx="4" fill="#FF0000"/><path d="M10 9l5 3-5 3z" fill="#fff"/></svg>',
-    note: '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M20 3v11.6a3.6 3.6 0 1 1-2-3.2V6.3l-8 1.6v8.7a3.6 3.6 0 1 1-2-3.2V5.4L20 3z"/></svg>',
-    prev: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M6 6h2v12H6zM20 6v12l-9-6z"/></svg>',
-    play: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
-    next: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M16 6h2v12h-2zM4 6v12l9-6z"/></svg>',
+const DAILY_QUOTE_DEFAULT = {
+    quote: "The secret of getting ahead is getting started.",
+    author: "Mark Twain",
 };
-
-function musicPlatformLabel(url) {
-    try {
-        const host = new URL(url).hostname.replace(/^www\./, "");
-        return host || "Open playlist";
-    } catch (e) {
-        return "Open playlist";
-    }
-}
-
-// Sample library used by the switcher drawer until playback is wired up.
-const MUSIC_SAMPLE_PLAYLISTS = {
-    spotify: ["Focus Flow", "Lo-fi Study"],
-    apple: ["Morning Mix", "Reading Room"],
-    youtube: ["Study With Me", "Ambient Spaces"],
-};
-const MUSIC_SAMPLE_SONGS = [
-    { title: "Golden Hour", artist: "Ambient Co.", len: "3:12" },
-    { title: "Slow Tide", artist: "Nova", len: "4:05" },
-    { title: "Paper Planes", artist: "The Loft", len: "2:48" },
-    { title: "Night Drive", artist: "Kite", len: "3:57" },
-    { title: "Warm Static", artist: "Halcyon", len: "5:21" },
-];
-
-const MUSIC_HTML = `
-    <div class="cr-widget-head">
-        <span class="cr-widget-title">Music</span>
-        <button type="button" class="cr-music-list-btn">Playlists <span class="cr-music-caret" aria-hidden="true">&#9662;</span></button>
-    </div>
-    <div class="cr-player">
-        <div class="cr-player-thumb" aria-hidden="true"><span class="cr-player-thumb-mark">${MUSIC_ICONS.note}</span></div>
-        <div class="cr-player-body">
-            <div class="cr-player-art" aria-hidden="true">${MUSIC_ICONS.note}</div>
-            <div class="cr-player-info">
-                <div class="cr-player-title">Nothing playing</div>
-                <div class="cr-player-sub">Pick a playlist</div>
-            </div>
-        </div>
-    </div>
-    <div class="cr-player-progress"><div class="cr-player-progress-fill"></div></div>
-    <div class="cr-player-times"><span>0:00</span><span>0:00</span></div>
-    <div class="cr-player-controls">
-        <button type="button" class="cr-player-btn" aria-label="Previous track">${MUSIC_ICONS.prev}</button>
-        <button type="button" class="cr-player-btn cr-player-play" aria-label="Play">${MUSIC_ICONS.play}</button>
-        <button type="button" class="cr-player-btn" aria-label="Next track">${MUSIC_ICONS.next}</button>
-    </div>
-    <div class="cr-music-drawer" aria-hidden="true">
-        <div class="cr-drawer-head">
-            <span class="cr-drawer-title">Library</span>
-            <button type="button" class="cr-drawer-close" aria-label="Close">&times;</button>
-        </div>
-        <div class="cr-drawer-tabs">
-            <button type="button" class="cr-drawer-tab active" data-tab="platforms">Platforms</button>
-            <button type="button" class="cr-drawer-tab" data-tab="playlists">Playlists</button>
-            <button type="button" class="cr-drawer-tab" data-tab="songs">Songs</button>
-        </div>
-        <div class="cr-drawer-body">
-            <div class="cr-drawer-pane" data-pane="platforms">
-                ${MUSIC_PLATFORMS.map(p => `
-                <div class="cr-drawer-row cr-drawer-platform" data-platform="${p.id}">
-                    <span class="cr-drawer-icon">${MUSIC_ICONS[p.id]}</span>
-                    <span class="cr-drawer-meta"><span class="cr-drawer-name">${p.name}</span><span class="cr-drawer-sub" data-role="platform-sub">Not linked</span></span>
-                    <span class="cr-drawer-chevron" aria-hidden="true">&#8250;</span>
-                </div>`).join("")}
-            </div>
-            <div class="cr-drawer-pane" data-pane="playlists" hidden>
-                ${MUSIC_PLATFORMS.map(p => `
-                <div class="cr-drawer-row cr-drawer-playlist" data-platform="${p.id}">
-                    <span class="cr-drawer-icon cr-drawer-icon-pl">${MUSIC_ICONS[p.id]}</span>
-                    <span class="cr-drawer-meta"><span class="cr-drawer-name" data-role="playlist-name">${MUSIC_SAMPLE_PLAYLISTS[p.id][0]}</span><span class="cr-drawer-sub">${p.name}</span></span>
-                    <span class="cr-drawer-chevron" aria-hidden="true">&#8250;</span>
-                </div>`).join("")}
-            </div>
-            <div class="cr-drawer-pane" data-pane="songs" hidden>
-                ${MUSIC_SAMPLE_SONGS.map((s, i) => `
-                <div class="cr-drawer-row cr-drawer-song">
-                    <span class="cr-drawer-index">${i + 1}</span>
-                    <span class="cr-drawer-meta"><span class="cr-drawer-name">${s.title}</span><span class="cr-drawer-sub">${s.artist}</span></span>
-                    <span class="cr-drawer-len">${s.len}</span>
-                </div>`).join("")}
-            </div>
-        </div>
-    </div>
-`;
-
-// No playback yet: this only keeps the look in sync with the saved links and
-// display options.
-function updateMusicWidget(el) {
-    const noThumb = options.music_no_thumb === true;
-    const thumbBg = !noThumb && options.music_thumb_bg !== false;
-    el.classList.toggle("no-thumb", noThumb);
-    el.classList.toggle("thumb-bg", thumbBg);
-
-    const configured = [];
-    MUSIC_PLATFORMS.forEach(p => {
-        const url = (options[p.option] || "").trim();
-        if (url) configured.push({ p, url });
-        const sub = el.querySelector('.cr-drawer-platform[data-platform="' + p.id + '"] [data-role="platform-sub"]');
-        if (sub) sub.textContent = url ? musicPlatformLabel(url) : "Not linked";
-        const plName = el.querySelector('.cr-drawer-playlist[data-platform="' + p.id + '"] [data-role="playlist-name"]');
-        if (plName) plName.textContent = url ? musicPlatformLabel(url) : MUSIC_SAMPLE_PLAYLISTS[p.id][0];
-    });
-
-    // Mirror the first configured playlist into the player header.
-    const titleEl = el.querySelector(".cr-player-title");
-    const subEl = el.querySelector(".cr-player-sub");
-    const artEl = el.querySelector(".cr-player-art");
-    const first = configured[0];
-    if (first) {
-        if (titleEl) titleEl.textContent = first.p.name + " playlist";
-        if (subEl) subEl.textContent = musicPlatformLabel(first.url);
-        if (artEl) artEl.innerHTML = MUSIC_ICONS[first.p.id];
-        el.style.setProperty("--cr-thumb-color", first.p.color);
-    } else {
-        if (titleEl) titleEl.textContent = "Nothing playing";
-        if (subEl) subEl.textContent = "Pick a playlist";
-        if (artEl) artEl.innerHTML = MUSIC_ICONS.note;
-        el.style.removeProperty("--cr-thumb-color");
-    }
-}
-function wireMusicWidget(el) {
-    const btn = el.querySelector(".cr-music-list-btn");
-    const drawer = el.querySelector(".cr-music-drawer");
-    const setOpen = (v) => {
-        el.classList.toggle("is-drawer-open", v);
-        if (drawer) drawer.setAttribute("aria-hidden", v ? "false" : "true");
-    };
-    if (btn && drawer) btn.addEventListener("click", () => setOpen(!el.classList.contains("is-drawer-open")));
-    const close = el.querySelector(".cr-drawer-close");
-    if (close) close.addEventListener("click", () => setOpen(false));
-    el.querySelectorAll(".cr-drawer-tab").forEach(tab => {
-        tab.addEventListener("click", () => {
-            const name = tab.dataset.tab;
-            el.querySelectorAll(".cr-drawer-tab").forEach(t => t.classList.toggle("active", t === tab));
-            el.querySelectorAll(".cr-drawer-pane").forEach(p => { p.hidden = p.dataset.pane !== name; });
-        });
-    });
-    updateMusicWidget(el);
-}
-function loadMusicWidget() {
-    crLoadWidget("music", {
-        className: "canvasrefined-music",
-        html: MUSIC_HTML,
-        wire: wireMusicWidget,
-        update: updateMusicWidget,
-    });
-}
-
-/* ---- Daily Quote (looks only, content comes later) ---- */
 
 const QUOTES_HTML = `
     <div class="cr-widget-head"><span class="cr-widget-title">Daily Quote</span></div>
     <div class="cr-quote-body">
         <span class="cr-quote-mark" aria-hidden="true">&#8220;</span>
-        <p class="cr-quote-text">The secret of getting ahead is getting started.</p>
-        <span class="cr-quote-author">&mdash; Mark Twain</span>
+        <p class="cr-quote-text">${DAILY_QUOTE_DEFAULT.quote}</p>
+        <span class="cr-quote-author">&mdash; ${DAILY_QUOTE_DEFAULT.author}</span>
     </div>
 `;
+
+function renderDailyQuote(el, data) {
+    if (!el) return;
+    const quote = data && data.quote ? data.quote : DAILY_QUOTE_DEFAULT.quote;
+    const author = data && data.author ? data.author : DAILY_QUOTE_DEFAULT.author;
+    const textEl = el.querySelector(".cr-quote-text");
+    const authorEl = el.querySelector(".cr-quote-author");
+    if (textEl) textEl.textContent = quote;
+    if (authorEl) authorEl.textContent = author ? "\u2014 " + author : "";
+}
+
+// Ask the background worker to refresh (it caches per calendar day, so this is
+// a no-op after the first successful fetch of the day).
+let dailyQuoteRequested = false;
+function ensureDailyQuote() {
+    if (dailyQuoteRequested) return;
+    dailyQuoteRequested = true;
+    try {
+        chrome.runtime.sendMessage({ type: "getDailyQuote" }, () => {
+            // Reading lastError suppresses the unchecked-error warning; on
+            // failure allow a retry from a later pass.
+            if (chrome.runtime.lastError) dailyQuoteRequested = false;
+        });
+    } catch (e) {
+        dailyQuoteRequested = false;
+    }
+}
+
+function refreshDailyQuoteWidget(el) {
+    chrome.storage.local.get("daily_quote", st => {
+        if (st && st.daily_quote) renderDailyQuote(el, st.daily_quote);
+    });
+    ensureDailyQuote();
+}
+
 function loadDailyQuotesWidget() {
     crLoadWidget("daily_quotes", {
         className: "canvasrefined-quotes",
         html: QUOTES_HTML,
+        wire: refreshDailyQuoteWidget,
+        update: refreshDailyQuoteWidget,
     });
 }
 
 function loadAllSimpleWidgets() {
     loadFocusTimer();
-    loadMusicWidget();
     loadBreathingWidget();
     loadDailyQuotesWidget();
 }
@@ -10501,6 +10481,11 @@ function cleanCustomAssignments() {
 function getGrades() {
     if (options.gpa_calc === true || options.dashboard_grades === true) {
         grades = getData(`${domain}/api/v1/courses?${/*enrollment_state=active&*/""}include[]=concluded&include[]=total_scores&include[]=computed_current_score&include[]=current_grading_period_scores&per_page=100`);
+        // Render the GPA card the moment grade data arrives, rather than waiting
+        // for the next dashboard mutation pass to call setupGPACalc().
+        if (options.gpa_calc === true) {
+            grades.then(() => setupGPACalc()).catch(() => {});
+        }
     }
 }
 

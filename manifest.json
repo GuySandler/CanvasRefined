@@ -31,6 +31,7 @@
     }
   ],
   "permissions": ["storage", "unlimitedStorage"],
+  "host_permissions": ["https://stoic.tekloon.net/*"],
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {

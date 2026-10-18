@@ -47,13 +47,6 @@ chrome.runtime.onInstalled.addListener(function () {
             "focus_timer_preset_1": { "h": 0, "m": 15, "s": 0 },
             "focus_timer_preset_2": { "h": 0, "m": 25, "s": 0 },
             "focus_timer_preset_3": { "h": 0, "m": 45, "s": 0 },
-            "music": false,
-            "music_position": "cards_end",
-            "music_spotify_url": "",
-            "music_apple_url": "",
-            "music_youtube_url": "",
-            "music_thumb_bg": true,
-            "music_no_thumb": false,
             "breathing": false,
             "breathing_position": "cards_end",
             "breathing_preset_1": { "h": 0, "m": 3, "s": 0 },
@@ -61,6 +54,12 @@ chrome.runtime.onInstalled.addListener(function () {
             "breathing_preset_3": { "h": 0, "m": 10, "s": 0 },
             "daily_quotes": false,
             "daily_quotes_position": "top",
+            "widget_row_height": 0,
+            "dashboard_notes_height": 0,
+            "gpa_calc_height": 0,
+            "focus_timer_height": 0,
+            "breathing_height": 0,
+            "daily_quotes_height": 0,
             "better_todo": true,
             "todo_hr24": false,
 			"todo_separate_scrollbar": false,
@@ -200,6 +199,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         getNasaBackground().then(sendResponse);
         return true;
     }
+    if (message?.type === "getDailyQuote") {
+        getDailyQuote().then(sendResponse);
+        return true;
+    }
 });
 
 let nasaRequestQueue = Promise.resolve();
@@ -267,4 +270,50 @@ async function callNasaApi(dateStr) {
     }
 
     return await response.json().catch(() => null);
+}
+
+// --- Daily quote (stoic.tekloon.net) ---------------------------------------
+// Cached in storage.local and refreshed at most once per local calendar day.
+// Fetched from the extension worker (host_permissions) because the endpoint
+// does not send CORS headers, so a page-context fetch would be blocked.
+function dailyQuoteTodayKey() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+let dailyQuoteInFlight = null;
+async function getDailyQuote() {
+    const today = dailyQuoteTodayKey();
+    let cached = null;
+    try {
+        const st = await chrome.storage.local.get("daily_quote");
+        cached = st && st.daily_quote;
+    } catch (e) { /* ignore storage issues */ }
+
+    // Once-a-day: reuse today's cached quote without hitting the network.
+    if (cached && cached.date === today && cached.quote) return cached;
+    if (dailyQuoteInFlight) return dailyQuoteInFlight;
+
+    const request = (async () => {
+        try {
+            const response = await fetch("https://stoic.tekloon.net/stoic-quote", { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const json = await response.json();
+            const data = (json && json.data) || {};
+            const quote = String(data.quote || "").replace(/\s+/g, " ").trim();
+            const author = String(data.author || "").trim();
+            if (!quote) throw new Error("empty quote");
+            const entry = { date: today, quote, author };
+            await chrome.storage.local.set({ daily_quote: entry });
+            return entry;
+        } catch (e) {
+            console.warn("[CanvasRefined] Daily quote fetch failed:", e);
+            // Fall back to the previous day's quote rather than losing it.
+            return cached || null;
+        } finally {
+            dailyQuoteInFlight = null;
+        }
+    })();
+    dailyQuoteInFlight = request;
+    return request;
 }

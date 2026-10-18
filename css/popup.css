@@ -407,11 +407,21 @@ input[type="checkbox"]:checked {background: #8dd28d;}
 .widget-order-strip[data-area="cards_end"] .wos-item {flex: 1 1 0;}
 /* Widget sections (Widgets tab): two side-by-side columns; add future
    widgets as one more .option-container inside .widgets-grid. */
-.widgets-grid {display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch;margin-top:8px;}
-.widgets-grid .option-container {margin-top:0;box-sizing:border-box;}
+.widgets-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch;margin-top:8px;}
+.widgets-grid .option-container {margin-top:0;box-sizing:border-box;min-width:0;}
 /* Widget position dropdowns (Widgets tab) — mirror #todo_timeframe exactly:
    same font, padding, radius, colors and full-width stacked layout. */
 .widget-pos {font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
 .widget-pos option {background:#1e1e1e;color:#e2e2e2;}
 .widget-pos option:checked,
 .widget-pos option:hover {background:#2e2e2e;color:#fff;}
+/* Inline rows: the label sits on the same line as its control. */
+.widget-inline-row {display:flex;align-items:center;gap:8px;}
+.widget-inline-label {flex:none;}
+.widget-inline-select {flex:1;min-width:0;margin-top:0;margin-bottom:0;}
+/* Compact clock entry (preset lengths), matching the on-canvas widget. */
+.popup-time-input {display:flex;align-items:center;justify-content:center;gap:1px;flex:1;min-width:0;background:var(--inputbg);border-radius:7px;padding:4px 6px;}
+.popup-time-input:focus-within {box-shadow:0 0 0 2px rgba(86,202,240,.35);}
+.popup-tf {width:2.2ch;min-width:0;border:none;background:transparent;color:#e2e2e2;font:inherit;font-size:13px;font-weight:700;text-align:center;padding:0;border-radius:4px;}
+.popup-tf:focus {outline:none;background:rgba(127,127,127,.28);}
+.popup-tf-colon {font-size:13px;font-weight:700;color:#9aa3ab;}

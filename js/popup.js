@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'music', 'breathing', 'daily_quotes', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
 	"hide_course_images",
@@ -24,17 +24,17 @@ const syncedSubOptions = [
 	"focus_timer_preset_1",
 	"focus_timer_preset_2",
 	"focus_timer_preset_3",
-	"music_position",
-	"music_spotify_url",
-	"music_apple_url",
-	"music_youtube_url",
-	"music_thumb_bg",
-	"music_no_thumb",
 	"breathing_position",
 	"breathing_preset_1",
 	"breathing_preset_2",
 	"breathing_preset_3",
 	"daily_quotes_position",
+	"widget_row_height",
+	"dashboard_notes_height",
+	"gpa_calc_height",
+	"focus_timer_height",
+	"breathing_height",
+	"daily_quotes_height",
 	"auto_dark",
 	"auto_dark_start",
 	"auto_dark_end",
@@ -150,13 +150,6 @@ const defaultOptions = {
         "focus_timer_preset_1": { "h": 0, "m": 15, "s": 0 },
         "focus_timer_preset_2": { "h": 0, "m": 25, "s": 0 },
         "focus_timer_preset_3": { "h": 0, "m": 45, "s": 0 },
-        "music": false,
-        "music_position": "cards_end",
-        "music_spotify_url": "",
-        "music_apple_url": "",
-        "music_youtube_url": "",
-        "music_thumb_bg": true,
-        "music_no_thumb": false,
         "breathing": false,
         "breathing_position": "cards_end",
         "breathing_preset_1": { "h": 0, "m": 3, "s": 0 },
@@ -164,6 +157,14 @@ const defaultOptions = {
         "breathing_preset_3": { "h": 0, "m": 10, "s": 0 },
         "daily_quotes": false,
         "daily_quotes_position": "top",
+        // Height settings (px; 0 = auto). widget_row_height applies to the
+        // shared Top/Bottom row; *_height applies to a widget in Before/After.
+        "widget_row_height": 0,
+        "dashboard_notes_height": 0,
+        "gpa_calc_height": 0,
+        "focus_timer_height": 0,
+        "breathing_height": 0,
+        "daily_quotes_height": 0,
         "better_todo": true,
         "better_sidebar": false,
         "sidebar_scale": 100,
@@ -1042,7 +1043,6 @@ const WIDGET_LIST = [
     { id: "dashboard_notes", nameKey: "dashboard_notes", shortKey: "widget_short_notes" },
     { id: "gpa_calc", nameKey: "gpa_calculator", shortKey: "widget_short_gpa" },
     { id: "focus_timer", nameKey: "focus_timer", shortKey: "widget_short_focus" },
-    { id: "music", nameKey: "music", shortKey: "widget_short_music" },
     { id: "breathing", nameKey: "breathing_breaks", shortKey: "widget_short_breathing" },
     { id: "daily_quotes", nameKey: "daily_quotes", shortKey: "widget_short_quotes" },
 ];
@@ -1164,6 +1164,15 @@ function renderWidgetOrderStrip(strip, entries) {
     strip.textContent = "";
     // Before/after strips are sequence only — no width resizing, no dividers.
     const resizable = !strip.dataset.area.startsWith("cards");
+    // Normalize widths to exactly 100%: a widget with no saved size borrows
+    // the average of the sized ones. Without this, adding a third widget to a
+    // previously 50/50 pair produced 50+50+33 = 133% and the strip overflowed.
+    let sizes = entries.map(e => (Number.isFinite(e.size) && e.size > 0) ? e.size : null);
+    const known = sizes.filter(v => v !== null);
+    const fallback = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 100 / Math.max(1, entries.length);
+    sizes = sizes.map(v => v === null ? fallback : v);
+    const total = sizes.reduce((a, b) => a + b, 0) || 1;
+    const pcts = sizes.map(v => v / total * 100);
     entries.forEach((entry, i) => {
         if (resizable && i > 0) {
             const divider = document.createElement("div");
@@ -1175,8 +1184,8 @@ function renderWidgetOrderStrip(strip, entries) {
         item.className = "wos-item";
         item.dataset.id = entry.id;
         if (resizable) {
-            item.dataset.size = entry.size == null ? (100 / entries.length) : entry.size;
-            item.style.flexBasis = item.dataset.size + "%";
+            item.dataset.size = pcts[i];
+            item.style.flexBasis = pcts[i] + "%";
         }
         item.draggable = true;
         item.textContent = widgetDisplayName(entry.id);
@@ -1268,7 +1277,6 @@ function setupWidgetPosition() {
         { select: "dashboard_notes_position", key: "dashboard_notes_position" },
         { select: "gpa_calc_position", key: "gpa_calc_position" },
         { select: "focus_timer_position", key: "focus_timer_position" },
-        { select: "music_position", key: "music_position" },
         { select: "breathing_position", key: "breathing_position" },
         { select: "daily_quotes_position", key: "daily_quotes_position" },
     ].forEach(({ select, key }) => {
@@ -1289,48 +1297,78 @@ function setupWidgetPosition() {
     });
 }
 
+// Widget height settings (px). 0 / blank means auto.
+function setupWidgetHeightInput(id, initial) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const parse = (v) => {
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+    };
+    el.value = parse(initial) || "";
+    el.addEventListener("change", function () {
+        const n = Math.min(2000, Math.max(0, parseInt(this.value, 10) || 0));
+        this.value = n > 0 ? n : "";
+        chrome.storage.sync.set({ [id]: n });
+    });
+}
+
 // Hours/minutes/seconds widgets settings (Focus Timer / Breathing presets).
+// The hours field is optional — Breathing only exposes minutes/seconds.
+// Fields are compact h:mm:ss inputs: click to edit a segment, typing a second
+// digit auto-advances, and the value is saved (zero-padded) on blur/change.
 function setupWidgetTimeInput(prefix, initial) {
     const hEl = document.getElementById(prefix + "_h");
     const mEl = document.getElementById(prefix + "_m");
     const sEl = document.getElementById(prefix + "_s");
-    if (!hEl || !mEl || !sEl) return;
+    if (!mEl || !sEl) return;
     let v = initial;
     if (!v || typeof v !== "object") {
         // Legacy plain-minutes value.
         const n = parseInt(v, 10);
         v = Number.isFinite(n) && n > 0 ? { h: 0, m: n, s: 0 } : (defaultOptions.sync[prefix] || { h: 0, m: 0, s: 0 });
     }
-    hEl.value = v.h || 0;
-    mEl.value = v.m || 0;
-    sEl.value = v.s || 0;
+    const fields = [hEl, mEl, sEl].filter(Boolean);
+    const pad = (n) => String(Math.max(0, parseInt(n, 10) || 0)).padStart(2, "0");
+    if (hEl) hEl.value = pad(v.h);
+    mEl.value = pad(v.m);
+    sEl.value = pad(v.s);
+
     const save = () => {
         const clamp = (el, max) => Math.min(max, Math.max(0, parseInt(el.value, 10) || 0));
-        let h = clamp(hEl, 99), m = clamp(mEl, 59), s = clamp(sEl, 59);
+        let h = hEl ? clamp(hEl, 99) : 0;
+        let m = clamp(mEl, 59);
+        let s = clamp(sEl, 59);
         if (h === 0 && m === 0 && s === 0) {
             const d = defaultOptions.sync[prefix] || { h: 0, m: 5, s: 0 };
-            h = d.h; m = d.m; s = d.s;
+            h = hEl ? d.h : 0; m = d.m; s = d.s;
         }
-        hEl.value = h; mEl.value = m; sEl.value = s;
+        if (hEl) hEl.value = pad(h);
+        mEl.value = pad(m);
+        sEl.value = pad(s);
         chrome.storage.sync.set({ [prefix]: { h, m, s } });
     };
-    [hEl, mEl, sEl].forEach(el => el.addEventListener("change", save));
-}
 
-// Text/URL widget settings (Music playlist links).
-function setupWidgetTextInput(id, initial) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.value = initial || "";
-    el.addEventListener("change", function () {
-        chrome.storage.sync.set({ [id]: this.value.trim() });
+    fields.forEach((inp, i) => {
+        inp.addEventListener("focus", () => inp.select());
+        inp.addEventListener("input", () => {
+            inp.value = inp.value.replace(/[^0-9]/g, "").slice(0, 2);
+            if (inp.value.length >= 2 && i < fields.length - 1) fields[i + 1].focus();
+        });
+        inp.addEventListener("keydown", e => {
+            if (e.key === "Enter") { e.preventDefault(); save(); inp.blur(); }
+            else if (e.key === "ArrowRight" && i < fields.length - 1) { e.preventDefault(); fields[i + 1].focus(); }
+            else if (e.key === "ArrowLeft" && i > 0) { e.preventDefault(); fields[i - 1].focus(); }
+        });
+        inp.addEventListener("change", save);
+        inp.addEventListener("blur", save);
     });
 }
 
 // Hide a toggle's sub-options when it's off; auto_dark only hides its time
 // clocks.
 function toggleSubOptionsVisibility(option, isOn) {
-    const togglesWithSubOptions = ["dashboard_notes", "gpa_calc", "focus_timer", "music", "breathing", "daily_quotes", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
+    const togglesWithSubOptions = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
     if (!togglesWithSubOptions.includes(option)) return;
     const optionEl = document.getElementById(option);
     if (!optionEl) return;
@@ -1735,8 +1773,6 @@ function setup() {
             "customBackgroundNasaDaily",
             "fitImageToScreen",
             "card_transparency",
-            "music_thumb_bg",
-            "music_no_thumb",
 			"customCardStyles",
 			"card_grid",
 			"card_grid_center_rows",
@@ -1932,6 +1968,30 @@ function setup() {
 				setup: (initial) => setupAnonProgressInput("anon_progress_total", initial, false),
 			},
 			{
+				identifier: "widget_row_height",
+				setup: (initial) => setupWidgetHeightInput("widget_row_height", initial),
+			},
+			{
+				identifier: "dashboard_notes_height",
+				setup: (initial) => setupWidgetHeightInput("dashboard_notes_height", initial),
+			},
+			{
+				identifier: "gpa_calc_height",
+				setup: (initial) => setupWidgetHeightInput("gpa_calc_height", initial),
+			},
+			{
+				identifier: "focus_timer_height",
+				setup: (initial) => setupWidgetHeightInput("focus_timer_height", initial),
+			},
+			{
+				identifier: "breathing_height",
+				setup: (initial) => setupWidgetHeightInput("breathing_height", initial),
+			},
+			{
+				identifier: "daily_quotes_height",
+				setup: (initial) => setupWidgetHeightInput("daily_quotes_height", initial),
+			},
+			{
 				identifier: "focus_timer_preset_1",
 				setup: (initial) => setupWidgetTimeInput("focus_timer_preset_1", initial),
 			},
@@ -1954,18 +2014,6 @@ function setup() {
 			{
 				identifier: "breathing_preset_3",
 				setup: (initial) => setupWidgetTimeInput("breathing_preset_3", initial),
-			},
-			{
-				identifier: "music_spotify_url",
-				setup: (initial) => setupWidgetTextInput("music_spotify_url", initial),
-			},
-			{
-				identifier: "music_apple_url",
-				setup: (initial) => setupWidgetTextInput("music_apple_url", initial),
-			},
-			{
-				identifier: "music_youtube_url",
-				setup: (initial) => setupWidgetTextInput("music_youtube_url", initial),
 			},
 			{
 				identifier: "todo_more_expanded",
@@ -2012,7 +2060,7 @@ function setup() {
                     chrome.storage.sync.set({ "hide_course_images": false });
                 }
                 toggleSubOptionsVisibility(option, status);
-                if (option === "dashboard_notes" || option === "gpa_calc" || option === "focus_timer" || option === "music" || option === "breathing" || option === "daily_quotes") {
+                if (option === "dashboard_notes" || option === "gpa_calc" || option === "focus_timer" || option === "breathing" || option === "daily_quotes") {
                     if (refreshWidgetOrder) refreshWidgetOrder();
                 }
             });
@@ -2022,7 +2070,7 @@ function setup() {
         chrome.storage.sync.get("todo_celebrations_enabled", v => {
             toggleCelebrationOptionsVisibility(v["todo_celebrations_enabled"] !== false);
         });
-        ["dashboard_notes", "gpa_calc", "focus_timer", "music", "breathing", "daily_quotes", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
+        ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
         toggleAlternateColorsVisibility(sync["dark_mode"] === true);
