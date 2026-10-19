@@ -1,260 +1,1895 @@
 {
-  "better_canvas": {
-    "message": "Mejor lienzo"
-  },
-  "updates": {
-    "message": "Actualizaciones"
-  },
-  "dark_mode": {
-    "message": "Modo oscuro"
-  },
-  "automatic_dark_mode": {
-    "message": "Modo oscuro automático"
-  },
-  "auto_start_time": {
-    "message": "Hora de inicio"
-  },
-  "auto_end_time": {
-    "message": "Hora de finalización"
-  },
-  "edit_dark_mode": {
-    "message": "Editar modo oscuro"
-  },
-  "enter_url": {
-    "message": "Tu url de lienzo:"
-  },
-  "card_grades": {
-    "message": "Grados en tarjetas"
-  },
-  "gradient_cards": {
-    "message": "Tarjetas de degradado"
-  },
-  "condensed_cards": {
-    "message": "Tarjetas condensadas"
-  },
-  "disable_color": {
-    "message": "Deshabilitar la superposición de colores"
-  },
-  "card_assignments": {
-    "message": "Asignaciones de tarjetas"
-  },
-  "card_customization": {
-    "message": "Personalización de tarjetas"
-  },
-  "styles": {
-    "message": "Estilos"
-  },
-  "useddmm": {
-    "message": "Usar dd/mm"
-  },
-  "better_todo": {
-    "message": "Mejor lista de tareas pendientes"
-  },
-  "max_items": {
-    "message": "Artículos máximos: "
-  },
-  "hover_preview": {
-    "message": "Vista previa al pasar el cursor"
-  },
-  "hide_completed": {
-    "message": "Ocultar completado"
-  },
-  "24hrformat": {
-    "message": "Usar formato de 24 horas"
-  },
-  "dashboard_notes": {
-    "message": "Notas del tablero"
-  },
-  "gpa_calculator": {
-    "message": "Calculadora GPA"
-  },
-  "gpa_settings": {
-    "message": "Configuración GPA"
-  },
-  "grade_hover": {
-    "message": "Mostrar solo al pasar el mouse"
-  },
-  "card_letter": {
-    "message": "Mostrar letra de la nota"
-  },
-  "due": {
-    "message": "Pendiente"
-  },
-  "card_colors": {
-    "message": "Colores de la tarjeta"
-  },
-  "back": {
-    "message": "Atrás"
-  },
-  "more_options": {
-    "message": "Más opciones"
-  },
-  "manual_customization": {
-    "message": "Personalización manual"
-  },
-  "background_colors": {
-    "message": "Fondo"
-  },
-  "text_colors": {
-    "message": "Texto"
-  },
-  "full_width": {
-    "message": "Tablero de ancho completo"
-  },
-  "report_issue": {
-    "message": "Reportar un problema"
-  },
-  "themes": {
-    "message": "Temas"
-  },
-  "move_top": {
-    "message": "Moverse hacia arriba"
-  },
-  "show_past_due": {
-    "message": "Mostrar vencida"
-  },
-  "relative_due_dates": {
-    "message": "Fechas pendientes relativas"
-  },
-  "equal_height_cards": {
-    "message": "Altura igual"
-  },
-  "enter_multiple": {
-    "message": "(Ingrese varios con una coma)"
-  },
-  "todo_remind": {
-    "message": "Recordatorios de tareas pendientes"
-  },
-  "remlogo": {
-    "message": "Quitar el logo de la barra lateral"
-  },
-  "hide_feedback": {
-    "message": "Ocultar comentarios recientes"
-  },
-  "tab_icons": {
-    "message": "Iconos de pestañas codificados por colores"
-  },
-  "todo_colors": {
-    "message": "Usa colores de tarjeta"
-  },
-  "gpa_calc_cumulative": {
-    "message": "Mostrar GPA acumulado"
-  },
-  "gpa_calc_weighted": {
-    "message": "Mostrar GPA ponderado"
-  },
-  "device_dark": {
-    "message": "Usar la configuración del modo oscuro del dispositivo"
-  },
-  "presets": {
-    "message": "Preajustes"
-  },
-  "dark_lighter": {
-    "message": "Más ligera"
-  },
-  "dark_light": {
-    "message": "Ligera"
-  },
-  "dark_default": {
-    "message": "Por defecto"
-  },
-  "dark_dark": {
-    "message": "Oscura"
-  },
-  "dark_darker": {
-    "message": "Más oscura"
-  },
-  "dark_mint": {
-    "message": "Menta"
-  },
-  "dark_blue": {
-    "message": "Tinte azul"
-  },
-  "dark_burn": {
-    "message": "Quemadura de globo ocular"
-  },
-  "dark_unicorn": {
-    "message": "Unicornio"
-  },
-  "dark_lightmode": {
-    "message": "Modo de luz"
-  },
-  "dark_catppuccin": {
-    "message": "Catuchino\n por Ángel"
-  },
-  "dark_sage": {
-    "message": "Sage\n por LivDoesDevStuf"
-  },
-  "dark_pink": {
-    "message": "Rosa\n por Sayde"
-  },
-  "dark_coral": {
-    "message": "Coral\n por Superchido"
-  },
-  "dp_sidebar_text": {
-    "message": "Texto de la barra lateral"
-  },
-  "dp_sidebar": {
-    "message": "Barra lateral"
-  },
-  "radio_sidebar_solid": {
-    "message": "Sólida"
-  },
-  "radio_sidebar_gradient": {
-    "message": "Gradiente"
-  },
-  "radio_sidebar_image": {
-    "message": "Imagen"
-  },
-  "dp_background_0": {
-    "message": "Fondo principal"
-  },
-  "dp_background_1": {
-    "message": "Fondo alternativo"
-  },
-  "dp_background_2": {
-    "message": "Fondo Otra"
-  },
-  "dp_borders": {
-    "message": "Fronteras"
-  },
-  "dp_links": {
-    "message": "Campo de golf"
-  },
-  "dp_text_0": {
-    "message": "Texto principal"
-  },
-  "dp_text_1": {
-    "message": "Texto Otra"
-  },
-  "dp_text_2": {
-    "message": "Texto alternativo"
-  },
-  "dark_mode_fixer": {
-    "message": "Reparador del modo oscuro (Beta)"
-  },
-  "dark_mode_fixer_text": {
-    "message": "Esto intentará solucionar cualquier brecha del modo oscuro en la página actual."
-  },
-  "fix_dm_btn": {
-    "message": "Ir"
-  },
-  "fix_dm_text": {
-    "message": "El reparador se ejecuta automáticamente en estas páginas:"
-  },
-  "hide_links": {
-    "message": "Ocultar enlaces"
-  },
-  "show_links": {
-    "message": "Mostrar enlaces"
-  },
-  "center_cards": {
-    "message": "Centrar tarjetas"
-  },
-  "hide_new_canvas": {
-    "message": "Ocultar nuevo Canvas"
-  },
-  "hide_completed_cards": {
-    "message": "Ocultar completadas"
-  }
+    "24hrformat": {
+        "message": "Usar formato de 24 horas"
+    },
+    "abc": {
+        "message": "ABC"
+    },
+    "add_canvas": {
+        "message": "+ Añadir Canvas"
+    },
+    "add_task": {
+        "message": "+ Añadir tarea"
+    },
+    "add_to_list": {
+        "message": "Añadir a la lista"
+    },
+    "ago": {
+        "message": "hace"
+    },
+    "always_show_likes": {
+        "message": "Mostrar siempre el número de me gusta"
+    },
+    "assignment_avg": {
+        "message": "— prom. $AVG$% en $COUNT$ tarea(s):"
+    },
+    "assignment_due_in": {
+        "message": "Tarea que vence en $TIME$"
+    },
+    "auto": {
+        "message": "automático"
+    },
+    "auto_end_time": {
+        "message": "Hora de finalización"
+    },
+    "auto_start_time": {
+        "message": "Hora de inicio"
+    },
+    "automatic_dark_mode": {
+        "message": "Modo oscuro automático"
+    },
+    "back": {
+        "message": "Atrás"
+    },
+    "back_to_assignment": {
+        "message": "Volver a la tarea"
+    },
+    "background_colors": {
+        "message": "Fondo"
+    },
+    "background_opacity": {
+        "message": "Opacidad del fondo"
+    },
+    "better_sidebar": {
+        "message": "Barra lateral mejorada"
+    },
+    "better_todo": {
+        "message": "Mejor lista de tareas pendientes"
+    },
+    "bg_blur": {
+        "message": "Desenfoque del fondo"
+    },
+    "breathing_breaks": {
+        "message": "Pausas de respiración"
+    },
+    "breathing_in": {
+        "message": "Inhala"
+    },
+    "breathing_out": {
+        "message": "Exhala"
+    },
+    "breathing_ready": {
+        "message": "Listo"
+    },
+    "button_1": {
+        "message": "Botón 1"
+    },
+    "button_2": {
+        "message": "Botón 2"
+    },
+    "button_3": {
+        "message": "Botón 3"
+    },
+    "cancel": {
+        "message": "Cancelar"
+    },
+    "Canvas_Refined": {
+        "message": "Canvas Refined"
+    },
+    "canvas_rejected_create": {
+        "message": "Canvas rechazó la creación de la tarea."
+    },
+    "canvas_rejected_delete": {
+        "message": "Canvas rechazó la eliminación de la tarea."
+    },
+    "canvas_rejected_update": {
+        "message": "Canvas rechazó la actualización de la tarea."
+    },
+    "card_assignments": {
+        "message": "Asignaciones de tarjetas"
+    },
+    "card_blur": {
+        "message": "Desenfoque de la tarjeta"
+    },
+    "card_colors": {
+        "message": "Colores de la tarjeta"
+    },
+    "card_customization": {
+        "message": "Personalización de tarjetas"
+    },
+    "card_grades": {
+        "message": "Grados en tarjetas"
+    },
+    "card_grid": {
+        "message": "Cuadrícula de tarjetas"
+    },
+    "card_grid_preview": {
+        "message": "Vista previa de la cuadrícula"
+    },
+    "card_height": {
+        "message": "Altura de la tarjeta"
+    },
+    "card_hide_toggle": {
+        "message": "Ocultar/mostrar en el panel"
+    },
+    "card_letter": {
+        "message": "Mostrar letra de la nota"
+    },
+    "card_limit": {
+        "message": "Límite de tarjetas"
+    },
+    "card_limit_desc": {
+        "message": "Ajustar este número restablecerá tus tarjetas y podría causar problemas de almacenamiento."
+    },
+    "card_method": {
+        "message": "Método de tarjeta"
+    },
+    "card_method_desc": {
+        "message": "No deberías necesitar activar esto."
+    },
+    "card_none": {
+        "message": "Ninguna"
+    },
+    "card_opacity": {
+        "message": "Opacidad de la tarjeta"
+    },
+    "card_padding": {
+        "message": "Relleno de la tarjeta"
+    },
+    "card_reset_default": {
+        "message": "¡Tarjeta restablecida a la configuración predeterminada!"
+    },
+    "card_roundness": {
+        "message": "Redondeo de la tarjeta"
+    },
+    "card_settings_saved": {
+        "message": "¡Configuración de la tarjeta guardada correctamente!"
+    },
+    "card_transparency": {
+        "message": "Transparencia de las tarjetas"
+    },
+    "card_width": {
+        "message": "Ancho de la tarjeta"
+    },
+    "cards_height": {
+        "message": "Altura de las tarjetas"
+    },
+    "celebration": {
+        "message": "Celebración"
+    },
+    "celebration_amount": {
+        "message": "Cantidad"
+    },
+    "celebration_confetti": {
+        "message": "Confeti"
+    },
+    "celebration_crazy": {
+        "message": "Extremo"
+    },
+    "celebration_fireworks": {
+        "message": "Fuegos artificiales"
+    },
+    "celebration_hearts": {
+        "message": "Corazones ascendentes"
+    },
+    "celebration_less": {
+        "message": "Menos"
+    },
+    "celebration_more": {
+        "message": "Más"
+    },
+    "celebration_none": {
+        "message": "Ninguna"
+    },
+    "celebration_normal": {
+        "message": "Normal"
+    },
+    "celebration_preview": {
+        "message": "Previsualizar celebración"
+    },
+    "celebration_rocket": {
+        "message": "Cohete"
+    },
+    "celebration_sparkles": {
+        "message": "Explosión de destellos"
+    },
+    "celebration_type": {
+        "message": "Tipo de celebración"
+    },
+    "center_cards": {
+        "message": "Centrar tarjetas"
+    },
+    "center_uneven": {
+        "message": "Centrar filas irregulares"
+    },
+    "check_all": {
+        "message": "Marcar todo"
+    },
+    "check_none": {
+        "message": "Desmarcar todo"
+    },
+    "clear_background": {
+        "message": "Borrar fondo"
+    },
+    "clear_cache": {
+        "message": "Borrar caché del planificador"
+    },
+    "clear_cache_desc": {
+        "message": "Esto elimina los datos de la lista de tareas en caché (tareas, anuncios, recordatorios) para que se vuelvan a obtener desde Canvas. Las pestañas de Canvas abiertas se actualizan automáticamente."
+    },
+    "click_eye": {
+        "message": "Haz clic en el ojo de un curso para ocultar o mostrar su tarjeta."
+    },
+    "close": {
+        "message": "Cerrar"
+    },
+    "close_label": {
+        "message": "Cerrar"
+    },
+    "column_spacing": {
+        "message": "Espaciado entre columnas"
+    },
+    "complete": {
+        "message": "completado"
+    },
+    "completed_total": {
+        "message": "$DONE$/$TOTAL$ hechas"
+    },
+    "condensed_cards": {
+        "message": "Tarjetas condensadas"
+    },
+    "copied": {
+        "message": "¡Copiado!"
+    },
+    "copy": {
+        "message": "Copiar"
+    },
+    "could_not_delete": {
+        "message": "No se pudo eliminar la tarea."
+    },
+    "could_not_load_preview": {
+        "message": "No se pudo cargar la vista previa"
+    },
+    "could_not_save": {
+        "message": "No se pudo guardar la tarea."
+    },
+    "create": {
+        "message": "Crear"
+    },
+    "created_by": {
+        "message": "Creado por"
+    },
+    "created_by_hint": {
+        "message": "Puede ser cualquier cosa: tu nombre, tu usuario de redes sociales, anónimo, etc."
+    },
+    "custom_background": {
+        "message": "Fondo personalizado"
+    },
+    "custom_background_desc": {
+        "message": "Elige un preajuste o usa la URL de tu propia imagen."
+    },
+    "custom_card_styles": {
+        "message": "Estilos de tarjetas personalizados"
+    },
+    "custom_fonts": {
+        "message": "Fuentes personalizadas"
+    },
+    "custom_fonts_desc": {
+        "message": "Aquí puedes usar una fuente personalizada de Google Fonts. Asegúrate de introducir solo la parte en negrita después de \"?family=\""
+    },
+    "custom_styles": {
+        "message": "Estilos personalizados"
+    },
+    "custom_styles_desc": {
+        "message": "Puedes usar esta zona para escribir estilos CSS personalizados. Es posible que tengas que añadir una regla !important para forzar su aplicación."
+    },
+    "daily_quote": {
+        "message": "Cita diaria"
+    },
+    "daily_quote_default": {
+        "message": "El secreto para salir adelante es empezar."
+    },
+    "daily_quotes": {
+        "message": "Citas diarias"
+    },
+    "daily_random": {
+        "message": "Imagen aleatoria diaria"
+    },
+    "dark_blue": {
+        "message": "Tinte azul"
+    },
+    "dark_burn": {
+        "message": "Quemadura de globo ocular"
+    },
+    "dark_catppuccin": {
+        "message": "Catuchino\n por Ángel"
+    },
+    "dark_coral": {
+        "message": "Coral\n por Superchido"
+    },
+    "dark_dark": {
+        "message": "Oscura"
+    },
+    "dark_darker": {
+        "message": "Más oscura"
+    },
+    "dark_default": {
+        "message": "Por defecto"
+    },
+    "dark_inspector": {
+        "message": "Inspector del modo oscuro"
+    },
+    "dark_inspector_desc": {
+        "message": "Esto inspeccionará la página para detectar zonas sin modo oscuro."
+    },
+    "dark_light": {
+        "message": "Ligera"
+    },
+    "dark_lighter": {
+        "message": "Más ligera"
+    },
+    "dark_lightmode": {
+        "message": "Modo de luz"
+    },
+    "dark_mint": {
+        "message": "Menta"
+    },
+    "dark_mode": {
+        "message": "Modo oscuro"
+    },
+    "dark_mode_fixer": {
+        "message": "Reparador del modo oscuro (Beta)"
+    },
+    "dark_mode_fixer_text": {
+        "message": "Esto intentará solucionar cualquier brecha del modo oscuro en la página actual."
+    },
+    "dark_pink": {
+        "message": "Rosa\n por Sayde"
+    },
+    "dark_sage": {
+        "message": "Sage\n por LivDoesDevStuf"
+    },
+    "dark_unicorn": {
+        "message": "Unicornio"
+    },
+    "dashboard": {
+        "message": "Panel"
+    },
+    "dashboard_font": {
+        "message": "Fuente del panel"
+    },
+    "dashboard_notes": {
+        "message": "Notas del tablero"
+    },
+    "date": {
+        "message": "Fecha"
+    },
+    "delete_confirm": {
+        "message": "¿Eliminar esta tarea personalizada? No se puede deshacer."
+    },
+    "delete_label": {
+        "message": "Eliminar"
+    },
+    "delete_task_title": {
+        "message": "Eliminar esta tarea personalizada"
+    },
+    "device_dark": {
+        "message": "Usar la configuración del modo oscuro del dispositivo"
+    },
+    "disable_color": {
+        "message": "Deshabilitar la superposición de colores"
+    },
+    "disable_high_contrast": {
+        "message": "Desactivar interfaz de alto contraste"
+    },
+    "do_you_want_submit": {
+        "message": "¿Quieres enviar tu tema para que otros lo usen?"
+    },
+    "dp_background_0": {
+        "message": "Fondo principal"
+    },
+    "dp_background_1": {
+        "message": "Fondo alternativo"
+    },
+    "dp_background_2": {
+        "message": "Fondo Otra"
+    },
+    "dp_borders": {
+        "message": "Fronteras"
+    },
+    "dp_links": {
+        "message": "Campo de golf"
+    },
+    "dp_sidebar": {
+        "message": "Barra lateral"
+    },
+    "dp_sidebar_text": {
+        "message": "Texto de la barra lateral"
+    },
+    "dp_text_0": {
+        "message": "Texto principal"
+    },
+    "dp_text_1": {
+        "message": "Texto Otra"
+    },
+    "dp_text_2": {
+        "message": "Texto alternativo"
+    },
+    "due": {
+        "message": "Pendiente"
+    },
+    "due_days": {
+        "message": "Vence en <strong>$COUNT$ días</strong>"
+    },
+    "due_later": {
+        "message": "Vence <strong>más tarde</strong>"
+    },
+    "due_one_month": {
+        "message": "Vence en <strong>1 mes</strong>"
+    },
+    "due_overdue": {
+        "message": "<strong>Atrasado</strong>"
+    },
+    "due_today": {
+        "message": "Vence <strong>hoy</strong>"
+    },
+    "due_tomorrow": {
+        "message": "Vence <strong>mañana</strong>"
+    },
+    "due_weeks": {
+        "message": "Vence en <strong>$COUNT$ semanas</strong>"
+    },
+    "edit_custom_task": {
+        "message": "Editar esta tarea personalizada"
+    },
+    "edit_dark_mode": {
+        "message": "Editar modo oscuro"
+    },
+    "enter_multiple": {
+        "message": "(Ingrese varios con una coma)"
+    },
+    "enter_none": {
+        "message": "Escribe \"none\" para ocultar imágenes y enlaces."
+    },
+    "enter_url": {
+        "message": "Tu url de lienzo:"
+    },
+    "equal_height_cards": {
+        "message": "Altura igual"
+    },
+    "error_log": {
+        "message": "Registro de errores"
+    },
+    "example_reminder_desc": {
+        "message": "Esta notificación aparecerá en otras páginas para recordarte las tareas incompletas que vencen en menos de 6 horas."
+    },
+    "example_reminder_title": {
+        "message": "Este es un recordatorio de ejemplo"
+    },
+    "excused": {
+        "message": "Exento"
+    },
+    "experimental": {
+        "message": "Esta es una función experimental."
+    },
+    "export_background": {
+        "message": "Fondo y opacidad"
+    },
+    "export_card_colors": {
+        "message": "Colores de las tarjetas"
+    },
+    "export_card_images": {
+        "message": "Imágenes de las tarjetas"
+    },
+    "export_card_styles": {
+        "message": "Estilos de las tarjetas"
+    },
+    "export_custom_css": {
+        "message": "CSS personalizado"
+    },
+    "export_custom_font": {
+        "message": "Fuente personalizada"
+    },
+    "export_dark": {
+        "message": "Modo oscuro"
+    },
+    "export_dark_schedule": {
+        "message": "Programación del modo oscuro"
+    },
+    "export_gpa": {
+        "message": "Ajustes de GPA"
+    },
+    "export_settings": {
+        "message": "Exportar ajustes"
+    },
+    "export_todo": {
+        "message": "Lista de tareas"
+    },
+    "export_toggles": {
+        "message": "Interruptores on/off"
+    },
+    "extra_spacing": {
+        "message": "Espaciado adicional de tarjetas"
+    },
+    "fake_grade_high": {
+        "message": "Alto"
+    },
+    "fake_grade_level": {
+        "message": "Nivel de calificaciones falso"
+    },
+    "fake_grade_medhigh": {
+        "message": "Medio-alto"
+    },
+    "fake_grade_medium": {
+        "message": "Medio"
+    },
+    "fake_grade_medlow": {
+        "message": "Medio-bajo"
+    },
+    "fake_progress": {
+        "message": "Mostrar progreso falso:"
+    },
+    "fake_rerolled": {
+        "message": "Clases falsas sorteadas de nuevo."
+    },
+    "fake_tasks_completed": {
+        "message": "Tareas falsas completadas:"
+    },
+    "fake_todo": {
+        "message": "Rellenar la lista de tareas con cursos falsos"
+    },
+    "final_assignments": {
+        "message": "tarea"
+    },
+    "final_assignments_plural": {
+        "message": "tareas"
+    },
+    "final_avg": {
+        "message": "— prom. $AVG$% ..."
+    },
+    "final_waiting": {
+        "message": "Esperando datos de calificaciones…"
+    },
+    "final_weight_prompt": {
+        "message": "Introduce el peso de tu examen final y la calificación objetivo para ver qué necesitas en el final."
+    },
+    "fit_image": {
+        "message": "Ajustar imagen a la pantalla"
+    },
+    "fix_dm_btn": {
+        "message": "Ir"
+    },
+    "fix_dm_text": {
+        "message": "El reparador se ejecuta automáticamente en estas páginas:"
+    },
+    "fix_took": {
+        "message": "La corrección tardó $TIME$ ms (valoración: $RATING$)"
+    },
+    "flexible_grid": {
+        "message": "Cuadrícula flexible"
+    },
+    "flexible_grid_on": {
+        "message": "La cuadrícula flexible está activada: las tarjetas se ajustan al ancho de las ventanas estrechas en lugar de quedar cortadas."
+    },
+    "focus_timer": {
+        "message": "Temporizador de enfoque"
+    },
+    "full_width": {
+        "message": "Tablero de ancho completo"
+    },
+    "ga_add_assignment": {
+        "message": "+ Añadir tarea"
+    },
+    "ga_add_group": {
+        "message": "+ Añadir grupo"
+    },
+    "ga_already_there": {
+        "message": "¡Ya lo tienes!"
+    },
+    "ga_calc_desc": {
+        "message": "Introduce cuánto vale tu examen final y la nota general que quieres para ver qué nota necesitas en el final."
+    },
+    "ga_final_weight": {
+        "message": "Peso del examen final (% de la nota)"
+    },
+    "ga_fit_y": {
+        "message": "Ajustar eje Y"
+    },
+    "ga_heatmap_assignments": {
+        "message": "$COUNT$ tarea(s):"
+    },
+    "ga_heatmap_avg": {
+        "message": "prom."
+    },
+    "ga_heatmap_undated": {
+        "message": "$COUNT$ tarea(s) calificada(s) sin fecha de entrega no mostrada(s)."
+    },
+    "ga_line_title": {
+        "message": "Nota general a lo largo del tiempo"
+    },
+    "ga_new_assignment": {
+        "message": "Nueva tarea"
+    },
+    "ga_new_group": {
+        "message": "Nuevo grupo"
+    },
+    "ga_no_grade_legend": {
+        "message": "Sin nota/tarea"
+    },
+    "ga_no_graded_short": {
+        "message": "Aún no hay tareas calificadas"
+    },
+    "ga_not_counted": {
+        "message": "— no cuenta —"
+    },
+    "ga_out_of_reach": {
+        "message": "Fuera de alcance"
+    },
+    "ga_pie_title": {
+        "message": "Distribución de puntuaciones (tareas calificadas)"
+    },
+    "ga_remove_assignment": {
+        "message": "Eliminar esta tarea del escenario"
+    },
+    "ga_remove_group": {
+        "message": "Eliminar este grupo del escenario (sus tareas dejan de contar hasta que se reasignen)"
+    },
+    "ga_secured": {
+        "message": "✓ Asegurado"
+    },
+    "ga_show_goal": {
+        "message": "Mostrar el objetivo de nota en la vista general"
+    },
+    "ga_stat_final_exam": {
+        "message": "Examen final"
+    },
+    "ga_stat_graded": {
+        "message": "Calificadas"
+    },
+    "ga_stat_overall": {
+        "message": "Nota general"
+    },
+    "ga_stat_trend": {
+        "message": "Tendencia de nota (últimas 5)"
+    },
+    "ga_stat_ungraded": {
+        "message": "Sin calificar"
+    },
+    "ga_sub_secured": {
+        "message": "Incluso un 0 en el final te deja en <b>$ZERO$%</b>, que está por encima de tu objetivo de <b>$TARGET$%</b>."
+    },
+    "ga_sub_unreachable": {
+        "message": "Incluso un final perfecto solo te llevaría a <b>$PERFECT$%</b>, que está por debajo de tu objetivo de <b>$TARGET$%</b>."
+    },
+    "ga_tab_calc": {
+        "message": "Calculadora del final"
+    },
+    "ga_tab_heatmap": {
+        "message": "Mapa de calor"
+    },
+    "ga_tab_overview": {
+        "message": "Vista general"
+    },
+    "ga_target_grade": {
+        "message": "Nota general objetivo (%)"
+    },
+    "ga_title_assignment_name": {
+        "message": "Nombre de la tarea"
+    },
+    "ga_title_group_name": {
+        "message": "Nombre del grupo"
+    },
+    "ga_title_group_select": {
+        "message": "Grupo de tareas Imagine-If"
+    },
+    "ga_title_group_weight": {
+        "message": "Peso del grupo Imagine-If (% de la nota)"
+    },
+    "ga_title_points": {
+        "message": "Puntos posibles Imagine-If (denominador)"
+    },
+    "ga_title_score": {
+        "message": "Puntuación Imagine-If (numerador); vacío = no cuenta"
+    },
+    "ga_tooltip_assignments": {
+        "message": "$COUNT$ tarea(s)"
+    },
+    "ga_you_got_this": {
+        "message": "¡Tú puedes!"
+    },
+    "ga_you_need": {
+        "message": "Necesitas ≥ $PCT$% en el final"
+    },
+    "get_active_cards": {
+        "message": "Obtener tarjetas activas del panel"
+    },
+    "global_search": {
+        "message": "Búsqueda global en Canvas"
+    },
+    "go": {
+        "message": "Ir"
+    },
+    "go_to_grades": {
+        "message": "Ir a las calificaciones"
+    },
+    "gpa_autosave": {
+        "message": "Los cambios se guardan automáticamente"
+    },
+    "gpa_calc_cumulative": {
+        "message": "Mostrar GPA acumulado"
+    },
+    "gpa_calc_weighted": {
+        "message": "Mostrar GPA ponderado"
+    },
+    "gpa_calculator": {
+        "message": "Calculadora GPA"
+    },
+    "gpa_calculator_title": {
+        "message": "Calculadora de GPA"
+    },
+    "gpa_click_to_edit": {
+        "message": "Haz clic para editar"
+    },
+    "gpa_col_course": {
+        "message": "Curso"
+    },
+    "gpa_col_course_type": {
+        "message": "Tipo de curso"
+    },
+    "gpa_col_credits": {
+        "message": "Créditos"
+    },
+    "gpa_col_custom_grade": {
+        "message": "Nota personalizada"
+    },
+    "gpa_col_grade": {
+        "message": "Nota"
+    },
+    "gpa_courses": {
+        "message": "Cursos"
+    },
+    "gpa_credits": {
+        "message": "cr"
+    },
+    "gpa_cumulative": {
+        "message": "Acumulado"
+    },
+    "gpa_current": {
+        "message": "Actual"
+    },
+    "gpa_dashboard_notes_aria": {
+        "message": "Notas del panel — haz clic para editar"
+    },
+    "gpa_edit_calc": {
+        "message": "Editar calculadora"
+    },
+    "gpa_edit_calculator": {
+        "message": "Editar calculadora"
+    },
+    "gpa_grade_scale": {
+        "message": "Escala de notas"
+    },
+    "gpa_header": {
+        "message": "GPA"
+    },
+    "gpa_min_pct": {
+        "message": "% mín."
+    },
+    "gpa_pts_abbr": {
+        "message": "pts"
+    },
+    "gpa_save_custom": {
+        "message": "Guardar calificación personalizada"
+    },
+    "gpa_save_grade": {
+        "message": "Guardar calificación personalizada"
+    },
+    "gpa_scale_letter": {
+        "message": "Solo letras"
+    },
+    "gpa_scale_note": {
+        "message": "Un porcentaje obtiene el GPA de la primera fila cuyo % mín. sea igual o inferior a él. Si tu centro no usa notas +/- , pon el % mín. de las filas +/- en 101 para excluirlas del cálculo."
+    },
+    "gpa_scale_plusminus": {
+        "message": "Escala +/-"
+    },
+    "gpa_settings": {
+        "message": "Configuración GPA"
+    },
+    "gpa_type_away": {
+        "message": "¡Escribe!"
+    },
+    "gpa_weight_ap": {
+        "message": "AP/IB"
+    },
+    "gpa_weight_dnc": {
+        "message": "No contar"
+    },
+    "gpa_weight_do_not_count": {
+        "message": "No contar"
+    },
+    "gpa_weight_honors": {
+        "message": "Honores"
+    },
+    "gpa_weight_regular": {
+        "message": "Regular/Universidad"
+    },
+    "gpa_weighted": {
+        "message": "Ponderado"
+    },
+    "grade_analytics": {
+        "message": "Análisis de calificaciones"
+    },
+    "grade_analytics_desc": {
+        "message": "Añade herramientas para ayudarte a analizar tus calificaciones."
+    },
+    "grade_analytics_failed": {
+        "message": "No se pudo cargar el análisis de calificaciones: $ERROR$"
+    },
+    "grade_analytics_info_label": {
+        "message": "Información del análisis de calificaciones"
+    },
+    "grade_analytics_toggle": {
+        "message": "Mostrar/ocultar análisis de notas"
+    },
+    "grade_analytics_zones": {
+        "message": "Zonas de calificaciones coloreadas"
+    },
+    "grade_hover": {
+        "message": "Mostrar solo al pasar el mouse"
+    },
+    "grade_settings": {
+        "message": "Ajustes de calificaciones"
+    },
+    "gradient": {
+        "message": "Degradado"
+    },
+    "gradient_cards": {
+        "message": "Tarjetas de degradado"
+    },
+    "gradient_desc": {
+        "message": "Elige 2 colores para crear un degradado entre ellos:"
+    },
+    "grid_includes_gpa": {
+        "message": " (incluida la calculadora de GPA)"
+    },
+    "grid_warning": {
+        "message": "Tu cuadrícula admite $TOTAL$ tarjeta$TOTAL_S$ pero tienes $ACTIVE$ tarjeta$ACTIVE_S$$GPA_NOTE$ - algunas tarjetas pueden quedar cortadas."
+    },
+    "group_graded": {
+        "message": "Calificadas"
+    },
+    "group_new": {
+        "message": "Nuevas"
+    },
+    "group_seen": {
+        "message": "Vistas"
+    },
+    "group_ungraded": {
+        "message": "Sin calificar"
+    },
+    "guideline_1": {
+        "message": "Imágenes/título apropiados"
+    },
+    "guideline_2": {
+        "message": "No usa en gran medida componentes de otros temas"
+    },
+    "guideline_3": {
+        "message": "Usa un modo oscuro personalizado único (no uno de los preajustes)"
+    },
+    "guideline_4": {
+        "message": "Las imágenes personalizadas no pueden ser de Discord o Gmail. Esas imágenes no son públicas"
+    },
+    "height": {
+        "message": "Altura"
+    },
+    "hide": {
+        "message": "Ocultar"
+    },
+    "hide_completed": {
+        "message": "Ocultar completado"
+    },
+    "hide_completed_cards": {
+        "message": "Ocultar completadas"
+    },
+    "hide_feedback": {
+        "message": "Ocultar comentarios recientes"
+    },
+    "hide_images_temp": {
+        "message": "Quitar temporalmente todas las imágenes de los cursos"
+    },
+    "hide_links": {
+        "message": "Ocultar enlaces"
+    },
+    "hide_navbar": {
+        "message": "Ocultar barra de navegación"
+    },
+    "hide_new_canvas": {
+        "message": "Ocultar nuevo Canvas"
+    },
+    "hide_personal_details": {
+        "message": "Ocultar datos personales"
+    },
+    "hide_sequence_footer": {
+        "message": "Ocultar botones Siguiente/Anterior"
+    },
+    "high_contrast_desc": {
+        "message": "¡si tus colores se vuelven más apagados después de actualizar! En la barra lateral, si haces clic en el icono de tu perfil, puedes desactivarlo allí."
+    },
+    "high_contrast_full": {
+        "message": "Desactiva la interfaz de alto contraste si tus colores se vuelven más apagados después de actualizar. En la barra lateral, si haces clic en el icono de tu perfil, puedes desactivarla allí."
+    },
+    "horizontal": {
+        "message": "Horizontal"
+    },
+    "hover_preview": {
+        "message": "Vista previa al pasar el cursor"
+    },
+    "image_link_error": {
+        "message": "Parece que el enlace de imagen que has introducido no funciona. Haz clic derecho sobre las imágenes que quieras usar y selecciona \"copiar dirección de imagen\" para obtener el enlace correcto."
+    },
+    "image_roundness": {
+        "message": "Redondeo de la imagen"
+    },
+    "image_scale": {
+        "message": "Escala de la imagen"
+    },
+    "image_size": {
+        "message": "Tamaño de la imagen"
+    },
+    "image_url": {
+        "message": "URL de la imagen"
+    },
+    "imagine_if": {
+        "message": "Escenario Imagine-If; no es tu calificación real."
+    },
+    "imagine_if_badge": {
+        "message": "Imagine-If"
+    },
+    "imagine_if_mode": {
+        "message": "Modo Imagine-If"
+    },
+    "imagine_if_toggle": {
+        "message": "Alternar modo Imagine-If"
+    },
+    "import_hint": {
+        "message": "Copia y pega aquí los temas exportados:"
+    },
+    "import_label": {
+        "message": "Importar"
+    },
+    "invalid_url": {
+        "message": "La URL que introdujiste parece no ser válida, así que podría no funcionar."
+    },
+    "join_discord": {
+        "message": "Únete a nuestro Discord"
+    },
+    "keep_font": {
+        "message": "Mantener la fuente original de las tareas"
+    },
+    "language": {
+        "message": "Idioma"
+    },
+    "language_auto": {
+        "message": "Automático (navegador)"
+    },
+    "liked": {
+        "message": "Me gusta"
+    },
+    "loading": {
+        "message": "Cargando…"
+    },
+    "logout": {
+        "message": "Cerrar sesión"
+    },
+    "manual_customization": {
+        "message": "Personalización manual"
+    },
+    "mark_as_seen": {
+        "message": "Marcar como visto"
+    },
+    "max_items": {
+        "message": "Artículos máximos: "
+    },
+    "missing_cards": {
+        "message": "¿Faltan tarjetas?"
+    },
+    "missing_task_id": {
+        "message": "Falta el id de la tarea."
+    },
+    "more_card_styles": {
+        "message": "Más estilos de tarjetas"
+    },
+    "more_options": {
+        "message": "Más opciones"
+    },
+    "my_saved_themes": {
+        "message": "Mis temas guardados"
+    },
+    "my_submissions": {
+        "message": "Mis envíos"
+    },
+    "nasa_apod": {
+        "message": "Imagen astronómica del día de la NASA"
+    },
+    "nasa_credit": {
+        "message": "Crédito: $CREDIT$"
+    },
+    "nasa_date": {
+        "message": "Fecha: $DATE$"
+    },
+    "need_refresh": {
+        "message": "Puede que debas actualizar la página para ver algunos cambios."
+    },
+    "new_canvas_desc": {
+        "message": "Canvas Refined detectó una página de Canvas en $HOST$. ¿Añadirla a tu lista de Canvas?"
+    },
+    "new_canvas_detected": {
+        "message": "Nuevo Canvas detectado"
+    },
+    "new_label": {
+        "message": "Nuevo"
+    },
+    "next": {
+        "message": "Siguiente"
+    },
+    "next_timeframe": {
+        "message": "Ver el siguiente período"
+    },
+    "no_auto_detect": {
+        "message": "No detectar Canvas automáticamente"
+    },
+    "no_course_cards": {
+        "message": "No se encontraron tarjetas de cursos. Visita tu panel de Canvas para cargar los cursos."
+    },
+    "no_description": {
+        "message": "No hay descripción disponible."
+    },
+    "no_details": {
+        "message": "No se dieron detalles"
+    },
+    "no_features": {
+        "message": "No se encontraron funciones"
+    },
+    "no_graded_assignments": {
+        "message": "Aún no hay tareas calificadas con fecha de entrega."
+    },
+    "no_tasks": {
+        "message": "No hay tareas en este período"
+    },
+    "no_tasks_yet": {
+        "message": "Aún no hay tareas"
+    },
+    "no_thanks": {
+        "message": "No, gracias"
+    },
+    "not_for_request": {
+        "message": "Esto no es para solicitar un tema. No creo temas por encargo."
+    },
+    "notes_bold": {
+        "message": "Negrita (Ctrl/Cmd+B)"
+    },
+    "notes_bullet_list": {
+        "message": "Lista con viñetas"
+    },
+    "notes_codeblock": {
+        "message": "Bloque de código"
+    },
+    "notes_format": {
+        "message": "Formato de notas"
+    },
+    "notes_h1": {
+        "message": "Encabezado 1"
+    },
+    "notes_h2": {
+        "message": "Encabezado 2"
+    },
+    "notes_hr": {
+        "message": "Línea horizontal"
+    },
+    "notes_inline_code": {
+        "message": "Código en línea"
+    },
+    "notes_italic": {
+        "message": "Cursiva (Ctrl/Cmd+I)"
+    },
+    "notes_link": {
+        "message": "Insertar enlace"
+    },
+    "notes_numbered_list": {
+        "message": "Lista numerada"
+    },
+    "notes_quote": {
+        "message": "Cita"
+    },
+    "notes_strike": {
+        "message": "Tachado"
+    },
+    "notes_task_list": {
+        "message": "Lista de tareas"
+    },
+    "nothing_to_copy": {
+        "message": "Nada que copiar — selecciona primero lo que quieres exportar."
+    },
+    "old_label": {
+        "message": "Antiguo"
+    },
+    "opacity_only_background": {
+        "message": "Solo disponible con un fondo personalizado"
+    },
+    "opacity_options": {
+        "message": "Opacidad y desenfoque"
+    },
+    "open_canvas_preview": {
+        "message": "Abre una página de Canvas para previsualizar las celebraciones."
+    },
+    "optin_desc": {
+        "message": "Esto volverá a mostrar el mensaje de suscripción para que puedas elegir otra opción."
+    },
+    "options_click_extension": {
+        "message": "Haz clic en Canvas Refined"
+    },
+    "options_click_puzzle": {
+        "message": "Haz clic en este icono de rompecabezas en la esquina superior derecha"
+    },
+    "options_contact": {
+        "message": "Mi correo es $EMAIL$ si tienes problemas o sugerencias: ¡cualquier comentario es bienvenido!"
+    },
+    "options_how_to_access": {
+        "message": "Cómo acceder a este menú más tarde:"
+    },
+    "options_pin": {
+        "message": "También puedes fijarlo para acceder más fácilmente"
+    },
+    "options_refresh_note": {
+        "message": "Actualiza tu página de Canvas para configurarlo"
+    },
+    "options_welcome": {
+        "message": "Bienvenido a"
+    },
+    "output": {
+        "message": "Salida"
+    },
+    "overall": {
+        "message": "General"
+    },
+    "palette_army": {
+        "message": "Ejército"
+    },
+    "palette_base": {
+        "message": "Base"
+    },
+    "palette_berries": {
+        "message": "Bayas"
+    },
+    "palette_blues": {
+        "message": "Azules"
+    },
+    "palette_candy": {
+        "message": "Caramelo"
+    },
+    "palette_chess": {
+        "message": "Ajedrez"
+    },
+    "palette_fade": {
+        "message": "Degradado"
+    },
+    "palette_fade2": {
+        "message": "Degradado2"
+    },
+    "palette_fruit": {
+        "message": "Fruta"
+    },
+    "palette_greens": {
+        "message": "Verdes"
+    },
+    "palette_mesa": {
+        "message": "Mesa"
+    },
+    "palette_muted": {
+        "message": "Apagados"
+    },
+    "palette_night": {
+        "message": "Noche"
+    },
+    "palette_ocean": {
+        "message": "Océano"
+    },
+    "palette_oranges": {
+        "message": "Naranjas"
+    },
+    "palette_pastels": {
+        "message": "Pasteles"
+    },
+    "palette_pinks": {
+        "message": "Rosas"
+    },
+    "palette_popsicle": {
+        "message": "Paleta"
+    },
+    "palette_purples": {
+        "message": "Morados"
+    },
+    "palette_rainbow": {
+        "message": "Arcoíris"
+    },
+    "palette_reds": {
+        "message": "Rojos"
+    },
+    "palette_sunset": {
+        "message": "Atardecer"
+    },
+    "palette_watermelon": {
+        "message": "Sandía"
+    },
+    "percent_done": {
+        "message": "$PERCENT$%"
+    },
+    "personal_task": {
+        "message": "Tarea personal"
+    },
+    "personal_task_label": {
+        "message": "Tarea personal"
+    },
+    "placeholder_example": {
+        "message": "canvas.miescuela.edu"
+    },
+    "planner_cleared": {
+        "message": "Caché del planificador borrada."
+    },
+    "popular": {
+        "message": "Popular"
+    },
+    "popular_palettes": {
+        "message": "Paletas populares"
+    },
+    "pos_below": {
+        "message": "Abajo"
+    },
+    "pos_cards_end": {
+        "message": "Después de las tarjetas"
+    },
+    "pos_cards_start": {
+        "message": "Antes de las tarjetas"
+    },
+    "pos_top": {
+        "message": "Arriba"
+    },
+    "presets": {
+        "message": "Preajustes"
+    },
+    "prev_timeframe": {
+        "message": "Período anterior"
+    },
+    "preview": {
+        "message": "Vista previa"
+    },
+    "preview_creator_default": {
+        "message": "Créditos"
+    },
+    "preview_hidden": {
+        "message": "Vista previa oculta mientras los datos personales están ocultos."
+    },
+    "preview_title_default": {
+        "message": "Título"
+    },
+    "preview_unavailable": {
+        "message": "No hay vista previa disponible"
+    },
+    "privacy": {
+        "message": "Privacidad"
+    },
+    "progress_done": {
+        "message": "$DONE$/$TOTAL$ hechas"
+    },
+    "progress_overall": {
+        "message": "$PCT$% ($DONE$/$TOTAL$)"
+    },
+    "progress_pct": {
+        "message": "$PCT$% ($DONE$/$TOTAL$)"
+    },
+    "quiz_dont_show": {
+        "message": "No volver a mostrar"
+    },
+    "quiz_dont_show_title": {
+        "message": "Oculta este recordatorio de forma permanente. Aún puedes activar el Modo seguro para cuestionarios en el popup de la extensión."
+    },
+    "quiz_enable": {
+        "message": "Activar Modo seguro para cuestionarios"
+    },
+    "quiz_safe_desc": {
+        "message": "Esta extensión no ha sido aprobada al 100% para cuestionarios. Algunas funciones podrían interferir con el funcionamiento del cuestionario. ¿Activar el Modo seguro para cuestionarios para desactivar temporalmente los cambios visuales?"
+    },
+    "quiz_safe_info_label": {
+        "message": "Información del modo seguro para cuestionarios"
+    },
+    "quiz_safe_mode": {
+        "message": "Modo seguro para cuestionarios"
+    },
+    "quiz_safe_mode_desc": {
+        "message": "Desactiva la mayoría de las funciones de Canvas Refined en las páginas de cuestionarios para que tengas la experiencia predeterminada de Canvas."
+    },
+    "quiz_safe_title": {
+        "message": "Canvas Refined — Modo seguro para cuestionarios"
+    },
+    "radio_gradient": {
+        "message": "Degradado"
+    },
+    "radio_image": {
+        "message": "Imagen"
+    },
+    "radio_sidebar_gradient": {
+        "message": "Gradiente"
+    },
+    "radio_sidebar_image": {
+        "message": "Imagen"
+    },
+    "radio_sidebar_solid": {
+        "message": "Sólida"
+    },
+    "radio_solid": {
+        "message": "Sólido"
+    },
+    "reading_grade_data": {
+        "message": "Leyendo datos de calificaciones…"
+    },
+    "relative_ago": {
+        "message": "hace $TIME$"
+    },
+    "relative_due_dates": {
+        "message": "Fechas pendientes relativas"
+    },
+    "relative_in": {
+        "message": "dentro de $TIME$"
+    },
+    "remlogo": {
+        "message": "Quitar el logo de la barra lateral"
+    },
+    "remove_label": {
+        "message": "Quitar"
+    },
+    "report_desc": {
+        "message": "Únete al servidor de Discord o crea un issue en GitHub para cualquier problema, comentario o sugerencia. ¡Gracias!"
+    },
+    "report_issue": {
+        "message": "Reportar un problema"
+    },
+    "reroll_classes": {
+        "message": "Volver a sortear clases"
+    },
+    "reset_default": {
+        "message": "Restablecer valores predeterminados"
+    },
+    "reset_optin": {
+        "message": "Restablecer estado de suscripción"
+    },
+    "revert": {
+        "message": "Revertir"
+    },
+    "revert_desc": {
+        "message": "Esto revertirá las personalizaciones al estado en que instalaste la extensión por primera vez."
+    },
+    "revert_original": {
+        "message": "Volver al original"
+    },
+    "revert_theme": {
+        "message": "Revertir cambios del tema"
+    },
+    "row_spacing": {
+        "message": "Espaciado entre filas"
+    },
+    "save": {
+        "message": "Guardar"
+    },
+    "save_current": {
+        "message": "+ Guardar actual"
+    },
+    "search": {
+        "message": "Buscar"
+    },
+    "search_building": {
+        "message": "Creando índice de búsqueda…"
+    },
+    "search_canvas": {
+        "message": "Buscar en Canvas"
+    },
+    "search_canvas_ctrlk": {
+        "message": "Buscar en Canvas (Ctrl+K)"
+    },
+    "search_close": {
+        "message": "Cerrar"
+    },
+    "search_close_title": {
+        "message": "Cerrar (Esc)"
+    },
+    "search_features": {
+        "message": "Buscar funciones..."
+    },
+    "search_hint": {
+        "message": "Empieza a escribir para buscar en tus módulos y tareas. Usa @coursename para buscar un curso concreto, o @grades para abrir la página de notas de un curso."
+    },
+    "search_navigate": {
+        "message": "navegar"
+    },
+    "search_new_tab": {
+        "message": "nueva pestaña"
+    },
+    "search_no_course": {
+        "message": "Ningún curso coincide con \"$QUERY$\"."
+    },
+    "search_no_courses_grades": {
+        "message": "No se encontraron cursos para abrir sus notas."
+    },
+    "search_no_match": {
+        "message": "No hay resultados para \"$QUERY$\"."
+    },
+    "search_no_match_hint": {
+        "message": "No hay resultados para \"$QUERY$\". Prueba con otras palabras clave."
+    },
+    "search_no_modules": {
+        "message": "No se encontraron módulos ni tareas..."
+    },
+    "search_no_modules_found": {
+        "message": "No se encontraron módulos ni tareas. Vuelve a abrir la búsqueda más tarde si tus cursos aún están cargando."
+    },
+    "search_no_results": {
+        "message": "No hay resultados para \"$QUERY$\"."
+    },
+    "search_open": {
+        "message": "abrir"
+    },
+    "search_placeholder": {
+        "message": "Buscar módulos y tareas… (@nombredelcurso filtra por curso)"
+    },
+    "search_start_typing": {
+        "message": "Empieza a escribir para buscar..."
+    },
+    "search_title": {
+        "message": "Buscar en Canvas (Ctrl+K)"
+    },
+    "search_toggle": {
+        "message": "alternar búsqueda"
+    },
+    "search_type_assignment": {
+        "message": "Tarea"
+    },
+    "search_type_discussion": {
+        "message": "Debate"
+    },
+    "search_type_external_tool": {
+        "message": "Herramienta externa"
+    },
+    "search_type_file": {
+        "message": "Archivo"
+    },
+    "search_type_item": {
+        "message": "Elemento"
+    },
+    "search_type_link": {
+        "message": "Enlace"
+    },
+    "search_type_page": {
+        "message": "Página"
+    },
+    "search_type_quiz": {
+        "message": "Cuestionario"
+    },
+    "search_type_section": {
+        "message": "Sección"
+    },
+    "selected_count": {
+        "message": "$COUNT$ seleccionados"
+    },
+    "show": {
+        "message": "Mostrar"
+    },
+    "show_links": {
+        "message": "Mostrar enlaces"
+    },
+    "show_past_due": {
+        "message": "Mostrar vencida"
+    },
+    "showing_submissions": {
+        "message": "Mostrando tus últimas 3 entregas"
+    },
+    "sidebar_blur": {
+        "message": "Desenfoque de la barra lateral"
+    },
+    "sidebar_opacity": {
+        "message": "Opacidad de la barra lateral"
+    },
+    "sidebar_opacity_auto": {
+        "message": "Se aplica a la barra lateral mejorada cuando está activada; si no, a la barra lateral normal."
+    },
+    "sidebar_scale": {
+        "message": "Escala de la barra lateral: "
+    },
+    "single_color": {
+        "message": "Color único"
+    },
+    "single_color_desc": {
+        "message": "Elige un color para aplicar a todas las tarjetas:"
+    },
+    "storage_cache_label": {
+        "message": "Caché del planificador:"
+    },
+    "storage_dump": {
+        "message": "Volcado de almacenamiento"
+    },
+    "storage_dump_desc": {
+        "message": "Esto recuperará todos los ajustes guardados por la extensión."
+    },
+    "storage_empty": {
+        "message": "vacío"
+    },
+    "storage_items": {
+        "message": " ($COUNT$ elementos)"
+    },
+    "storage_limit_error": {
+        "message": "Los datos que introduces superan el límite de almacenamiento, así que no se guardarán. Prueba con enlaces más cortos y asegúrate de pulsar \"copiar dirección de imagen\" y no \"copiar imagen\" para los enlaces."
+    },
+    "storage_other_label": {
+        "message": "Otros datos locales:"
+    },
+    "storage_quota_100kb": {
+        "message": " de 100 KB de cuota"
+    },
+    "storage_quota_label": {
+        "message": "Cuota local:"
+    },
+    "storage_reset": {
+        "message": "Restablecer almacenamiento"
+    },
+    "storage_reset_desc": {
+        "message": "Esto restablecerá todos los ajustes a los valores predeterminados. Tendrás que actualizar la página después."
+    },
+    "storage_sync_label": {
+        "message": "Ajustes (sincronización):"
+    },
+    "storage_unknown": {
+        "message": "desconocido"
+    },
+    "storage_usage": {
+        "message": "Uso de almacenamiento"
+    },
+    "styles": {
+        "message": "Estilos"
+    },
+    "submission_confirmation": {
+        "message": "Confirmación de envío"
+    },
+    "submission_includes": {
+        "message": "Tu envío incluirá tus ajustes temáticos actuales, como las imágenes de las tarjetas, el modo oscuro y la fuente."
+    },
+    "submit": {
+        "message": "Enviar"
+    },
+    "submit_your_theme": {
+        "message": "Envía tu tema"
+    },
+    "submitted_return_title": {
+        "message": "Enviado a Canvas: al hacer clic vuelve a Tareas (localmente)"
+    },
+    "tab_icons": {
+        "message": "Iconos de pestañas codificados por colores"
+    },
+    "task_created": {
+        "message": "Tarea creada."
+    },
+    "task_date_invalid": {
+        "message": "Fecha de tarea no válida."
+    },
+    "task_date_time_required": {
+        "message": "Elige una fecha y una hora."
+    },
+    "task_details_placeholder": {
+        "message": "Detalles (opcional)"
+    },
+    "task_link_placeholder": {
+        "message": "Enlace (opcional)"
+    },
+    "task_title_placeholder": {
+        "message": "Título de la tarea"
+    },
+    "task_title_required": {
+        "message": "El título de la tarea es obligatorio."
+    },
+    "task_updated": {
+        "message": "Tarea actualizada."
+    },
+    "tasks_header": {
+        "message": "Tareas"
+    },
+    "text_colors": {
+        "message": "Texto"
+    },
+    "theme_browser_settings": {
+        "message": "Ajustes del navegador de temas"
+    },
+    "theme_guidelines": {
+        "message": "Asegúrate de que tu tema cumpla estas normas:"
+    },
+    "theme_number": {
+        "message": "Tema $NUM$"
+    },
+    "theme_optin_reset": {
+        "message": "Suscripción al navegador de temas restablecida"
+    },
+    "themes": {
+        "message": "Temas"
+    },
+    "time_day": {
+        "message": "día"
+    },
+    "time_day_plural": {
+        "message": "días"
+    },
+    "time_day_short": {
+        "message": "d"
+    },
+    "time_hour": {
+        "message": "hora"
+    },
+    "time_hour_plural": {
+        "message": "horas"
+    },
+    "time_hour_short": {
+        "message": "h"
+    },
+    "time_min": {
+        "message": "min"
+    },
+    "time_min_short": {
+        "message": "min"
+    },
+    "time_week": {
+        "message": "semana"
+    },
+    "time_week_plural": {
+        "message": "semanas"
+    },
+    "time_week_short": {
+        "message": "sem"
+    },
+    "timeframe_next": {
+        "message": "Ver el siguiente período"
+    },
+    "timeframe_prev": {
+        "message": "Período anterior"
+    },
+    "timer_custom": {
+        "message": "Personalizado"
+    },
+    "timer_hours": {
+        "message": "Horas"
+    },
+    "timer_minutes": {
+        "message": "Minutos"
+    },
+    "timer_pause": {
+        "message": "Pausar"
+    },
+    "timer_reset": {
+        "message": "Reiniciar"
+    },
+    "timer_seconds": {
+        "message": "Segundos"
+    },
+    "timer_set": {
+        "message": "Establecer"
+    },
+    "timer_start": {
+        "message": "Iniciar"
+    },
+    "timer_unit_h": {
+        "message": "h"
+    },
+    "timer_unit_m": {
+        "message": "min"
+    },
+    "timer_unit_min": {
+        "message": "min"
+    },
+    "timer_unit_s": {
+        "message": "s"
+    },
+    "title_hint": {
+        "message": "Intenta que sea breve y relevante para que la gente pueda buscarlo."
+    },
+    "title_label": {
+        "message": "Título"
+    },
+    "toast_close": {
+        "message": "Cerrar"
+    },
+    "todo_alternate_colors": {
+        "message": "Colores alternos"
+    },
+    "todo_click_to_edit": {
+        "message": "Haz clic para editar"
+    },
+    "todo_close_title": {
+        "message": "Cerrar"
+    },
+    "todo_cross_off": {
+        "message": "Tachar"
+    },
+    "todo_date_format": {
+        "message": "$DATE$ a las $TIME$ ($RELATIVE$)"
+    },
+    "todo_delete": {
+        "message": "Eliminar"
+    },
+    "todo_delete_confirm": {
+        "message": "¿Eliminar esta tarea personalizada? No se puede deshacer."
+    },
+    "todo_delete_title": {
+        "message": "Eliminar esta tarea personalizada"
+    },
+    "todo_full_height": {
+        "message": "Forzar altura completa"
+    },
+    "todo_graded": {
+        "message": "Calificada"
+    },
+    "todo_hide_feedback": {
+        "message": "Ocultar comentarios recientes"
+    },
+    "todo_hide_read": {
+        "message": "Ocultar anuncios leídos"
+    },
+    "todo_ignore_colors": {
+        "message": "Ignorar colores de las tarjetas"
+    },
+    "todo_label": {
+        "message": "Etiqueta:"
+    },
+    "todo_label_placeholder": {
+        "message": "Etiqueta"
+    },
+    "todo_none": {
+        "message": "Ninguno"
+    },
+    "todo_progress_display": {
+        "message": "Mostrar progreso"
+    },
+    "todo_progress_line": {
+        "message": "Una línea"
+    },
+    "todo_progress_lines": {
+        "message": "Varias líneas"
+    },
+    "todo_progress_none": {
+        "message": "Ninguno"
+    },
+    "todo_progress_rainbow": {
+        "message": "Arcoíris"
+    },
+    "todo_progress_rings": {
+        "message": "Anillos"
+    },
+    "todo_remind": {
+        "message": "Recordatorios de tareas pendientes"
+    },
+    "todo_remove": {
+        "message": "Quitar"
+    },
+    "todo_remove_icons": {
+        "message": "Quitar iconos"
+    },
+    "todo_separate_scrollbar": {
+        "message": "Barra de desplazamiento separada"
+    },
+    "todo_show_scores": {
+        "message": "Mostrar puntuaciones de tareas"
+    },
+    "todo_task_details": {
+        "message": "Detalles (opcional)"
+    },
+    "todo_task_link": {
+        "message": "Enlace (opcional)"
+    },
+    "todo_task_title": {
+        "message": "Título de la tarea"
+    },
+    "todo_timeframe": {
+        "message": "Período de tiempo"
+    },
+    "todo_timeframe_1week": {
+        "message": "1 semana"
+    },
+    "todo_timeframe_2month": {
+        "message": "2 meses"
+    },
+    "todo_timeframe_2week": {
+        "message": "2 semanas"
+    },
+    "todo_timeframe_all": {
+        "message": "Todo el tiempo"
+    },
+    "todo_timeframe_custom": {
+        "message": "Personalizado"
+    },
+    "todo_timeframe_days_ago": {
+        "message": "días atrás"
+    },
+    "todo_timeframe_days_future": {
+        "message": "días desde ahora"
+    },
+    "todo_timeframe_from": {
+        "message": "Desde"
+    },
+    "todo_timeframe_month": {
+        "message": "Mes"
+    },
+    "todo_timeframe_to": {
+        "message": "Hasta"
+    },
+    "todo_type_away": {
+        "message": "¡Escribe!"
+    },
+    "top_bottom_height": {
+        "message": "Altura superior / inferior"
+    },
+    "trending": {
+        "message": "Tendencias"
+    },
+    "updates": {
+        "message": "Actualizaciones"
+    },
+    "useddmm": {
+        "message": "Usar dd/mm"
+    },
+    "user_made_themes": {
+        "message": "Temas creados por usuarios"
+    },
+    "vertical": {
+        "message": "Vertical"
+    },
+    "view_less": {
+        "message": "Ver menos"
+    },
+    "view_more": {
+        "message": "Ver más"
+    },
+    "view_more_count": {
+        "message": "Ver más ($COUNT$)"
+    },
+    "view_on_github": {
+        "message": "Ver en GitHub"
+    },
+    "widget_order_title": {
+        "message": "Orden de los widgets"
+    },
+    "widget_position": {
+        "message": "Posición"
+    },
+    "widget_short_breathing": {
+        "message": "Respiración"
+    },
+    "widget_short_focus": {
+        "message": "Enfoque"
+    },
+    "widget_short_gpa": {
+        "message": "GPA"
+    },
+    "widget_short_notes": {
+        "message": "Notas"
+    },
+    "widget_short_quotes": {
+        "message": "Citas"
+    },
+    "widgets": {
+        "message": "Widgets"
+    }
 }

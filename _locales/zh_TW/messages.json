@@ -1,260 +1,1895 @@
 {
-  "better_canvas": {
-    "message": "更好的画布"
-  },
-  "updates": {
-    "message": "更新"
-  },
-  "dark_mode": {
-    "message": "暗色模式"
-  },
-  "automatic_dark_mode": {
-    "message": "预定的深色模式"
-  },
-  "auto_start_time": {
-    "message": "开始时间"
-  },
-  "auto_end_time": {
-    "message": "结束时间"
-  },
-  "edit_dark_mode": {
-    "message": "深色模式"
-  },
-  "enter_url": {
-    "message": "您的画布网址:"
-  },
-  "card_grades": {
-    "message": "卡牌等级"
-  },
-  "gradient_cards": {
-    "message": "渐变卡"
-  },
-  "condensed_cards": {
-    "message": "浓缩卡"
-  },
-  "disable_color": {
-    "message": "禁用颜色叠加"
-  },
-  "card_assignments": {
-    "message": "卡分配"
-  },
-  "card_customization": {
-    "message": "牌"
-  },
-  "styles": {
-    "message": "样式"
-  },
-  "useddmm": {
-    "message": "使用日/毫米"
-  },
-  "better_todo": {
-    "message": "更好的待办事项列表"
-  },
-  "max_items": {
-    "message": "最大物品数: "
-  },
-  "hover_preview": {
-    "message": "懸停預覽"
-  },
-  "hide_completed": {
-    "message": "隐藏已完成"
-  },
-  "24hrformat": {
-    "message": "使用 24 小时格式"
-  },
-  "dashboard_notes": {
-    "message": "仪表板注释"
-  },
-  "gpa_calculator": {
-    "message": "平均绩点计算器"
-  },
-  "gpa_settings": {
-    "message": "平均绩点设置"
-  },
-  "grade_hover": {
-    "message": "仅在悬停时显示"
-  },
-  "card_letter": {
-    "message": "顯示字母成績"
-  },
-  "due": {
-    "message": "到期的"
-  },
-  "card_colors": {
-    "message": "卡片颜色"
-  },
-  "back": {
-    "message": "后退"
-  },
-  "more_options": {
-    "message": "更多选择"
-  },
-  "manual_customization": {
-    "message": "手动定制"
-  },
-  "background_colors": {
-    "message": "背景"
-  },
-  "text_colors": {
-    "message": "文本"
-  },
-  "full_width": {
-    "message": "仪表板全宽"
-  },
-  "report_issue": {
-    "message": "报告问题"
-  },
-  "themes": {
-    "message": "主题"
-  },
-  "move_top": {
-    "message": "移至顶部"
-  },
-  "show_past_due": {
-    "message": "显示逾期"
-  },
-  "relative_due_dates": {
-    "message": "相对到期日"
-  },
-  "equal_height_cards": {
-    "message": "等高"
-  },
-  "enter_multiple": {
-    "message": "(用逗号输入多个)"
-  },
-  "todo_remind": {
-    "message": "待办事项提醒"
-  },
-  "remlogo": {
-    "message": "删除侧边栏徽标"
-  },
-  "hide_feedback": {
-    "message": "隐藏最近的反馈"
-  },
-  "tab_icons": {
-    "message": "颜色编码选项卡图标"
-  },
-  "todo_colors": {
-    "message": "使用卡片颜色"
-  },
-  "gpa_calc_cumulative": {
-    "message": "显示累积GPA"
-  },
-  "gpa_calc_weighted": {
-    "message": "显示权重GPA"
-  },
-  "device_dark": {
-    "message": "使用设备暗色模式设置"
-  },
-  "presets": {
-    "message": "预设值"
-  },
-  "dark_lighter": {
-    "message": "灯光"
-  },
-  "dark_light": {
-    "message": "亮色的"
-  },
-  "dark_default": {
-    "message": "默认设置"
-  },
-  "dark_dark": {
-    "message": "深色"
-  },
-  "dark_darker": {
-    "message": "较暗的"
-  },
-  "dark_mint": {
-    "message": "分钟数"
-  },
-  "dark_blue": {
-    "message": "蓝色调"
-  },
-  "dark_burn": {
-    "message": "眼球烧伤"
-  },
-  "dark_unicorn": {
-    "message": "独角兽人"
-  },
-  "dark_lightmode": {
-    "message": "浅色模式"
-  },
-  "dark_catppuccin": {
-    "message": "卡普布辛\n 由天使"
-  },
-  "dark_sage": {
-    "message": "萨比亚\n 通过 LivDoesDevStuf"
-  },
-  "dark_pink": {
-    "message": "粉色的\n 通过赛德"
-  },
-  "dark_coral": {
-    "message": "珊瑚\n 通过 超级奇多"
-  },
-  "dp_sidebar_text": {
-    "message": "侧边栏文本"
-  },
-  "dp_sidebar": {
-    "message": "侧边栏"
-  },
-  "radio_sidebar_solid": {
-    "message": "坚硬的"
-  },
-  "radio_sidebar_gradient": {
-    "message": "渐变"
-  },
-  "radio_sidebar_image": {
-    "message": "图片"
-  },
-  "dp_background_0": {
-    "message": "主要背景"
-  },
-  "dp_background_1": {
-    "message": "背景Alt"
-  },
-  "dp_background_2": {
-    "message": "其它背景"
-  },
-  "dp_borders": {
-    "message": "边框"
-  },
-  "dp_links": {
-    "message": "链接"
-  },
-  "dp_text_0": {
-    "message": "主要文本"
-  },
-  "dp_text_1": {
-    "message": "其它文本"
-  },
-  "dp_text_2": {
-    "message": "文本Alt"
-  },
-  "dark_mode_fixer": {
-    "message": "深色模式修复程序 (测试版)"
-  },
-  "dark_mode_fixer_text": {
-    "message": "这将尝试修复当前页面上的任何暗模式间隙。"
-  },
-  "fix_dm_btn": {
-    "message": "去"
-  },
-  "fix_dm_text": {
-    "message": "修复程序会自动在这些页面上运行:"
-  },
-  "hide_links": {
-    "message": "隱藏連結"
-  },
-  "show_links": {
-    "message": "顯示連結"
-  },
-  "center_cards": {
-    "message": "置中卡片"
-  },
-  "hide_new_canvas": {
-    "message": "隱藏新版 Canvas"
-  },
-  "hide_completed_cards": {
-    "message": "隱藏已完成的作業"
-  }
+    "24hrformat": {
+        "message": "使用 24 小时格式"
+    },
+    "abc": {
+        "message": "ABC"
+    },
+    "add_canvas": {
+        "message": "+ 新增 Canvas"
+    },
+    "add_task": {
+        "message": "+ 新增任務"
+    },
+    "add_to_list": {
+        "message": "加入清單"
+    },
+    "ago": {
+        "message": "前"
+    },
+    "always_show_likes": {
+        "message": "永遠顯示按讚數"
+    },
+    "assignment_avg": {
+        "message": "— 平均 $AVG$%，共 $COUNT$ 份作業："
+    },
+    "assignment_due_in": {
+        "message": "作業將於 $TIME$ 後到期"
+    },
+    "auto": {
+        "message": "自動"
+    },
+    "auto_end_time": {
+        "message": "结束时间"
+    },
+    "auto_start_time": {
+        "message": "开始时间"
+    },
+    "automatic_dark_mode": {
+        "message": "预定的深色模式"
+    },
+    "back": {
+        "message": "后退"
+    },
+    "back_to_assignment": {
+        "message": "返回作業"
+    },
+    "background_colors": {
+        "message": "背景"
+    },
+    "background_opacity": {
+        "message": "背景不透明度"
+    },
+    "better_sidebar": {
+        "message": "強化側邊欄"
+    },
+    "better_todo": {
+        "message": "更好的待办事项列表"
+    },
+    "bg_blur": {
+        "message": "背景模糊"
+    },
+    "breathing_breaks": {
+        "message": "呼吸休息"
+    },
+    "breathing_in": {
+        "message": "吸氣"
+    },
+    "breathing_out": {
+        "message": "呼氣"
+    },
+    "breathing_ready": {
+        "message": "準備好"
+    },
+    "button_1": {
+        "message": "按鈕 1"
+    },
+    "button_2": {
+        "message": "按鈕 2"
+    },
+    "button_3": {
+        "message": "按鈕 3"
+    },
+    "cancel": {
+        "message": "取消"
+    },
+    "Canvas_Refined": {
+        "message": "Canvas Refined"
+    },
+    "canvas_rejected_create": {
+        "message": "Canvas 拒絕建立待辦事項。"
+    },
+    "canvas_rejected_delete": {
+        "message": "Canvas 拒絕刪除待辦事項。"
+    },
+    "canvas_rejected_update": {
+        "message": "Canvas 拒絕更新待辦事項。"
+    },
+    "card_assignments": {
+        "message": "卡分配"
+    },
+    "card_blur": {
+        "message": "卡片模糊"
+    },
+    "card_colors": {
+        "message": "卡片颜色"
+    },
+    "card_customization": {
+        "message": "牌"
+    },
+    "card_grades": {
+        "message": "卡牌等级"
+    },
+    "card_grid": {
+        "message": "卡片格線"
+    },
+    "card_grid_preview": {
+        "message": "卡片格線預覽"
+    },
+    "card_height": {
+        "message": "卡片高度"
+    },
+    "card_hide_toggle": {
+        "message": "在儀表板顯示/隱藏"
+    },
+    "card_letter": {
+        "message": "顯示字母成績"
+    },
+    "card_limit": {
+        "message": "卡片數量上限"
+    },
+    "card_limit_desc": {
+        "message": "調整此數字會重設你的卡片，並可能造成儲存空間問題。"
+    },
+    "card_method": {
+        "message": "卡片方式"
+    },
+    "card_method_desc": {
+        "message": "你應該不需要開啟這些選項。"
+    },
+    "card_none": {
+        "message": "無"
+    },
+    "card_opacity": {
+        "message": "卡片不透明度"
+    },
+    "card_padding": {
+        "message": "卡片內距"
+    },
+    "card_reset_default": {
+        "message": "卡片已重設為預設設定！"
+    },
+    "card_roundness": {
+        "message": "卡片圓角"
+    },
+    "card_settings_saved": {
+        "message": "卡片設定已成功儲存！"
+    },
+    "card_transparency": {
+        "message": "卡片透明度"
+    },
+    "card_width": {
+        "message": "卡片寬度"
+    },
+    "cards_height": {
+        "message": "卡片高度"
+    },
+    "celebration": {
+        "message": "慶祝效果"
+    },
+    "celebration_amount": {
+        "message": "數量"
+    },
+    "celebration_confetti": {
+        "message": "彩帶"
+    },
+    "celebration_crazy": {
+        "message": "瘋狂"
+    },
+    "celebration_fireworks": {
+        "message": "煙火"
+    },
+    "celebration_hearts": {
+        "message": "愛心上升"
+    },
+    "celebration_less": {
+        "message": "較少"
+    },
+    "celebration_more": {
+        "message": "較多"
+    },
+    "celebration_none": {
+        "message": "無"
+    },
+    "celebration_normal": {
+        "message": "正常"
+    },
+    "celebration_preview": {
+        "message": "預覽慶祝效果"
+    },
+    "celebration_rocket": {
+        "message": "火箭"
+    },
+    "celebration_sparkles": {
+        "message": "閃光爆發"
+    },
+    "celebration_type": {
+        "message": "慶祝效果類型"
+    },
+    "center_cards": {
+        "message": "置中卡片"
+    },
+    "center_uneven": {
+        "message": "置中不齊的列"
+    },
+    "check_all": {
+        "message": "全選"
+    },
+    "check_none": {
+        "message": "全部取消"
+    },
+    "clear_background": {
+        "message": "清除背景"
+    },
+    "clear_cache": {
+        "message": "清除待辦快取"
+    },
+    "clear_cache_desc": {
+        "message": "這會刪除快取的待辦清單資料（作業、公告、提醒），以便從 Canvas 重新取得最新資料。已開啟的 Canvas 分頁會自動更新。"
+    },
+    "click_eye": {
+        "message": "點擊課程上的眼睛圖示，即可隱藏或顯示其卡片。"
+    },
+    "close": {
+        "message": "關閉"
+    },
+    "close_label": {
+        "message": "關閉"
+    },
+    "column_spacing": {
+        "message": "欄間距"
+    },
+    "complete": {
+        "message": "完成"
+    },
+    "completed_total": {
+        "message": "已完成 $DONE$/$TOTAL$"
+    },
+    "condensed_cards": {
+        "message": "浓缩卡"
+    },
+    "copied": {
+        "message": "已複製！"
+    },
+    "copy": {
+        "message": "複製"
+    },
+    "could_not_delete": {
+        "message": "無法刪除任務。"
+    },
+    "could_not_load_preview": {
+        "message": "無法載入預覽"
+    },
+    "could_not_save": {
+        "message": "無法儲存任務。"
+    },
+    "create": {
+        "message": "建立"
+    },
+    "created_by": {
+        "message": "建立者"
+    },
+    "created_by_hint": {
+        "message": "可以是任何內容，包括你的名字、社群媒體帳號、匿名等。"
+    },
+    "custom_background": {
+        "message": "自訂背景"
+    },
+    "custom_background_desc": {
+        "message": "選擇預設背景，或使用你自己的圖片網址。"
+    },
+    "custom_card_styles": {
+        "message": "自訂卡片樣式"
+    },
+    "custom_fonts": {
+        "message": "自訂字型"
+    },
+    "custom_fonts_desc": {
+        "message": "你可以在此使用 Google Fonts 的自訂字型。請只輸入 \"?family=\" 後面的粗體部分。"
+    },
+    "custom_styles": {
+        "message": "自訂樣式"
+    },
+    "custom_styles_desc": {
+        "message": "你可以在此區域撰寫自訂 CSS 樣式。你可能需要加上 !important 規則，讓樣式強制生效。"
+    },
+    "daily_quote": {
+        "message": "每日名言"
+    },
+    "daily_quote_default": {
+        "message": "取得進展的祕訣就是開始行動。"
+    },
+    "daily_quotes": {
+        "message": "每日名言"
+    },
+    "daily_random": {
+        "message": "每日隨機圖片"
+    },
+    "dark_blue": {
+        "message": "蓝色调"
+    },
+    "dark_burn": {
+        "message": "眼球烧伤"
+    },
+    "dark_catppuccin": {
+        "message": "卡普布辛\n 由天使"
+    },
+    "dark_coral": {
+        "message": "珊瑚\n 通过 超级奇多"
+    },
+    "dark_dark": {
+        "message": "深色"
+    },
+    "dark_darker": {
+        "message": "较暗的"
+    },
+    "dark_default": {
+        "message": "默认设置"
+    },
+    "dark_inspector": {
+        "message": "深色模式檢查器"
+    },
+    "dark_inspector_desc": {
+        "message": "這會檢查頁面中任何深色模式未覆蓋的地方。"
+    },
+    "dark_light": {
+        "message": "亮色的"
+    },
+    "dark_lighter": {
+        "message": "灯光"
+    },
+    "dark_lightmode": {
+        "message": "浅色模式"
+    },
+    "dark_mint": {
+        "message": "分钟数"
+    },
+    "dark_mode": {
+        "message": "暗色模式"
+    },
+    "dark_mode_fixer": {
+        "message": "深色模式修复程序 (测试版)"
+    },
+    "dark_mode_fixer_text": {
+        "message": "这将尝试修复当前页面上的任何暗模式间隙。"
+    },
+    "dark_pink": {
+        "message": "粉色的\n 通过赛德"
+    },
+    "dark_sage": {
+        "message": "萨比亚\n 通过 LivDoesDevStuf"
+    },
+    "dark_unicorn": {
+        "message": "独角兽人"
+    },
+    "dashboard": {
+        "message": "儀表板"
+    },
+    "dashboard_font": {
+        "message": "儀表板字型"
+    },
+    "dashboard_notes": {
+        "message": "仪表板注释"
+    },
+    "date": {
+        "message": "日期"
+    },
+    "delete_confirm": {
+        "message": "要刪除此自訂任務嗎？此操作無法復原。"
+    },
+    "delete_label": {
+        "message": "刪除"
+    },
+    "delete_task_title": {
+        "message": "刪除此自訂任務"
+    },
+    "device_dark": {
+        "message": "使用设备暗色模式设置"
+    },
+    "disable_color": {
+        "message": "禁用颜色叠加"
+    },
+    "disable_high_contrast": {
+        "message": "停用高對比介面"
+    },
+    "do_you_want_submit": {
+        "message": "你想將主題提交給其他人使用嗎？"
+    },
+    "dp_background_0": {
+        "message": "主要背景"
+    },
+    "dp_background_1": {
+        "message": "背景Alt"
+    },
+    "dp_background_2": {
+        "message": "其它背景"
+    },
+    "dp_borders": {
+        "message": "边框"
+    },
+    "dp_links": {
+        "message": "链接"
+    },
+    "dp_sidebar": {
+        "message": "侧边栏"
+    },
+    "dp_sidebar_text": {
+        "message": "侧边栏文本"
+    },
+    "dp_text_0": {
+        "message": "主要文本"
+    },
+    "dp_text_1": {
+        "message": "其它文本"
+    },
+    "dp_text_2": {
+        "message": "文本Alt"
+    },
+    "due": {
+        "message": "到期的"
+    },
+    "due_days": {
+        "message": "到期 <strong>$COUNT$ 天</strong>"
+    },
+    "due_later": {
+        "message": "到期 <strong>稍後</strong>"
+    },
+    "due_one_month": {
+        "message": "到期 <strong>1 個月</strong>"
+    },
+    "due_overdue": {
+        "message": "<strong>已逾期</strong>"
+    },
+    "due_today": {
+        "message": "到期 <strong>今天</strong>"
+    },
+    "due_tomorrow": {
+        "message": "到期 <strong>明天</strong>"
+    },
+    "due_weeks": {
+        "message": "到期 <strong>$COUNT$ 週</strong>"
+    },
+    "edit_custom_task": {
+        "message": "編輯此自訂待辦事項"
+    },
+    "edit_dark_mode": {
+        "message": "深色模式"
+    },
+    "enter_multiple": {
+        "message": "(用逗号输入多个)"
+    },
+    "enter_none": {
+        "message": "輸入 \"none\" 以隱藏圖片和連結。"
+    },
+    "enter_url": {
+        "message": "您的画布网址:"
+    },
+    "equal_height_cards": {
+        "message": "等高"
+    },
+    "error_log": {
+        "message": "錯誤記錄"
+    },
+    "example_reminder_desc": {
+        "message": "此通知會在其他頁面彈出，提醒你即將在 6 小時內到期且尚未完成的作業。"
+    },
+    "example_reminder_title": {
+        "message": "這是範例提醒"
+    },
+    "excused": {
+        "message": "免修"
+    },
+    "experimental": {
+        "message": "這是實驗性功能。"
+    },
+    "export_background": {
+        "message": "背景與不透明度"
+    },
+    "export_card_colors": {
+        "message": "卡片顏色"
+    },
+    "export_card_images": {
+        "message": "卡片圖片"
+    },
+    "export_card_styles": {
+        "message": "卡片樣式"
+    },
+    "export_custom_css": {
+        "message": "自訂 CSS"
+    },
+    "export_custom_font": {
+        "message": "自訂字型"
+    },
+    "export_dark": {
+        "message": "深色模式"
+    },
+    "export_dark_schedule": {
+        "message": "深色模式排程"
+    },
+    "export_gpa": {
+        "message": "GPA 設定"
+    },
+    "export_settings": {
+        "message": "匯出設定"
+    },
+    "export_todo": {
+        "message": "待辦清單"
+    },
+    "export_toggles": {
+        "message": "開關選項"
+    },
+    "extra_spacing": {
+        "message": "額外卡片間距"
+    },
+    "fake_grade_high": {
+        "message": "高"
+    },
+    "fake_grade_level": {
+        "message": "假成績等級"
+    },
+    "fake_grade_medhigh": {
+        "message": "中高"
+    },
+    "fake_grade_medium": {
+        "message": "中"
+    },
+    "fake_grade_medlow": {
+        "message": "中低"
+    },
+    "fake_progress": {
+        "message": "假進度顯示："
+    },
+    "fake_rerolled": {
+        "message": "已重新隨機產生假課程。"
+    },
+    "fake_tasks_completed": {
+        "message": "已完成的假任務："
+    },
+    "fake_todo": {
+        "message": "用假課程填滿待辦清單"
+    },
+    "final_assignments": {
+        "message": "份作業"
+    },
+    "final_assignments_plural": {
+        "message": "份作業"
+    },
+    "final_avg": {
+        "message": "— 平均 $AVG$% ..."
+    },
+    "final_waiting": {
+        "message": "正在等待成績資料…"
+    },
+    "final_weight_prompt": {
+        "message": "輸入期末考的佔比與你的目標成績，即可查看期末考需要考多少分。"
+    },
+    "fit_image": {
+        "message": "圖片符合螢幕大小"
+    },
+    "fix_dm_btn": {
+        "message": "去"
+    },
+    "fix_dm_text": {
+        "message": "修复程序会自动在这些页面上运行:"
+    },
+    "fix_took": {
+        "message": "修正耗時 $TIME$ 毫秒（評分：$RATING$）"
+    },
+    "flexible_grid": {
+        "message": "彈性格線"
+    },
+    "flexible_grid_on": {
+        "message": "彈性格線已開啟——卡片會自動換行以配合狹窄視窗，而不會被裁切。"
+    },
+    "focus_timer": {
+        "message": "專注計時器"
+    },
+    "full_width": {
+        "message": "仪表板全宽"
+    },
+    "ga_add_assignment": {
+        "message": "+ 新增作業"
+    },
+    "ga_add_group": {
+        "message": "+ 新增群組"
+    },
+    "ga_already_there": {
+        "message": "你已經達標了！"
+    },
+    "ga_calc_desc": {
+        "message": "輸入期末考佔比和你想達到的總成績，看看期末考需要幾分。"
+    },
+    "ga_final_weight": {
+        "message": "期末考佔比（%）"
+    },
+    "ga_fit_y": {
+        "message": "調整 Y 軸範圍"
+    },
+    "ga_heatmap_assignments": {
+        "message": "$COUNT$ 項作業："
+    },
+    "ga_heatmap_avg": {
+        "message": "平均"
+    },
+    "ga_heatmap_undated": {
+        "message": "有 $COUNT$ 項已評分作業沒有到期日，因此未顯示。"
+    },
+    "ga_line_title": {
+        "message": "總成績變化"
+    },
+    "ga_new_assignment": {
+        "message": "新作業"
+    },
+    "ga_new_group": {
+        "message": "新群組"
+    },
+    "ga_no_grade_legend": {
+        "message": "無成績/作業"
+    },
+    "ga_no_graded_short": {
+        "message": "尚無已評分作業"
+    },
+    "ga_not_counted": {
+        "message": "— 不計入 —"
+    },
+    "ga_out_of_reach": {
+        "message": "無法達成"
+    },
+    "ga_pie_title": {
+        "message": "分數分布（已評分作業）"
+    },
+    "ga_remove_assignment": {
+        "message": "從模擬中移除此作業"
+    },
+    "ga_remove_group": {
+        "message": "從模擬中移除此群組（重新指派前其作業不會計入）"
+    },
+    "ga_secured": {
+        "message": "✓ 已確保"
+    },
+    "ga_show_goal": {
+        "message": "在總覽顯示成績目標"
+    },
+    "ga_stat_final_exam": {
+        "message": "期末考"
+    },
+    "ga_stat_graded": {
+        "message": "已評分"
+    },
+    "ga_stat_overall": {
+        "message": "總成績"
+    },
+    "ga_stat_trend": {
+        "message": "成績趨勢（最近 5 次）"
+    },
+    "ga_stat_ungraded": {
+        "message": "未評分"
+    },
+    "ga_sub_secured": {
+        "message": "即使期末考拿 0 分，你仍有 <b>$ZERO$%</b>，高於你的目標 <b>$TARGET$%</b>。"
+    },
+    "ga_sub_unreachable": {
+        "message": "即使期末考滿分，你也只能達到 <b>$PERFECT$%</b>，低於你的目標 <b>$TARGET$%</b>。"
+    },
+    "ga_tab_calc": {
+        "message": "期末考計算器"
+    },
+    "ga_tab_heatmap": {
+        "message": "熱度圖"
+    },
+    "ga_tab_overview": {
+        "message": "總覽"
+    },
+    "ga_target_grade": {
+        "message": "目標總成績（%）"
+    },
+    "ga_title_assignment_name": {
+        "message": "作業名稱"
+    },
+    "ga_title_group_name": {
+        "message": "群組名稱"
+    },
+    "ga_title_group_select": {
+        "message": "Imagine-If 作業群組"
+    },
+    "ga_title_group_weight": {
+        "message": "Imagine-If 群組佔比（%）"
+    },
+    "ga_title_points": {
+        "message": "Imagine-If 可得總分（分母）"
+    },
+    "ga_title_score": {
+        "message": "Imagine-If 分數（分子）；留空 = 不計入"
+    },
+    "ga_tooltip_assignments": {
+        "message": "$COUNT$ 項作業"
+    },
+    "ga_you_got_this": {
+        "message": "你可以的！"
+    },
+    "ga_you_need": {
+        "message": "你的期末考需要 ≥ $PCT$%"
+    },
+    "get_active_cards": {
+        "message": "從儀表板取得使用中的卡片"
+    },
+    "global_search": {
+        "message": "Canvas 全域搜尋"
+    },
+    "go": {
+        "message": "前往"
+    },
+    "go_to_grades": {
+        "message": "前往成績"
+    },
+    "gpa_autosave": {
+        "message": "變更會自動儲存"
+    },
+    "gpa_calc_cumulative": {
+        "message": "显示累积GPA"
+    },
+    "gpa_calc_weighted": {
+        "message": "显示权重GPA"
+    },
+    "gpa_calculator": {
+        "message": "平均绩点计算器"
+    },
+    "gpa_calculator_title": {
+        "message": "GPA 計算器"
+    },
+    "gpa_click_to_edit": {
+        "message": "點擊以編輯"
+    },
+    "gpa_col_course": {
+        "message": "課程"
+    },
+    "gpa_col_course_type": {
+        "message": "課程類型"
+    },
+    "gpa_col_credits": {
+        "message": "學分"
+    },
+    "gpa_col_custom_grade": {
+        "message": "自訂成績"
+    },
+    "gpa_col_grade": {
+        "message": "成績"
+    },
+    "gpa_courses": {
+        "message": "課程"
+    },
+    "gpa_credits": {
+        "message": "學分"
+    },
+    "gpa_cumulative": {
+        "message": "累計"
+    },
+    "gpa_current": {
+        "message": "目前"
+    },
+    "gpa_dashboard_notes_aria": {
+        "message": "儀表板備註——點擊以編輯"
+    },
+    "gpa_edit_calc": {
+        "message": "編輯計算器"
+    },
+    "gpa_edit_calculator": {
+        "message": "編輯計算器"
+    },
+    "gpa_grade_scale": {
+        "message": "成績對照表"
+    },
+    "gpa_header": {
+        "message": "GPA"
+    },
+    "gpa_min_pct": {
+        "message": "最低 %"
+    },
+    "gpa_pts_abbr": {
+        "message": "績點"
+    },
+    "gpa_save_custom": {
+        "message": "儲存自訂成績"
+    },
+    "gpa_save_grade": {
+        "message": "儲存自訂成績"
+    },
+    "gpa_scale_letter": {
+        "message": "僅字母等第"
+    },
+    "gpa_scale_note": {
+        "message": "百分比會對應到第一個最低 % 不超過它的列之 GPA。若你的學校不使用 +/- 等第，請將 +/- 列的最低 % 設為 101，讓它們不列入計算。"
+    },
+    "gpa_scale_plusminus": {
+        "message": "+/- 對照表"
+    },
+    "gpa_settings": {
+        "message": "平均绩点设置"
+    },
+    "gpa_type_away": {
+        "message": "開始輸入吧！"
+    },
+    "gpa_weight_ap": {
+        "message": "AP/IB"
+    },
+    "gpa_weight_dnc": {
+        "message": "不計入"
+    },
+    "gpa_weight_do_not_count": {
+        "message": "不計入"
+    },
+    "gpa_weight_honors": {
+        "message": "榮譽課程"
+    },
+    "gpa_weight_regular": {
+        "message": "一般/大學"
+    },
+    "gpa_weighted": {
+        "message": "加權"
+    },
+    "grade_analytics": {
+        "message": "成績分析"
+    },
+    "grade_analytics_desc": {
+        "message": "新增工具，協助你分析成績。"
+    },
+    "grade_analytics_failed": {
+        "message": "成績分析載入失敗：$ERROR$"
+    },
+    "grade_analytics_info_label": {
+        "message": "成績分析資訊"
+    },
+    "grade_analytics_toggle": {
+        "message": "切換成績分析"
+    },
+    "grade_analytics_zones": {
+        "message": "彩色成績區間"
+    },
+    "grade_hover": {
+        "message": "仅在悬停时显示"
+    },
+    "grade_settings": {
+        "message": "成績設定"
+    },
+    "gradient": {
+        "message": "漸層"
+    },
+    "gradient_cards": {
+        "message": "渐变卡"
+    },
+    "gradient_desc": {
+        "message": "選擇 2 種顏色，在它們之間建立漸層："
+    },
+    "grid_includes_gpa": {
+        "message": " （包含 GPA 計算器）"
+    },
+    "grid_warning": {
+        "message": "你的格線可容納 $TOTAL$ 張卡片$TOTAL_S$，但你目前有 $ACTIVE$ 張卡片$ACTIVE_S$$GPA_NOTE$——部分卡片可能會被裁切。"
+    },
+    "group_graded": {
+        "message": "已評分"
+    },
+    "group_new": {
+        "message": "新"
+    },
+    "group_seen": {
+        "message": "已看過"
+    },
+    "group_ungraded": {
+        "message": "未評分"
+    },
+    "guideline_1": {
+        "message": "合適的圖片/標題"
+    },
+    "guideline_2": {
+        "message": "不要大量使用其他主題的元件"
+    },
+    "guideline_3": {
+        "message": "使用獨特的自訂深色模式（非預設之一）"
+    },
+    "guideline_4": {
+        "message": "自訂圖片不可來自 Discord 或 Gmail。這些圖片並非公開。"
+    },
+    "height": {
+        "message": "高度"
+    },
+    "hide": {
+        "message": "隱藏"
+    },
+    "hide_completed": {
+        "message": "隐藏已完成"
+    },
+    "hide_completed_cards": {
+        "message": "隱藏已完成的作業"
+    },
+    "hide_feedback": {
+        "message": "隐藏最近的反馈"
+    },
+    "hide_images_temp": {
+        "message": "暫時移除所有課程圖片"
+    },
+    "hide_links": {
+        "message": "隱藏連結"
+    },
+    "hide_navbar": {
+        "message": "隱藏導覽列"
+    },
+    "hide_new_canvas": {
+        "message": "隱藏新版 Canvas"
+    },
+    "hide_personal_details": {
+        "message": "隱藏個人資料"
+    },
+    "hide_sequence_footer": {
+        "message": "隱藏上一個/下一個按鈕"
+    },
+    "high_contrast_desc": {
+        "message": "如果你的顏色在重新整理後變得黯淡！在側邊欄點擊你的個人圖示，即可在那裡關閉。"
+    },
+    "high_contrast_full": {
+        "message": "如果你的顏色在重新整理後變得黯淡，請停用高對比介面！在側邊欄點擊你的個人圖示，即可在那裡關閉。"
+    },
+    "horizontal": {
+        "message": "水平"
+    },
+    "hover_preview": {
+        "message": "懸停預覽"
+    },
+    "image_link_error": {
+        "message": "你提供的圖片連結似乎無法使用。請對想使用的圖片按右鍵，選擇「複製圖片網址」以取得正確的連結。"
+    },
+    "image_roundness": {
+        "message": "圖片圓角"
+    },
+    "image_scale": {
+        "message": "圖片縮放"
+    },
+    "image_size": {
+        "message": "圖片大小"
+    },
+    "image_url": {
+        "message": "圖片網址"
+    },
+    "imagine_if": {
+        "message": "Imagine-If 情境；不是你的實際成績。"
+    },
+    "imagine_if_badge": {
+        "message": "Imagine-If"
+    },
+    "imagine_if_mode": {
+        "message": "Imagine-If 模式"
+    },
+    "imagine_if_toggle": {
+        "message": "切換 Imagine-If 模式"
+    },
+    "import_hint": {
+        "message": "在此貼上匯出的主題："
+    },
+    "import_label": {
+        "message": "匯入"
+    },
+    "invalid_url": {
+        "message": "你輸入的網址似乎無效，因此可能無法使用。"
+    },
+    "join_discord": {
+        "message": "加入我們的 Discord"
+    },
+    "keep_font": {
+        "message": "保留原始作業字型"
+    },
+    "language": {
+        "message": "語言"
+    },
+    "language_auto": {
+        "message": "自動（瀏覽器）"
+    },
+    "liked": {
+        "message": "已按讚"
+    },
+    "loading": {
+        "message": "載入中…"
+    },
+    "logout": {
+        "message": "登出"
+    },
+    "manual_customization": {
+        "message": "手动定制"
+    },
+    "mark_as_seen": {
+        "message": "標記為已看過"
+    },
+    "max_items": {
+        "message": "最大物品数: "
+    },
+    "missing_cards": {
+        "message": "找不到卡片？"
+    },
+    "missing_task_id": {
+        "message": "缺少待辦事項 ID。"
+    },
+    "more_card_styles": {
+        "message": "更多卡片樣式"
+    },
+    "more_options": {
+        "message": "更多选择"
+    },
+    "my_saved_themes": {
+        "message": "我儲存的主題"
+    },
+    "my_submissions": {
+        "message": "我的提交"
+    },
+    "nasa_apod": {
+        "message": "NASA 每日天文圖片"
+    },
+    "nasa_credit": {
+        "message": "版權：$CREDIT$"
+    },
+    "nasa_date": {
+        "message": "日期：$DATE$"
+    },
+    "need_refresh": {
+        "message": "你可能需要重新整理頁面才能看到某些變更。"
+    },
+    "new_canvas_desc": {
+        "message": "Canvas Refined 在 $HOST$ 偵測到 Canvas 頁面。要將它加入你的 Canvas 清單嗎？"
+    },
+    "new_canvas_detected": {
+        "message": "偵測到新的 Canvas"
+    },
+    "new_label": {
+        "message": "新"
+    },
+    "next": {
+        "message": "下一個"
+    },
+    "next_timeframe": {
+        "message": "查看下一個時間範圍"
+    },
+    "no_auto_detect": {
+        "message": "不要自動偵測 Canvas"
+    },
+    "no_course_cards": {
+        "message": "找不到課程卡片。請前往你的 Canvas 儀表板載入課程。"
+    },
+    "no_description": {
+        "message": "沒有可用的說明。"
+    },
+    "no_details": {
+        "message": "未提供詳細資料"
+    },
+    "no_features": {
+        "message": "找不到功能"
+    },
+    "no_graded_assignments": {
+        "message": "尚無有到期日的已評分作業。"
+    },
+    "no_tasks": {
+        "message": "此時間範圍內沒有任務"
+    },
+    "no_tasks_yet": {
+        "message": "尚無任務"
+    },
+    "no_thanks": {
+        "message": "不用了，謝謝"
+    },
+    "not_for_request": {
+        "message": "這不是用來請求主題的。我不接受委託製作主題。"
+    },
+    "notes_bold": {
+        "message": "粗體（Ctrl/Cmd+B）"
+    },
+    "notes_bullet_list": {
+        "message": "項目符號清單"
+    },
+    "notes_codeblock": {
+        "message": "程式碼區塊"
+    },
+    "notes_format": {
+        "message": "格式化筆記"
+    },
+    "notes_h1": {
+        "message": "標題 1"
+    },
+    "notes_h2": {
+        "message": "標題 2"
+    },
+    "notes_hr": {
+        "message": "水平分隔線"
+    },
+    "notes_inline_code": {
+        "message": "行內程式碼"
+    },
+    "notes_italic": {
+        "message": "斜體（Ctrl/Cmd+I）"
+    },
+    "notes_link": {
+        "message": "插入連結"
+    },
+    "notes_numbered_list": {
+        "message": "編號清單"
+    },
+    "notes_quote": {
+        "message": "引用"
+    },
+    "notes_strike": {
+        "message": "刪除線"
+    },
+    "notes_task_list": {
+        "message": "待辦清單"
+    },
+    "nothing_to_copy": {
+        "message": "沒有可複製的內容——請先選擇要匯出的項目。"
+    },
+    "old_label": {
+        "message": "舊"
+    },
+    "opacity_only_background": {
+        "message": "僅適用於自訂背景"
+    },
+    "opacity_options": {
+        "message": "不透明度與模糊"
+    },
+    "open_canvas_preview": {
+        "message": "開啟 Canvas 頁面以預覽慶祝效果。"
+    },
+    "optin_desc": {
+        "message": "這會重新顯示加入提示，讓你選擇其他選項。"
+    },
+    "options_click_extension": {
+        "message": "點擊 Canvas Refined"
+    },
+    "options_click_puzzle": {
+        "message": "點擊右上角的拼圖圖示"
+    },
+    "options_contact": {
+        "message": "如果你有任何問題或建議，我的電子郵件是 $EMAIL$，歡迎回饋！"
+    },
+    "options_how_to_access": {
+        "message": "之後如何開啟此選單："
+    },
+    "options_pin": {
+        "message": "你也可以將它釘選以便快速存取"
+    },
+    "options_refresh_note": {
+        "message": "請重新整理你的 Canvas 頁面以完成設定"
+    },
+    "options_welcome": {
+        "message": "歡迎使用"
+    },
+    "output": {
+        "message": "輸出"
+    },
+    "overall": {
+        "message": "整體"
+    },
+    "palette_army": {
+        "message": "軍綠"
+    },
+    "palette_base": {
+        "message": "基礎"
+    },
+    "palette_berries": {
+        "message": "莓果"
+    },
+    "palette_blues": {
+        "message": "藍色"
+    },
+    "palette_candy": {
+        "message": "糖果"
+    },
+    "palette_chess": {
+        "message": "棋盤"
+    },
+    "palette_fade": {
+        "message": "淡化"
+    },
+    "palette_fade2": {
+        "message": "淡化 2"
+    },
+    "palette_fruit": {
+        "message": "水果"
+    },
+    "palette_greens": {
+        "message": "綠色"
+    },
+    "palette_mesa": {
+        "message": "台地"
+    },
+    "palette_muted": {
+        "message": "柔和"
+    },
+    "palette_night": {
+        "message": "夜晚"
+    },
+    "palette_ocean": {
+        "message": "海洋"
+    },
+    "palette_oranges": {
+        "message": "橘色"
+    },
+    "palette_pastels": {
+        "message": "粉彩"
+    },
+    "palette_pinks": {
+        "message": "粉紅"
+    },
+    "palette_popsicle": {
+        "message": "冰棒"
+    },
+    "palette_purples": {
+        "message": "紫色"
+    },
+    "palette_rainbow": {
+        "message": "彩虹"
+    },
+    "palette_reds": {
+        "message": "紅色"
+    },
+    "palette_sunset": {
+        "message": "日落"
+    },
+    "palette_watermelon": {
+        "message": "西瓜"
+    },
+    "percent_done": {
+        "message": "$PERCENT$%"
+    },
+    "personal_task": {
+        "message": "個人任務"
+    },
+    "personal_task_label": {
+        "message": "個人任務"
+    },
+    "placeholder_example": {
+        "message": "canvas.myschool.edu"
+    },
+    "planner_cleared": {
+        "message": "待辦快取已清除。"
+    },
+    "popular": {
+        "message": "熱門"
+    },
+    "popular_palettes": {
+        "message": "熱門調色盤"
+    },
+    "pos_below": {
+        "message": "底部"
+    },
+    "pos_cards_end": {
+        "message": "卡片之後"
+    },
+    "pos_cards_start": {
+        "message": "卡片之前"
+    },
+    "pos_top": {
+        "message": "頂部"
+    },
+    "presets": {
+        "message": "预设值"
+    },
+    "prev_timeframe": {
+        "message": "上一個時間範圍"
+    },
+    "preview": {
+        "message": "預覽"
+    },
+    "preview_creator_default": {
+        "message": "製作名單"
+    },
+    "preview_hidden": {
+        "message": "個人資料隱藏時，預覽也會隱藏。"
+    },
+    "preview_title_default": {
+        "message": "標題"
+    },
+    "preview_unavailable": {
+        "message": "無法提供預覽"
+    },
+    "privacy": {
+        "message": "隱私"
+    },
+    "progress_done": {
+        "message": "已完成 $DONE$/$TOTAL$"
+    },
+    "progress_overall": {
+        "message": "$PCT$%（$DONE$/$TOTAL$）"
+    },
+    "progress_pct": {
+        "message": "$PCT$%（$DONE$/$TOTAL$）"
+    },
+    "quiz_dont_show": {
+        "message": "不再顯示"
+    },
+    "quiz_dont_show_title": {
+        "message": "永久隱藏此提醒。你仍可在擴充功能彈出視窗中切換測驗安全模式。"
+    },
+    "quiz_enable": {
+        "message": "啟用測驗安全模式"
+    },
+    "quiz_safe_desc": {
+        "message": "此擴充功能尚未 100% 通過測驗環境核准。部分功能可能干擾測驗運作。要啟用測驗安全模式，暫時關閉視覺變更嗎？"
+    },
+    "quiz_safe_info_label": {
+        "message": "測驗安全模式資訊"
+    },
+    "quiz_safe_mode": {
+        "message": "測驗安全模式"
+    },
+    "quiz_safe_mode_desc": {
+        "message": "在測驗頁面關閉大多數 Canvas Refined 功能，讓你獲得預設的 Canvas 測驗體驗"
+    },
+    "quiz_safe_title": {
+        "message": "Canvas Refined — 測驗安全模式"
+    },
+    "radio_gradient": {
+        "message": "漸層"
+    },
+    "radio_image": {
+        "message": "圖片"
+    },
+    "radio_sidebar_gradient": {
+        "message": "渐变"
+    },
+    "radio_sidebar_image": {
+        "message": "图片"
+    },
+    "radio_sidebar_solid": {
+        "message": "坚硬的"
+    },
+    "radio_solid": {
+        "message": "純色"
+    },
+    "reading_grade_data": {
+        "message": "正在讀取成績資料…"
+    },
+    "relative_ago": {
+        "message": "$TIME$前"
+    },
+    "relative_due_dates": {
+        "message": "相对到期日"
+    },
+    "relative_in": {
+        "message": "$TIME$後"
+    },
+    "remlogo": {
+        "message": "删除侧边栏徽标"
+    },
+    "remove_label": {
+        "message": "移除"
+    },
+    "report_desc": {
+        "message": "如有任何問題、意見或建議，請加入 Discord 伺服器或建立 GitHub 問題。謝謝！"
+    },
+    "report_issue": {
+        "message": "报告问题"
+    },
+    "reroll_classes": {
+        "message": "重新隨機產生課程"
+    },
+    "reset_default": {
+        "message": "重設為預設值"
+    },
+    "reset_optin": {
+        "message": "重設加入狀態"
+    },
+    "revert": {
+        "message": "還原"
+    },
+    "revert_desc": {
+        "message": "這會將自訂設定還原到你首次安裝擴充功能時的狀態。"
+    },
+    "revert_original": {
+        "message": "還原為原始設定"
+    },
+    "revert_theme": {
+        "message": "還原主題變更"
+    },
+    "row_spacing": {
+        "message": "列間距"
+    },
+    "save": {
+        "message": "儲存"
+    },
+    "save_current": {
+        "message": "+ 儲存目前設定"
+    },
+    "search": {
+        "message": "搜尋"
+    },
+    "search_building": {
+        "message": "正在建立搜尋索引…"
+    },
+    "search_canvas": {
+        "message": "搜尋 Canvas"
+    },
+    "search_canvas_ctrlk": {
+        "message": "搜尋 Canvas (Ctrl+K)"
+    },
+    "search_close": {
+        "message": "關閉"
+    },
+    "search_close_title": {
+        "message": "關閉 (Esc)"
+    },
+    "search_features": {
+        "message": "搜尋功能..."
+    },
+    "search_hint": {
+        "message": "開始輸入以搜尋你的課程模組和作業。使用 @課程名稱 搜尋特定課程，或使用 @grades 開啟課程的成績頁面。"
+    },
+    "search_navigate": {
+        "message": "瀏覽"
+    },
+    "search_new_tab": {
+        "message": "新分頁"
+    },
+    "search_no_course": {
+        "message": "沒有符合「$QUERY$」的課程。"
+    },
+    "search_no_courses_grades": {
+        "message": "找不到可開啟成績的課程。"
+    },
+    "search_no_match": {
+        "message": "找不到「$QUERY$」的結果。"
+    },
+    "search_no_match_hint": {
+        "message": "找不到「$QUERY$」的結果。請嘗試其他關鍵字。"
+    },
+    "search_no_modules": {
+        "message": "找不到模組或作業..."
+    },
+    "search_no_modules_found": {
+        "message": "找不到課程模組或作業。如果你的課程仍在載入，請稍後再開啟搜尋。"
+    },
+    "search_no_results": {
+        "message": "找不到「$QUERY$」的結果。"
+    },
+    "search_open": {
+        "message": "開啟"
+    },
+    "search_placeholder": {
+        "message": "搜尋模組與作業…（@課程名稱 可依課程篩選）"
+    },
+    "search_start_typing": {
+        "message": "開始輸入以搜尋..."
+    },
+    "search_title": {
+        "message": "搜尋 Canvas (Ctrl+K)"
+    },
+    "search_toggle": {
+        "message": "切換搜尋"
+    },
+    "search_type_assignment": {
+        "message": "作業"
+    },
+    "search_type_discussion": {
+        "message": "討論"
+    },
+    "search_type_external_tool": {
+        "message": "外部工具"
+    },
+    "search_type_file": {
+        "message": "檔案"
+    },
+    "search_type_item": {
+        "message": "項目"
+    },
+    "search_type_link": {
+        "message": "連結"
+    },
+    "search_type_page": {
+        "message": "頁面"
+    },
+    "search_type_quiz": {
+        "message": "測驗"
+    },
+    "search_type_section": {
+        "message": "章節"
+    },
+    "selected_count": {
+        "message": "已選取 $COUNT$ 項"
+    },
+    "show": {
+        "message": "顯示"
+    },
+    "show_links": {
+        "message": "顯示連結"
+    },
+    "show_past_due": {
+        "message": "显示逾期"
+    },
+    "showing_submissions": {
+        "message": "顯示你最近 3 次提交"
+    },
+    "sidebar_blur": {
+        "message": "側邊欄模糊"
+    },
+    "sidebar_opacity": {
+        "message": "側邊欄不透明度"
+    },
+    "sidebar_opacity_auto": {
+        "message": "開啟強化側邊欄時套用至強化側邊欄，否則套用至一般側邊欄。"
+    },
+    "sidebar_scale": {
+        "message": "側邊欄縮放： "
+    },
+    "single_color": {
+        "message": "單一顏色"
+    },
+    "single_color_desc": {
+        "message": "選擇一種顏色，將所有卡片設為該顏色："
+    },
+    "storage_cache_label": {
+        "message": "待辦快取："
+    },
+    "storage_dump": {
+        "message": "儲存資料匯出"
+    },
+    "storage_dump_desc": {
+        "message": "這會擷取擴充功能儲存的所有設定。"
+    },
+    "storage_empty": {
+        "message": "空白"
+    },
+    "storage_items": {
+        "message": " （$COUNT$ 項）"
+    },
+    "storage_limit_error": {
+        "message": "你輸入的資料超過儲存上限，因此無法儲存。請嘗試使用較短的連結，並確認按下「複製圖片網址」而不是「複製圖片」來取得連結。"
+    },
+    "storage_other_label": {
+        "message": "其他本機資料："
+    },
+    "storage_quota_100kb": {
+        "message": " （100 KB 配額）"
+    },
+    "storage_quota_label": {
+        "message": "本機配額："
+    },
+    "storage_reset": {
+        "message": "重設儲存空間"
+    },
+    "storage_reset_desc": {
+        "message": "這會將所有設定重設為預設值。之後你需要重新整理頁面。"
+    },
+    "storage_sync_label": {
+        "message": "設定（同步）："
+    },
+    "storage_unknown": {
+        "message": "未知"
+    },
+    "storage_usage": {
+        "message": "儲存空間用量"
+    },
+    "styles": {
+        "message": "样式"
+    },
+    "submission_confirmation": {
+        "message": "提交確認"
+    },
+    "submission_includes": {
+        "message": "你的提交會包含你目前的佈景主題設定，例如卡片圖片、深色模式和字型。"
+    },
+    "submit": {
+        "message": "提交"
+    },
+    "submit_your_theme": {
+        "message": "提交你的主題"
+    },
+    "submitted_return_title": {
+        "message": "已提交至 Canvas — 點擊可將其移回待辦事項（僅限本機）"
+    },
+    "tab_icons": {
+        "message": "颜色编码选项卡图标"
+    },
+    "task_created": {
+        "message": "任務已建立。"
+    },
+    "task_date_invalid": {
+        "message": "待辦事項日期無效。"
+    },
+    "task_date_time_required": {
+        "message": "請同時選擇日期和時間。"
+    },
+    "task_details_placeholder": {
+        "message": "詳細資料（選填）"
+    },
+    "task_link_placeholder": {
+        "message": "連結（選填）"
+    },
+    "task_title_placeholder": {
+        "message": "任務標題"
+    },
+    "task_title_required": {
+        "message": "待辦事項標題為必填。"
+    },
+    "task_updated": {
+        "message": "任務已更新。"
+    },
+    "tasks_header": {
+        "message": "任務"
+    },
+    "text_colors": {
+        "message": "文本"
+    },
+    "theme_browser_settings": {
+        "message": "主題瀏覽器設定"
+    },
+    "theme_guidelines": {
+        "message": "請確認你的主題符合以下規範："
+    },
+    "theme_number": {
+        "message": "主題 $NUM$"
+    },
+    "theme_optin_reset": {
+        "message": "已重設主題瀏覽器加入狀態"
+    },
+    "themes": {
+        "message": "主题"
+    },
+    "time_day": {
+        "message": "天"
+    },
+    "time_day_plural": {
+        "message": "天"
+    },
+    "time_day_short": {
+        "message": "天"
+    },
+    "time_hour": {
+        "message": "小時"
+    },
+    "time_hour_plural": {
+        "message": "小時"
+    },
+    "time_hour_short": {
+        "message": "小時"
+    },
+    "time_min": {
+        "message": "分鐘"
+    },
+    "time_min_short": {
+        "message": "分"
+    },
+    "time_week": {
+        "message": "週"
+    },
+    "time_week_plural": {
+        "message": "週"
+    },
+    "time_week_short": {
+        "message": "週"
+    },
+    "timeframe_next": {
+        "message": "查看下一個時間範圍"
+    },
+    "timeframe_prev": {
+        "message": "上一個時間範圍"
+    },
+    "timer_custom": {
+        "message": "自訂"
+    },
+    "timer_hours": {
+        "message": "小時"
+    },
+    "timer_minutes": {
+        "message": "分鐘"
+    },
+    "timer_pause": {
+        "message": "暫停"
+    },
+    "timer_reset": {
+        "message": "重設"
+    },
+    "timer_seconds": {
+        "message": "秒"
+    },
+    "timer_set": {
+        "message": "設定"
+    },
+    "timer_start": {
+        "message": "開始"
+    },
+    "timer_unit_h": {
+        "message": "小時"
+    },
+    "timer_unit_m": {
+        "message": "分"
+    },
+    "timer_unit_min": {
+        "message": "分"
+    },
+    "timer_unit_s": {
+        "message": "秒"
+    },
+    "title_hint": {
+        "message": "請盡量簡短且相關，方便其他人搜尋。"
+    },
+    "title_label": {
+        "message": "標題"
+    },
+    "toast_close": {
+        "message": "關閉"
+    },
+    "todo_alternate_colors": {
+        "message": "交替顏色"
+    },
+    "todo_click_to_edit": {
+        "message": "點擊以編輯"
+    },
+    "todo_close_title": {
+        "message": "關閉"
+    },
+    "todo_cross_off": {
+        "message": "劃掉"
+    },
+    "todo_date_format": {
+        "message": "$DATE$ $TIME$（$RELATIVE$）"
+    },
+    "todo_delete": {
+        "message": "刪除"
+    },
+    "todo_delete_confirm": {
+        "message": "要刪除此自訂任務嗎？此操作無法復原。"
+    },
+    "todo_delete_title": {
+        "message": "刪除此自訂任務"
+    },
+    "todo_full_height": {
+        "message": "強制使用完整高度"
+    },
+    "todo_graded": {
+        "message": "已評分"
+    },
+    "todo_hide_feedback": {
+        "message": "隱藏最近回饋"
+    },
+    "todo_hide_read": {
+        "message": "隱藏已讀公告"
+    },
+    "todo_ignore_colors": {
+        "message": "忽略卡片顏色"
+    },
+    "todo_label": {
+        "message": "標籤："
+    },
+    "todo_label_placeholder": {
+        "message": "標籤"
+    },
+    "todo_none": {
+        "message": "無"
+    },
+    "todo_progress_display": {
+        "message": "進度顯示"
+    },
+    "todo_progress_line": {
+        "message": "單行"
+    },
+    "todo_progress_lines": {
+        "message": "多行"
+    },
+    "todo_progress_none": {
+        "message": "無"
+    },
+    "todo_progress_rainbow": {
+        "message": "彩虹"
+    },
+    "todo_progress_rings": {
+        "message": "圓環"
+    },
+    "todo_remind": {
+        "message": "待办事项提醒"
+    },
+    "todo_remove": {
+        "message": "移除"
+    },
+    "todo_remove_icons": {
+        "message": "移除圖示"
+    },
+    "todo_separate_scrollbar": {
+        "message": "獨立捲軸"
+    },
+    "todo_show_scores": {
+        "message": "顯示作業成績"
+    },
+    "todo_task_details": {
+        "message": "詳細資料（選填）"
+    },
+    "todo_task_link": {
+        "message": "連結（選填）"
+    },
+    "todo_task_title": {
+        "message": "任務標題"
+    },
+    "todo_timeframe": {
+        "message": "時間範圍"
+    },
+    "todo_timeframe_1week": {
+        "message": "1 週"
+    },
+    "todo_timeframe_2month": {
+        "message": "2 個月"
+    },
+    "todo_timeframe_2week": {
+        "message": "2 週"
+    },
+    "todo_timeframe_all": {
+        "message": "全部時間"
+    },
+    "todo_timeframe_custom": {
+        "message": "自訂"
+    },
+    "todo_timeframe_days_ago": {
+        "message": "天前"
+    },
+    "todo_timeframe_days_future": {
+        "message": "天後"
+    },
+    "todo_timeframe_from": {
+        "message": "從"
+    },
+    "todo_timeframe_month": {
+        "message": "月"
+    },
+    "todo_timeframe_to": {
+        "message": "至"
+    },
+    "todo_type_away": {
+        "message": "盡情輸入吧！"
+    },
+    "top_bottom_height": {
+        "message": "頂部／底部高度"
+    },
+    "trending": {
+        "message": "趨勢"
+    },
+    "updates": {
+        "message": "更新"
+    },
+    "useddmm": {
+        "message": "使用日/毫米"
+    },
+    "user_made_themes": {
+        "message": "使用者製作的主題"
+    },
+    "vertical": {
+        "message": "垂直"
+    },
+    "view_less": {
+        "message": "顯示較少"
+    },
+    "view_more": {
+        "message": "顯示更多"
+    },
+    "view_more_count": {
+        "message": "顯示更多（$COUNT$）"
+    },
+    "view_on_github": {
+        "message": "在 GitHub 上檢視"
+    },
+    "widget_order_title": {
+        "message": "小工具順序"
+    },
+    "widget_position": {
+        "message": "位置"
+    },
+    "widget_short_breathing": {
+        "message": "呼吸"
+    },
+    "widget_short_focus": {
+        "message": "專注"
+    },
+    "widget_short_gpa": {
+        "message": "GPA"
+    },
+    "widget_short_notes": {
+        "message": "備註"
+    },
+    "widget_short_quotes": {
+        "message": "名言"
+    },
+    "widgets": {
+        "message": "小工具"
+    }
 }

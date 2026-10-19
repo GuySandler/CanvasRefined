@@ -116,18 +116,20 @@ h2 {margin-top: 20px;font-weight:600}
 #advanced-settings, #custom-font-btn, #customize-dark-btn, #card-colors-btn {width: 100%;}
 .back-btn {width: 120px;height:100%;margin-top:0}
 .big-button {border: none;border-radius: 7px;background: var(--containerbg);color: #fff;font-family: inherit;padding: 12px 10px;font-weight:600}
-.social-buttons {display: flex;gap: 8px;margin-top: 8px;}
+.social-footer {display: flex;flex-direction: column;align-items: center;gap: 6px;margin-top: 16px;padding-top: 14px;border-top: 1px solid #ffffff0f;}
+.social-footer .social-buttons {display: flex;gap: 8px;width: 100%;max-width: 300px;margin-top: 0;}
 .social-buttons a {flex: 1;box-sizing: border-box;}
-.discord-button {display: flex;align-items: center;justify-content: center;gap: 8px;padding: 12px 10px;border: none;border-radius: 7px;background: #5865F2;color: #fff;font-family: inherit;font-size: 14px;font-weight: 600;text-decoration: none;transition: .15s background}
+.discord-button {display: flex;align-items: center;justify-content: center;gap: 7px;padding: 9px 10px;border: none;border-radius: 8px;background: #5865F2;color: #fff;font-family: inherit;font-size: 13px;font-weight: 600;text-decoration: none;transition: .15s background}
 .discord-button:hover {background: #4752c4;cursor: pointer}
 .discord-button:active {filter: brightness(85%)}
-.github-button {display: flex;align-items: center;justify-content: center;gap: 8px;padding: 12px 10px;border: none;border-radius: 7px;background: #30363d;color: #fff;font-family: inherit;font-size: 14px;font-weight: 600;text-decoration: none;transition: .15s background}
+.github-button {display: flex;align-items: center;justify-content: center;gap: 7px;padding: 9px 10px;border: none;border-radius: 8px;background: #30363d;color: #fff;font-family: inherit;font-size: 13px;font-weight: 600;text-decoration: none;transition: .15s background}
 .github-button:hover {background: #21262d;cursor: pointer}
 .github-button:active {filter: brightness(85%)}
 .discord-button svg, .github-button svg {flex-shrink: 0}
-.social-toggle {text-align: center;font-size: 12px;color: #9a9a9a;margin-top: 6px;cursor: pointer;user-select: none;transition: .15s color;text-decoration: none}
-.social-toggle:hover {color: #e2e2e2}
+.social-toggle {text-align: center;font-size: 12px;color: #9a9a9a;cursor: pointer;user-select: none;transition: .15s color;text-decoration: underline;text-underline-offset: 3px;padding: 4px 10px;border-radius: 6px;}
+.social-toggle:hover {color: #e2e2e2;background: #ffffff0a;}
 .social-buttons.hidden {display: none}
+.social-footer:has(.social-buttons.hidden) {padding-top: 8px;border-top-color: transparent;margin-top: 8px;}
 #setSingleColor, #setGradientColor {padding: 8px 20px;margin-top:5px;}
 .tab-header {display: flex;justify-content: space-between;gap:20px;align-items:center}
 .custom-font-flex {display: flex; align-items: center;font-size: 11px;}

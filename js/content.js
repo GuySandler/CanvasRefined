@@ -1,6 +1,54 @@
 const domain = window.location.origin;
 let current_page = window.location.pathname;
 
+// --- i18n override: language toggle from popup ---
+const LANGUAGE_STORAGE_KEY = "selected_locale";
+let overrideMessages = null;
+let languageReady = null;
+async function loadLanguageOverride() {
+    try {
+        const stored = await chrome.storage.local.get(LANGUAGE_STORAGE_KEY);
+        const locale = stored[LANGUAGE_STORAGE_KEY];
+        if (!locale || locale === "auto") { overrideMessages = null; return; }
+        const url = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("fetch failed");
+        overrideMessages = await res.json();
+    } catch (e) {
+        overrideMessages = null;
+    }
+}
+languageReady = loadLanguageOverride();
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes[LANGUAGE_STORAGE_KEY]) {
+        loadLanguageOverride().then(() => {
+            // re-apply to already-injected UI
+            const backBtn = document.getElementById("canvasrefined-assignment-return");
+            if (backBtn) backBtn.textContent = getMsg("back_to_assignment", "Back to Assignment");
+            const gradesBtn = document.getElementById("canvasrefined-assignment-grades");
+            if (gradesBtn) gradesBtn.textContent = getMsg("go_to_grades", "Go to Grades");
+            const logoutBtn = document.getElementById("canvasrefined-profile-logout");
+            if (logoutBtn) logoutBtn.textContent = getMsg("logout", "Logout");
+            // Search and quiz elements are re-created on demand; new injections will use new language
+        });
+    }
+});
+function getMsg(key, fallback) {
+    if (overrideMessages && overrideMessages[key] && overrideMessages[key].message) {
+        return overrideMessages[key].message;
+    }
+    const orig = chrome.i18n._origGetMessage || chrome.i18n.getMessage.bind(chrome.i18n);
+    const m = orig(key);
+    if (m) return m;
+    return fallback !== undefined ? fallback : "";
+}
+// monkey-patch chrome.i18n so all existing chrome.i18n.getMessage calls respect toggle
+if (!chrome.i18n._origGetMessage) {
+    chrome.i18n._origGetMessage = chrome.i18n.getMessage.bind(chrome.i18n);
+    chrome.i18n.getMessage = (key) => getMsg(key) || chrome.i18n._origGetMessage(key) || "";
+}
+
+
 // Canvas' New UI navigates via pushState; without this hook current_page goes stale.
 function setupNavigationListener() {
     const update = () => {
@@ -152,7 +200,7 @@ function addSubmissionPageButton() {
         id: "canvasrefined-assignment-return",
         className: "canvasrefined-custom-btn",
         href: assignmentLink,
-        textContent: "Back to Assignment",
+        textContent: chrome.i18n.getMessage("back_to_assignment") || "Back to Assignment",
         style: "display:inline-flex;align-items:center;justify-content:center;align-self:center;margin-left:auto;margin-right:12px;padding:6px 12px;text-decoration:none;font-weight:700;color:inherit!important;",
     });
     if (gradeSummary && gradeSummary.parentNode === row) {
@@ -175,7 +223,7 @@ function addAssignmentPageButton() {
         id: "canvasrefined-assignment-grades",
         className: "canvasrefined-custom-btn",
         href: link,
-        textContent: "Go to Grades",
+        textContent: chrome.i18n.getMessage("go_to_grades") || "Go to Grades",
         style: "display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;padding:6px 12px;text-decoration:none;font-weight:700;font-size:16px;color:inherit!important;white-space:nowrap;",
     });
 }
@@ -189,7 +237,7 @@ function addProfileLogoutPageButton() {
         id: "canvasrefined-profile-logout",
         className: "canvasrefined-custom-btn",
         href: `${domain}/logout`,
-        textContent: "Logout",
+        textContent: chrome.i18n.getMessage("logout") || "Logout",
         style: "display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;margin:0 0 12px 0;padding:10px 14px;text-decoration:none;font-weight:700;",
     }, true);
 }
@@ -466,9 +514,9 @@ function createNasaInfoOverlay() {
             const meta = metadata[metadataKey];
             if (!meta) return false;
             document.getElementById("nasa-info-title").textContent = meta.title || "";
-            document.getElementById("nasa-info-date").textContent = `Date: ${meta.date}`;
-            document.getElementById("nasa-info-credit").textContent = meta.copyright ? `Credit: ${meta.copyright}` : "";
-            document.getElementById("nasa-info-explanation").textContent = meta.explanation || "No description available.";
+            document.getElementById("nasa-info-date").textContent = (chrome.i18n.getMessage("nasa_date") || "Date: $DATE$").replace("$DATE$", meta.date);
+            document.getElementById("nasa-info-credit").textContent = meta.copyright ? (chrome.i18n.getMessage("nasa_credit") || "Credit: $CREDIT$").replace("$CREDIT$", meta.copyright) : "";
+            document.getElementById("nasa-info-explanation").textContent = meta.explanation || chrome.i18n.getMessage("no_description") || "No description available.";
             return true;
         }
         return false;
@@ -607,7 +655,7 @@ function createReminder(reminder, location) {
     const svg = makeElement("div", container, { "innerHTML": canvas_svg });
     const content = makeElement("a", container, { "className": "canvasrefined-reminder-content", "href": reminder.h, "target": "_blank" });
     const title = makeElement("h2", content, { "className": "canvasrefined-reminder-title", "textContent": reminder.t });
-    const due = makeElement("p", content, { "className": "canvasrefined-reminder-due", "textContent": `Assignment due in ${remaining.time}` });
+    const due = makeElement("p", content, { "className": "canvasrefined-reminder-due", "textContent": (chrome.i18n.getMessage("assignment_due_in") || "Assignment due in $TIME$").replace("$TIME$", remaining.time) });
     const hidebtn = makeElement("btn", wrapper, { "className": "canvasrefined-reminder-hide", "textContent": "x" });
     hidebtn.addEventListener("click", () => {
         hideReminder(reminder.h);
@@ -664,8 +712,8 @@ function showExampleReminder() {
         return;
     }
     location.textContent = "";
-    const example = createReminder({ "d": new Date(), "t": "This is an example reminder", }, location);
-    example.querySelector(".canvasrefined-reminder-due").textContent = "This notification will pop up in other pages to remind you of incomplete assignments that are due in less than 6 hours." /*It will notify again at 2 hours if the 'Remind 2x' option is on."*/;
+    const example = createReminder({ "d": new Date(), "t": chrome.i18n.getMessage("example_reminder_title") || "This is an example reminder", }, location);
+    example.querySelector(".canvasrefined-reminder-due").textContent = chrome.i18n.getMessage("example_reminder_desc") || "This notification will pop up in other pages to remind you of incomplete assignments that are due in less than 6 hours.";
 }
 
 
@@ -769,11 +817,17 @@ function showCanvasPrompt(courses) {
     // modal with a backdrop so the ask can't be missed
     const backdrop = makeElement("div", document.body, { "id": "canvasrefined-domain-prompt-backdrop" });
     const prompt = makeElement("div", backdrop, { "id": "canvasrefined-domain-prompt" });
-    makeElement("h3", prompt, { "textContent": "New Canvas detected" });
+    makeElement("h3", prompt, { "textContent": chrome.i18n.getMessage("new_canvas_detected") || "New Canvas detected" });
     const text = makeElement("p", prompt, {});
-    text.append("Canvas Refined detected a Canvas page at ");
-    makeElement("span", text, { "className": "canvasrefined-domain-host", "textContent": host });
-    text.append(". Add it to your canvas list?");
+    const canvasDesc = (chrome.i18n.getMessage("new_canvas_desc") || "Canvas Refined detected a Canvas page at $HOST$. Add it to your canvas list?").replace("$HOST$", host);
+    const parts = canvasDesc.split(host);
+    if (parts.length === 2) {
+        text.append(parts[0]);
+        makeElement("span", text, { "className": "canvasrefined-domain-host", "textContent": host });
+        text.append(parts[1]);
+    } else {
+        text.append(canvasDesc);
+    }
     const actions = makeElement("div", prompt, { "className": "canvasrefined-domain-prompt-actions" });
     const yes = makeElement("button", actions, { "textContent": chrome.i18n.getMessage("add_to_list") || "Add to list", "className": "canvasrefined-domain-yes" });
     const no = makeElement("button", actions, { "textContent": chrome.i18n.getMessage("no_thanks") || "No thanks", "className": "canvasrefined-domain-no" });
@@ -2316,7 +2370,7 @@ function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent
         wrapper.appendChild(overlay);
     }
     overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
-    overlay.querySelector('.canvasrefined-progress-count').textContent = `${completedAll}/${totalAll} done`;
+    overlay.querySelector('.canvasrefined-progress-count').textContent = (chrome.i18n.getMessage("progress_done") || "$DONE$/$TOTAL$ done").replace("$DONE$", completedAll).replace("$TOTAL$", totalAll);
 
     const stroke = 8;
     const gap = 4;
@@ -2546,7 +2600,7 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
         overlay.style.transform = `translateY(${nudge}px)`;
     }
     overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
-    overlay.querySelector('.canvasrefined-progress-count').textContent = `${completedAll}/${totalAll} done`;
+    overlay.querySelector('.canvasrefined-progress-count').textContent = (chrome.i18n.getMessage("progress_done") || "$DONE$/$TOTAL$ done").replace("$DONE$", completedAll).replace("$TOTAL$", totalAll);
 
     const bowlRadius = Math.max(0, innerRadius - stroke / 2 - 2);
     fitProgressOverlayText(overlay, (hw, hh) => {
@@ -2585,7 +2639,7 @@ function renderProgressLines(wrapper, shown) {
         const labelEl = row.querySelector('.cr-pl-label');
         labelEl.textContent = courseRingLabel(entry.courseId);
         labelEl.style.color = color;
-        row.querySelector('.cr-pl-pct').textContent = `${pct}% (${entry.completed}/${entry.total})`;
+        row.querySelector('.cr-pl-pct').textContent = (chrome.i18n.getMessage("progress_pct") || "$PCT$% ($DONE$/$TOTAL$)").replace("$PCT$", pct).replace("$DONE$", entry.completed).replace("$TOTAL$", entry.total);
         const track = row.children[1];
         track.style.background = `color-mix(in srgb, ${color} 25%, transparent)`;
         const fill = row.querySelector('.cr-pl-fill');
@@ -2622,7 +2676,7 @@ function renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent) 
         head.innerHTML = `<span>Overall</span><span class="cr-ol-pct" style="font-weight:700;"></span>`;
         box.appendChild(head);
     }
-    box.querySelector('.cr-ol-pct').textContent = `${percent}% (${completedAll}/${totalAll})`;
+    box.querySelector('.cr-ol-pct').textContent = (chrome.i18n.getMessage("progress_pct") || "$PCT$% ($DONE$/$TOTAL$)").replace("$PCT$", percent).replace("$DONE$", completedAll).replace("$TOTAL$", totalAll);
     if (getCurrentCourseId() == null) {
         head.style.cursor = betterTodoProgressFilter != null ? 'pointer' : '';
         head.onclick = () => {
@@ -2718,7 +2772,7 @@ function renderProgressRings(container, scopedData) {
         const empty = document.createElement('div');
         empty.className = 'canvasrefined-progress-empty';
         empty.style.cssText = 'color:var(--bctext-0);opacity:.7;font-size:12px;padding:6px 0;text-align:center;';
-        empty.textContent = bounds ? 'No tasks in this timeframe' : 'No tasks yet';
+        empty.textContent = bounds ? (chrome.i18n.getMessage("no_tasks") || 'No tasks in this timeframe') : (chrome.i18n.getMessage("no_tasks_yet") || 'No tasks yet');
         container.appendChild(empty);
         return;
     }
@@ -2774,16 +2828,16 @@ function buildPlannerNotePayload(form) {
     const link = form.querySelector("#better-todo-new-task-link")?.value?.trim() || "";
 
     if (!title) {
-        throw new Error("Task title is required.");
+        throw new Error(getMsg("task_title_required", "Task title is required."));
     }
 
     if (!dateValue || !timeValue) {
-        throw new Error("Please choose both a date and time.");
+        throw new Error(getMsg("task_date_time_required", "Please choose both a date and time."));
     }
 
     const localDateTime = new Date(`${dateValue}T${timeValue}:00`);
     if (Number.isNaN(localDateTime.getTime())) {
-        throw new Error("Invalid task date.");
+        throw new Error(getMsg("task_date_invalid", "Invalid task date."));
     }
 
     return {
@@ -2839,7 +2893,7 @@ async function createCanvasPlannerNote(payload) {
         },
     ];
 
-    let lastError = "Canvas rejected task creation.";
+    let lastError = getMsg("canvas_rejected_create", "Canvas rejected task creation.");
     for (const attempt of attempts) {
         const response = await fetch(domain + "/api/v1/planner_notes", {
             method: "POST",
@@ -2862,7 +2916,7 @@ async function createCanvasPlannerNote(payload) {
         }
     }
 
-    throw new Error(lastError || "Canvas rejected task creation.");
+    throw new Error(lastError || getMsg("canvas_rejected_create", "Canvas rejected task creation."));
 }
 
 /* Custom task links: Canvas planner notes have no link field, so store a
@@ -2917,7 +2971,7 @@ function deleteCustomTaskLink(noteId) {
 }
 
 async function updateCanvasPlannerNote(id, payload) {
-    if (!id) throw new Error("Missing task id.");
+    if (!id) throw new Error(getMsg("missing_task_id", "Missing task id."));
     const csrfToken = CSRFtoken();
     // FLAT params only: nested under planner_note they are silently ignored and the note
     // comes back unchanged. details is always sent (even empty) so it can be cleared.
@@ -2955,7 +3009,7 @@ async function updateCanvasPlannerNote(id, payload) {
         },
     ];
 
-    let lastError = "Canvas rejected task update.";
+    let lastError = getMsg("canvas_rejected_update", "Canvas rejected task update.");
     for (const attempt of attempts) {
         const response = await fetch(`${domain}/api/v1/planner_notes/${id}`, {
             method: "PUT",
@@ -2978,11 +3032,11 @@ async function updateCanvasPlannerNote(id, payload) {
         }
     }
 
-    throw new Error(lastError || "Canvas rejected task update.");
+    throw new Error(lastError || getMsg("canvas_rejected_update", "Canvas rejected task update."));
 }
 
 async function deleteCanvasPlannerNote(id) {
-    if (!id) throw new Error("Missing task id.");
+    if (!id) throw new Error(getMsg("missing_task_id", "Missing task id."));
     const csrfToken = CSRFtoken();
     const response = await fetch(`${domain}/api/v1/planner_notes/${id}`, {
         method: "DELETE",
@@ -2997,7 +3051,7 @@ async function deleteCanvasPlannerNote(id) {
         return true;
     }
 
-    let lastError = "Canvas rejected task deletion.";
+    let lastError = getMsg("canvas_rejected_delete", "Canvas rejected task deletion.");
     try {
         const errData = await response.json();
         if (errData?.errors?.length) lastError = errData.errors.join(" ");
@@ -3043,7 +3097,7 @@ function fillTaskCourseOptions(courseSelect) {
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
 
-    courseSelect.innerHTML = '<option value="">Personal task</option>';
+    courseSelect.innerHTML = '<option value="">' + (chrome.i18n.getMessage("personal_task_label") || chrome.i18n.getMessage("personal_task") || "Personal task") + '</option>';
     courseSelect.options[0].dataset.color = "#c7cdd1";
     entries.forEach(entry => {
         const option = makeElement("option", courseSelect, {
@@ -3077,7 +3131,7 @@ function ensureTodoTaskMenu(location, feedbackElement) {
         const addTaskButton = makeElement("button", actionsRow, {
             id: "better-todo-add-task-btn",
             className: "canvasrefined-custom-btn",
-            textContent: "+ Add Task",
+            textContent: chrome.i18n.getMessage("add_task") || "+ Add Task",
             style: "width:100%;padding:6px 8px;cursor:pointer;",
         });
 
@@ -3088,19 +3142,19 @@ function ensureTodoTaskMenu(location, feedbackElement) {
 
         menu.innerHTML = `
             <div style="display:flex;flex-direction:column;gap:8px;padding:8px;border:1px solid #c7cdd1;border-radius:6px;background:var(--bcbackground-2);position:relative;">
-                <button id="better-todo-add-task-close" type="button" class="canvasrefined-custom-btn" title="Close" style="position:absolute;top:4px;right:6px;padding:0 6px;cursor:pointer;line-height:18px;font-size:14px;color:var(--bctext-1);">\u00d7</button>
-                <input type="text" id="better-todo-new-task-title" class="canvasrefined-custom-input" placeholder="Task title" maxlength="255">
-                <textarea id="better-todo-new-task-details" class="canvasrefined-custom-input" placeholder="Details (optional)" style="min-height:70px;resize:vertical;padding-top:6px;padding-bottom:6px;"></textarea>
+                <button id="better-todo-add-task-close" type="button" class="canvasrefined-custom-btn" title="${chrome.i18n.getMessage("todo_close_title") || "Close"}" style="position:absolute;top:4px;right:6px;padding:0 6px;cursor:pointer;line-height:18px;font-size:14px;color:var(--bctext-1);">\u00d7</button>
+                <input type="text" id="better-todo-new-task-title" class="canvasrefined-custom-input" placeholder="${chrome.i18n.getMessage("todo_task_title") || "Task title"}" maxlength="255">
+                <textarea id="better-todo-new-task-details" class="canvasrefined-custom-input" placeholder="${chrome.i18n.getMessage("todo_task_details") || "Details (optional)"}" style="min-height:70px;resize:vertical;padding-top:6px;padding-bottom:6px;"></textarea>
                 <select id="better-todo-new-task-course" class="canvasrefined-custom-input"></select>
                 <div style="display:flex;gap:6px;">
                     <input type="date" id="better-todo-new-task-date" class="canvasrefined-custom-input">
                     <input type="time" id="better-todo-new-task-time" class="canvasrefined-custom-input">
                 </div>
-                <input type="text" id="better-todo-new-task-link" class="canvasrefined-custom-input" placeholder="Link (optional)" maxlength="2048">
+                <input type="text" id="better-todo-new-task-link" class="canvasrefined-custom-input" placeholder="${chrome.i18n.getMessage("todo_task_link") || "Link (optional)"}" maxlength="2048">
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
                     <span id="better-todo-add-task-status" style="font-size:12px;color:var(--bctext-0);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
                     <div style="display:flex;gap:6px;align-items:center;">
-                        <button id="better-todo-add-task-delete" class="canvasrefined-custom-btn" style="padding:4px 10px;cursor:pointer;display:none;color:#db3754;" type="button" title="Delete this custom task">Delete</button>
+                        <button id="better-todo-add-task-delete" class="canvasrefined-custom-btn" style="padding:4px 10px;cursor:pointer;display:none;color:#db3754;" type="button" title="${chrome.i18n.getMessage("todo_delete_title") || "Delete this custom task"}">${chrome.i18n.getMessage("todo_delete") || "Delete"}</button>
                         <button id="better-todo-add-task-submit" class="canvasrefined-custom-btn" style="padding:4px 10px;cursor:pointer;" type="button">Create</button>
                     </div>
                 </div>
@@ -3139,12 +3193,12 @@ function ensureTodoTaskMenu(location, feedbackElement) {
                 if (editingId) {
                     await updateCanvasPlannerNote(editingId, payload);
                     saveCustomTaskLink(editingId, payload.link);
-                    status.textContent = "Task updated.";
+                    status.textContent = chrome.i18n.getMessage("task_updated") || "Task updated.";
                 } else {
                     const created = await createCanvasPlannerNote(payload);
                     const newId = created?.id;
                     if (newId != null) saveCustomTaskLink(newId, payload.link);
-                    status.textContent = "Task created.";
+                    status.textContent = chrome.i18n.getMessage("task_created") || "Task created.";
                 }
                 status.style.color = "#198754";
                 resetTaskFormToCreate(menu);
@@ -3154,7 +3208,7 @@ function ensureTodoTaskMenu(location, feedbackElement) {
                 clearTodoList();
                 createTodoSections(location);
             } catch (e) {
-                status.textContent = e?.message || "Could not save task.";
+                status.textContent = e?.message || chrome.i18n.getMessage("could_not_save") || "Could not save task.";
                 status.style.color = "#db3754";
             } finally {
                 submitButton.disabled = false;
@@ -3178,7 +3232,7 @@ function ensureTodoTaskMenu(location, feedbackElement) {
         menu.querySelector("#better-todo-add-task-delete").addEventListener("click", async () => {
             const editingId = menu.dataset.editingId || null;
             if (!editingId) return;
-            if (!confirm("Delete this custom task? This cannot be undone.")) return;
+            if (!confirm(chrome.i18n.getMessage("todo_delete_confirm") || "Delete this custom task? This cannot be undone.")) return;
             const status = menu.querySelector("#better-todo-add-task-status");
             const submitButton = menu.querySelector("#better-todo-add-task-submit");
             const deleteButton = menu.querySelector("#better-todo-add-task-delete");
@@ -3194,7 +3248,7 @@ function ensureTodoTaskMenu(location, feedbackElement) {
                 clearTodoList();
                 createTodoSections(location);
             } catch (e) {
-                status.textContent = e?.message || "Could not delete task.";
+                status.textContent = e?.message || chrome.i18n.getMessage("could_not_delete") || "Could not delete task.";
                 status.style.color = "#db3754";
             } finally {
                 submitButton.disabled = false;
@@ -3230,7 +3284,7 @@ function resetTaskFormToCreate(menu) {
     const del = menu.querySelector("#better-todo-add-task-delete");
     if (del) del.style.display = "none";
     const submit = menu.querySelector("#better-todo-add-task-submit");
-    if (submit) submit.textContent = "Create";
+    if (submit) submit.textContent = chrome.i18n.getMessage("create") || "Create";
     delete menu.dataset.editingId;
 }
 
@@ -3261,11 +3315,16 @@ function openTaskForEdit(item) {
     menu.dataset.editingId = noteId != null ? String(noteId) : "";
     const del = menu.querySelector("#better-todo-add-task-delete");
     if (del) del.style.display = "";
-    menu.querySelector("#better-todo-add-task-submit").textContent = "Save";
+    menu.querySelector("#better-todo-add-task-submit").textContent = chrome.i18n.getMessage("save") || "Save";
     const status = menu.querySelector("#better-todo-add-task-status");
     if (status) { status.textContent = ""; status.style.color = ""; }
     menu.classList.add("canvasrefined-custom-open");
     scrollTodoIntoView(menu, true);
+}
+
+function dueGroupLabel(key) {
+    const known = { "New": "group_new", "Seen": "group_seen", "Ungraded": "group_ungraded", "Graded": "group_graded" };
+    return known[key] ? getMsg(known[key], key) : key;
 }
 
 async function createTodoSections(location) {
@@ -3277,9 +3336,9 @@ async function createTodoSections(location) {
 		header.style = "display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bcbackground-1);padding-bottom:-2px;";
 		let today = new Date();
 		today.setHours(0,0,0,0);
-		const todayString = today.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+		const todayString = today.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
         header.innerHTML = `
-                <h2 style="border:none !important;padding: 0">Tasks</h2>
+                <h2 style="border:none !important;padding: 0">${chrome.i18n.getMessage("tasks_header") || "Tasks"}</h2>
                 <h2 style="border:none !important;padding: 0">${todayString}</h2>
             `;
 
@@ -3287,13 +3346,13 @@ async function createTodoSections(location) {
         const timeframeNav = makeElement("div", location, { id: "better-todo-timeframe-nav" });
         timeframeNav.style = "display:none;align-items:center;justify-content:center;width:100%;margin-top:8px;user-select:none;";
         timeframeNav.innerHTML = `
-            <button id="better-todo-timeframe-prev" type="button" title="Previous timeframe" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:50%;background:transparent;cursor:pointer;transition:all .2s ease;">
+            <button id="better-todo-timeframe-prev" type="button" title="${chrome.i18n.getMessage("timeframe_prev") || "Previous timeframe"}" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:50%;background:transparent;cursor:pointer;transition:all .2s ease;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M15 6L9 12L15 18" stroke="var(--bctext-0)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </button>
             <span id="better-todo-timeframe-label" style="font-size:12px;color:var(--bctext-0);white-space:nowrap;"></span>
-            <button id="better-todo-timeframe-next" type="button" title="Look ahead to the next timeframe" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:50%;background:transparent;cursor:pointer;transition:all .2s ease;">
+            <button id="better-todo-timeframe-next" type="button" title="${chrome.i18n.getMessage("timeframe_next") || "Look ahead to the next timeframe"}" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:50%;background:transparent;cursor:pointer;transition:all .2s ease;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M9 6L15 12L9 18" stroke="var(--bctext-0)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
@@ -3456,14 +3515,14 @@ async function createTodoSections(location) {
                 className: "better-todo-dueheader",
             });
             let label = "";
-            if (key == "Later") label = "Due <strong>Later</strong>";
-            if (key == "-1") label = "<strong>Overdue</strong>";
-            else if (key == "0") label = "Due <strong>Today</strong>";
-            else if (key == "1") label = "Due <strong>Tomorrow</strong>";
-            else if (key >= 2 && key < 7) label = "Due <strong>" + key + " days</strong>";
-            else if (key >= 7 && key < 30) label = "Due <strong>" + key/7 + " weeks</strong>";
-            else if (key == "30") label = "Due <strong>1 month</strong>";
-            else label = "<strong>" + key + "</strong>";
+            if (key == "Later") label = getMsg("due_later", "Due <strong>Later</strong>");
+            if (key == "-1") label = getMsg("due_overdue", "<strong>Overdue</strong>");
+            else if (key == "0") label = getMsg("due_today", "Due <strong>Today</strong>");
+            else if (key == "1") label = getMsg("due_tomorrow", "Due <strong>Tomorrow</strong>");
+            else if (key >= 2 && key < 7) label = getMsg("due_days", "Due <strong>$COUNT$ days</strong>").replace("$COUNT$", key);
+            else if (key >= 7 && key < 30) label = getMsg("due_weeks", "Due <strong>$COUNT$ weeks</strong>").replace("$COUNT$", key / 7);
+            else if (key == "30") label = getMsg("due_one_month", "Due <strong>1 month</strong>");
+            else label = "<strong>" + dueGroupLabel(key) + "</strong>";
             makeElement("div", wrapper, {
                 innerHTML: "<span>" + label + "</span>",
                 style: "display:flex;flex-direction:column;gap:10px;font-size:12px;color:var(--bctext-0);"
@@ -3662,11 +3721,11 @@ async function getTodoPreviewText(item) {
     const key = type + ":" + id;
     if (todoPreviewCache.has(key)) return todoPreviewCache.get(key);
     // Fake items have no Canvas page behind them; never hit the API for them.
-    if (item.anonFake === true) return "No details given";
+    if (item.anonFake === true) return chrome.i18n.getMessage("no_details") || "No details given";
     // Custom tasks already carry their description in item.plannable.details.
     if (type === "planner_note" || (item.planner_override && item.planner_override.custom === true)) {
         const raw = item.plannable && item.plannable.details ? item.plannable.details : "";
-        const text = stripHtmlPreview(raw) || "No details given";
+        const text = stripHtmlPreview(raw) || chrome.i18n.getMessage("no_details") || "No details given";
         todoPreviewCache.set(key, text);
         return text;
     }
@@ -3681,18 +3740,18 @@ async function getTodoPreviewText(item) {
         field = "message";
     }
     if (!url) {
-        const text = "No preview available";
+        const text = getMsg("preview_unavailable", "No preview available");
         todoPreviewCache.set(key, text);
         return text;
     }
     try {
         const data = await getData(url);
         const raw = data && data[field] ? data[field] : "";
-        const text = stripHtmlPreview(raw) || "No details given";
+        const text = stripHtmlPreview(raw) || chrome.i18n.getMessage("no_details") || "No details given";
         todoPreviewCache.set(key, text);
         return text;
     } catch (e) {
-        return "Couldn't load preview";
+        return chrome.i18n.getMessage("could_not_load_preview") || "Couldn't load preview";
     }
 }
 
@@ -3708,14 +3767,14 @@ async function showTodoPreview(anchor, item) {
     const title = el.querySelector(".canvasrefined-preview-title");
     const text = el.querySelector(".canvasrefined-preview-text");
     title.textContent = anonTitleForItem(item);
-    text.textContent = "Loading…";
+    text.textContent = chrome.i18n.getMessage("loading") || "Loading…";
     el.style.display = "block";
     positionTodoPreview(el, anchor);
     const content = await getTodoPreviewText(item);
     if (token !== todoPreviewToken) return; // a newer hover (or hide) superseded this one
     if (el.style.display !== "block") return; // user already moved away
     // "Hide personal details": don't reveal real assignment descriptions.
-    text.textContent = options.hide_personal_details === true ? "Preview hidden while personal details are hidden." : content;
+    text.textContent = options.hide_personal_details === true ? (chrome.i18n.getMessage("preview_hidden") || "Preview hidden while personal details are hidden.") : content;
     positionTodoPreview(el, anchor); // reposition now that the height is known
 }
 
@@ -3746,7 +3805,7 @@ function formatTodoScoreNumber(n) {
     return String(Math.round(n * 100) / 100);
 }
 
-const TODO_GRADED_BADGE_HTML = `<svg class="better-todo-graded" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:10px;height:10px;margin-left:5px;display:inline-block;vertical-align:-1px;" title="Graded"><path d="M20 6L9 17l-5-5" stroke="#28a745" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function todoGradedBadgeHtml() { return `<svg class="better-todo-graded" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:10px;height:10px;margin-left:5px;display:inline-block;vertical-align:-1px;" title="${getMsg("todo_graded", "Graded")}"><path d="M20 6L9 17l-5-5" stroke="#28a745" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 
 function todoScoreBadgeHtml(item) {
     if (item.plannable_type == "planner_note" || item.planner_override?.custom === true) return "";
@@ -3760,10 +3819,10 @@ function todoScoreBadgeHtml(item) {
     let text;
     // "Hide personal details": never reveal the real earned score.
     const shownScore = options.hide_personal_details === true ? null : cached?.score;
-    if (cached?.excused) text = "Excused";
+    if (cached?.excused) text = chrome.i18n.getMessage("excused") || "Excused";
     else text = `${shownScore != null ? formatTodoScoreNumber(shownScore) : "–"}/${pts} pts`;
     const attrs = `data-todo-course="${item.course_id ?? ""}" data-todo-plannable="${item.plannable_id}" data-todo-points="${pts}"`;
-    return `<span class="better-todo-score" ${attrs} style="margin-left:6px;opacity:.85;">${text}</span>${graded ? TODO_GRADED_BADGE_HTML : ""}`;
+    return `<span class="better-todo-score" ${attrs} style="margin-left:6px;opacity:.85;">${text}</span>${graded ? todoGradedBadgeHtml() : ""}`;
 }
 
 // Patch score badges in place (a re-render would reset "View More"); the token drops
@@ -3816,10 +3875,10 @@ async function loadTodoScores(items) {
         if (!cached) return;
         // "Hide personal details": never reveal the real earned score.
         const shownScore = options.hide_personal_details === true ? null : cached.score;
-        if (cached.excused) el.textContent = "Excused";
+        if (cached.excused) el.textContent = chrome.i18n.getMessage("excused") || "Excused";
         else el.textContent = `${shownScore != null ? formatTodoScoreNumber(shownScore) : "–"}/${el.dataset.todoPoints} pts`;
         if (cached.score != null && !el.nextElementSibling?.classList.contains("better-todo-graded")) {
-            el.insertAdjacentHTML("afterend", TODO_GRADED_BADGE_HTML);
+            el.insertAdjacentHTML("afterend", todoGradedBadgeHtml());
         }
     });
 }
@@ -3911,7 +3970,7 @@ function populateAssignments(iscompleted = false) {
         const wasSubmitted = item.submissions?.submitted === true;
         const taskHref = isCustomTask ? customTaskHref(item) : (item.anonFake === true ? "#" : domain + item.html_url);
         const editButtonSvg = isCustomTask
-            ? `<svg class="better-todo-assignment-edit" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:18px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="Edit this custom task"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
+            ? `<svg class="better-todo-assignment-edit" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:18px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="${getMsg("edit_custom_task", "Edit this custom task")}"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
             : "";
         const iconSize = isCustomTask ? 26 : 20;
         // Optical centering: glyphs hug their viewBox's left edge; quiz needs less of a nudge.
@@ -3943,7 +4002,7 @@ function populateAssignments(iscompleted = false) {
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}${scoreBadge}</span>
 				</div>
 				${editButtonSvg}
-				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'"${(iscompleted && wasSubmitted) ? " title=\"Submitted to Canvas — clicking sends it back to Tasks (locally)\"" : ""}>
+				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'"${(iscompleted && wasSubmitted) ? ` title="${getMsg("submitted_return_title", "Submitted to Canvas — clicking sends it back to Tasks (locally)")}"` : ""}>
 					<g id="SVGRepo_bgCarrier" stroke-width="0"></g>
 					<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
 					<g id="SVGRepo_iconCarrier"> <g id="Interface / Checkbox_Check">
@@ -3980,7 +4039,7 @@ function populateAssignments(iscompleted = false) {
 		let isExpanded = false;
 
 		let seeMoreButton = makeElement("button", document.getElementById("better-todo-main"), {
-			textContent: `View More (${assignmentCount - maxElements})`,
+			textContent: (chrome.i18n.getMessage("view_more_count") || "View More ($COUNT$)").replace("$COUNT$", assignmentCount - maxElements),
 			className: "canvasrefined-custom-btn",
 			id: "better-todo-see-more",
 			style: "width:100%;margin-top:15px;cursor:pointer;"
@@ -3989,11 +4048,11 @@ function populateAssignments(iscompleted = false) {
 			if (!isExpanded) {
 				document.querySelectorAll(".better-todo-hidden-assignment").forEach(element => element.style.display = "block");
 				document.querySelectorAll(".better-todo-hidden-wrapper").forEach(element => element.style.display = "block");
-				seeMoreButton.textContent = "View Less";
+				seeMoreButton.textContent = chrome.i18n.getMessage("view_less") || "View Less";
 			} else {
 				document.querySelectorAll(".better-todo-hidden-assignment").forEach(element => element.style.display = "none");
 				document.querySelectorAll(".better-todo-hidden-wrapper").forEach(element => element.style.display = "none");
-				seeMoreButton.textContent = `View More (${assignmentCount - maxElements})`;
+				seeMoreButton.textContent = (chrome.i18n.getMessage("view_more_count") || "View More ($COUNT$)").replace("$COUNT$", assignmentCount - maxElements);
 			}
 			isExpanded = !isExpanded;
 		})
@@ -4050,7 +4109,7 @@ function populateAnnouncements() {
 					<a href="${domain + item.html_url}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${anonTitleForItem(item)}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
-				<svg class="better-todo-announcement-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="Mark as seen">
+				<svg class="better-todo-announcement-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="${getMsg("mark_as_seen", "Mark as seen")}">
 					<g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
 					<g id="SVGRepo_iconCarrier"> <g id="Interface / Checkbox_Check">
 						<path id="Vector" d="M8 12L11 15L16 9M4 16.8002V7.2002C4 6.08009 4 5.51962 4.21799 5.0918C4.40973 4.71547 4.71547 4.40973 5.0918 4.21799C5.51962 4 6.08009 4 7.2002 4H16.8002C17.9203 4 18.4796 4 18.9074 4.21799C19.2837 4.40973 19.5905 4.71547 19.7822 5.0918C20 5.5192 20 6.07899 20 7.19691V16.8036C20 17.9215 20 18.4805 19.7822 18.9079C19.5905 19.2842 19.2837 19.5905 18.9074 19.7822C19.48 20 17.921 20 16.8031 20H7.19691C6.07899 20 5.5192 20 5.0918 19.7822C4.71547 19.5905 4.40973 19.2842 4.21799 18.9079C4 18.4801 4 17.9203 4 16.8002Z" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -4922,7 +4981,7 @@ function markAs(item, element, makeComplete, opts = {}) {
 }
 
 function createTodoViewMore(location, type) {
-    let viewMoreButton = makeElement("button", location, { "className": "canvasrefined-custom-btn canvasrefined-viewmore-btn", "textContent": "View More" });
+    let viewMoreButton = makeElement("button", location, { "className": "canvasrefined-custom-btn canvasrefined-viewmore-btn", "textContent": chrome.i18n.getMessage("view_more") || "View More" });
     const showMoreCount = 3;
     viewMoreButton.addEventListener("click", function (e) {
         if (type === "announcement") {
@@ -5521,13 +5580,13 @@ async function loadBetterTodo() {
                                     previewTitle.textContent = item.plannable.title;
                                     // Fake todo items have no Canvas page behind them.
                                     if (item.anonFake === true) {
-                                        previewText.textContent = "No details given";
+                                        previewText.textContent = chrome.i18n.getMessage("no_details") || "No details given";
                                         preview.style.display = "block";
                                         return;
                                     }
                                     if (customItem) {
                                         const details = item.plannable && item.plannable.details ? item.plannable.details : "";
-                                        previewText.textContent = details === "" ? "No details given" : details.replace(/<\/?[^>]+(>|$)/g, " ");
+                                        previewText.textContent = details === "" ? (chrome.i18n.getMessage("no_details") || "No details given") : details.replace(/<\/?[^>]+(>|$)/g, " ");
                                     } else {
                                         console.log(item);
                                         let found = false;
@@ -5538,7 +5597,7 @@ async function loadBetterTodo() {
                                                     found = true;
                                                     if (previewText.textContent === "") {
                                                         let description = item.plannable_type === "announcement" ? announcements[i].message : announcements[i].description;
-                                                        previewText.textContent = description === "" ? "No details given" : description.replace(/<\/?[^>]+(>|$)/g, " ");
+                                                        previewText.textContent = description === "" ? (chrome.i18n.getMessage("no_details") || "No details given") : description.replace(/<\/?[^>]+(>|$)/g, " ");
                                                     }
                                                     break;
                                                 }
@@ -5556,7 +5615,7 @@ async function loadBetterTodo() {
                                             }
                                         }
                                         if (found === false) {
-                                            previewText.textContent = "Couldn't load preview";
+                                            previewText.textContent = chrome.i18n.getMessage("could_not_load_preview") || "Couldn't load preview";
                                         }
                                     }
                                     preview.style.display = "block";
@@ -5585,18 +5644,18 @@ async function loadBetterTodo() {
                         }, 100);
                     });
 
-                    let removeBtn = makeElement("div", actions, { "className": "canvasrefined-todo-action", "textContent": "Remove" });
+                    let removeBtn = makeElement("div", actions, { "className": "canvasrefined-todo-action", "textContent": chrome.i18n.getMessage("todo_remove") || "Remove" });
                     removeBtn.innerHTML += x_svg;
                     const dueAt = new Date(item.plannable_date).getTime();
 
-                    let crossOffBtn = makeElement("div", actions, { "className": "canvasrefined-todo-action", "textContent": "Cross off" });
+                    let crossOffBtn = makeElement("div", actions, { "className": "canvasrefined-todo-action", "textContent": chrome.i18n.getMessage("todo_cross_off") || "Cross off" });
                     crossOffBtn.innerHTML += check_svg;
                     crossOffBtn.addEventListener("click", () => {
                         setAssignmentState(item.plannable_id, { "crs": listItemContainer.querySelector(".canvasrefined-todo-item").style.textDecoration === "line-through" ? false : true, "expire": dueAt });
                     });
-                    let label = makeElement("span", actions, { "className": "canvasrefined-todo-action-tag", "textContent": "Label:" });
+                    let label = makeElement("span", actions, { "className": "canvasrefined-todo-action-tag", "textContent": chrome.i18n.getMessage("todo_label") || "Label:" });
                     label.innerHTML += tag_svg;
-                    let labelInput = makeElement("input", actions, { "className": "canvasrefined-todo-input", "type": "text", "placeholder": "Label", "value": itemState && itemState["lbl"] ? itemState["lbl"] : "" });
+                    let labelInput = makeElement("input", actions, { "className": "canvasrefined-todo-input", "type": "text", "placeholder": chrome.i18n.getMessage("todo_label") || "Label", "value": itemState && itemState["lbl"] ? itemState["lbl"] : "" });
                     labelInput.addEventListener("change", (e) => {
                         setAssignmentState(item.plannable_id, { "lbl": e.target.value, "expire": dueAt });
                     });
@@ -5641,7 +5700,7 @@ async function loadBetterTodo() {
                     }
                     if (i !== assignmentsToInsert.length) createTodoViewMore(todoAssignments, "assignment");
                 } else {
-                    makeElement("p", todoAssignments, { "className": "canvasrefined-none-due", "textContent": "None" });
+                    makeElement("p", todoAssignments, { "className": "canvasrefined-none-due", "textContent": chrome.i18n.getMessage("todo_none") || "None" });
                 }
 
                 todoAnnouncements.textContent = "";
@@ -5652,7 +5711,7 @@ async function loadBetterTodo() {
                     }
                     if (i !== -1) createTodoViewMore(todoAnnouncements, "announcement");
                 } else {
-                    makeElement("p", todoAnnouncements, { "className": "canvasrefined-none-due", "textContent": "None" });
+                    makeElement("p", todoAnnouncements, { "className": "canvasrefined-none-due", "textContent": chrome.i18n.getMessage("todo_none") || "None" });
                 }
 
                 cleanCustomAssignments();
@@ -6623,7 +6682,7 @@ function loadCardAssignments() {
 
                 if (count === 0) {
                     let assignmentContainer = makeElement("div", cardContainer, { "className": "canvasrefined-assignment-container" });
-                    let assignmentDivLink = makeElement("a", assignmentContainer, { "className": "canvasrefined-assignment-link", "textContent": "None" });
+                    let assignmentDivLink = makeElement("a", assignmentContainer, { "className": "canvasrefined-assignment-link", "textContent": chrome.i18n.getMessage("card_none") || chrome.i18n.getMessage("todo_none") || "None" });
                 }
             });
             requestAnimationFrame(equalizeCardHeights);
@@ -6902,14 +6961,14 @@ function createGPACalcCourse(location, course) {
 
     if (course.id !== "cumulative") {
         let weightSelections = makeElement("form", courseContainer, { "className": "canvasrefined-course-weights" });
-        weightSelections.innerHTML = '<select name="weight-selection" class="canvasrefined-course-weight"><option value="dnc">Do not count</option><option value="regular">Regular/College</option><option value="honors">Honors</option><option value="ap">AP/IB</option></select>';
+        weightSelections.innerHTML = '<select name="weight-selection" class="canvasrefined-course-weight"><option value="dnc">' + (chrome.i18n.getMessage("gpa_weight_dnc") || "Do not count") + '</option><option value="regular">' + (chrome.i18n.getMessage("gpa_weight_regular") || "Regular/College") + '</option><option value="honors">' + (chrome.i18n.getMessage("gpa_weight_honors") || "Honors") + '</option><option value="ap">' + (chrome.i18n.getMessage("gpa_weight_ap") || "AP/IB") + '</option></select>';
         let weightChanger = weightSelections.querySelector(".canvasrefined-course-weight");
         // Only courses with a real (or saved) grade count; a fake must not revive blanks.
         weightChanger.value = (courseGrade || customs["gr"] !== null) ? customs.weight : "dnc";   
         weightChanger.addEventListener('change', () => changeGPASettings(course.id, { "weight": weightSelections.querySelector(".canvasrefined-course-weight").value }));
 
         let useCustomGr = makeElement("input", courseContainer, { "className": "canvasrefined-course-customgr", "type": "checkbox", "checked": customs.gr !== null ? true : false });
-        let useCustomGrLabel = makeElement("span", courseContainer, { "className": "canvasrefined-course-customgr-label", "textContent": "Save custom grade" });
+        let useCustomGrLabel = makeElement("span", courseContainer, { "className": "canvasrefined-course-customgr-label", "textContent": chrome.i18n.getMessage("gpa_save_custom") || "Save custom grade" });
         useCustomGr.addEventListener("input", () => {
             if (options["custom_cards"][course.id]) {
                 if (options["custom_cards"][course.id]["gr"] !== undefined && options["custom_cards"][course.id]["gr"] !== null) {
@@ -7220,7 +7279,7 @@ function renderGpaBoundsEditor(host) {
             row.innerHTML =
                 '<span class="cr-gpa-chip">' + key + '</span>' +
                 '<span class="cr-gpa-field"><input class="cr-gpa-input" data-field="cutoff" type="text" inputmode="decimal"><span class="cr-gpa-suffix">%</span></span>' +
-                '<span class="cr-gpa-field"><input class="cr-gpa-input" data-field="gpa" type="text" inputmode="decimal"><span class="cr-gpa-suffix">pts</span></span>';
+                '<span class="cr-gpa-field"><input class="cr-gpa-input" data-field="gpa" type="text" inputmode="decimal"><span class="cr-gpa-suffix">' + getMsg("gpa_pts_abbr", "pts") + '</span></span>';
             const [cutoff, gpa] = row.querySelectorAll("input");
             cutoff.value = bounds[key].cutoff;
             gpa.value = bounds[key].gpa;
@@ -7261,36 +7320,36 @@ function openGpaModal(dashboardContainer, container, container2) {
     const modal = document.createElement("div");
     modal.id = "canvasrefined-gpa-modal";
     modal.innerHTML = `
-        <div class="cr-gpa-modal" role="dialog" aria-modal="true" aria-label="GPA Calculator">
+        <div class="cr-gpa-modal" role="dialog" aria-modal="true" aria-label="${getMsg("gpa_calculator_title", "GPA Calculator")}">
             <header class="cr-gpa-head">
                 <div class="cr-gpa-head-titles">
-                    <span class="cr-gpa-title">GPA Calculator</span>
-                    <span class="cr-gpa-subtitle">Changes save automatically</span>
+                    <span class="cr-gpa-title">${getMsg("gpa_calculator_title", "GPA Calculator")}</span>
+                    <span class="cr-gpa-subtitle">${getMsg("gpa_autosave", "Changes save automatically")}</span>
                 </div>
                 <div class="cr-gpa-results">
-                    <div class="cr-gpa-result" data-gpa-mirror="unweighted"><span class="cr-gpa-result-value">--</span><span class="cr-gpa-result-label">Current</span></div>
-                    <div class="cr-gpa-result" data-gpa-mirror="weighted"><span class="cr-gpa-result-value">--</span><span class="cr-gpa-result-label">Weighted</span></div>
-                    <div class="cr-gpa-result" data-gpa-mirror="cumulative"><span class="cr-gpa-result-value">--</span><span class="cr-gpa-result-label">Cumulative</span></div>
+                    <div class="cr-gpa-result" data-gpa-mirror="unweighted"><span class="cr-gpa-result-value">--</span><span class="cr-gpa-result-label">${getMsg("gpa_current", "Current")}</span></div>
+                    <div class="cr-gpa-result" data-gpa-mirror="weighted"><span class="cr-gpa-result-value">--</span><span class="cr-gpa-result-label">${getMsg("gpa_weighted", "Weighted")}</span></div>
+                    <div class="cr-gpa-result" data-gpa-mirror="cumulative"><span class="cr-gpa-result-value">--</span><span class="cr-gpa-result-label">${getMsg("gpa_cumulative", "Cumulative")}</span></div>
                 </div>
-                <button class="cr-gpa-close" type="button" aria-label="Close">
+                <button class="cr-gpa-close" type="button" aria-label="${getMsg("close", "Close")}">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 </button>
             </header>
             <div class="cr-gpa-body">
                 <section class="cr-gpa-pane cr-gpa-pane-courses">
-                    <div class="cr-gpa-pane-head">Courses</div>
-                    <div class="cr-gpa-colhead" aria-hidden="true"><span></span><span>Course</span><span>Grade</span><span>Credits</span><span>Course type</span><span class="cr-gpa-colhead-custom">Custom grade</span></div>
+                    <div class="cr-gpa-pane-head">${getMsg("gpa_courses", "Courses")}</div>
+                    <div class="cr-gpa-colhead" aria-hidden="true"><span></span><span>${getMsg("gpa_col_course", "Course")}</span><span>${getMsg("gpa_col_grade", "Grade")}</span><span>${getMsg("gpa_col_credits", "Credits")}</span><span>${getMsg("gpa_col_course_type", "Course type")}</span><span class="cr-gpa-colhead-custom">${getMsg("gpa_col_custom_grade", "Custom grade")}</span></div>
                     <div class="cr-gpa-courses-host"></div>
                 </section>
                 <aside class="cr-gpa-pane cr-gpa-pane-scale">
-                    <div class="cr-gpa-pane-head">Grade scale</div>
+                    <div class="cr-gpa-pane-head">${getMsg("gpa_grade_scale", "Grade scale")}</div>
                     <div class="cr-gpa-seg">
-                        <button class="cr-gpa-preset" data-preset="plusminus" type="button">+/- Scale</button>
-                        <button class="cr-gpa-preset" data-preset="letter" type="button">Letter only</button>
+                        <button class="cr-gpa-preset" data-preset="plusminus" type="button">${getMsg("gpa_scale_plusminus", "+/- Scale")}</button>
+                        <button class="cr-gpa-preset" data-preset="letter" type="button">${getMsg("gpa_scale_letter", "Letter only")}</button>
                     </div>
-                    <div class="cr-gpa-scale-head" aria-hidden="true"><span></span><span>Min %</span><span>GPA</span></div>
+                    <div class="cr-gpa-scale-head" aria-hidden="true"><span></span><span>${getMsg("gpa_min_pct", "Min %")}</span><span>GPA</span></div>
                     <div class="cr-gpa-modal-bounds"></div>
-                    <p class="cr-gpa-note">A percentage earns the GPA of the first row whose Min % is at or below it. If your school doesn't use +/- grades, set the Min % of the +/- rows to 101 to take them out of the math.</p>
+                    <p class="cr-gpa-note">${getMsg("gpa_scale_note", "A percentage earns the GPA of the first row whose Min % is at or below it. If your school doesn't use +/- grades, set the Min % of the +/- rows to 101 to take them out of the math.")}</p>
                 </aside>
             </div>
         </div>`;
@@ -7361,10 +7420,10 @@ function setupGPACalc() {
 
         if (!alreadyRendered) {
             // Render the shell now (with "--") and fill the numbers once grades resolve.
-            container2.innerHTML = `<h3 class="canvasrefined-gpa-header">GPA</h3><div><div><p id="canvasrefined-gpa-unweighted">--</p><p>Current</p></div><div style="display:${options["gpa_calc_weighted"] ? "block" : "none"}"><p id="canvasrefined-gpa-weighted">--</p><p>Weighted</p></div><div style="display:${options["gpa_calc_cumulative"] ? "block" : "none"}"><p id="canvasrefined-gpa-cumulative">--</p><p>Cumulative</p></div></div>`;
-            let editBtn = makeElement("button", container2, { "className": "canvasrefined-gpa-edit-btn", "textContent": "Edit Calculator" });
+            container2.innerHTML = `<h3 class="canvasrefined-gpa-header">${getMsg("gpa_header", "GPA")}</h3><div><div><p id="canvasrefined-gpa-unweighted">--</p><p>${getMsg("gpa_current", "Current")}</p></div><div style="display:${options["gpa_calc_weighted"] ? "block" : "none"}"><p id="canvasrefined-gpa-weighted">--</p><p>${getMsg("gpa_weighted", "Weighted")}</p></div><div style="display:${options["gpa_calc_cumulative"] ? "block" : "none"}"><p id="canvasrefined-gpa-cumulative">--</p><p>${getMsg("gpa_cumulative", "Cumulative")}</p></div></div>`;
+            let editBtn = makeElement("button", container2, { "className": "canvasrefined-gpa-edit-btn", "textContent": chrome.i18n.getMessage("gpa_edit_calculator") || "Edit Calculator" });
 
-            container.innerHTML = '<h3 class="canvasrefined-gpa-header">GPA Calculator</h3><div class="canvasrefined-gpa-courses-container"><div class="canvasrefined-gpa-courses"></div></div>';
+            container.innerHTML = '<h3 class="canvasrefined-gpa-header">' + (chrome.i18n.getMessage("gpa_calculator_title") || chrome.i18n.getMessage("gpa_calculator") || "GPA Calculator") + '</h3><div class="canvasrefined-gpa-courses-container"><div class="canvasrefined-gpa-courses"></div></div>';
 
             editBtn.addEventListener("click", () => openGpaModal(dashboardContainer, container, container2));
 
@@ -7597,30 +7656,30 @@ function toggleDashboardNoteTask(editor, taskIndex) {
     }
 }
 
-const DASHBOARD_NOTES_HTML = `
-    <div class="canvasrefined-notes-toolbar" role="toolbar" aria-label="Format notes">
-        <button type="button" class="cr-fmt" data-action="bold" title="Bold (Ctrl/Cmd+B)"><strong>B</strong></button>
-        <button type="button" class="cr-fmt" data-action="italic" title="Italic (Ctrl/Cmd+I)"><em>I</em></button>
-        <button type="button" class="cr-fmt" data-action="strike" title="Strikethrough"><s>S</s></button>
-        <button type="button" class="cr-fmt" data-action="code" title="Inline code"><code>&lt;/&gt;</code></button>
+function dashboardNotesHtml() { return `
+    <div class="canvasrefined-notes-toolbar" role="toolbar" aria-label="${getMsg("notes_format", "Format notes")}">
+        <button type="button" class="cr-fmt" data-action="bold" title="${getMsg("notes_bold", "Bold (Ctrl/Cmd+B)")}"><strong>B</strong></button>
+        <button type="button" class="cr-fmt" data-action="italic" title="${getMsg("notes_italic", "Italic (Ctrl/Cmd+I)")}"><em>I</em></button>
+        <button type="button" class="cr-fmt" data-action="strike" title="${getMsg("notes_strike", "Strikethrough")}"><s>S</s></button>
+        <button type="button" class="cr-fmt" data-action="code" title="${getMsg("notes_inline_code", "Inline code")}"><code>&lt;/&gt;</code></button>
         <span class="cr-fmt-sep"></span>
-        <button type="button" class="cr-fmt" data-action="h1" title="Heading 1">H1</button>
-        <button type="button" class="cr-fmt" data-action="h2" title="Heading 2">H2</button>
+        <button type="button" class="cr-fmt" data-action="h1" title="${getMsg("notes_h1", "Heading 1")}">H1</button>
+        <button type="button" class="cr-fmt" data-action="h2" title="${getMsg("notes_h2", "Heading 2")}">H2</button>
         <span class="cr-fmt-sep"></span>
-        <button type="button" class="cr-fmt" data-action="list" title="Bullet list">&bull;</button>
-        <button type="button" class="cr-fmt" data-action="numbered" title="Numbered list">1.</button>
-        <button type="button" class="cr-fmt" data-action="task" title="Task list">&#9744;</button>
-        <button type="button" class="cr-fmt" data-action="quote" title="Quote">&ldquo;</button>
+        <button type="button" class="cr-fmt" data-action="list" title="${getMsg("notes_bullet_list", "Bullet list")}">&bull;</button>
+        <button type="button" class="cr-fmt" data-action="numbered" title="${getMsg("notes_numbered_list", "Numbered list")}">1.</button>
+        <button type="button" class="cr-fmt" data-action="task" title="${getMsg("notes_task_list", "Task list")}">&#9744;</button>
+        <button type="button" class="cr-fmt" data-action="quote" title="${getMsg("notes_quote", "Quote")}">&ldquo;</button>
         <span class="cr-fmt-sep"></span>
-        <button type="button" class="cr-fmt" data-action="link" title="Insert link">Link</button>
-        <button type="button" class="cr-fmt" data-action="hr" title="Horizontal rule">&mdash;</button>
-        <button type="button" class="cr-fmt" data-action="codeblock" title="Code block">&#96;&#96;&#96;</button>
+        <button type="button" class="cr-fmt" data-action="link" title="${getMsg("notes_link", "Insert link")}">Link</button>
+        <button type="button" class="cr-fmt" data-action="hr" title="${getMsg("notes_hr", "Horizontal rule")}">&mdash;</button>
+        <button type="button" class="cr-fmt" data-action="codeblock" title="${getMsg("notes_codeblock", "Code block")}">&#96;&#96;&#96;</button>
     </div>
     <div class="canvasrefined-notes-surface">
-        <div class="canvasrefined-notes-rendered" tabindex="0" aria-label="Dashboard notes — click to edit" title="Click to edit"></div>
-        <textarea class="canvasrefined-notes-editor" placeholder="Type away!" spellcheck="false"></textarea>
+        <div class="canvasrefined-notes-rendered" tabindex="0" aria-label="${chrome.i18n.getMessage("todo_click_to_edit") || "Dashboard notes — click to edit"}" title="${chrome.i18n.getMessage("todo_click_to_edit") || "Click to edit"}"></div>
+        <textarea class="canvasrefined-notes-editor" placeholder="${chrome.i18n.getMessage("todo_type_away") || "Type away!"}" spellcheck="false"></textarea>
     </div>
-`;
+`; }
 
 function wireDashboardNotes(notes) {
     const editor = notes.querySelector(".canvasrefined-notes-editor");
@@ -7721,7 +7780,7 @@ function loadDashboardNotes() {
         if (!notes) {
             notes = document.createElement("div");
             notes.classList.add("canvasrefined-dashboard-notes");
-            notes.innerHTML = DASHBOARD_NOTES_HTML;
+            notes.innerHTML = dashboardNotesHtml();
             wireDashboardNotes(notes);
         } else {
             notes.style.display = "";
@@ -7852,11 +7911,11 @@ function crFormatDuration(sec) {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const r = s % 60;
-    if (h && m) return h + "h " + m + "m";
-    if (h) return h + "h" + (r ? " " + r + "s" : "");
-    if (m && r) return m + "m " + r + "s";
-    if (m) return m + " min";
-    return r + "s";
+    if (h && m) return h + getMsg("timer_unit_h", "h") + " " + m + getMsg("timer_unit_m", "m");
+    if (h) return h + getMsg("timer_unit_h", "h") + (r ? " " + r + getMsg("timer_unit_s", "s") : "");
+    if (m && r) return m + getMsg("timer_unit_m", "m") + " " + r + getMsg("timer_unit_s", "s");
+    if (m) return m + " " + getMsg("timer_unit_min", "min");
+    return r + getMsg("timer_unit_s", "s");
 }
 function crTimerCancel(st) {
     if (st && st.raf) { cancelAnimationFrame(st.raf); st.raf = null; }
@@ -7870,7 +7929,7 @@ function crTimerRender(id, el) {
     }
     const start = el.querySelector(".cr-timer-start");
     if (start) {
-        const label = st.running ? "Pause" : "Start";
+        const label = st.running ? getMsg("timer_pause", "Pause") : getMsg("timer_start", "Start");
         if (start.textContent !== label) start.textContent = label;
     }
     el.classList.toggle("is-running", st.running);
@@ -8051,8 +8110,8 @@ function focusTimerCfg() {
     return { presets: crTimerReadSlots("focus_timer", FOCUS_TIMER_DEFAULT_PRESETS) };
 }
 
-const FOCUS_TIMER_HTML = `
-    <div class="cr-widget-head"><span class="cr-widget-title">Focus Timer</span></div>
+function focusTimerHtml() { return `
+    <div class="cr-widget-head"><span class="cr-widget-title">${getMsg("focus_timer", "Focus Timer")}</span></div>
     <div class="cr-time-box cr-focus-display">
         <div class="cr-time-fill cr-timer-progress-bar"></div>
         <div class="cr-timer-time cr-timer-display" aria-live="polite">25:00</div>
@@ -8061,23 +8120,23 @@ const FOCUS_TIMER_HTML = `
         <button type="button" class="cr-timer-preset" data-slot="1">15 min</button>
         <button type="button" class="cr-timer-preset" data-slot="2">25 min</button>
         <button type="button" class="cr-timer-preset" data-slot="3">45 min</button>
-        <button type="button" class="cr-timer-preset cr-timer-custom">Custom</button>
+        <button type="button" class="cr-timer-preset cr-timer-custom">${getMsg("timer_custom", "Custom")}</button>
     </div>
     <div class="cr-timer-custom-row" hidden>
         <div class="cr-time-input">
-            <input type="text" class="cr-tf cr-tf-h" inputmode="numeric" maxlength="2" value="00" aria-label="Hours">
+            <input type="text" class="cr-tf cr-tf-h" inputmode="numeric" maxlength="2" value="00" aria-label="${getMsg("timer_hours", "Hours")}">
             <span class="cr-tf-colon" aria-hidden="true">:</span>
-            <input type="text" class="cr-tf cr-tf-m" inputmode="numeric" maxlength="2" value="00" aria-label="Minutes">
+            <input type="text" class="cr-tf cr-tf-m" inputmode="numeric" maxlength="2" value="00" aria-label="${getMsg("timer_minutes", "Minutes")}">
             <span class="cr-tf-colon" aria-hidden="true">:</span>
-            <input type="text" class="cr-tf cr-tf-s" inputmode="numeric" maxlength="2" value="00" aria-label="Seconds">
+            <input type="text" class="cr-tf cr-tf-s" inputmode="numeric" maxlength="2" value="00" aria-label="${getMsg("timer_seconds", "Seconds")}">
         </div>
-        <button type="button" class="cr-widget-btn cr-timer-custom-go">Set</button>
+        <button type="button" class="cr-widget-btn cr-timer-custom-go">${getMsg("timer_set", "Set")}</button>
     </div>
     <div class="cr-timer-controls">
-        <button type="button" class="cr-widget-btn cr-timer-start">Start</button>
-        <button type="button" class="cr-widget-btn cr-widget-btn-ghost cr-timer-reset">Reset</button>
+        <button type="button" class="cr-widget-btn cr-timer-start">${getMsg("timer_start", "Start")}</button>
+        <button type="button" class="cr-widget-btn cr-widget-btn-ghost cr-timer-reset">${getMsg("timer_reset", "Reset")}</button>
     </div>
-`;
+`; }
 
 function wireFocusTimer(el) {
     crTimerApplyCfg(el, focusTimerCfg());
@@ -8091,7 +8150,7 @@ function updateFocusTimer(el) {
 function loadFocusTimer() {
     crLoadWidget("focus_timer", {
         className: "canvasrefined-focus-timer",
-        html: FOCUS_TIMER_HTML,
+        html: focusTimerHtml(),
         wire: wireFocusTimer,
         update: updateFocusTimer,
     });
@@ -8105,15 +8164,15 @@ function breathingCfg() {
     return { presets: crTimerReadSlots("breathing", BREATHING_DEFAULT_PRESETS) };
 }
 
-const BREATHING_HTML = `
-    <div class="cr-widget-head"><span class="cr-widget-title">Breathing Breaks</span></div>
+function breathingHtml() { return `
+    <div class="cr-widget-head"><span class="cr-widget-title">${getMsg("breathing_breaks", "Breathing Breaks")}</span></div>
     <div class="cr-breath-layout">
         <div class="cr-breath-left">
             <div class="cr-breath-stage">
                 <div class="cr-breath-circle">
-                    <span class="cr-breath-phase cr-breath-phase-in">Breathe in</span>
-                    <span class="cr-breath-phase cr-breath-phase-out">Breathe out</span>
-                    <span class="cr-breath-idle">Ready</span>
+                    <span class="cr-breath-phase cr-breath-phase-in">${getMsg("breathing_in", "Breathe in")}</span>
+                    <span class="cr-breath-phase cr-breath-phase-out">${getMsg("breathing_out", "Breathe out")}</span>
+                    <span class="cr-breath-idle">${getMsg("breathing_ready", "Ready")}</span>
                 </div>
             </div>
             <div class="cr-timer-time cr-timer-display cr-breath-display" aria-live="polite">05:00</div>
@@ -8123,23 +8182,23 @@ const BREATHING_HTML = `
                 <button type="button" class="cr-timer-preset" data-slot="1">3 min</button>
                 <button type="button" class="cr-timer-preset" data-slot="2">5 min</button>
                 <button type="button" class="cr-timer-preset" data-slot="3">10 min</button>
-                <button type="button" class="cr-timer-preset cr-timer-custom">Custom</button>
+                <button type="button" class="cr-timer-preset cr-timer-custom">${getMsg("timer_custom", "Custom")}</button>
             </div>
             <div class="cr-timer-custom-row" hidden>
                 <div class="cr-time-input">
-                    <input type="text" class="cr-tf cr-tf-m" inputmode="numeric" maxlength="2" value="00" aria-label="Minutes">
+                    <input type="text" class="cr-tf cr-tf-m" inputmode="numeric" maxlength="2" value="00" aria-label="${getMsg("timer_minutes", "Minutes")}">
                     <span class="cr-tf-colon" aria-hidden="true">:</span>
-                    <input type="text" class="cr-tf cr-tf-s" inputmode="numeric" maxlength="2" value="00" aria-label="Seconds">
+                    <input type="text" class="cr-tf cr-tf-s" inputmode="numeric" maxlength="2" value="00" aria-label="${getMsg("timer_seconds", "Seconds")}">
                 </div>
-                <button type="button" class="cr-widget-btn cr-timer-custom-go">Set</button>
+                <button type="button" class="cr-widget-btn cr-timer-custom-go">${getMsg("timer_set", "Set")}</button>
             </div>
             <div class="cr-timer-controls">
-                <button type="button" class="cr-widget-btn cr-timer-start">Start</button>
-                <button type="button" class="cr-widget-btn cr-widget-btn-ghost cr-timer-reset">Reset</button>
+                <button type="button" class="cr-widget-btn cr-timer-start">${getMsg("timer_start", "Start")}</button>
+                <button type="button" class="cr-widget-btn cr-widget-btn-ghost cr-timer-reset">${getMsg("timer_reset", "Reset")}</button>
             </div>
         </div>
     </div>
-`;
+`; }
 
 function wireBreathingWidget(el) {
     crTimerApplyCfg(el, breathingCfg());
@@ -8153,7 +8212,7 @@ function updateBreathingWidget(el) {
 function loadBreathingWidget() {
     crLoadWidget("breathing", {
         className: "canvasrefined-breathing",
-        html: BREATHING_HTML,
+        html: breathingHtml(),
         wire: wireBreathingWidget,
         update: updateBreathingWidget,
     });
@@ -8161,24 +8220,27 @@ function loadBreathingWidget() {
 
 /* ---- Daily Quote (stoic.tekloon.net, refreshed once a day) ---- */
 
-const DAILY_QUOTE_DEFAULT = {
-    quote: "The secret of getting ahead is getting started.",
-    author: "Mark Twain",
-};
+function dailyQuoteDefault() {
+    return {
+        quote: getMsg("daily_quote_default", "The secret of getting ahead is getting started."),
+        author: "Mark Twain",
+    };
+}
 
-const QUOTES_HTML = `
-    <div class="cr-widget-head"><span class="cr-widget-title">Daily Quote</span></div>
+function dailyQuoteHtml() { return `
+    <div class="cr-widget-head"><span class="cr-widget-title">${getMsg("daily_quote", "Daily Quote")}</span></div>
     <div class="cr-quote-body">
         <span class="cr-quote-mark" aria-hidden="true">&#8220;</span>
-        <p class="cr-quote-text">${DAILY_QUOTE_DEFAULT.quote}</p>
-        <span class="cr-quote-author">&mdash; ${DAILY_QUOTE_DEFAULT.author}</span>
+        <p class="cr-quote-text">${dailyQuoteDefault().quote}</p>
+        <span class="cr-quote-author">&mdash; ${dailyQuoteDefault().author}</span>
     </div>
-`;
+`; }
 
 function renderDailyQuote(el, data) {
     if (!el) return;
-    const quote = data && data.quote ? data.quote : DAILY_QUOTE_DEFAULT.quote;
-    const author = data && data.author ? data.author : DAILY_QUOTE_DEFAULT.author;
+    const fallback = dailyQuoteDefault();
+    const quote = data && data.quote ? data.quote : fallback.quote;
+    const author = data && data.author ? data.author : fallback.author;
     const textEl = el.querySelector(".cr-quote-text");
     const authorEl = el.querySelector(".cr-quote-author");
     if (textEl) textEl.textContent = quote;
@@ -8210,7 +8272,7 @@ function refreshDailyQuoteWidget(el) {
 function loadDailyQuotesWidget() {
     crLoadWidget("daily_quotes", {
         className: "canvasrefined-quotes",
-        html: QUOTES_HTML,
+        html: dailyQuoteHtml(),
         wire: refreshDailyQuoteWidget,
         update: refreshDailyQuoteWidget,
     });
@@ -8499,12 +8561,12 @@ function injectQuizSafeModeBanner(safeModeOn) {
 
         makeElement("div", banner, {
             className: "canvasrefined-quiz-safe-title",
-            textContent: "Canvas Refined — Quiz Safe Mode",
+            textContent: chrome.i18n.getMessage("quiz_safe_title") || "Canvas Refined — Quiz Safe Mode",
         });
 
         makeElement("p", banner, {
             className: "canvasrefined-quiz-safe-info",
-            textContent: "This extension hasn't been 100% approved by all teachers. Quiz Safe Mode turns off most Canvas Refined features that could interfere with this quiz page, giving you the default Canvas quiz experience.",
+            textContent: chrome.i18n.getMessage("quiz_safe_desc") || "This extension hasn't been 100% approved by all teachers. Quiz Safe Mode turns off most Canvas Refined features that could interfere with this quiz page, giving you the default Canvas quiz experience.",
         });
 
         const toggleRow = makeElement("div", banner, { className: "canvasrefined-quiz-safe-row" });
@@ -8517,14 +8579,14 @@ function injectQuizSafeModeBanner(safeModeOn) {
         });
         makeElement("span", toggleWrap, {
             className: "canvasrefined-quiz-safe-toggle-label",
-            textContent: "Enable Quiz Safe Mode",
+            textContent: chrome.i18n.getMessage("quiz_enable") || "Enable Quiz Safe Mode",
         });
 
         const dismissBtn = makeElement("button", toggleRow, {
             className: "canvasrefined-quiz-safe-dismiss",
  type: "button",
-            textContent: "Don't show again",
-            title: "Hides this reminder permanently. You can still toggle Quiz Safe Mode in the extension popup.",
+            textContent: chrome.i18n.getMessage("quiz_dont_show") || "Don't show again",
+            title: chrome.i18n.getMessage("quiz_dont_show_title") || "Hides this reminder permanently. You can still toggle Quiz Safe Mode in the extension popup.",
         });
         dismissBtn.addEventListener("click", () => {
             chrome.storage.local.set({ quiz_safe_mode_reminder_dismissed: true });
@@ -8623,11 +8685,11 @@ function ensureGlobalSearchBetterSidebarButton(betterSidebar) {
     btn.id = "canvasrefined-gs-sidebar-btn";
     btn.className = "canvasrefined-custom-btn better-sidebar-btn canvasrefined-gs-sidebar-btn";
     btn.href = "#";
-    btn.title = "Search Canvas (Ctrl+K)";
+    btn.title = getMsg("search_canvas_ctrlk", "Search Canvas (Ctrl+K)");
     btn.setAttribute("role", "button");
-    btn.setAttribute("aria-label", "Search Canvas");
-    btn.style.cssText = "width:40%;height:var(--bc-sidebar-btn-height,30px);cursor:pointer;text-align:center;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:var(--bc-sidebar-btn-gap,8px);color:var(--bcsidebar-text) !important;font-weight:bold;position:relative;";
-    btn.innerHTML = `${GLOBAL_SEARCH_ICON_SVG}<span class="better-sidebar-label" style="font-size:var(--bc-sidebar-label-size,14px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">Search</span>`;
+    btn.setAttribute("aria-label", getMsg("search_canvas", "Search Canvas"));
+    const searchLabel = getMsg("search", "Search");    btn.style.cssText = "width:40%;height:var(--bc-sidebar-btn-height,30px);cursor:pointer;text-align:center;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:var(--bc-sidebar-btn-gap,8px);color:var(--bcsidebar-text) !important;font-weight:bold;position:relative;";
+    btn.innerHTML = `${GLOBAL_SEARCH_ICON_SVG}<span class="better-sidebar-label" style="font-size:var(--bc-sidebar-label-size,14px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">${searchLabel}</span>`;
     btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openGlobalSearchModal(); });
     sidebarContent.appendChild(btn);
     // Match the sidebar's current state now so the button doesn't render wrong
@@ -8662,9 +8724,9 @@ function ensureGlobalSearchNativeSidebarButton() {
     link.className = "ic-app-header__menu-list-link";
     link.href = "#";
     link.setAttribute("role", "button");
-    link.title = "Search Canvas (Ctrl+K)";
-    link.setAttribute("aria-label", "Search Canvas");
-    link.innerHTML = `<span class="menu-item-icon-container" aria-hidden="true">${GLOBAL_SEARCH_ICON_SVG}</span><span class="menu-item__text">Search</span>`;
+    link.title = chrome.i18n.getMessage("search_canvas_ctrlk") || "Search Canvas (Ctrl+K)";
+    link.setAttribute("aria-label", chrome.i18n.getMessage("search_canvas") || "Search Canvas");
+    link.innerHTML = `<span class="menu-item-icon-container" aria-hidden="true">${GLOBAL_SEARCH_ICON_SVG}</span><span class="menu-item__text">${chrome.i18n.getMessage("search") || "Search"}</span>`;
     link.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openGlobalSearchModal(); });
     li.appendChild(link);
     navMenu.appendChild(li);
@@ -8681,9 +8743,9 @@ function ensureGlobalSearchHeaderButton(headerActions) {
     btn.id = "canvasrefined-global-search-header-btn";
     btn.type = "button";
     btn.className = "canvasrefined-gs-header-btn";
-    btn.title = "Search Canvas (Ctrl+K)";
-    btn.setAttribute("aria-label", "Search Canvas");
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="canvasrefined-gs-header-btn-label">Search</span>`;
+    btn.title = chrome.i18n.getMessage("search_canvas_ctrlk") || "Search Canvas (Ctrl+K)";
+    btn.setAttribute("aria-label", chrome.i18n.getMessage("search_canvas") || "Search Canvas");
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="canvasrefined-gs-header-btn-label">${chrome.i18n.getMessage("search") || "Search"}</span>`;
     btn.addEventListener("click", openGlobalSearchModal);
     // First child of the actions row, just left of the ⋯ button.
     headerActions.insertBefore(btn, headerActions.firstChild);
@@ -8721,19 +8783,19 @@ function openGlobalSearchModal() {
     modal.className = "canvasrefined-gs-modal";
     modal.dataset.open = "true";
     modal.innerHTML = `
-        <div class="canvasrefined-gs-card" role="dialog" aria-modal="true" aria-label="Search Canvas">
+        <div class="canvasrefined-gs-card" role="dialog" aria-modal="true" aria-label="${getMsg("search_canvas", "Search Canvas")}">
             <div class="canvasrefined-gs-input-row">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" class="canvasrefined-gs-input-icon"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                <input id="canvasrefined-gs-input" class="canvasrefined-gs-input" type="text" placeholder="Search modules & assignments\u2026 (@coursename filters by course)" autocomplete="off" spellcheck="false" />
-                <button id="canvasrefined-gs-close" class="canvasrefined-gs-close" type="button" title="Close (Esc)">Esc</button>
+                <input id="canvasrefined-gs-input" class="canvasrefined-gs-input" type="text" placeholder="${chrome.i18n.getMessage("search_placeholder") || "Search modules & assignments\u2026 (@coursename filters by course)"}" autocomplete="off" spellcheck="false" />
+                <button id="canvasrefined-gs-close" class="canvasrefined-gs-close" type="button" title="${getMsg("search_close_title", "Close (Esc)")}">Esc</button>
             </div>
             <div id="canvasrefined-gs-results" class="canvasrefined-gs-results"></div>
             <div class="canvasrefined-gs-footer">
-                <span><kbd>\u2191</kbd><kbd>\u2193</kbd> navigate</span>
-                <span><kbd>Enter</kbd> open</span>
-                <span><kbd>${modKey}</kbd>+<kbd>Enter</kbd> new tab</span>
-                <span><kbd>${modKey}</kbd>+<kbd>K</kbd> toggle search</span>
-                <span><kbd>Esc</kbd> close</span>
+                <span><kbd>\u2191</kbd><kbd>\u2193</kbd> ${getMsg("search_navigate", "navigate")}</span>
+                <span><kbd>Enter</kbd> ${getMsg("search_open", "open")}</span>
+                <span><kbd>${modKey}</kbd>+<kbd>Enter</kbd> ${getMsg("search_new_tab", "new tab")}</span>
+                <span><kbd>${modKey}</kbd>+<kbd>K</kbd> ${getMsg("search_toggle", "toggle search")}</span>
+                <span><kbd>Esc</kbd> ${getMsg("search_close", "Close")}</span>
             </div>
         </div>`;
     document.body.appendChild(modal);
@@ -8780,7 +8842,7 @@ function openGlobalSearchModal() {
 
     requestAnimationFrame(() => input.focus());
     ensureGlobalSearchIndex();
-    resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.</div>`;
+    resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_hint", "Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.")}</div>`;
 }
 
 function closeGlobalSearchModal() {
@@ -8996,15 +9058,15 @@ function normalizeGlobalSearchUrl(url) {
 
 function prettyModuleItemType(type) {
     switch ((type || "").toLowerCase()) {
-        case "assignment": return "Assignment";
-        case "quiz": return "Quiz";
-        case "discussion": case "discussion_topic": return "Discussion";
-        case "externalurl": return "Link";
-        case "externaltool": return "External Tool";
-        case "file": return "File";
-        case "page": return "Page";
-        case "subheader": return "Section";
-        default: return type || "Item";
+        case "assignment": return getMsg("search_type_assignment", "Assignment");
+        case "quiz": return getMsg("search_type_quiz", "Quiz");
+        case "discussion": case "discussion_topic": return getMsg("search_type_discussion", "Discussion");
+        case "externalurl": return getMsg("search_type_link", "Link");
+        case "externaltool": return getMsg("search_type_external_tool", "External Tool");
+        case "file": return getMsg("search_type_file", "File");
+        case "page": return getMsg("search_type_page", "Page");
+        case "subheader": return getMsg("search_type_section", "Section");
+        default: return type || getMsg("search_type_item", "Item");
     }
 }
 
@@ -9069,15 +9131,15 @@ function bindGlobalSearchRows(resultsEl, top) {
 
 async function runGlobalSearch(query, resultsEl) {
     if (!globalSearchIndex && globalSearchIndexPromise) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-loading">Building search index\u2026</div>`;
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-loading">${getMsg("search_building", "Building search index…")}</div>`;
     }
     const index = await ensureGlobalSearchIndex();
     if (!query) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.</div>`;
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_hint", "Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.")}</div>`;
         return [];
     }
     if (!index || !index.length) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No modules or assignments found. Open the search again later if your courses are still loading.</div>`;
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_no_modules_found", "No modules or assignments found. Open the search again later if your courses are still loading.")}</div>`;
         return [];
     }
 
@@ -9089,7 +9151,7 @@ async function runGlobalSearch(query, resultsEl) {
         const filter = (gradesMatch[1] || "").trim();
         const matching = courseEntries.filter(c => globalSearchCourseMatches(c, filter));
         if (!matching.length) {
-            resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${filter ? `No course matches \u201c${escapeGlobalSearchHtml(filter)}\u201d.` : "No courses found to open grades for."}</div>`;
+            resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${filter ? getMsg("search_no_course", "No course matches \"$QUERY$\".").replace("$QUERY$", escapeGlobalSearchHtml(filter)) : getMsg("search_no_courses_grades", "No courses found to open grades for.")}</div>`;
             return [];
         }
         const gradeRows = matching.map(c => ({
@@ -9115,7 +9177,7 @@ async function runGlobalSearch(query, resultsEl) {
         allowedCourseIds = new Set(matching.map(c => String(c.courseId)));
         if (!effectiveQuery) {
             if (!matching.length) {
-                resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No course matches \u201c${escapeGlobalSearchHtml(parsed.courseFilter)}\u201d.</div>`;
+                resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_no_course", "No course matches \"$QUERY$\".").replace("$QUERY$", escapeGlobalSearchHtml(parsed.courseFilter))}</div>`;
                 return [];
             }
             resultsEl.innerHTML = matching.map((item, i) => globalSearchRowHtml(item, i)).join("");
@@ -9146,7 +9208,7 @@ async function runGlobalSearch(query, resultsEl) {
     const top = matches.slice(0, 50);
 
     if (!top.length) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">No results for \u201c${escapeGlobalSearchHtml(query)}\u201d.</div>`;
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_no_match", "No results for \"$QUERY$\".").replace("$QUERY$", escapeGlobalSearchHtml(query))}</div>`;
         return [];
     }
 
@@ -9785,28 +9847,28 @@ function ensureGradeAnalyticsPanel() {
     panel.style.cssText = `margin:18px 0;padding:16px;border:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);border-radius:10px;background-color:var(--bcbackground-0);color:var(--bctext-0);font-family:"Lato","Helvetica Neue",Helvetica,Arial,sans-serif;box-sizing:border-box;`;
     panel.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;">
-            <h2 style="margin:0;font-size:18px;color:var(--bctext-0);">Grade Analytics</h2>
-            <button id="canvasrefined-ga-imagine" type="button" aria-pressed="false" title="Toggle Imagine-If mode" style="margin-left:auto;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:8px;padding:4px 12px;font-size:14px;line-height:1.4;cursor:pointer;">Imagine-If mode</button>
-            <button id="canvasrefined-ga-toggle" type="button" aria-expanded="true" title="Toggle Grade Analytics" style="background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:8px;padding:4px 12px;font-size:14px;line-height:1.4;cursor:pointer;"><svg style="transform:rotate(180deg);display:block;" fill="currentColor" width="16px" height="16px" viewBox="-6.5 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.6"><g stroke-width="0"/><g stroke-linecap="round" stroke-linejoin="round"/><path d="M18.813 11.406l-7.906 9.906c-0.75 0.906-1.906 0.906-2.625 0l-7.906-9.906c-0.75-0.938-0.375-1.656 0.781-1.656h16.875c1.188 0 1.531 0.719 0.781 1.656z"/></svg></button>
+            <h2 style="margin:0;font-size:18px;color:var(--bctext-0);">${getMsg("grade_analytics", "Grade Analytics")}</h2>
+            <button id="canvasrefined-ga-imagine" type="button" aria-pressed="false" title="${getMsg("imagine_if_toggle", "Toggle Imagine-If mode")}" style="margin-left:auto;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:8px;padding:4px 12px;font-size:14px;line-height:1.4;cursor:pointer;">${getMsg("imagine_if_mode", "Imagine-If mode")}</button>
+            <button id="canvasrefined-ga-toggle" type="button" aria-expanded="true" title="${getMsg("grade_analytics_toggle", "Toggle Grade Analytics")}" style="background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:8px;padding:4px 12px;font-size:14px;line-height:1.4;cursor:pointer;"><svg style="transform:rotate(180deg);display:block;" fill="currentColor" width="16px" height="16px" viewBox="-6.5 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.6"><g stroke-width="0"/><g stroke-linecap="round" stroke-linejoin="round"/><path d="M18.813 11.406l-7.906 9.906c-0.75 0.906-1.906 0.906-2.625 0l-7.906-9.906c-0.75-0.938-0.375-1.656 0.781-1.656h16.875c1.188 0 1.531 0.719 0.781 1.656z"/></svg></button>
         </div>
         <div id="canvasrefined-ga-body">
-        <p id="canvasrefined-ga-status" style="margin:0 0 10px;color:var(--bctext-1);font-size:13px;">Loading grade data…</p>
+        <p id="canvasrefined-ga-status" style="margin:0 0 10px;color:var(--bctext-1);font-size:13px;">${getMsg("reading_grade_data", "Reading grade data…")}</p>
         <div id="canvasrefined-ga-tabs" style="display:flex;gap:4px;border-bottom:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);margin-bottom:14px;">
-            <button type="button" data-ga-tab="overview" style="${gaTabStyle(true)}">Overview</button>
-            <button type="button" data-ga-tab="calc" style="${gaTabStyle(false)}">Final Calculator</button>
-            <button type="button" data-ga-tab="heatmap" style="${gaTabStyle(false)}">Heatmap</button>
+            <button type="button" data-ga-tab="overview" style="${gaTabStyle(true)}">${getMsg("ga_tab_overview", "Overview")}</button>
+            <button type="button" data-ga-tab="calc" style="${gaTabStyle(false)}">${getMsg("ga_tab_calc", "Final Calculator")}</button>
+            <button type="button" data-ga-tab="heatmap" style="${gaTabStyle(false)}">${getMsg("ga_tab_heatmap", "Heatmap")}</button>
         </div>
         <div id="canvasrefined-ga-tab-overview">
         <div id="canvasrefined-ga-stats" style="display:none;flex-wrap:wrap;gap:10px;margin-bottom:14px;"></div>
         <div id="canvasrefined-ga-charts" style="display:none;gap:24px;flex-wrap:wrap;">
             <div id="canvasrefined-ga-box-pie" style="flex:1 1 calc(33.333% - 8px);min-width:0;">
-                <h3 style="margin:0 0 8px;font-size:14px;color:var(--bctext-0);">Score distribution (graded assignments)</h3>
+                <h3 style="margin:0 0 8px;font-size:14px;color:var(--bctext-0);">${getMsg("ga_pie_title", "Score distribution (graded assignments)")}</h3>
                 <div style="position:relative;height:280px;"><canvas id="canvasrefined-ga-pie"></canvas><div id="canvasrefined-ga-pie-tip" style="position:absolute;display:none;pointer-events:none;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:6px;padding:6px 10px;font-size:12px;z-index:10;white-space:nowrap;"></div></div>
             </div>
             <div id="canvasrefined-ga-box-line" style="flex:1 1 calc(66.666% - 16px);min-width:0;">
                 <div style="display:flex;align-items:center;gap:10px;margin:0 0 8px;">
-                    <h3 style="margin:0;font-size:14px;color:var(--bctext-0);">Overall grade over time</h3>
-                    <label for="canvasrefined-ga-fity" style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--bctext-1);cursor:pointer;user-select:none;"><input type="checkbox" id="canvasrefined-ga-fity"> Fit Y axis</label>
+                    <h3 style="margin:0;font-size:14px;color:var(--bctext-0);">${getMsg("ga_line_title", "Overall grade over time")}</h3>
+                    <label for="canvasrefined-ga-fity" style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--bctext-1);cursor:pointer;user-select:none;"><input type="checkbox" id="canvasrefined-ga-fity"> ${getMsg("ga_fit_y", "Fit Y axis")}</label>
                 </div>
                 <div style="position:relative;height:280px;"><canvas id="canvasrefined-ga-line"></canvas><div id="canvasrefined-ga-line-tip" style="position:absolute;display:none;pointer-events:none;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:6px;padding:8px 10px;font-size:12px;z-index:20;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,0.25);"></div></div>
             </div>
@@ -9814,16 +9876,16 @@ function ensureGradeAnalyticsPanel() {
         </div>
         <div id="canvasrefined-ga-tab-calc" style="display:none;">
             <div style="max-width:620px;">
-                <p style="margin:0 0 14px;color:var(--bctext-1);font-size:13px;">Enter how much your final is worth and the overall grade you want to show see what grade you need on the final.</p>
+                <p style="margin:0 0 14px;color:var(--bctext-1);font-size:13px;">${getMsg("ga_calc_desc", "Enter how much your final is worth and the overall grade you want to show see what grade you need on the final.")}</p>
                 <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
-                    <label style="flex:1 1 200px;font-size:12px;color:var(--bctext-1);">Final exam weight (% of grade)
+                    <label style="flex:1 1 200px;font-size:12px;color:var(--bctext-1);">${getMsg("ga_final_weight", "Final exam weight (% of grade)")}
                         <input id="canvasrefined-ga-calc-weight" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="20" style="display:block;width:100%;margin-top:4px;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--bcborders);background:var(--bcbackground-1);color:var(--bctext-0);font-size:15px;">
                     </label>
-                    <label style="flex:1 1 200px;font-size:12px;color:var(--bctext-1);">Target overall grade (%)
+                    <label style="flex:1 1 200px;font-size:12px;color:var(--bctext-1);">${getMsg("ga_target_grade", "Target overall grade (%)")}
                         <input id="canvasrefined-ga-calc-target" type="number" min="0" step="0.1" inputmode="decimal" placeholder="90" style="display:block;width:100%;margin-top:4px;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--bcborders);background:var(--bcbackground-1);color:var(--bctext-0);font-size:15px;">
                     </label>
                 </div>
-                <label for="canvasrefined-ga-calc-show" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--bctext-0);cursor:pointer;user-select:none;margin-bottom:14px;"><input type="checkbox" id="canvasrefined-ga-calc-show"> Show grade goal on the overview</label>
+                <label for="canvasrefined-ga-calc-show" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--bctext-0);cursor:pointer;user-select:none;margin-bottom:14px;"><input type="checkbox" id="canvasrefined-ga-calc-show"> ${getMsg("ga_show_goal", "Show grade goal on the overview")}</label>
                 <div id="canvasrefined-ga-calc-result" style="padding:12px 16px;border-radius:8px;background:var(--bcbackground-1);border:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);font-size:14px;"></div>
             </div>
         </div>
@@ -9840,7 +9902,7 @@ function ensureGradeAnalyticsPanel() {
                 <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[15]};"></span>
                 <span style="width:11px;height:11px;border-radius:3px;display:inline-block;background:${GA_ZONE_COLORS[19]};"></span>
                 <span>100%</span>
-                <span style="margin-left:12px;display:inline-flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:color-mix(in srgb, var(--bctext-1) 20%, transparent);"></span>No grade/assignment</span>
+                <span style="margin-left:12px;display:inline-flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:color-mix(in srgb, var(--bctext-1) 20%, transparent);"></span>${getMsg("ga_no_grade_legend", "No grade/assignment")}</span>
             </div>
             <style>#canvasrefined-grade-analytics .canvasrefined-ga-hcell:hover{outline:1px solid var(--bctext-0);outline-offset:1px;}</style>
             <div id="canvasrefined-ga-heatmap-tip" style="position:absolute;display:none;pointer-events:none;z-index:100;background:var(--bcbackground-1);color:var(--bctext-0);border:1px solid var(--bcborders);border-radius:6px;padding:6px 10px;font-size:12px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,0.25);"></div>
@@ -9916,7 +9978,7 @@ async function loadGradeAnalytics() {
     if (courseId == null) return;
     gaLoading = true;
     const status = document.getElementById("canvasrefined-ga-status");
-    if (status) status.textContent = "Reading grade data…";
+    if (status) status.textContent = chrome.i18n.getMessage("reading_grade_data") || "Reading grade data…";
     try {
         const table = await gaWaitForGradesTable();
         gaCourseId = courseId;
@@ -9926,7 +9988,7 @@ async function loadGradeAnalytics() {
     } catch (err) {
         logError(err);
         const s = document.getElementById("canvasrefined-ga-status");
-        if (s) s.textContent = "Grade Analytics failed to load: " + (err && err.message ? err.message : err);
+        if (s) s.textContent = (chrome.i18n.getMessage("grade_analytics_failed") || "Grade Analytics failed to load: $ERROR$").replace("$ERROR$", err && err.message ? err.message : err);
     } finally {
         gaLoading = false;
     }
@@ -10129,16 +10191,16 @@ function renderGaStats() {
         const w = gaCalc.weight / 100;
         const needed = (gaCalc.target - gaData.current * (1 - w)) / w;
         let val, color;
-        if (needed <= 0) { val = "\u2713 Secured"; color = "#16a34a"; }
-        else if (needed > 100) { val = "Out of reach"; color = "#dc2626"; }
+        if (needed <= 0) { val = getMsg("ga_secured", "✓ Secured"); color = "#16a34a"; }
+        else if (needed > 100) { val = getMsg("ga_out_of_reach", "Out of reach"); color = "#dc2626"; }
         else { val = "\u2265 " + needed.toFixed(2) + "%"; color = gaNeededColor(needed); }
-        goalStat = stat("Final Exam", val, color);
+        goalStat = stat(getMsg("ga_stat_final_exam", "Final Exam"), val, color);
     }
     stats.innerHTML =
-        stat("Overall grade", gaData.current == null ? "-" : gaData.current.toFixed(2) + "%") +
-        stat("Grade trend (last 5)", trendVal, trendColor) +
-        stat("Graded", gaData.graded) +
-        stat("Ungraded", gaData.ungraded) +
+        stat(getMsg("ga_stat_overall", "Overall grade"), gaData.current == null ? "-" : gaData.current.toFixed(2) + "%") +
+        stat(getMsg("ga_stat_trend", "Grade trend (last 5)"), trendVal, trendColor) +
+        stat(getMsg("ga_stat_graded", "Graded"), gaData.graded) +
+        stat(getMsg("ga_stat_ungraded", "Ungraded"), gaData.ungraded) +
         goalStat;
 }
 
@@ -10228,14 +10290,14 @@ function renderGaCalculator() {
     const box = panel.querySelector("#canvasrefined-ga-calc-result");
     if (!box) return;
     if (!gaCalc || gaCalc.weight == null || !(gaCalc.weight > 0) || gaCalc.target == null) {
-        box.innerHTML = `<span style="color:var(--bctext-1);">Enter your final's weight and your target grade to see what you need on the final.</span>`;
+        box.innerHTML = `<span style="color:var(--bctext-1);">${chrome.i18n.getMessage("final_weight_prompt") || "Enter your final's weight and your target grade to see what you need on the final."}</span>`;
         return;
     }
     const w = gaCalc.weight / 100;
     const target = gaCalc.target;
     const current = gaData ? gaData.current : null;
     if (current == null) {
-        box.innerHTML = `<span style="color:var(--bctext-1);">Waiting for grade data…</span>`;
+        box.innerHTML = `<span style="color:var(--bctext-1);">${chrome.i18n.getMessage("final_waiting") || "Waiting for grade data…"}</span>`;
         return;
     }
     const needed = (target - current * (1 - w)) / w;
@@ -10243,14 +10305,14 @@ function renderGaCalculator() {
     const withPerfect = withZero + 100 * w;
     let head, sub;
     if (needed <= 0) {
-        head = `<span style="font-size:20px;font-weight:700;color:#16a34a;">You're already there!</span>`;
-        sub = `Even a 0 on the final leaves you at <b>${withZero.toFixed(2)}%</b>, which is above your <b>${target}%</b> goal.`;
+        head = `<span style="font-size:20px;font-weight:700;color:#16a34a;">${getMsg("ga_already_there", "You're already there!")}</span>`;
+        sub = getMsg("ga_sub_secured", "Even a 0 on the final leaves you at <b>$ZERO$%</b>, which is above your <b>$TARGET$%</b> goal.").replace("$ZERO$", withZero.toFixed(2)).replace("$TARGET$", target);
     } else if (needed > 100) {
-        head = `<span style="font-size:20px;font-weight:700;color:#dc2626;">Out of reach</span>`;
-        sub = `Even a perfect final only gets you to <b>${withPerfect.toFixed(2)}%</b>, which is below your <b>${target}%</b> goal.`;
+        head = `<span style="font-size:20px;font-weight:700;color:#dc2626;">${getMsg("ga_out_of_reach", "Out of reach")}</span>`;
+        sub = getMsg("ga_sub_unreachable", "Even a perfect final only gets you to <b>$PERFECT$%</b>, which is below your <b>$TARGET$%</b> goal.").replace("$PERFECT$", withPerfect.toFixed(2)).replace("$TARGET$", target);
     } else {
-        head = `<span style="font-size:20px;font-weight:700;color:${gaNeededColor(needed)};">You need ≥ ${needed.toFixed(2)}% on the final</span>`;
-        sub = `You got this!`;
+        head = `<span style="font-size:20px;font-weight:700;color:${gaNeededColor(needed)};">${getMsg("ga_you_need", "You need ≥ $PCT$% on the final").replace("$PCT$", needed.toFixed(2))}</span>`;
+        sub = getMsg("ga_you_got_this", "You got this!");
     }
     box.innerHTML = head + `<div style="margin-top:6px;color:var(--bctext-1);font-size:13px;">${sub}</div>`;
 }
@@ -10339,7 +10401,7 @@ function gaHeatmapShowTip(tip, e, cell, avg) {
     const d = cell.date;
     const rows = cell.items.map(p =>
         `<div style="margin-top:2px;color:var(--bctext-1);">${gaEscHtml(p.title)} — <b style="color:${gaHeatmapColor(p.pct)};">${p.pct.toFixed(2)}%</b></div>`).join("");
-    tip.innerHTML = `<b>${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}</b> — avg <b style="color:${gaHeatmapColor(avg)};">${avg.toFixed(2)}%</b><div style="margin-top:4px;font-size:11px;color:var(--bctext-1);">${cell.items.length} assignment${cell.items.length === 1 ? "" : "s"}:</div>${rows}`;
+    tip.innerHTML = `<b>${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</b> — ${getMsg("ga_heatmap_avg", "avg")} <b style="color:${gaHeatmapColor(avg)};">${avg.toFixed(2)}%</b><div style="margin-top:4px;font-size:11px;color:var(--bctext-1);">${getMsg("ga_heatmap_assignments", "$COUNT$ assignment(s):").replace("$COUNT$", cell.items.length)}</div>${rows}`;
     tip.style.display = "block";
     const host = tip.offsetParent || tip.parentNode;
     const hostRect = host.getBoundingClientRect();
@@ -10367,11 +10429,11 @@ function renderGaHeatmap() {
     gaHeatmapToken = token;
     grid.textContent = "";
     if (!data) {
-        note.textContent = "No graded assignments with due dates yet.";
+        note.textContent = chrome.i18n.getMessage("no_graded_assignments") || "No graded assignments with due dates yet.";
         return;
     }
     note.textContent = data.undated > 0
-        ? `${data.undated} graded assignment${data.undated === 1 ? "" : "s"} without a due date not shown.`
+        ? getMsg("ga_heatmap_undated", "$COUNT$ graded assignment(s) without a due date not shown.").replace("$COUNT$", data.undated)
         : "";
     const start = new Date(data.min);
     start.setDate(start.getDate() - start.getDay());
@@ -10403,7 +10465,7 @@ function renderGaHeatmap() {
         if (prevMonth == null || thursday.getMonth() !== prevMonth) {
             prevMonth = thursday.getMonth();
             const lab = document.createElement("div");
-            lab.textContent = months[prevMonth];
+            lab.textContent = new Date(thursday.getFullYear(), prevMonth, 1).toLocaleDateString(undefined, { month: "short" });
             lab.style.cssText = `position:absolute;top:0;left:${wk * (GA_HM_CELL + GA_HM_GAP)}px;font-size:10px;line-height:1;color:var(--bctext-1);white-space:nowrap;`;
             wrap.appendChild(lab);
         }
@@ -10477,7 +10539,7 @@ function gaDrawPie(canvas, tooltip) {
         ctx.globalAlpha = 1;
         ctx.fillStyle = "#888"; ctx.textAlign = "center";
         ctx.font = "13px Lato, sans-serif";
-        ctx.fillText("No graded assignments yet", cx, cy);
+        ctx.fillText(getMsg("ga_no_graded_short", "No graded assignments yet"), cx, cy);
     }
     let start = -Math.PI / 2;
     for (const s of slices) {
@@ -10508,7 +10570,7 @@ function gaDrawPie(canvas, tooltip) {
             if (d < a.start) d += Math.PI * 2;
             return dist <= canvas._gaCenter.r && dist >= canvas._gaCenter.r * 0.55 && d >= a.start && d <= a.end;
         });
-        if (hit) gaShowTooltip(tooltip, e.clientX - rect.left, e.clientY - rect.top, `<b>${hit.label}</b>: ${hit.value} assignment${hit.value === 1 ? "" : "s"}`);
+        if (hit) gaShowTooltip(tooltip, e.clientX - rect.left, e.clientY - rect.top, `<b>${hit.label}</b>: ${getMsg("ga_tooltip_assignments", "$COUNT$ assignment(s)").replace("$COUNT$", hit.value)}`);
         else tooltip.style.display = "none";
     };
     canvas._gaLeave = () => { tooltip.style.display = "none"; };
@@ -10554,7 +10616,7 @@ function gaDrawLine(canvas, tooltip) {
     }
     if (pts.length === 0) {
         ctx.fillStyle = text; ctx.textAlign = "center";
-        ctx.fillText("No graded assignments yet", w / 2, h / 2);
+        ctx.fillText(getMsg("ga_no_graded_short", "No graded assignments yet"), w / 2, h / 2);
         return;
     }
     const X = (i) => pad.l + (pts.length === 1 ? (w - pad.l - pad.r) / 2 : (i / (pts.length - 1)) * (w - pad.l - pad.r));
@@ -10797,7 +10859,7 @@ function gaImagineTotalHtml(pct) {
     const letter = gaLetterFor(pct);
     const pctText = pct == null || !isFinite(pct) ? "—" : pct.toFixed(2) + "%";
     return `<span style="display:inline-flex;align-items:center;gap:6px;">`
-        + `<span style="background:#7c3aed;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:1px 6px;border-radius:999px;text-transform:uppercase;white-space:nowrap;">Imagine-If</span>`
+        + `<span style="background:#7c3aed;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:1px 6px;border-radius:999px;text-transform:uppercase;white-space:nowrap;">${getMsg("imagine_if_badge", "Imagine-If")}</span>`
         + `<span style="font-weight:700;color:#7c3aed;">${pctText}</span>`
         + (letter ? `<span style="color:#7c3aed;">(${letter})</span>` : "")
         + `</span>`;
@@ -10828,7 +10890,7 @@ function gaApplyImagineTotal() {
         }
         if (note.dataset.gaIfHtml !== "Imagine-If scenario; not your actual grade.") {
             note.dataset.gaIfHtml = "Imagine-If scenario; not your actual grade.";
-            note.textContent = "Imagine-If scenario; not your actual grade.";
+            note.textContent = chrome.i18n.getMessage("imagine_if") || "Imagine-If scenario; not your actual grade.";
         }
     }
 }
@@ -10853,8 +10915,8 @@ const GA_IF_TD_BTN = GA_IF_TD_INPUT + "cursor:pointer;white-space:nowrap;";
 // Group picker for one assignment; a removed group leaves it on "not counted".
 function gaIfSelectHtml(gid) {
     const groups = gaScenario ? gaScenario.groups.filter(g => !g.deleted) : [];
-    return `<select data-ga-if-groupsel title="Imagine-If assignment group" style="${GA_IF_TD_SEL}">`
-        + `<option value="">— not counted —</option>`
+    return `<select data-ga-if-groupsel title="${getMsg("ga_title_group_select", "Imagine-If assignment group")}" style="${GA_IF_TD_SEL}">`
+        + `<option value="">${getMsg("ga_not_counted", "— not counted —")}</option>`
         + groups.map(g => `<option value="${gaEscHtml(g.gid)}"${String(gid) === String(g.gid) ? " selected" : ""}>${gaEscHtml(g.name)}</option>`).join("")
         + `</select>`;
 }
@@ -10865,7 +10927,7 @@ function gaIfRefreshSelects(table) {
         if (document.activeElement === sel) continue;
         const cur = sel.value;
         const groups = gaScenario ? gaScenario.groups.filter(g => !g.deleted) : [];
-        sel.innerHTML = `<option value="">— not counted —</option>`
+        sel.innerHTML = `<option value="">${getMsg("ga_not_counted", "— not counted —")}</option>`
             + groups.map(g => `<option value="${gaEscHtml(g.gid)}"${String(cur) === String(g.gid) ? " selected" : ""}>${gaEscHtml(g.name)}</option>`).join("");
         sel.value = groups.some(g => String(g.gid) === cur) ? cur : "";
     }
@@ -10892,9 +10954,9 @@ function gaIfBuildAssignmentControls(tr, a) {
     const edit = document.createElement("span");
     edit.className = "canvasrefined-ga-if-edit";
     edit.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
-    edit.innerHTML = `<input data-ga-if-score type="number" step="any" placeholder="—" value="${a.score == null ? "" : a.score}" title="Imagine-If score (numerator); blank = not counted" style="${GA_IF_TD_NUM}">`
+    edit.innerHTML = `<input data-ga-if-score type="number" step="any" placeholder="—" value="${a.score == null ? "" : a.score}" title="${getMsg("ga_title_score", "Imagine-If score (numerator); blank = not counted")}" style="${GA_IF_TD_NUM}">`
         + ` <span style="color:var(--bctext-1);">/</span> `
-        + `<input data-ga-if-pts type="number" step="any" min="0" placeholder="—" value="${a.points == null ? "" : a.points}" title="Imagine-If points possible (denominator)" style="${GA_IF_TD_NUM}">`;
+        + `<input data-ga-if-pts type="number" step="any" min="0" placeholder="—" value="${a.points == null ? "" : a.points}" title="${getMsg("ga_title_points", "Imagine-If points possible (denominator)")}" style="${GA_IF_TD_NUM}">`;
     (scoreTd.querySelector(".score_holder") || scoreTd).appendChild(edit);
     const th = tr.querySelector("th.title");
     const ctx = th?.querySelector("div.context");
@@ -10906,7 +10968,7 @@ function gaIfBuildAssignmentControls(tr, a) {
     (th || tr).appendChild(ctl);
     const lastTd = tr.cells[tr.cells.length - 1];
     if (lastTd && !lastTd.querySelector("[data-ga-if-adel]")) {
-        lastTd.appendChild(gaIfDelButton("data-ga-if-adel", "Remove this assignment from the scenario"));
+        lastTd.appendChild(gaIfDelButton("data-ga-if-adel", getMsg("ga_remove_assignment", "Remove this assignment from the scenario")));
     }
 }
 
@@ -10917,12 +10979,12 @@ function gaIfBuildGroupControls(tr, g) {
     const edit = document.createElement("span");
     edit.className = "canvasrefined-ga-if-edit";
     edit.style.cssText = "display:inline-flex;align-items:center;gap:4px;margin-left:8px;";
-    edit.innerHTML = `<input data-ga-if-gweight type="number" min="0" max="100" step="0.1" value="${g.weight}" title="Imagine-If group weight (% of grade)" style="${GA_IF_TD_NUM}">`
+    edit.innerHTML = `<input data-ga-if-gweight type="number" min="0" max="100" step="0.1" value="${g.weight}" title="${getMsg("ga_title_group_weight", "Imagine-If group weight (% of grade)")}" style="${GA_IF_TD_NUM}">`
         + ` <span style="color:var(--bctext-1);">%</span>`;
     (scoreTd.querySelector(".score_holder") || scoreTd).appendChild(edit);
     const lastTd = tr.cells[tr.cells.length - 1];
     if (lastTd && !lastTd.querySelector("[data-ga-if-gdel]")) {
-        lastTd.appendChild(gaIfDelButton("data-ga-if-gdel", "Remove this group from the scenario (its assignments stop counting until reassigned)"));
+        lastTd.appendChild(gaIfDelButton("data-ga-if-gdel", getMsg("ga_remove_group", "Remove this group from the scenario (its assignments stop counting until reassigned)")));
     }
 }
 
@@ -10932,7 +10994,7 @@ function gaIfMakeAssignmentRow(a) {
     const tr = document.createElement("tr");
     tr.className = "canvasrefined-ga-if-newrow";
     tr.innerHTML = `
-        <th class="title" scope="row"><input data-ga-if-title type="text" value="${gaEscHtml(a.title)}" title="Assignment name" style="${GA_IF_TD_INPUT}width:100%;max-width:260px;"></th>
+        <th class="title" scope="row"><input data-ga-if-title type="text" value="${gaEscHtml(a.title)}" title="${getMsg("ga_title_assignment_name", "Assignment name")}" style="${GA_IF_TD_INPUT}width:100%;max-width:260px;"></th>
         <td class="due"></td><td class="submitted"></td><td class="status"></td>
         <td class="assignment_score"><div class="score_holder" style="position:relative;"></div></td>
         <td class="asset_processors_cell"></td><td class="details"></td><td></td>`;
@@ -10949,7 +11011,7 @@ function gaIfMakeGroupRow(g) {
     const tr = document.createElement("tr");
     tr.className = "canvasrefined-ga-if-newrow";
     tr.innerHTML = `
-        <th class="title" scope="row"><input data-ga-if-gname type="text" value="${gaEscHtml(g.name)}" title="Group name" style="${GA_IF_TD_INPUT}width:100%;max-width:260px;"></th>
+        <th class="title" scope="row"><input data-ga-if-gname type="text" value="${gaEscHtml(g.name)}" title="${getMsg("ga_title_group_name", "Group name")}" style="${GA_IF_TD_INPUT}width:100%;max-width:260px;"></th>
         <td class="due"></td><td class="submitted"></td><td class="status"></td>
         <td class="assignment_score"><div class="score_holder" style="position:relative;"><span class="tooltip"><span class="grade">—</span></span></div></td>
         <td class="asset_processors_cell"></td><td class="details"></td><td></td>`;
@@ -10981,7 +11043,7 @@ function gaIfEnsureAddAssignmentRow(table) {
     const tr = document.createElement("tr");
     tr.className = "canvasrefined-ga-if-addrow";
     tr.innerHTML = `<td colspan="8" style="border:none!important;padding:6px 8px;">`
-        + `<button type="button" id="canvasrefined-ga-if-add-asg" style="${GA_IF_TD_BTN}padding:4px 10px;">+ Add assignment</button>`
+        + `<button type="button" id="canvasrefined-ga-if-add-asg" style="${GA_IF_TD_BTN}padding:4px 10px;">${getMsg("ga_add_assignment", "+ Add assignment")}</button>`
         + `</td>`;
     const firstNew = table.querySelector("tr.canvasrefined-ga-if-newrow[data-ga-if-key]");
     const firstReal = [...table.querySelectorAll("tr.student_assignment")]
@@ -10997,7 +11059,7 @@ function gaIfEnsureAddGroupRow(table) {
     const tr = document.createElement("tr");
     tr.className = "canvasrefined-ga-if-addrow";
     tr.innerHTML = `<td colspan="8" style="border:none!important;padding:10px 8px;">`
-        + `<button type="button" id="canvasrefined-ga-if-add-group" style="${GA_IF_TD_BTN}padding:6px 12px;">+ Add group</button>`
+        + `<button type="button" id="canvasrefined-ga-if-add-group" style="${GA_IF_TD_BTN}padding:6px 12px;">${getMsg("ga_add_group", "+ Add group")}</button>`
         + `</td>`;
     (table.querySelector("tr.final_grade") || table.lastElementChild).before(tr);
 }
@@ -11093,7 +11155,7 @@ function gaIfBindTable(table) {
             gaApplyImagineTotal();
         } else if (btn.id === "canvasrefined-ga-if-add-asg") {
             const groups = gaScenario.groups.filter(g => !g.deleted);
-            const a = { key: "new-asg-" + (++gaIfCounter), title: "New assignment", score: null, points: 100, gid: groups[0] ? String(groups[0].gid) : "", _new: true };
+            const a = { key: "new-asg-" + (++gaIfCounter), title: getMsg("ga_new_assignment", "New assignment"), score: null, points: 100, gid: groups[0] ? String(groups[0].gid) : "", _new: true };
             gaScenario.assignments.push(a);
             const tr = gaIfMakeAssignmentRow(a);
             gaIfInsertAssignmentRow(table, tr);
@@ -11103,7 +11165,7 @@ function gaIfBindTable(table) {
             tr.querySelector("[data-ga-if-title]")?.focus();
             gaApplyImagineTotal();
         } else if (btn.id === "canvasrefined-ga-if-add-group") {
-            const g = { gid: "new-group-" + (++gaIfCounter), name: "New group", weight: 0, _new: true };
+            const g = { gid: "new-group-" + (++gaIfCounter), name: getMsg("ga_new_group", "New group"), weight: 0, _new: true };
             gaScenario.groups.push(g);
             const tr = gaIfMakeGroupRow(g);
             gaIfInsertGroupRow(table, tr);
@@ -11276,41 +11338,60 @@ function rgbToHsl(r, g, b) {
 function getRelativeDate(date, short = false) {
     let now = new Date();
     let timeSince = (now.getTime() - date.getTime()) / 60000;
-    let time = "min";
+    let unitKey = short ? "time_min_short" : "time_min";
+    let unitFallback = "min";
+    let pluralKey = null;
+    let pluralFallback = "";
     timeSince = Math.abs(timeSince);
     if (timeSince >= 60) {
         timeSince /= 60;
-        time = short ? "h" : "hour";
+        unitKey = short ? "time_hour_short" : "time_hour";
+        unitFallback = short ? "h" : "hour";
+        pluralKey = short ? null : "time_hour_plural";
+        pluralFallback = "hours";
         if (timeSince >= 24) {
             timeSince /= 24;
-            time = short ? "d" : "day";
+            unitKey = short ? "time_day_short" : "time_day";
+            unitFallback = short ? "d" : "day";
+            pluralKey = short ? null : "time_day_plural";
+            pluralFallback = "days";
             if (timeSince >= 7) {
                 timeSince /= 7;
-                time = short ? "w" : "week";
+                unitKey = short ? "time_week_short" : "time_week";
+                unitFallback = short ? "w" : "week";
+                pluralKey = short ? null : "time_week_plural";
+                pluralFallback = "weeks";
             }
         }
     }
     timeSince = Math.round(timeSince);
-    let relative = timeSince + (short ? "" : " ") + time + (timeSince > 1 && !short ? "s" : "");
+    const unit = getMsg(timeSince > 1 && pluralKey ? pluralKey : unitKey, timeSince > 1 && pluralKey ? pluralFallback : unitFallback);
+    let relative = short ? timeSince + unit : timeSince + " " + unit;
     return { time: relative, ms: now.getTime() - date.getTime() };
 }
 
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function formatTodoDate(date, submissions, hr24) {
     let { time, ms } = getRelativeDate(date);
-    let fromNow = ms < 0 ? "in " + time : time + " ago";
+    let fromNow = ms < 0
+        ? getMsg("relative_in", "in $TIME$").replace("$TIME$", time)
+        : getMsg("relative_ago", "$TIME$ ago").replace("$TIME$", time);
     let dueSoon = false;
     if (submissions && submissions.submitted === false && ms >= -21600000) {
         dueSoon = true;
     }
-    return { "dueSoon": dueSoon, "date": months[date.getMonth()] + " " + date.getDate() + " at " + (date.getHours() - (hr24 ? "" : date.getHours() > 12 ? 12 : 0)) + ":" + (date.getMinutes() < 10 ? "0" : "") + date.getMinutes() + (hr24 ? "" : date.getHours() >= 12 ? "pm" : "am") + " (" + fromNow + ")" };
+    const dateText = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const timeText = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: !hr24 });
+    return { "dueSoon": dueSoon, "date": getMsg("todo_date_format", "$DATE$ at $TIME$ ($RELATIVE$)").replace("$DATE$", dateText).replace("$TIME$", timeText).replace("$RELATIVE$", fromNow) };
 }
 
 function formatCardDue(date) {
     let due = new Date(date);
     if (options.relative_dues === true) {
         let relative = getRelativeDate(due, true);
-        return relative.ms > 0 ? relative.time + " ago" : "in " + relative.time;
+        return relative.ms > 0
+            ? getMsg("relative_ago", "$TIME$ ago").replace("$TIME$", relative.time)
+            : getMsg("relative_in", "in $TIME$").replace("$TIME$", relative.time);
     }
     return options.assignment_date_format ? (due.getDate()) + "/" + (due.getMonth() + 1) : (due.getMonth() + 1) + "/" + (due.getDate());
 }

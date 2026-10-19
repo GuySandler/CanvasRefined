@@ -81,6 +81,106 @@ const syncedSubOptions = [
     "card_blur",
 ];
 const localSwitches = [];
+const LANGUAGES = {
+    "auto": "Auto (browser)",
+    "en": "English",
+    "de": "Deutsch",
+    "es": "Español",
+    "fr": "Français",
+    "it": "Italiano",
+    "ja": "日本語",
+    "pt_PT": "Português",
+    "ru": "Русский",
+    "sv": "Svenska",
+    "zh_CN": "中文 (简体)",
+    "zh_TW": "中文 (繁體)"
+};
+const LANGUAGE_STORAGE_KEY = "selected_locale";
+let overrideMessages = null;
+
+async function loadOverrideMessages(locale) {
+    if (!locale || locale === "auto") { overrideMessages = null; return; }
+    try {
+        const url = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("fetch failed");
+        overrideMessages = await res.json();
+        // monkey-patch chrome.i18n so any later getMsg respects override
+        if (!chrome.i18n._origGetMessage) {
+            chrome.i18n._origGetMessage = chrome.i18n.getMessage.bind(chrome.i18n);
+            chrome.i18n.getMessage = (key) => getMsg(key) || chrome.i18n._origGetMessage(key) || "";
+        }
+    } catch (e) {
+        console.warn("Failed to load locale", locale, e);
+        overrideMessages = null;
+    }
+}
+
+function getMsg(key, fallback) {
+    if (overrideMessages && overrideMessages[key] && overrideMessages[key].message) {
+        return overrideMessages[key].message;
+    }
+    const orig = chrome.i18n._origGetMessage || chrome.i18n.getMessage.bind(chrome.i18n);
+    const m = orig(key);
+    if (m) return m;
+    return fallback !== undefined ? fallback : "";
+}
+
+function applyI18nOverride() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        const msg = getMsg(key);
+        if (msg) el.textContent = msg;
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const msg = getMsg(el.dataset.i18nPlaceholder);
+        if (msg) el.placeholder = msg;
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const msg = getMsg(el.dataset.i18nTitle);
+        if (msg) el.title = msg;
+    });
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+        const msg = getMsg(el.dataset.i18nAriaLabel);
+        if (msg) el.setAttribute("aria-label", msg);
+    });
+}
+
+async function initLanguageSelector() {
+    const sel = document.getElementById("language-select");
+    if (!sel) return;
+    // populate
+    for (const [code, label] of Object.entries(LANGUAGES)) {
+        const opt = document.createElement("option");
+        opt.value = code;
+        opt.textContent = getMsg(code === "auto" ? "language_auto" : code, label) || label;
+        // keep native label for non-auto, but allow translation for auto
+        if (code !== "auto") opt.textContent = label;
+        else opt.textContent = getMsg("language_auto") || label;
+        sel.appendChild(opt);
+    }
+    const stored = await chrome.storage.local.get(LANGUAGE_STORAGE_KEY);
+    const current = stored[LANGUAGE_STORAGE_KEY] || "auto";
+    sel.value = current;
+    await loadOverrideMessages(current);
+    if (current !== "auto") applyI18nOverride();
+    sel.addEventListener("change", async () => {
+        const next = sel.value;
+        await chrome.storage.local.set({ [LANGUAGE_STORAGE_KEY]: next });
+        await loadOverrideMessages(next);
+        applyI18nOverride();
+        // also update dynamic celebration labels etc that use getMsg
+        const label = document.getElementById("todo_celebrations_label");
+        if (label) {
+            // trigger rerender via storage event or just reload popup text
+            // easiest: reload popup
+            location.reload();
+        } else {
+            location.reload();
+        }
+    });
+}
+
 
 // Theme export carries visual settings only, never productivity data.
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
@@ -325,7 +425,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const KEY = "hide_socials";
     const render = (hidden) => {
         buttons.classList.toggle("hidden", hidden);
-        toggle.textContent = chrome.i18n.getMessage(hidden ? "show_links" : "hide_links");
+        toggle.textContent = getMsg(hidden ? "show_links" : "hide_links") || (hidden ? "Show links" : "Hide links");
     };
     chrome.storage.local.get(KEY, (res) => render(!!res[KEY]));
     const flip = () => chrome.storage.local.get(KEY, (res) => {
@@ -412,11 +512,11 @@ function setupProgressRingsSelect(initial) {
 // `todo_celebrations`: multi-select effect ids, one picked at random per
 // completion. `todo_celebration_amount` scales intensity.
 const CELEBRATION_TYPES = [
-    { id: "confetti", label: "Confetti" },
-    { id: "fireworks", label: "Fireworks" },
-    { id: "sparkles", label: "Sparkle burst" },
-    { id: "hearts", label: "Rising hearts" },
-    { id: "rocket", label: "Rocket" },
+    { id: "confetti", label: getMsg("celebration_confetti") || "Confetti" },
+    { id: "fireworks", label: getMsg("celebration_fireworks") || "Fireworks" },
+    { id: "sparkles", label: getMsg("celebration_sparkles") || "Sparkle burst" },
+    { id: "hearts", label: getMsg("celebration_hearts") || "Rising hearts" },
+    { id: "rocket", label: getMsg("celebration_rocket") || "Rocket" },
 ];
 
 // Accepts the legacy todo_confetti boolean and drops unknown ids.
@@ -455,9 +555,9 @@ function setupCelebrationsSelect(initial) {
         });
     };
     const updateLabel = () => {
-        if (selected.length === 0) label.textContent = "None";
-        else if (selected.length === 1) label.textContent = CELEBRATION_TYPES.find(t => t.id === selected[0])?.label || "None";
-        else label.textContent = `${selected.length} selected`;
+        if (selected.length === 0) label.textContent = getMsg("celebration_none") || "None";
+        else if (selected.length === 1) label.textContent = CELEBRATION_TYPES.find(t => t.id === selected[0]) ? (getMsg("celebration_" + selected[0]) || CELEBRATION_TYPES.find(t => t.id === selected[0]).label) : (getMsg("celebration_none") || "None");
+        else label.textContent = (getMsg("selected_count") || "$COUNT$ selected").replace("$COUNT$", selected.length);
     };
 
     // Legacy key: the special handler only passes the new one.
@@ -504,7 +604,7 @@ function setupCelebrationPreview() {
     btn.addEventListener("click", async () => {
         const res = await sendFromPopup("previewCelebration");
         if (!res || res.ok !== true) {
-            displayAlert(true, "Open a Canvas page to preview celebrations.");
+            displayAlert(true, getMsg("open_canvas_preview") || "Open a Canvas page to preview celebrations.");
         }
     });
 }
@@ -803,11 +903,11 @@ function updateCardGridPreview() {
         const warning = document.getElementById("card-grid-warning");
         if (warning) {
             if (s.card_grid_flex === true) {
-                warning.textContent = "Flexible grid is on - cards wrap to fit narrow windows instead of being cut off.";
+                warning.textContent = getMsg("flexible_grid_on") || "Flexible grid is on - cards wrap to fit narrow windows instead of being cut off.";
                 warning.style.display = "block";
             } else if (active > total) {
-                const gpaNote = s.gpa_calc === true ? " (including the GPA calculator)" : "";
-                warning.textContent = `\u26A0 Your grid holds ${total} card${total === 1 ? "" : "s"} but you have ${active} card${active === 1 ? "" : "s"}${gpaNote} - some cards may be cut off.`;
+                const gpaNote = s.gpa_calc === true ? getMsg("grid_includes_gpa", " (including the GPA calculator)") : "";
+                warning.textContent = "\u26A0 " + (getMsg("grid_warning") || "Your grid holds $TOTAL$ card$TOTAL_S$ but you have $ACTIVE$ card$ACTIVE_S$$GPA_NOTE$ - some cards may be cut off.").replace("$TOTAL$", total).replace("$TOTAL_S$", total === 1 ? "" : "s").replace("$ACTIVE$", active).replace("$ACTIVE_S$", active === 1 ? "" : "s").replace("$GPA_NOTE$", gpaNote);
                 warning.style.display = "block";
             } else {
                 warning.style.display = "none";
@@ -984,7 +1084,7 @@ function parseWidgetOrderEntries(raw) {
 
 function widgetDisplayName(id) {
     const info = WIDGET_LIST.find(w => w.id === id);
-    const msg = info && chrome.i18n.getMessage(info.shortKey || info.nameKey);
+    const msg = info && getMsg(info.shortKey || info.nameKey);
     if (msg) return msg;
     return id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -1516,7 +1616,7 @@ function setupFeatureSearch(menu) {
         if (!matches.length) {
             const empty = document.createElement("div");
             empty.className = "search-result empty";
-            empty.textContent = "No features found";
+            empty.textContent = getMsg("no_features") || "No features found";
             resultsEl.appendChild(empty);
             resultsEl.classList.add("open");
             return;
@@ -1593,8 +1693,8 @@ function setupFeatureSearch(menu) {
     });
 }
 
-function setup() {
-
+async function setup() {
+    await initLanguageSelector();
     const menu = {
 		switches: syncedSwitches,
 		checkboxes: [
@@ -1994,18 +2094,7 @@ function setup() {
         });
     });
 
-    document.querySelectorAll('[data-i18n]').forEach(text => {
-        const msg = chrome.i18n.getMessage(text.dataset.i18n);
-        if (msg) text.innerText = msg;
-    });
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-        const msg = chrome.i18n.getMessage(el.dataset.i18nPlaceholder);
-        if (msg) el.placeholder = msg;
-    });
-    document.querySelectorAll('[data-i18n-title]').forEach(el => {
-        const msg = chrome.i18n.getMessage(el.dataset.i18nTitle);
-        if (msg) el.title = msg;
-    });
+    applyI18nOverride();
 
     setupFeatureSearch(menu);
 
@@ -2022,7 +2111,7 @@ function setup() {
         } else if (output.time < 250) {
             rating = "ok";
         }
-        document.getElementById("fix-dm-output").textContent = "Fix took " + Math.round(output.time) + "ms (rating: " + rating + ")";
+        document.getElementById("fix-dm-output").textContent = (getMsg("fix_took") || "Fix took $TIME$ms (rating: $RATING$)").replace("$TIME$", Math.round(output.time)).replace("$RATING$", rating);
         chrome.storage.sync.get("dark_mode_fix", sync => {
             if (sync["dark_mode_fix"].includes(output.path)) return;
             sync["dark_mode_fix"].push(output.path);
@@ -2046,12 +2135,12 @@ function setup() {
     // Bumps the fake-data seed; every open Canvas tab re-shuffles without a reload.
     document.querySelector("#anon-reroll-btn").addEventListener("click", () => {
         chrome.storage.sync.set({ "anon_grade_seed": Math.floor(Math.random() * 1000000) });
-        displayAlert(false, "Fake classes rerolled.");
+        displayAlert(false, getMsg("fake_rerolled") || "Fake classes rerolled.");
     });
 
     // Key must stay in sync with PLANNER_CACHE_KEY in content.js.
     document.querySelector("#planner-cache-clear-btn").addEventListener("click", async () => {
-        displayAlert(false, "Planner cache cleared.");
+        displayAlert(false, getMsg("planner_cleared") || "Planner cache cleared.");
         try {
             await chrome.storage.local.remove("planner_cache_v1");
         } catch (e) { /* nothing stored yet */ }
@@ -2087,15 +2176,15 @@ function setup() {
         };
 
         const syncBytes = await storageBytesInUse(chrome.storage.sync);
-        set("#storage-usage-sync", syncBytes == null ? "unknown" : formatStorageBytes(syncBytes) + " of 100 KB quota");
+        set("#storage-usage-sync", syncBytes == null ? getMsg("storage_unknown", "unknown") : formatStorageBytes(syncBytes) + getMsg("storage_quota_100kb", " of 100 KB quota"));
 
         const cacheBytes = await storageBytesInUse(chrome.storage.local, "planner_cache_v1");
-        let cacheText = "empty";
+        let cacheText = getMsg("storage_empty", "empty");
         if (cacheBytes) {
             try {
                 const result = await chrome.storage.local.get("planner_cache_v1");
                 const count = result?.["planner_cache_v1"]?.items?.length;
-                cacheText = formatStorageBytes(cacheBytes) + (typeof count === "number" ? ` (${count} items)` : "");
+                cacheText = formatStorageBytes(cacheBytes) + (typeof count === "number" ? getMsg("storage_items", " ($COUNT$ items)").replace("$COUNT$", count) : "");
             } catch (e) {
                 cacheText = formatStorageBytes(cacheBytes);
             }
@@ -2104,7 +2193,7 @@ function setup() {
 
         const localBytes = await storageBytesInUse(chrome.storage.local);
         if (localBytes == null) {
-            set("#storage-usage-local", "unknown");
+            set("#storage-usage-local", getMsg("storage_unknown", "unknown"));
         } else {
             const other = cacheBytes != null ? Math.max(localBytes - cacheBytes, 0) : null;
             set("#storage-usage-local", other == null ? formatStorageBytes(localBytes) : formatStorageBytes(other));
@@ -2139,7 +2228,7 @@ function setup() {
             clearAlert();
             return host;
         }
-        if (showAlert) displayAlert(true, "The URL you entered appears to be invalid, so it might not work.");
+        if (showAlert) displayAlert(true, getMsg("invalid_url") || "The URL you entered appears to be invalid, so it might not work.");
         return trimmed;
     }
 
@@ -2157,7 +2246,7 @@ function setup() {
         row.className = "domain-row";
         const input = document.createElement("input");
         input.type = "text";
-        input.placeholder = "canvas.myschool.edu";
+        input.placeholder = getMsg("placeholder_example") || "canvas.myschool.edu";
         input.value = value || "";
         input.spellcheck = false;
         input.addEventListener("input", saveDomainList);
@@ -2173,7 +2262,7 @@ function setup() {
         remove.className = "domain-remove";
         remove.type = "button";
         remove.textContent = "\u2715";
-        remove.title = "Remove";
+        remove.title = getMsg("remove_label") || "Remove";
         remove.addEventListener("click", () => {
             const val = sanitizeDomainEntry(input.value, false);
             row.remove();
@@ -2210,8 +2299,8 @@ function setup() {
         const output = document.querySelector("#export-output");
         const btn = document.querySelector("#export-copy");
         const text = output.value;
-        if (!text) { displayAlert(true, "Nothing to copy — select what to export first."); return; }
-        const flash = () => { const old = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = old; }, 1200); };
+        if (!text) { displayAlert(true, getMsg("nothing_to_copy") || "Nothing to copy — select what to export first."); return; }
+        const flash = () => { const old = btn.textContent; btn.textContent = getMsg("copied") || "Copied!"; setTimeout(() => { btn.textContent = old; }, 1200); };
         try {
             await navigator.clipboard.writeText(text);
             flash();
@@ -2405,10 +2494,10 @@ function setup() {
         const drawer = document.getElementById("submit-drawer");
         if (drawer.style.display === "none") {
             drawer.style.display = "block";
-            e.target.textContent = "Hide";
+            e.target.textContent = getMsg("hide") || "Hide";
         } else {
             drawer.style.display = "none";
-            e.target.textContent = "Show";
+            e.target.textContent = getMsg("show") || "Show";
         }
     });
 
@@ -2734,22 +2823,35 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
 function getRelativeDate(date, short = false) {
     let now = new Date();
     let timeSince = (now.getTime() - date.getTime()) / 60000;
-    let time = "min";
+    let unitKey = short ? "time_min_short" : "time_min";
+    let unitFallback = "min";
+    let pluralKey = null;
+    let pluralFallback = "";
     timeSince = Math.abs(timeSince);
     if (timeSince >= 60) {
         timeSince /= 60;
-        time = short ? "h" : "hour";
+        unitKey = short ? "time_hour_short" : "time_hour";
+        unitFallback = short ? "h" : "hour";
+        pluralKey = short ? null : "time_hour_plural";
+        pluralFallback = "hours";
         if (timeSince >= 24) {
             timeSince /= 24;
-            time = short ? "d" : "day";
+            unitKey = short ? "time_day_short" : "time_day";
+            unitFallback = short ? "d" : "day";
+            pluralKey = short ? null : "time_day_plural";
+            pluralFallback = "days";
             if (timeSince >= 7) {
                 timeSince /= 7;
-                time = short ? "w" : "week";
+                unitKey = short ? "time_week_short" : "time_week";
+                unitFallback = short ? "w" : "week";
+                pluralKey = short ? null : "time_week_plural";
+                pluralFallback = "weeks";
             }
         }
     }
     timeSince = Math.round(timeSince);
-    let relative = timeSince + (short ? "" : " ") + time + (timeSince > 1 && !short ? "s" : "");
+    const unit = getMsg(timeSince > 1 && pluralKey ? pluralKey : unitKey, timeSince > 1 && pluralKey ? pluralFallback : unitFallback);
+    let relative = short ? timeSince + unit : timeSince + " " + unit;
     return { time: relative, ms: now.getTime() - date.getTime() };
 }
 
@@ -2760,8 +2862,8 @@ function displaySavedThemes() {
         Object.keys(local["saved_themes"]).forEach((key, index) => {
             const created = new Date(parseInt(key));
             let btn = makeElement("div", target, { "className": "saved-theme" });
-            let title = makeElement("p", btn, { "className": "theme-button-title", "textContent": `Theme ${index + 1}`});
-            let date = makeElement("p", btn, { "className": "theme-button-creator", "textContent": `${getRelativeDate(created).time} ago` });
+            let title = makeElement("p", btn, { "className": "theme-button-title", "textContent": (getMsg("theme_number") || "Theme $NUM$").replace("$NUM$", index + 1)});
+            let date = makeElement("p", btn, { "className": "theme-button-creator", "textContent": (getMsg("relative_ago", "$TIME$ ago")).replace("$TIME$", getRelativeDate(created).time) });
             let remove = makeElement("div", btn, { "className": "theme-button-remove", "textContent": "x" });
             btn.style.backgroundImage = `linear-gradient(rgba(0, 0, 0, 0.44), rgba(0, 0, 0, 0.44)), url(${local["saved_themes"][key]["custom_cards"]?.[0] || ""})`;
             btn.addEventListener("click", () => {
@@ -2840,7 +2942,7 @@ function updateCards(key, value) {
     chrome.storage.sync.get(["custom_cards"], result => {
         chrome.storage.sync.set({ "custom_cards": { ...result["custom_cards"], [key]: { ...result["custom_cards"][key], ...value } } }, () => {
             if (chrome.runtime.lastError) {
-                displayAlert(true, "The data you're entering is exceeding the storage limit, so it won't save. Try using shorter links, and make sure to press \"copy image address\" and not \"copy image\" for links.");
+                displayAlert(true, getMsg("storage_limit_error", "The data you're entering is exceeding the storage limit, so it won't save. Try using shorter links, and make sure to press \"copy image address\" and not \"copy image\" for links."));
             }
         })
     });
@@ -2866,7 +2968,7 @@ function displayCustomFont() {
         const popularFonts = ["Arimo", "Barriecito", "Barlow", "Caveat", "Cinzel", "Comfortaa", "Corben", "DM Sans", "Expletus Sans", "Gluten", "Happy Monkey", "Inconsolata", "Inria Sans", "Jost", "Kanit", "Karla", "Kode Mono", "Lobster", "Lora", "Madimi One", "Mali", "Montserrat", "Nanum Myeongjo", "Open Sans", "Oswald", "Permanent Marker", "Playfair Display", "Poetsen One", "Poppins", "Quicksand", "Rakkas", "Redacted Script", "Roboto Mono", "Rubik", "Silkscreen", "Sixtyfour", "Syne Mono", "Tektur", "Texturina", "Ysabeau Infant", "Yuji Syuku"];
         let quickFonts = document.querySelector("#quick-fonts");
         quickFonts.textContent = "";
-        let noFont = makeElement("button", quickFonts, { "className": "customization-button", "textContent": "None" });
+        let noFont = makeElement("button", quickFonts, { "className": "customization-button", "textContent": getMsg("todo_progress_none") || "None" });
         noFont.addEventListener("click", () => {
             chrome.storage.sync.set({ "custom_font": { "link": "", "family": "" } });
             link.value = "";
@@ -2903,7 +3005,7 @@ function setCustomImage(key, val) {
     if (val !== "" && val !== "none") {
         let test = new Image();
         test.onerror = () => {
-            displayAlert(true, "It seems that the image link you provided isn't working. Make sure to right click on any images you want to use and select \"copy image address\" to get the correct link.");
+            displayAlert(true, getMsg("image_link_error", "It seems that the image link you provided isn't working. Make sure to right click on any images you want to use and select \"copy image address\" to get the correct link."));
             updateCards(key, { "img": val });
         }
         test.onload = clearAlert;
@@ -2949,7 +3051,7 @@ async function displayAdvancedCards() {
 		});
 
         if (Object.keys(allCards).length === 0) {
-            cardGrid.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No course cards found. Visit your Canvas dashboard to load courses.</p>';
+            cardGrid.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">' + (getMsg("no_course_cards") || "No course cards found. Visit your Canvas dashboard to load courses.") + '</p>';
             return;
         }
 
@@ -2998,7 +3100,7 @@ function createCourseButton(courseId, courseData) {
 	tile.className = "course-card-tile";
 	tile.classList.toggle("card-hidden", courseData.hidden === true);
 	tile.appendChild(button);
-	makeElement("button", tile, { className: "course-card-hide-toggle", title: "Hide/show on dashboard", innerHTML: CARD_EYE_SVG }).addEventListener("click", () => {
+	makeElement("button", tile, { className: "course-card-hide-toggle", title: getMsg("card_hide_toggle", "Hide/show on dashboard"), innerHTML: CARD_EYE_SVG }).addEventListener("click", () => {
 		const hidden = courseData.hidden !== true;
         courseData.hidden = courseData.hide = hidden;
 		updateCards(courseId, { hidden, hide: hidden });
@@ -3122,7 +3224,7 @@ function saveCardChanges(courseId) {
 		updateCards(courseId, updates);
 	}
 
-	displayAlert(false, "Card settings saved successfully!");
+	displayAlert(false, getMsg("card_settings_saved", "Card settings saved successfully!"));
 
 	hideCardEditMenu();
 
@@ -3134,7 +3236,7 @@ function saveCardChanges(courseId) {
 
 function resetCardToDefault(courseId) {
 	updateCards(courseId, { name: "", code: "", img: "", hidden: false, hide: false, hide_todo: false });
-	displayAlert(false, "Card reset to default settings!");
+	displayAlert(false, getMsg("card_reset_default", "Card reset to default settings!"));
 
 	setTimeout(() => {
 		displayAdvancedCards();

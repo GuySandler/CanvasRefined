@@ -38,7 +38,7 @@
                 </button>
                 <button id="advanced-settings" class="big-button tab-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4H14C17.7712 4 19.6569 4 20.8284 5.17157C22 6.34315 22 8.22876 22 12C22 15.7712 22 17.6569 20.8284 18.8284C19.6569 20 17.7712 20 14 20H10C6.22876 20 4.34315 20 3.17157 18.8284C2 17.6569 2 15.7712 2 12Z"></path><path d="M10 16H6"></path><path d="M14 16H12.5"></path><path d="M2 10L22 10"></path></svg>
-                    <span data-i18n="card_customization">Card Customization</span>
+                    <span data-i18n="card_customization">Card Settings</span>
                 </button>
                 <!-- <button id="card-colors-btn" class="big-button tab-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M5 3m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"></path><path d="M19 6h1a2 2 0 0 1 2 2a5 5 0 0 1 -5 5l-5 0v2"></path><path d="M10 15m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z"></path></svg>
@@ -182,7 +182,7 @@
                             <div class="sliderknob"></div>
                             <div class="sliderbg"></div>
                         </div><span class="option-name" data-i18n="quiz_safe_mode">Quiz Safe Mode</span>
-                        <span class="cr-info-bubble" tabindex="0" role="button" aria-label="Quiz Safe Mode info">
+                        <span class="cr-info-bubble" tabindex="0" role="button" data-i18n-aria-label="quiz_safe_info_label" aria-label="Quiz Safe Mode info">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                             <span class="cr-info-bubble-text" data-i18n="quiz_safe_mode_desc">Turns off most Canvas Refined features on quiz pages so you get the default Canvas quiz experience.</span>
                         </span>
@@ -202,7 +202,7 @@
                             <div class="sliderknob"></div>
                             <div class="sliderbg"></div>
                         </div><span class="option-name" data-i18n="grade_analytics">Grade Analytics</span>
-                        <span class="cr-info-bubble" tabindex="0" role="button" aria-label="Grade Analytics info">
+                        <span class="cr-info-bubble" tabindex="0" role="button" data-i18n-aria-label="grade_analytics_info_label" aria-label="Grade Analytics info">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                             <span class="cr-info-bubble-text" data-i18n="grade_analytics_desc">Adds tools to help you analyze your grades.</span>
                         </span>
@@ -214,17 +214,26 @@
                         </div>
                     </div>
                 </div>
-                <div class="social-buttons">
-                <a class="discord-button" href="https://discord.gg/GjFh4JA3wh" target="_blank" rel="noopener noreferrer" title="Join our Discord">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.369a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.182 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-                    <span>Discord</span>
-                </a>
-                <a class="github-button" href="https://github.com/GuySandler/CanvasRefined" target="_blank" rel="noopener noreferrer" title="View on GitHub">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
-                    <span>GitHub</span>
-                </a>
+                <div class="option-container" id="language-selector-container">
+                    <div class="sub-option widget-inline-row" style="margin-top:0;">
+                        <label for="language-select" class="sub-text widget-inline-label" data-i18n="language">Language</label>
+                        <select id="language-select" class="widget-pos widget-inline-select"></select>
+                    </div>
                 </div>
-                <div class="social-toggle" id="social-toggle" role="button" tabindex="0"></div>
+                <div class="option-container">
+                    <div class="customDomain">
+                        <span data-i18n="enter_url">Your Canvas URLs:</span>
+                        <div id="custom-domain-list"></div>
+                        <button id="add-domain-btn" class="customization-button" data-i18n="add_canvas">+ Add canvas</button>
+                        <div class="domain-toggles">
+                            <div class="sub-option">
+                                <input type="checkbox" id="auto_detect_disabled" name="auto_detect_disabled">
+                                <label for="auto_detect_disabled" class="sub-text" data-i18n="no_auto_detect">Don't auto detect canvases</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <div class="options-right">
@@ -241,35 +250,35 @@
                     <div class="sub-options">
                         <!-- Frequently-changed options stay visible; rarer ones live in the collapsible "More options" section below -->
                         <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
-                            <label for="todo_progress_rings" class="sub-text">Progress display</label>
+                            <label for="todo_progress_rings" class="sub-text" data-i18n="todo_progress_display">Progress display</label>
                             <select id="todo_progress_rings" name="todo_progress_rings">
-                                <option value="none">None</option>
-                                <option value="rings">Rings</option>
-                                <option value="rainbow">Rainbow</option>
-                                <option value="lines">Multiple lines</option>
-                                <option value="line">One line</option>
+                                <option value="none" data-i18n="todo_progress_none">None</option>
+                                <option value="rings" data-i18n="todo_progress_rings">Rings</option>
+                                <option value="rainbow" data-i18n="todo_progress_rainbow">Rainbow</option>
+                                <option value="lines" data-i18n="todo_progress_lines">Multiple lines</option>
+                                <option value="line" data-i18n="todo_progress_line">One line</option>
                             </select>
                         </div>
                         <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
-                            <label for="todo_timeframe" class="sub-text">Time frame</label>
+                            <label for="todo_timeframe" class="sub-text" data-i18n="todo_timeframe">Time frame</label>
                             <select id="todo_timeframe" name="todo_timeframe">
-                                <option value="all">All time</option>
-                                <option value="1week">1 week</option>
-                                <option value="2week">2 weeks</option>
-                                <option value="month">Month</option>
-                                <option value="2month">2 months</option>
-                                <option value="custom">Custom</option>
+                                <option value="all" data-i18n="todo_timeframe_all">All time</option>
+                                <option value="1week" data-i18n="todo_timeframe_1week">1 week</option>
+                                <option value="2week" data-i18n="todo_timeframe_2week">2 weeks</option>
+                                <option value="month" data-i18n="todo_timeframe_month">Month</option>
+                                <option value="2month" data-i18n="todo_timeframe_2month">2 months</option>
+                                <option value="custom" data-i18n="todo_timeframe_custom">Custom</option>
                             </select>
                             <div id="todo_timeframe_custom" class="custom-tf-wrap">
                                 <div class="custom-tf-row">
-                                    <span class="sub-text">From</span>
+                                    <span class="sub-text" data-i18n="todo_timeframe_from">From</span>
                                     <input type="number" id="todo_timeframe_custom_past" min="0" max="365">
-                                    <span class="sub-text">days ago</span>
+                                    <span class="sub-text" data-i18n="todo_timeframe_days_ago">days ago</span>
                                 </div>
                                 <div class="custom-tf-row">
-                                    <span class="sub-text">To</span>
+                                    <span class="sub-text" data-i18n="todo_timeframe_to">To</span>
                                     <input type="number" id="todo_timeframe_custom_future" min="0" max="365">
-                                    <span class="sub-text">days from now</span>
+                                    <span class="sub-text" data-i18n="todo_timeframe_days_future">days from now</span>
                                 </div>
                             </div>
                         </div>
@@ -279,11 +288,11 @@
                         </div>
                         <div class="sub-option">
                             <input type="checkbox" id="todo_show_scores" name="todo_show_scores">
-                            <label for="todo_show_scores" class="sub-text">Show assignment scores</label>
+                            <label for="todo_show_scores" class="sub-text" data-i18n="todo_show_scores">Show assignment scores</label>
                         </div>
                         <div class="sub-option">
                             <input type="checkbox" id="todo_hide_read" name="todo_hide_read">
-                            <label for="todo_hide_read" class="sub-text">Hide read announcements</label>
+                            <label for="todo_hide_read" class="sub-text" data-i18n="todo_hide_read">Hide read announcements</label>
                         </div>
                         <div style="margin-top: 5px">
                             <span class="sub-text" data-i18n="max_items">Max items to show: </span><span
@@ -318,11 +327,11 @@
                                 </div>
                                 <div class="sub-option">
                                     <input type="checkbox" id="todo_ignore_card_colors" name="todo_ignore_card_colors">
-                                    <label for="todo_ignore_card_colors" class="sub-text">Ignore card colors</label>
+                                    <label for="todo_ignore_card_colors" class="sub-text" data-i18n="todo_ignore_colors">Ignore card colors</label>
                                 </div>
                                 <div class="sub-option">
                                     <input type="checkbox" id="todo_remove_icons" name="todo_remove_icons">
-                                    <label for="todo_remove_icons" class="sub-text">Remove icons</label>
+                                    <label for="todo_remove_icons" class="sub-text" data-i18n="todo_remove_icons">Remove icons</label>
                                 </div>
                             </div>
                         </div>
@@ -336,28 +345,28 @@
                             <div class="sliderknob"></div>
                             <div class="sliderbg"></div>
                         </div>
-                        <span class="option-name">Celebration</span>
+                        <span class="option-name" data-i18n="celebration">Celebration</span>
                     </div>
                     <div class="sub-option celebration-sub" id="celebration-type-row" style="margin-top:6px;flex-direction:column;align-items:stretch;gap:4px;">
-                        <span class="sub-text">Celebration type</span>
+                        <span class="sub-text" data-i18n="celebration_type">Celebration type</span>
                         <div class="celebration-multiselect" id="todo_celebrations">
                             <button type="button" class="celebration-multiselect-btn" id="todo_celebrations_btn" aria-haspopup="listbox" aria-expanded="false">
-                                <span id="todo_celebrations_label">Confetti</span>
+                                <span id="todo_celebrations_label" data-i18n="celebration_confetti">Confetti</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 9l6 6 6-6" /></svg>
                             </button>
                             <div class="celebration-multiselect-menu" id="todo_celebrations_menu" role="listbox" aria-multiselectable="true"></div>
                         </div>
                     </div>
                     <div class="sub-option celebration-sub" id="celebration-amount-row" style="flex-direction:column;align-items:stretch;gap:4px;">
-                        <label for="todo_celebration_amount" class="sub-text">Amount</label>
+                        <label for="todo_celebration_amount" class="sub-text" data-i18n="celebration_amount">Amount</label>
                         <select id="todo_celebration_amount" name="todo_celebration_amount">
-                            <option value="less">Less</option>
-                            <option value="normal">Normal</option>
-                            <option value="more">More</option>
-                            <option value="crazy">Crazy</option>
+                            <option value="less" data-i18n="celebration_less">Less</option>
+                            <option value="normal" data-i18n="celebration_normal">Normal</option>
+                            <option value="more" data-i18n="celebration_more">More</option>
+                            <option value="crazy" data-i18n="celebration_crazy">Crazy</option>
                         </select>
                     </div>
-                    <button type="button" id="celebration-preview-btn" class="customization-button celebration-sub" style="margin-top:8px;width:100%;">Preview celebration</button>
+                    <button type="button" id="celebration-preview-btn" class="customization-button celebration-sub" style="margin-top:8px;width:100%;" data-i18n="celebration_preview">Preview celebration</button>
                 </div>
                 <div class="option-container">
                     <div class="option" id="better_sidebar">
@@ -384,7 +393,7 @@
                             <label for="hide_navbar" class="sub-text" data-i18n="hide_navbar">Hide Navigation Bar</label>
                         </div>
                         <div style="margin-top: 5px" id="sidebarScaleSub">
-                            <span class="sub-text">Sidebar scale: </span><span id="sidebarScaleValue"></span><span class="sub-text">%</span>
+                            <span class="sub-text" data-i18n="sidebar_scale">Sidebar scale: </span><span id="sidebarScaleValue"></span><span class="sub-text">%</span>
                             <input type="range" min="70" max="150" id="sidebarScaleSlider">
                         </div>
                     </div>
@@ -458,50 +467,51 @@
                         </div><span class="option-name" data-i18n="hide_sequence_footer">Hide Next/Previous Buttons</span>
                     </div>
                 </div>
-                <div class="option-container">
-                    <div class="customDomain">
-                        <span data-i18n="enter_url">Your Canvas URLs:</span>
-                        <div id="custom-domain-list"></div>
-                        <button id="add-domain-btn" class="customization-button" data-i18n="add_canvas">+ Add canvas</button>
-                        <div class="domain-toggles">
-                            <div class="sub-option">
-                                <input type="checkbox" id="auto_detect_disabled" name="auto_detect_disabled">
-                                <label for="auto_detect_disabled" class="sub-text" data-i18n="no_auto_detect">Don't auto detect canvases</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
             </div>
+        </div>
+        <div class="social-footer" id="social-footer">
+            <div class="social-buttons" id="social-buttons">
+                <a class="discord-button" href="https://discord.gg/GjFh4JA3wh" target="_blank" rel="noopener noreferrer" data-i18n-title="join_discord" title="Join our Discord">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.369a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.182 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+                    <span>Discord</span>
+                </a>
+                <a class="github-button" href="https://github.com/GuySandler/CanvasRefined" target="_blank" rel="noopener noreferrer" data-i18n-title="view_on_github" title="View on GitHub">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                    <span>GitHub</span>
+                </a>
+            </div>
+            <div class="social-toggle" id="social-toggle" role="button" tabindex="0" data-i18n="hide_links">Hide links</div>
         </div>
     </div>
 
     <div class="import-export tab" style="display: none">
         <div id="submit-popup">
             <div style="max-width: 75%;color:#a7a7a7">
-                <h3 class="header-small" style="font-size:18px;color:#fff">Submission confirmation</h3>
-                <p style="font-size:14px;margin-top: 10px;font-weight:600;">This is <span style="text-decoration: underline;">not</span> for requesting a theme. I don't create themes by request.</p>
-                <p style="margin-top: 10px;">Your submission will include your current thematic settings, such as your card images, dark mode, and font.</p>
-                <p style="margin-top: 10px;">Make sure your theme follows these guidelines:</p>
+                <h3 class="header-small" style="font-size:18px;color:#fff" data-i18n="submission_confirmation">Submission confirmation</h3>
+                <p style="font-size:14px;margin-top: 10px;font-weight:600;" data-i18n="not_for_request">This is <span style="text-decoration: underline;">not</span> for requesting a theme. I don't create themes by request.</p>
+                <p style="margin-top: 10px;" data-i18n="submission_includes">Your submission will include your current thematic settings, such as your card images, dark mode, and font.</p>
+                <p style="margin-top: 10px;" data-i18n="theme_guidelines">Make sure your theme follows these guidelines:</p>
                 <ul>
-                    <li>Appropriate images/title</li>
-                    <li>Does not heavily use components from other themes</li>
-                    <li>Uses a unique custom dark mode (not one of the presets)</li>
-                    <li>Custom images cannot be from Discord or Gmail. These images are not public</li>
+                    <li data-i18n="guideline_1">Appropriate images/title</li>
+                    <li data-i18n="guideline_2">Does not heavily use components from other themes</li>
+                    <li data-i18n="guideline_3">Uses a unique custom dark mode (not one of the presets)</li>
+                    <li data-i18n="guideline_4">Custom images cannot be from Discord or Gmail. These images are not public</li>
                 </ul>
                 <div style="display: flex; gap: 5px;margin-top:14px;">
-                    <button id="submit-theme-btn" class="big-button" style="width: 50%;">Submit</button>
-                    <button id="cancel-theme-btn" class="big-button" style="width: 50%;">Cancel</button>
+                    <button id="submit-theme-btn" class="big-button" style="width: 50%;" data-i18n="submit">Submit</button>
+                    <button id="cancel-theme-btn" class="big-button" style="width: 50%;" data-i18n="cancel">Cancel</button>
                 </div>
             </div>
         </div>
         <div id="browser-settings-popup">
             <div style="width: 50%;">
-                <h3 class="header-small" style="margin-bottom:14px;font-size:18px;">Theme browser settings</h3>
+                <h3 class="header-small" style="margin-bottom:14px;font-size:18px;" data-i18n="theme_browser_settings">Theme browser settings</h3>
                 <div style="display:flex;gap:8px;align-items: center;color:#a7a7a7">
                     <input type="checkbox" id="browser_show_likes">
-                    <span>Always show like count</span>
+                    <span data-i18n="always_show_likes">Always show like count</span>
                 </div>
-                <button id="close-settings-btn" class="big-button" style="width: 50%;margin-top:14px;">Close</button>
+                <button id="close-settings-btn" class="big-button" style="width: 50%;margin-top:14px;" data-i18n="close">Close</button>
             </div>
         </div>
         <div class="tab-header">
@@ -510,55 +520,55 @@
         </div>
         <div class="option-container" style="display:none;">
             <div class="theme-header small-option">
-                <h3 class="header-small" style="margin:0">Submit your theme</h3>
-                <div class="big-button" id="show-submit-form">Show</div>
+                <h3 class="header-small" style="margin:0" data-i18n="submit_your_theme">Submit your theme</h3>
+                <div class="big-button" id="show-submit-form" data-i18n="show">Show</div>
             </div>
-            <p style="color:#a7a7a7">Do you want to submit your theme for others to use?</p>
+            <p style="color:#a7a7a7" data-i18n="do_you_want_submit">Do you want to submit your theme for others to use?</p>
 
             <div id="submit-drawer" style="display: none;">
                 <div>
                     <div id="submit-tab">
-                        <button class="submit-tab-btn active" id="submit-form-btn">Submit</button>
-                        <button class="submit-tab-btn" id="view-submissions-btn">My submissions</button>
+                        <button class="submit-tab-btn active" id="submit-form-btn" data-i18n="submit">Submit</button>
+                        <button class="submit-tab-btn" id="view-submissions-btn" data-i18n="my_submissions">My submissions</button>
                     </div>
                 </div>
                 <div id="submit-form" style="margin-top:10px;">
                     <div style="display: flex;gap:40px;">
                         <div>
                             <div>
-                                <p style="font-weight:600;">Title</p>
+                                <p style="font-weight:600;" data-i18n="title_label">Title</p>
                                 <input type="text" class="card-input" id="submit-title">
-                                <p style="color:#a7a7a7;font-size:12px;margin-top:4px;">Try to keep this short and relevant so people can search for it.</p>
+                                <p style="color:#a7a7a7;font-size:12px;margin-top:4px;" data-i18n="title_hint">Try to keep this short and relevant so people can search for it.</p>
                             </div>
                             <div style="margin-top:14px;">
-                                <p style="font-weight:600;">Created by</p>
+                                <p style="font-weight:600;" data-i18n="created_by">Created by</p>
                                 <input type="text" class="card-input" id="submit-credits">
-                                <p style="color:#a7a7a7;font-size:12px;margin-top:4px;">This can be anything including your name, social media handle, anonymous etc.</p>
+                                <p style="color:#a7a7a7;font-size:12px;margin-top:4px;" data-i18n="created_by_hint">This can be anything including your name, social media handle, anonymous etc.</p>
                             </div>
                                             </div>
                         <div style="min-width: 25%;">
-                            <p style="color:#a7a7a7;font-size:12px;margin-bottom:5px;">Preview</p>
+                            <p style="color:#a7a7a7;font-size:12px;margin-bottom:5px;" data-i18n="preview">Preview</p>
                             <button id="theme-button-img" class="theme-button customization-button"
                             style="width: 100%;background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6));">
-                                <p class="theme-button-title" id="theme-button-title-preview">Title</p>
-                                <p class="theme-button-creator" id="theme-button-creator-preview">Credits</p>
+                                <p class="theme-button-title" id="theme-button-title-preview" data-i18n="preview_title_default">Title</p>
+                                <p class="theme-button-creator" id="theme-button-creator-preview" data-i18n="preview_creator_default">Credits</p>
                             </button>
                         </div>
                     </div>
                     <div style="display: flex;gap:6px;margin-top: 10px;">
-                        <button id="submit-theme-btn-1" class="big-button">Submit</button>
+                        <button id="submit-theme-btn-1" class="big-button" data-i18n="submit">Submit</button>
                     </div>
                 </div>
                 <div id="view-submissions" style="display: none;">
                     <div id="latest-submissions"></div>
-                    <p style="font-size:12px;color:#a4a4a4;margin:6px 0">Showing your latest 3 submissions</p>
+                    <p style="font-size:12px;color:#a4a4a4;margin:6px 0" data-i18n="showing_submissions">Showing your latest 3 submissions</p>
                 </div>
             </div>
         </div>
         <div class="option-container">
             <div class="theme-header">
                 <div style="display:flex;gap:6px;align-items:center">
-                    <h3 class="header-small" style="margin:0">User made themes</h3>
+                    <h3 class="header-small" style="margin:0" data-i18n="user_made_themes">User made themes</h3>
                     <svg id="browser-settings-btn" xmlns="http://www.w3.org/2000/svg"  width="16"  height="16"  viewBox="0 0 24 24"  fill="currentColor"  class="icon icon-tabler icons-tabler-filled icon-tabler-settings"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14.647 4.081a.724 .724 0 0 0 1.08 .448c2.439 -1.485 5.23 1.305 3.745 3.744a.724 .724 0 0 0 .447 1.08c2.775 .673 2.775 4.62 0 5.294a.724 .724 0 0 0 -.448 1.08c1.485 2.439 -1.305 5.23 -3.744 3.745a.724 .724 0 0 0 -1.08 .447c-.673 2.775 -4.62 2.775 -5.294 0a.724 .724 0 0 0 -1.08 -.448c-2.439 1.485 -5.23 -1.305 -3.745 -3.744a.724 .724 0 0 0 -.447 -1.08c-2.775 -.673 -2.775 -4.62 0 -5.294a.724 .724 0 0 0 .448 -1.08c-1.485 -2.439 1.305 -5.23 3.744 -3.745a.722 .722 0 0 0 1.08 -.447c.673 -2.775 4.62 -2.775 5.294 0zm-2.647 4.919a3 3 0 1 0 0 6a3 3 0 0 0 0 -6z" /></svg>
                 </div>
                 <span id="premade-themes-pagenum"></span>
@@ -572,21 +582,21 @@
                         <span id="theme-current-sort"></span>
                     </button>
                     <div id="theme-sort-selector">
-                        <div id="theme-sort-score" class="theme-sort-btn">Popular</div>
-                        <div id="theme-sort-trending" class="theme-sort-btn">Trending</div>
-                        <div id="theme-sort-liked" class="theme-sort-btn">Liked</div>
-                        <div id="theme-sort-new" class="theme-sort-btn">New</div>
-                        <div id="theme-sort-old" class="theme-sort-btn">Old</div>
-                        <div id="theme-sort-abc" class="theme-sort-btn">ABC</div>
+                        <div id="theme-sort-score" class="theme-sort-btn" data-i18n="popular">Popular</div>
+                        <div id="theme-sort-trending" class="theme-sort-btn" data-i18n="trending">Trending</div>
+                        <div id="theme-sort-liked" class="theme-sort-btn" data-i18n="liked">Liked</div>
+                        <div id="theme-sort-new" class="theme-sort-btn" data-i18n="new_label">New</div>
+                        <div id="theme-sort-old" class="theme-sort-btn" data-i18n="old_label">Old</div>
+                        <div id="theme-sort-abc" class="theme-sort-btn" data-i18n="abc">ABC</div>
                     </div>
                 </div>
                 <div class="card-input" id="theme-search-container">
                     <svg  xmlns="http://www.w3.org/2000/svg"  width="14"  height="14"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-search"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg>
-                    <input type="text" id="theme-search" placeholder="Search">
+                    <input type="text" id="theme-search" placeholder="Search" data-i18n-placeholder="search">
                 </div>
                 <div style="display:flex;gap:4px;align-items:center">
-                    <button id="premade-themes-left">Back</button>
-                    <button id="premade-themes-right">Next</button>
+                    <button id="premade-themes-left" data-i18n="back">Back</button>
+                    <button id="premade-themes-right" data-i18n="next">Next</button>
                 </div>
             </div>
             <div style="position:relative">
@@ -595,85 +605,85 @@
         </div>
         <div class="option-container">
             <div>
-                <h3 class="header-small">Revert theme changes</h3>
+                <h3 class="header-small" data-i18n="revert_theme">Revert theme changes</h3>
             </div>
             <div style="display:flex;gap: 12px;">
-                <button id="theme-revert" class="customization-button">Revert</button>
-                <p>This will revert customizations back to when you first installed the extension.</p>
+                <button id="theme-revert" class="customization-button" data-i18n="revert">Revert</button>
+                <p data-i18n="revert_desc">This will revert customizations back to when you first installed the extension.</p>
             </div>
         </div>
         <div class="option-container">
             <div class="theme-header">
-                <h3 class="header-small" style="margin:0;flex:100">My saved themes</h3>
-                <button id="save-theme" class="customization-button">+ Save current</button>
+                <h3 class="header-small" style="margin:0;flex:100" data-i18n="my_saved_themes">My saved themes</h3>
+                <button id="save-theme" class="customization-button" data-i18n="save_current">+ Save current</button>
             </div>
             <div id="saved-themes"></div>
         </div>
         <div class="export-details option-container">
             <h3 class="header-small" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                <span>Export Settings</span>
+                <span data-i18n="export_settings">Export Settings</span>
                 <span style="display:flex;gap:6px;">
-                    <button type="button" id="export-check-all" class="customization-button" style="padding:4px 10px;font-size:11px;">Check all</button>
-                    <button type="button" id="export-check-none" class="customization-button" style="padding:4px 10px;font-size:11px;">Check none</button>
+                    <button type="button" id="export-check-all" class="customization-button" style="padding:4px 10px;font-size:11px;" data-i18n="check_all">Check all</button>
+                    <button type="button" id="export-check-none" class="customization-button" style="padding:4px 10px;font-size:11px;" data-i18n="check_none">Check none</button>
                 </span>
             </h3>
             <div style="display:flex;gap:30px;">
                 <div class="export-inputs">
                     <div class="sub-option">
                         <input type="checkbox" id="export-dark" />
-                        <span>Dark mode</span>
+                        <span data-i18n="export_dark">Dark mode</span>
                     </div>
                     <div class="sub-option">
                         <input type="checkbox" id="export-dark-schedule" />
-                        <span>Dark mode schedule</span>
+                        <span data-i18n="export_dark_schedule">Dark mode schedule</span>
                     </div>
                     <div  class="sub-option">
                         <input type="checkbox" id="export-cards" />
-                        <span>Card images</span>
+                        <span data-i18n="export_card_images">Card images</span>
                     </div>
                     <div class="sub-option">
                         <input type="checkbox" id="export-colors" />
-                        <span>Card colors</span>
+                        <span data-i18n="export_card_colors">Card colors</span>
                     </div>
                     <div class="sub-option">
                         <input type="checkbox" id="export-card-styles" />
-                        <span>Card styles</span>
+                        <span data-i18n="export_card_styles">Card styles</span>
                     </div>
                     <div class="sub-option">
                         <input type="checkbox" id="export-font" />
-                        <span>Custom font</span>
+                        <span data-i18n="export_custom_font">Custom font</span>
                     </div>
                     <div class="sub-option">
                         <input type="checkbox" id="export-toggles" />
-                        <span>On/off toggles</span>
+                        <span data-i18n="export_toggles">On/off toggles</span>
                     </div>
                     <div class="sub-option">
                         <input type="checkbox" id="export-todo" />
-                        <span>Todo list</span>
+                        <span data-i18n="export_todo">Todo list</span>
                     </div>
                     <div class="sub-option">
                         <input type="checkbox" id="export-gpa" />
-                        <span>GPA settings</span>
+                        <span data-i18n="export_gpa">GPA settings</span>
                     </div>
 					<div class="sub-option">
                         <input type="checkbox" id="export-customStyles" />
-                        <span>Custom CSS</span>
+                        <span data-i18n="export_custom_css">Custom CSS</span>
                     </div>
 					<div class="sub-option">
                         <input type="checkbox" id="export-background" />
-                        <span>Background &amp; opacity</span>
+                        <span data-i18n="export_background">Background &amp; opacity</span>
                     </div>
                 </div>
                 <div style="flex: 1">
-                    <textarea class="card-input" id="export-output" placeholder="Output"></textarea>
-                    <button type="button" id="export-copy" class="customization-button" style="display:block;margin-top:8px;width:100%;">Copy</button>
+                    <textarea class="card-input" id="export-output" data-i18n-placeholder="output" placeholder="Output"></textarea>
+                    <button type="button" id="export-copy" class="customization-button" style="display:block;margin-top:8px;width:100%;" data-i18n="copy">Copy</button>
                 </div>
             </div>
         </div>
         <div class="import-export-details">
             <div class="import-details option-container">
-                <h3 class="header-small">Import</h3>
-                <p>Copy and paste exported themes here:</p>
+                <h3 class="header-small" data-i18n="import_label">Import</h3>
+                <p data-i18n="import_hint">Copy and paste exported themes here:</p>
                 <div>
                     <textarea class="card-input" id="import-input"></textarea>
                 </div>
@@ -738,13 +748,13 @@
                         <div class="changer-container" id="dp_sidebar" style="align-items: flex-start;">
                             <div style="width:160px;margin-top:5px;">
                                 <div>
-                                    <input type="radio" id="radio-sidebar-solid" name="sidebar-background" data-i18n="radio_sidebar_solid">Solid</input>
+                                    <input type="radio" id="radio-sidebar-solid" name="sidebar-background"><label for="radio-sidebar-solid" data-i18n="radio_sidebar_solid">Solid</label>
                                 </div>
                                 <div>
-                                    <input type="radio" id="radio-sidebar-gradient" name="sidebar-background" data-i18n="radio_sidebar_gradient">Gradient</input>
+                                    <input type="radio" id="radio-sidebar-gradient" name="sidebar-background"><label for="radio-sidebar-gradient" data-i18n="radio_sidebar_gradient">Gradient</label>
                                 </div>
                                 <div>
-                                    <input type="radio" id="radio-sidebar-image" name="sidebar-background" data-i18n="radio_sidebar_image">Image</input>
+                                    <input type="radio" id="radio-sidebar-image" name="sidebar-background"><label for="radio-sidebar-image" data-i18n="radio_sidebar_image">Image</label>
                                 </div>
                             </div>
                             <div style="flex: 1">
@@ -757,7 +767,7 @@
                                     <input class="card-input" type="text"></input>
                                 </div>
                                 <div class="sidebar-changer" id="sidebar-image">
-                                    <input class="card-input" type="text" placeholder="Image URL"></input>
+                                    <input class="card-input" type="text" data-i18n-placeholder="image_url" placeholder="Image URL"></input>
                                 </div>
                             </div>
                         </div>
@@ -826,8 +836,8 @@
                 </div>
             </div>
             <div class="option-container">
-                <h3 class="header-small">Custom styles</h3>
-                <p style="color:#a4a4a4">You can use this area to write custom CSS styles. You may need to add an !important rule to force them to take effect.</p>
+                <h3 class="header-small" data-i18n="custom_styles">Custom styles</h3>
+                <p style="color:#a4a4a4" data-i18n="custom_styles_desc">You can use this area to write custom CSS styles. You may need to add an !important rule to force them to take effect.</p>
                 <textarea id="custom-styles" class="card-input"></textarea>
             </div>
             <div class="option-container">
@@ -848,11 +858,11 @@
     <div class="advanced tab" style="display:none">
         <div class="tab-header">
             <div>
-                <h2 style="margin-top: 0" data-i18n="card_customization">Card Customization</h2>
+                <h2 style="margin-top: 0" data-i18n="card_customization">Card</h2>
             </div>
             <button class="big-button back-btn" data-i18n="back">Back</button>
         </div>
-        <p class="option-container sub-text" style="margin: 5px 0">Click the eye on a course to hide or show its card.<br>Enter <b>"none"</b> to hide images and links.<br>You may need to refresh the page to see some changes.</p>
+        <p class="option-container sub-text" style="margin: 5px 0"><span data-i18n="click_eye">Click the eye on a course to hide or show its card.</span><br><span data-i18n="enter_none">Enter <b>"none"</b> to hide images and links.</span><br><span data-i18n="need_refresh">You may need to refresh the page to see some changes.</span></p>
         <!-- <div class="advanced-cards">
             <div id="advanced-current"></div>
             <div id="advanced-past"></div>
@@ -867,30 +877,30 @@
 		</div>
 
         <div class="option-container">
-            <h3 class="header-small">Card Grid</h3>
+            <h3 class="header-small" data-i18n="card_grid">Card Grid</h3>
             <div class="sub-option">
                 <input type="checkbox" id="card_grid" name="card_grid">
-                <label for="card_grid" class="sub-text">Card Grid</label>
+                <label for="card_grid" class="sub-text" data-i18n="card_grid">Card Grid</label>
             </div>
             <div id="card-grid-options" style="display:none; margin-top:12px;">
                 <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;">
-                    <div id="card-grid-preview" title="Card grid preview" style="display:grid;gap:4px;padding:10px;background:#00000042;border:1px solid #3c3c3c;border-radius:10px;width:fit-content;"></div>
+                    <div id="card-grid-preview" data-i18n-title="card_grid_preview" title="Card grid preview" style="display:grid;gap:4px;padding:10px;background:#00000042;border:1px solid #3c3c3c;border-radius:10px;width:fit-content;"></div>
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <div style="display:flex;gap:8px;align-items:center;">
-                            <span class="sub-text" style="width:90px;">Horizontal</span>
+                            <span class="sub-text" style="width:90px;" data-i18n="horizontal">Horizontal</span>
                             <input type="number" id="card_grid_columns" class="card-input" min="1" max="12" value="4" style="width:80px;margin-top:0;">
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
-                            <span class="sub-text" style="width:90px;">Vertical</span>
+                            <span class="sub-text" style="width:90px;" data-i18n="vertical">Vertical</span>
                             <input type="number" id="card_grid_rows" class="card-input" min="1" max="12" value="3" style="width:80px;margin-top:0;">
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
-                            <span class="sub-text" style="width:90px;">Column spacing</span>
+                            <span class="sub-text" style="width:90px;" data-i18n="column_spacing">Column spacing</span>
                             <input type="number" id="card_grid_column_gap" class="card-input" min="0" max="100" value="12" style="width:80px;margin-top:0;">
                             <span class="sub-text">px</span>
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
-                            <span class="sub-text" style="width:90px;">Row spacing</span>
+                            <span class="sub-text" style="width:90px;" data-i18n="row_spacing">Row spacing</span>
                             <input type="number" id="card_grid_row_gap" class="card-input" min="0" max="100" value="12" style="width:80px;margin-top:0;">
                             <span class="sub-text">px</span>
                         </div>
@@ -898,80 +908,80 @@
                 </div>
                 <div class="sub-option" style="margin-top:10px">
                     <input type="checkbox" id="card_grid_center_rows" name="card_grid_center_rows">
-                    <label for="card_grid_center_rows" class="sub-text">Center uneven rows</label>
+                    <label for="card_grid_center_rows" class="sub-text" data-i18n="center_uneven">Center uneven rows</label>
                 </div>
                 <div class="sub-option" style="margin-top:10px">
                     <input type="checkbox" id="card_grid_flex" name="card_grid_flex">
-                    <label for="card_grid_flex" class="sub-text">Flexible grid</label>
+                    <label for="card_grid_flex" class="sub-text" data-i18n="flexible_grid">Flexible grid</label>
                 </div>
                 <p id="card-grid-warning" style="display:none;margin:10px 0 0;color:#ffd166;font-size:12px;font-weight:600;"></p>
             </div>
         </div>
 
         <div class="option-container">
-            <h3 class="header-small">Missing cards?</h3>
+            <h3 class="header-small" data-i18n="missing_cards">Missing cards?</h3>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="checkbox" id="card_method_dashboard"></input>
-                <span>Get Active Cards From Dashboard</span>
+                <span data-i18n="get_active_cards">Get Active Cards From Dashboard</span>
             </div>
         </div>
 
         <div class="option-container">
-            <h3 class="header-small">More Card Styles</h3>
+            <h3 class="header-small" data-i18n="more_card_styles">More Card Styles</h3>
 
             <div class="sub-options">
                 <div class="sub-option" style="margin-top:5px">
                     <input type="checkbox" id="customCardStyles" name="customCardStyles">
-                    <label for="customCardStyles" class="sub-text">Custom Card Styles</label>
+                    <label for="customCardStyles" class="sub-text" data-i18n="custom_card_styles">Custom Card Styles</label>
                 </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="sub-option">
                     <div style="margin-top: 5px;display: flex;gap: 8px;align-items: center">
-                        <span class="sub-text" style="width:75px;">Image Size</span>
+                        <span class="sub-text" style="width:75px;" data-i18n="image_size">Image Size</span>
                         <input type="number" id="imageSize" class="card-input" min="0" max="300" value="1" style="width:80px;">
                         <span class="sub-text">px</span>
                     </div>
                 </div>
                 <div class="sub-option">
                     <div style="margin-top: 5px;display: flex;gap: 8px;align-items: center">
-                        <span class="sub-text" style="width:75px;">Card Roundness</span>
+                        <span class="sub-text" style="width:75px;" data-i18n="card_roundness">Card Roundness</span>
                         <input type="number" id="cardRoundness" class="card-input" min="0" max="300" value="1" style="width:80px;">
                         <span class="sub-text">px</span>
                     </div>
                 </div>
                 <div class="sub-option">
                     <div style="margin-top: 5px;display: flex;gap: 8px;align-items: center">
-                        <span class="sub-text" style="width:75px;">Image Roundness</span>
+                        <span class="sub-text" style="width:75px;" data-i18n="image_roundness">Image Roundness</span>
                         <input type="number" id="imageRoundness" class="card-input" min="0" max="50" value="0" style="width:80px;">
                         <span class="sub-text">px</span>
                     </div>
                 </div>
                 <div class="sub-option">
                     <div style="margin-top: 5px;display: flex;gap: 8px;align-items: center">
-                        <span class="sub-text" style="width:75px;">Extra Card Spacing</span>
+                        <span class="sub-text" style="width:75px;" data-i18n="extra_spacing">Extra Card Spacing</span>
                         <input type="number" id="cardSpacing" class="card-input" max="300" value="1" style="width: 80px;">
                         <span class="sub-text">px</span>
                     </div>
                 </div>
                 <div class="sub-option">
                     <div style="margin-top: 5px;display: flex;gap: 8px;align-items: center">
-                        <span class="sub-text" style="width:75px;">Card Width</span>
+                        <span class="sub-text" style="width:75px;" data-i18n="card_width">Card Width</span>
                         <input type="number" id="cardWidth" class="card-input" min="0" max="300" value="1" style="width: 80px;">
                         <span class="sub-text">px</span>
                     </div>
                 </div>
                 <div class="sub-option">
                     <div style="margin-top: 5px;display: flex;gap: 8px;align-items: center">
-                        <span class="sub-text" style="width:75px;">Card Height</span>
+                        <span class="sub-text" style="width:75px;" data-i18n="card_height">Card Height</span>
                         <input type="number" id="cardHeight" class="card-input" min="0" max="300" value="1" style="width: 80px;">
                         <span class="sub-text">px</span>
                     </div>
                 </div>
                 <div class="sub-option">
                     <div style="margin-top: 5px;display: flex;gap: 8px;align-items: center">
-                        <span class="sub-text" style="width:75px;">Card Padding</span>
+                        <span class="sub-text" style="width:75px;" data-i18n="card_padding">Card Padding</span>
                         <input type="number" id="cardPadding" class="card-input" min="0" max="100" value="0" style="width: 80px;">
                         <span class="sub-text">px</span>
                     </div>
@@ -980,120 +990,120 @@
         </div>
 
         <div class="option-container">
-            <p class="sub-text"><b>Disable High Contrast UI</b> if your colors become duller after refreshing! On the sidebar, if you click on your profile icon you can turn it off there.</p>
+            <p class="sub-text"><b data-i18n="disable_high_contrast">Disable High Contrast UI</b> <span data-i18n="high_contrast_desc">if your colors become duller after refreshing! On the sidebar, if you click on your profile icon you can turn it off there.</span></p>
         </div>
         <div class="option-container">
-            <h3 class="header-small">Popular Palettes</h3>
+            <h3 class="header-small" data-i18n="popular_palettes">Popular Palettes</h3>
             <div class="options-presets">
-                <button id="revert-colors" class="colors-button">Revert to original</button>
+                <button id="revert-colors" class="colors-button" data-i18n="revert_original">Revert to original</button>
                 <button class="preset-button colors-button">
-                    <p>Reds</p>
+                    <p data-i18n="palette_reds">Reds</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Oranges</p>
+                    <p data-i18n="palette_oranges">Oranges</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Greens</p>
+                    <p data-i18n="palette_greens">Greens</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Blues</p>
+                    <p data-i18n="palette_blues">Blues</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Pinks</p>
+                    <p data-i18n="palette_pinks">Pinks</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Purples</p>
+                    <p data-i18n="palette_purples">Purples</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Pastels</p>
+                    <p data-i18n="palette_pastels">Pastels</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Mesa</p>
+                    <p data-i18n="palette_mesa">Mesa</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Fade</p>
+                    <p data-i18n="palette_fade">Fade</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Fade2</p>
+                    <p data-i18n="palette_fade2">Fade2</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Ocean</p>
+                    <p data-i18n="palette_ocean">Ocean</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Watermelon</p>
+                    <p data-i18n="palette_watermelon">Watermelon</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Army</p>
+                    <p data-i18n="palette_army">Army</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Rainbow</p>
+                    <p data-i18n="palette_rainbow">Rainbow</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Sunset</p>
+                    <p data-i18n="palette_sunset">Sunset</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Popsicle</p>
+                    <p data-i18n="palette_popsicle">Popsicle</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Berries</p>
+                    <p data-i18n="palette_berries">Berries</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Fruit</p>
+                    <p data-i18n="palette_fruit">Fruit</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Night</p>
+                    <p data-i18n="palette_night">Night</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Base</p>
+                    <p data-i18n="palette_base">Base</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Muted</p>
+                    <p data-i18n="palette_muted">Muted</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Candy</p>
+                    <p data-i18n="palette_candy">Candy</p>
                     <div class="colors-preview"></div>
                 </button>
                 <button class="preset-button colors-button">
-                    <p>Chess</p>
+                    <p data-i18n="palette_chess">Chess</p>
                     <div class="colors-preview"></div>
                 </button>
             </div>
         </div>
         <div class="option-container">
-            <h3 class="header-small">Single color</h3>
-            <p>Choose a color to set all cards to that color:</p>
+            <h3 class="header-small" data-i18n="single_color">Single color</h3>
+            <p data-i18n="single_color_desc">Choose a color to set all cards to that color:</p>
             <div>
                 <div class="palette-selection">
                     <input type="color" value="#34FECB" id="singleColorInput" class="color-picker-small"></input>
                     <input type="text" class="card-input" value="#34FECB" id="singleColorText" />
-                    <button id="setSingleColor" class="big-button">Go</button>
+                    <button id="setSingleColor" class="big-button" data-i18n="go">Go</button>
                 </div>
             </div>
         </div>
         <div class="option-container">
-            <h3 class="header-small">Gradient</h3>
-            <p>Choose 2 colors to create a gradient between them:</p>
+            <h3 class="header-small" data-i18n="gradient">Gradient</h3>
+            <p data-i18n="gradient_desc">Choose 2 colors to create a gradient between them:</p>
             <div>
                 <div class="palette-selection">
                     <input type="color" value="#EA76DA" id="gradientColorFrom" class="color-picker-small" />
@@ -1102,7 +1112,7 @@
                 <div class="palette-selection">
                     <input type="color" value="#7B61FF" id="gradientColorTo" class="color-picker-small" />
                     <input type="text" class="card-input" value="#7B61FF" id="gradientColorToText" />
-                    <button id="setGradientColor" class="big-button">Go</button>
+                    <button id="setGradientColor" class="big-button" data-i18n="go">Go</button>
                 </div>
             </div>
         </div>
@@ -1136,10 +1146,10 @@
         </div>
         <!-- Widgets: two-column grid; add one option-container per widget here -->
         <div class="option-container">
-            <h3 class="header-small">Top / Bottom height</h3>
+            <h3 class="header-small" data-i18n="top_bottom_height">Top / Bottom height</h3>
             <div class="sub-option widget-inline-row">
-                <label for="widget_row_height" class="sub-text widget-inline-label">Height</label>
-                <input type="number" id="widget_row_height" class="card-input" min="0" max="2000" placeholder="auto" style="width:92px;margin:0;">
+                <label for="widget_row_height" class="sub-text widget-inline-label" data-i18n="height">Height</label>
+                <input type="number" id="widget_row_height" class="card-input" min="0" max="2000" data-i18n-placeholder="auto" placeholder="auto" style="width:92px;margin:0;">
                 <span class="sub-text">px</span>
             </div>
         </div>
@@ -1164,8 +1174,8 @@
                         </select>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <label for="dashboard_notes_height" class="sub-text widget-inline-label">Cards height</label>
-                        <input type="number" id="dashboard_notes_height" class="card-input" min="0" max="2000" placeholder="auto" style="width:92px;margin:0;">
+                        <label for="dashboard_notes_height" class="sub-text widget-inline-label" data-i18n="height">Height</label>
+                        <input type="number" id="dashboard_notes_height" class="card-input" min="0" max="2000" data-i18n-placeholder="auto" placeholder="auto" style="width:92px;margin:0;">
                         <span class="sub-text">px</span>
                     </div>
                 </div>
@@ -1191,8 +1201,8 @@
                         </select>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <label for="gpa_calc_height" class="sub-text widget-inline-label">Cards height</label>
-                        <input type="number" id="gpa_calc_height" class="card-input" min="0" max="2000" placeholder="auto" style="width:92px;margin:0;">
+                        <label for="gpa_calc_height" class="sub-text widget-inline-label" data-i18n="height">Height</label>
+                        <input type="number" id="gpa_calc_height" class="card-input" min="0" max="2000" data-i18n-placeholder="auto" placeholder="auto" style="width:92px;margin:0;">
                         <span class="sub-text">px</span>
                     </div>
                     <div class="sub-option" style="margin-top:5px">
@@ -1225,12 +1235,12 @@
                         </select>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <label for="focus_timer_height" class="sub-text widget-inline-label">Cards height</label>
-                        <input type="number" id="focus_timer_height" class="card-input" min="0" max="2000" placeholder="auto" style="width:92px;margin:0;">
+                        <label for="focus_timer_height" class="sub-text widget-inline-label" data-i18n="height">Height</label>
+                        <input type="number" id="focus_timer_height" class="card-input" min="0" max="2000" data-i18n-placeholder="auto" placeholder="auto" style="width:92px;margin:0;">
                         <span class="sub-text">px</span>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <span class="sub-text widget-inline-label">Button 1</span>
+                        <span class="sub-text widget-inline-label" data-i18n="button_1">Button 1</span>
                         <div class="popup-time-input">
                             <input type="text" class="popup-tf" id="focus_timer_preset_1_h" inputmode="numeric" maxlength="2" value="00">
                             <span class="popup-tf-colon">:</span>
@@ -1240,7 +1250,7 @@
                         </div>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <span class="sub-text widget-inline-label">Button 2</span>
+                        <span class="sub-text widget-inline-label" data-i18n="button_2">Button 2</span>
                         <div class="popup-time-input">
                             <input type="text" class="popup-tf" id="focus_timer_preset_2_h" inputmode="numeric" maxlength="2" value="00">
                             <span class="popup-tf-colon">:</span>
@@ -1250,7 +1260,7 @@
                         </div>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <span class="sub-text widget-inline-label">Button 3</span>
+                        <span class="sub-text widget-inline-label" data-i18n="button_3">Button 3</span>
                         <div class="popup-time-input">
                             <input type="text" class="popup-tf" id="focus_timer_preset_3_h" inputmode="numeric" maxlength="2" value="00">
                             <span class="popup-tf-colon">:</span>
@@ -1281,12 +1291,12 @@
                         </select>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <label for="breathing_height" class="sub-text widget-inline-label">Cards height</label>
-                        <input type="number" id="breathing_height" class="card-input" min="0" max="2000" placeholder="auto" style="width:92px;margin:0;">
+                        <label for="breathing_height" class="sub-text widget-inline-label" data-i18n="height">Height</label>
+                        <input type="number" id="breathing_height" class="card-input" min="0" max="2000" data-i18n-placeholder="auto" placeholder="auto" style="width:92px;margin:0;">
                         <span class="sub-text">px</span>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <span class="sub-text widget-inline-label">Button 1</span>
+                        <span class="sub-text widget-inline-label" data-i18n="button_1">Button 1</span>
                         <div class="popup-time-input">
                             <input type="text" class="popup-tf" id="breathing_preset_1_m" inputmode="numeric" maxlength="2" value="03">
                             <span class="popup-tf-colon">:</span>
@@ -1294,7 +1304,7 @@
                         </div>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <span class="sub-text widget-inline-label">Button 2</span>
+                        <span class="sub-text widget-inline-label" data-i18n="button_2">Button 2</span>
                         <div class="popup-time-input">
                             <input type="text" class="popup-tf" id="breathing_preset_2_m" inputmode="numeric" maxlength="2" value="05">
                             <span class="popup-tf-colon">:</span>
@@ -1302,7 +1312,7 @@
                         </div>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <span class="sub-text widget-inline-label">Button 3</span>
+                        <span class="sub-text widget-inline-label" data-i18n="button_3">Button 3</span>
                         <div class="popup-time-input">
                             <input type="text" class="popup-tf" id="breathing_preset_3_m" inputmode="numeric" maxlength="2" value="10">
                             <span class="popup-tf-colon">:</span>
@@ -1331,8 +1341,8 @@
                         </select>
                     </div>
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
-                        <label for="daily_quotes_height" class="sub-text widget-inline-label">Cards height</label>
-                        <input type="number" id="daily_quotes_height" class="card-input" min="0" max="2000" placeholder="auto" style="width:92px;margin:0;">
+                        <label for="daily_quotes_height" class="sub-text widget-inline-label" data-i18n="height">Height</label>
+                        <input type="number" id="daily_quotes_height" class="card-input" min="0" max="2000" data-i18n-placeholder="auto" placeholder="auto" style="width:92px;margin:0;">
                         <span class="sub-text">px</span>
                     </div>
                 </div>
@@ -1349,49 +1359,49 @@
             <button class="big-button back-btn" data-i18n="back">Back</button>
         </div>
         <div class="option-container">
-            <h3 class="header-small" id="fontsDropdown" style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+            <h3 class="header-small" id="fontsDropdown" data-i18n="dashboard_font" style="cursor:pointer; display:flex; align-items:center; gap:8px;">
                 Dashboard Font
                 <img id="fontsDropdownArrow" style="transform:rotate(180deg);" src="../icon/dropdownArrow.svg" width="16px" height="16px">
                 <span style="margin-left:auto; display:flex; align-items:center; gap:6px; cursor:pointer;">
                     <input type="checkbox" id="custom_font_skip_p" name="custom_font_skip_p">
-                    <label for="custom_font_skip_p" class="sub-text" style="cursor:pointer;">Keep original assignment font</label>
+                    <label for="custom_font_skip_p" class="sub-text" style="cursor:pointer;" data-i18n="keep_font">Keep original assignment font</label>
                 </span>
             </h3>
             
             <div id="quick-fonts"></div>
 
             <div style="margin-top:10px;" class="custom-font">
-                <h3 class="header-small">Custom Fonts</h3>
-                <p>You can use a custom font from Google fonts here. Make sure to enter only the bold part after "?family="
+                <h3 class="header-small" data-i18n="custom_fonts">Custom Fonts</h3>
+                <p data-i18n="custom_fonts_desc">You can use a custom font from Google fonts here. Make sure to enter only the bold part after "?family="
                 </p>
             </div>
         </div>
         <div class="custom-font option-container">
-            <h3 class="header-small">Custom Background</h3>
-            <p>Pick a preset or use your own image url.</p>
+            <h3 class="header-small" data-i18n="custom_background">Custom Background</h3>
+            <p data-i18n="custom_background_desc">Pick a preset or use your own image url.</p>
             <div id="customBackgroundManualControls">
                 <div class="background-preset-grid" id="background-presets"></div>
                 <div class="background-scale-row">
                     <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px;">
-                        <span class="sub-text" style="font-weight:600; color:#e2e2e2;">Image scale</span>
+                        <span class="sub-text" style="font-weight:600; color:#e2e2e2;" data-i18n="image_scale">Image scale</span>
                         <span class="sub-text" id="customBackgroundScaleValue">100%</span>
                     </div>
                     <input type="range" min="50" max="200" step="1" id="customBackgroundScale">
                 </div>
                 <input style="width:85%;" class="card-input" id="customBackgroundLink" placeholder="https://...">
-                <button id="clearCustomBackground" class="big-button" style="margin-top: 8px;">Clear Background</button>
+                <button id="clearCustomBackground" class="big-button" style="margin-top: 8px;" data-i18n="clear_background">Clear Background</button>
             </div>
             <div class="sub-option" style="margin-top:10px;">
                 <input type="checkbox" id="customBackgroundDaily" name="customBackgroundDaily">
-                <label for="customBackgroundDaily" class="sub-text">Daily Random Image</label>
+                <label for="customBackgroundDaily" class="sub-text" data-i18n="daily_random">Daily Random Image</label>
             </div>
             <div class="sub-option" style="margin-top:6px;">
                 <input type="checkbox" id="customBackgroundNasaDaily" name="customBackgroundNasaDaily">
-                <label for="customBackgroundNasaDaily" class="sub-text">NASA Astronomy Picture of the Day</label>
+                <label for="customBackgroundNasaDaily" class="sub-text" data-i18n="nasa_apod">NASA Astronomy Picture of the Day</label>
             </div>
             <div class="sub-option" style="margin-top:8px;">
                 <input type="checkbox" id="fitImageToScreen" name="fitImageToScreen">
-                <label for="fitImageToScreen" class="sub-text">Fit image to screen</label>
+                <label for="fitImageToScreen" class="sub-text" data-i18n="fit_image">Fit image to screen</label>
             </div>
             <div class="sub-option" style="margin-top:8px;">
                 <input type="checkbox" id="card_transparency" name="card_transparency">
@@ -1472,125 +1482,125 @@
             </div>
             <button class="big-button back-btn" data-i18n="back">Back</button>
         </div>
-        <p class="option-container">Please join the discord server or create a Github issue for any issues, feedback, or suggestions. Thank you!</p>
+        <p class="option-container" data-i18n="report_desc">Please join the discord server or create a Github issue for any issues, feedback, or suggestions. Thank you!</p>
         <div class="option-container">
-            <h3 class="header-small">Privacy</h3>
+            <h3 class="header-small" data-i18n="privacy">Privacy</h3>
             <div class="option" id="hide_personal_details">
                 <input type="radio" id="off" name="hide_personal_details">
                 <input type="radio" id="on" name="hide_personal_details">
                 <div class="slider">
                     <div class="sliderknob"></div>
                     <div class="sliderbg"></div>
-                </div><span class="option-name">Hide personal details</span>
+                </div><span class="option-name" data-i18n="hide_personal_details">Hide personal details</span>
             </div>
             <div class="sub-options">
                 <div class="sub-option">
                     <input type="checkbox" id="hide_course_images" name="hide_course_images">
-                    <label for="hide_course_images" class="sub-text">Temporarily remove all course images</label>
+                    <label for="hide_course_images" class="sub-text" data-i18n="hide_images_temp">Temporarily remove all course images</label>
                 </div>
                 <div class="sub-option" style="flex-direction:column;align-items:stretch;gap:4px;">
-                    <label for="anon_grade_preset" class="sub-text">Fake grade level</label>
+                    <label for="anon_grade_preset" class="sub-text" data-i18n="fake_grade_level">Fake grade level</label>
                     <select id="anon_grade_preset" name="anon_grade_preset">
-                        <option value="high">High</option>
-                        <option value="medhigh">Med-High</option>
-                        <option value="med">Medium</option>
-                        <option value="medlow">Med-Low</option>
+                        <option value="high" data-i18n="fake_grade_high">High</option>
+                        <option value="medhigh" data-i18n="fake_grade_medhigh">Med-High</option>
+                        <option value="med" data-i18n="fake_grade_medium">Medium</option>
+                        <option value="medlow" data-i18n="fake_grade_medlow">Med-Low</option>
                     </select>
                 </div>
                 <div class="sub-option">
                     <input type="checkbox" id="anon_fake_todo" name="anon_fake_todo">
-                    <label for="anon_fake_todo" class="sub-text">Fill the todo list with fake courses</label>
+                    <label for="anon_fake_todo" class="sub-text" data-i18n="fake_todo">Fill the todo list with fake courses</label>
                 </div>
                 <div class="sub-option" id="anon_fake_completed_wrap" style="display:none;align-items:center;">
-                    <span class="sub-text">Fake tasks completed:</span>
+                    <span class="sub-text" data-i18n="fake_tasks_completed">Fake tasks completed:</span>
                     <input type="number" id="anon_fake_completed" class="card-input" min="0" max="7" value="2" style="width:52px;margin-top:0;">
                     <span class="sub-text">/ 7</span>
                 </div>
                 <div class="sub-option" style="align-items:center;flex-wrap:wrap;">
                     <input type="checkbox" id="anon_progress_enabled" name="anon_progress_enabled">
-                    <label for="anon_progress_enabled" class="sub-text">Fake progress display:</label>
+                    <label for="anon_progress_enabled" class="sub-text" data-i18n="fake_progress">Fake progress display:</label>
                     <input type="number" id="anon_progress_done" class="card-input" min="0" max="999" value="12" style="width:52px;margin-top:0;">
                     <span class="sub-text">/</span>
                     <input type="number" id="anon_progress_total" class="card-input" min="1" max="999" value="18" style="width:52px;margin-top:0;">
-                    <span class="sub-text">complete</span>
+                    <span class="sub-text" data-i18n="complete">complete</span>
                 </div>
                 <div class="sub-option">
-                    <button id="anon-reroll-btn" class="customization-button" style="width:100%;">Reroll classes</button>
+                    <button id="anon-reroll-btn" class="customization-button" style="width:100%;" data-i18n="reroll_classes">Reroll classes</button>
                 </div>
             </div>
         </div>
         <p id="dev-alert"></p>
         <div class="option-container">
-            <h3 class="header-small">Storage reset</h3>
+            <h3 class="header-small" data-i18n="storage_reset">Storage reset</h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button class="big-button" id="storage-reset-btn">Go</button>
-                <span>This will reset all settings to the default. You will need to refresh the page after.</span>
+                <button class="big-button" id="storage-reset-btn" data-i18n="go">Go</button>
+                <span data-i18n="storage_reset_desc">This will reset all settings to the default. You will need to refresh the page after.</span>
             </div>
         </div>
         <div class="option-container">
-            <h3 class="header-small">Clear planner cache</h3>
+            <h3 class="header-small" data-i18n="clear_cache">Clear planner cache</h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button class="big-button" id="planner-cache-clear-btn">Go</button>
-                <span>This deletes the cached to-do list data (assignments, announcements, reminders) so it is re-fetched fresh from Canvas. Open Canvas tabs update automatically.</span>
+                <button class="big-button" id="planner-cache-clear-btn" data-i18n="go">Go</button>
+                <span data-i18n="clear_cache_desc">This deletes the cached to-do list data (assignments, announcements, reminders) so it is re-fetched fresh from Canvas. Open Canvas tabs update automatically.</span>
             </div>
         </div>
         <div class="option-container">
-            <h3 class="header-small">Storage usage</h3>
+            <h3 class="header-small" data-i18n="storage_usage">Storage usage</h3>
             <div style="display: flex; flex-direction: column; gap: 3px;">
-                <span class="sub-text">Settings (sync): <span id="storage-usage-sync">…</span></span>
-                <span class="sub-text">Planner cache: <span id="storage-usage-cache">…</span></span>
-                <span class="sub-text">Other local data: <span id="storage-usage-local">…</span></span>
-                <span class="sub-text">Local quota: <span id="storage-usage-quota">…</span></span>
+                <span class="sub-text"><span data-i18n="storage_sync_label">Settings (sync):</span> <span id="storage-usage-sync">…</span></span>
+                <span class="sub-text"><span data-i18n="storage_cache_label">Planner cache:</span> <span id="storage-usage-cache">…</span></span>
+                <span class="sub-text"><span data-i18n="storage_other_label">Other local data:</span> <span id="storage-usage-local">…</span></span>
+                <span class="sub-text"><span data-i18n="storage_quota_label">Local quota:</span> <span id="storage-usage-quota">…</span></span>
             </div>
         </div>
         <div class="option-container">
-            <h3 class="header-small">Storage Dump</h3>
+            <h3 class="header-small" data-i18n="storage_dump">Storage Dump</h3>
             <div style="margin-bottom: 10px">
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="big-button" id="rk_btn">Go</button>
-                    <span>This will retrieve all the settings saved by the extension.</span>
+                    <button class="big-button" id="rk_btn" data-i18n="go">Go</button>
+                    <span data-i18n="storage_dump_desc">This will retrieve all the settings saved by the extension.</span>
                 </div>
                 <textarea class="card-input" id="rk_output"></textarea>
             </div>
         </div>
         <div class="option-container">
-            <h3 class="header-small">Dark mode inspector</h3>
+            <h3 class="header-small" data-i18n="dark_inspector">Dark mode inspector</h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button class="big-button" id="inspector-btn">Go</button>
-                <span>This will inspect the page for any dark mode gaps.</span>
+                <button class="big-button" id="inspector-btn" data-i18n="go">Go</button>
+                <span data-i18n="dark_inspector_desc">This will inspect the page for any dark mode gaps.</span>
             </div>
             <div>
                 <textarea id="inspector-output" class="card-input"></textarea>
             </div>
         </div>
         <div class="option-container">
-            <h3 class="header-small">Card limit</h3>
+            <h3 class="header-small" data-i18n="card_limit">Card limit</h3>
             <div style="display: flex; gap: 10px; align-items: center;width:100%">
                 <div>
                     <input type="range" max="40" min="5" id="card_limit"></input>
                     <p style="text-align: center" id="card_limit_num"></p>
                 </div>
-                <p><b style="font-weight:600">This is an experimental feature.</b> Adjusting this number will reset your cards and could cause storage issues.</p>
+                <p><b style="font-weight:600" data-i18n="experimental">This is an experimental feature.</b> <span data-i18n="card_limit_desc">Adjusting this number will reset your cards and could cause storage issues.</span></p>
 
             </div>
 
         </div>
         <!--
         <div class="option-container">
-            <h3 class="header-small">Card method</h3>
-            <p><b style="font-weight:600">This is an experimental feature.</b> You shouldn't need these on.</p>
+            <h3 class="header-small" data-i18n="card_method">Card method</h3>
+            <p><b style="font-weight:600" data-i18n="experimental">This is an experimental feature.</b> <span data-i18n="card_method_desc">You shouldn't need these on.</span></p>
             <div style="display: flex; gap: 10px; align-items: center;margin-top: 5px;">
                 <input type="checkbox" id="card_method_date"></input>
-                <span>Date</span>
+                <span data-i18n="date">Date</span>
             </div>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="checkbox" id="card_method_dashboard"></input>
-                <span>Dashboard</span>
+                <span data-i18n="dashboard">Dashboard</span>
             </div>
         </div>
     -->
         <div class="option-container">
-            <h3 class="header-small">Error log</h3>
+            <h3 class="header-small" data-i18n="error_log">Error log</h3>
             <div>
                 <textarea id="error_log_output" class="card-input"></textarea>
             </div>

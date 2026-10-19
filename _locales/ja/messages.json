@@ -1,260 +1,1895 @@
 {
-  "better_canvas": {
-    "message": "より良いキャンバス"
-  },
-  "updates": {
-    "message": "アップデート"
-  },
-  "dark_mode": {
-    "message": "ダークモード"
-  },
-  "automatic_dark_mode": {
-    "message": "スケジュールされたダークモード"
-  },
-  "auto_start_time": {
-    "message": "開始時間"
-  },
-  "auto_end_time": {
-    "message": "終了時間"
-  },
-  "edit_dark_mode": {
-    "message": "ダークモード"
-  },
-  "enter_url": {
-    "message": "あなたのキャンバスURL:"
-  },
-  "card_grades": {
-    "message": "カードのグレード"
-  },
-  "gradient_cards": {
-    "message": "グラデーションカード"
-  },
-  "condensed_cards": {
-    "message": "凝縮カード"
-  },
-  "disable_color": {
-    "message": "カラーオーバーレイを無効にする"
-  },
-  "card_assignments": {
-    "message": "カードの割り当て"
-  },
-  "card_customization": {
-    "message": "カード"
-  },
-  "styles": {
-    "message": "スタイル"
-  },
-  "useddmm": {
-    "message": "を使用 dd/mm"
-  },
-  "better_todo": {
-    "message": "より良いToDoリスト"
-  },
-  "max_items": {
-    "message": "最大アイテム数: "
-  },
-  "hover_preview": {
-    "message": "ホバーでプレビュー"
-  },
-  "hide_completed": {
-    "message": "完了を非表示"
-  },
-  "24hrformat": {
-    "message": "24時間形式を使用する"
-  },
-  "dashboard_notes": {
-    "message": "ダッシュボードノート"
-  },
-  "gpa_calculator": {
-    "message": "GPA計算機"
-  },
-  "gpa_settings": {
-    "message": "GPA設定"
-  },
-  "grade_hover": {
-    "message": "ホバー時のみ表示"
-  },
-  "card_letter": {
-    "message": "成績をアルファベットで表示"
-  },
-  "due": {
-    "message": "期限"
-  },
-  "card_colors": {
-    "message": "カードの色"
-  },
-  "back": {
-    "message": "戻る"
-  },
-  "more_options": {
-    "message": "その他のオプション"
-  },
-  "manual_customization": {
-    "message": "手動カスタマイズ"
-  },
-  "background_colors": {
-    "message": "背景"
-  },
-  "text_colors": {
-    "message": "文章"
-  },
-  "full_width": {
-    "message": "ダッシュボード全幅"
-  },
-  "report_issue": {
-    "message": "問題を報告"
-  },
-  "themes": {
-    "message": "テーマ"
-  },
-  "move_top": {
-    "message": "トップへ移動"
-  },
-  "show_past_due": {
-    "message": "期限超過を表示"
-  },
-  "relative_due_dates": {
-    "message": "相対的な期日"
-  },
-  "equal_height_cards": {
-    "message": "高さを揃える"
-  },
-  "enter_multiple": {
-    "message": "(カンマで複数入力)"
-  },
-  "todo_remind": {
-    "message": "ToDoリマインダー"
-  },
-  "remlogo": {
-    "message": "サイドバーのロゴを削除"
-  },
-  "hide_feedback": {
-    "message": "最近のフィードバックを非表示"
-  },
-  "tab_icons": {
-    "message": "色分けされたタブアイコン"
-  },
-  "todo_colors": {
-    "message": "カードの色を使用する"
-  },
-  "gpa_calc_cumulative": {
-    "message": "累積GPAを表示"
-  },
-  "gpa_calc_weighted": {
-    "message": "加重GPAを表示"
-  },
-  "device_dark": {
-    "message": "デバイスのダークモード設定を使用する"
-  },
-  "presets": {
-    "message": "プリセット"
-  },
-  "dark_lighter": {
-    "message": "ライター"
-  },
-  "dark_light": {
-    "message": "ライト"
-  },
-  "dark_default": {
-    "message": "デフォルト"
-  },
-  "dark_dark": {
-    "message": "暗い"
-  },
-  "dark_darker": {
-    "message": "暗い"
-  },
-  "dark_mint": {
-    "message": "ミント"
-  },
-  "dark_blue": {
-    "message": "青みがかった"
-  },
-  "dark_burn": {
-    "message": "眼球の火傷"
-  },
-  "dark_unicorn": {
-    "message": "ユニコーン"
-  },
-  "dark_lightmode": {
-    "message": "ライトモード"
-  },
-  "dark_catppuccin": {
-    "message": "Catppuccin\n 作者: Angel"
-  },
-  "dark_sage": {
-    "message": "Sabia\n By LivDoesDevStuf"
-  },
-  "dark_pink": {
-    "message": "ピンク\n By Sayde"
-  },
-  "dark_coral": {
-    "message": "コーラル\n スーパーチド作"
-  },
-  "dp_sidebar_text": {
-    "message": "サイドバーテキスト"
-  },
-  "dp_sidebar": {
-    "message": "サイドバー"
-  },
-  "radio_sidebar_solid": {
-    "message": "固体"
-  },
-  "radio_sidebar_gradient": {
-    "message": "勾配"
-  },
-  "radio_sidebar_image": {
-    "message": "画像"
-  },
-  "dp_background_0": {
-    "message": "背景メイン"
-  },
-  "dp_background_1": {
-    "message": "背景の代替"
-  },
-  "dp_background_2": {
-    "message": "背景 その他"
-  },
-  "dp_borders": {
-    "message": "国境"
-  },
-  "dp_links": {
-    "message": "リンク"
-  },
-  "dp_text_0": {
-    "message": "テキストメイン"
-  },
-  "dp_text_1": {
-    "message": "テキストその他"
-  },
-  "dp_text_2": {
-    "message": "テキスト代替"
-  },
-  "dark_mode_fixer": {
-    "message": "ダークモード修正プログラム (ベータ版)"
-  },
-  "dark_mode_fixer_text": {
-    "message": "これにより、現在のページ上のダーク モードのギャップが修正されます。"
-  },
-  "fix_dm_btn": {
-    "message": "行く"
-  },
-  "fix_dm_text": {
-    "message": "Fixer はこれらのページで自動的に実行されます:"
-  },
-  "hide_links": {
-    "message": "リンクを非表示"
-  },
-  "show_links": {
-    "message": "リンクを表示"
-  },
-  "center_cards": {
-    "message": "カードを中央配置"
-  },
-  "hide_new_canvas": {
-    "message": "新しい Canvas を非表示"
-  },
-  "hide_completed_cards": {
-    "message": "完了した課題を非表示"
-  }
+    "24hrformat": {
+        "message": "24時間形式を使用する"
+    },
+    "abc": {
+        "message": "ABC"
+    },
+    "add_canvas": {
+        "message": "+ キャンバスを追加"
+    },
+    "add_task": {
+        "message": "+ タスクを追加"
+    },
+    "add_to_list": {
+        "message": "リストに追加"
+    },
+    "ago": {
+        "message": "前"
+    },
+    "always_show_likes": {
+        "message": "いいね数を常に表示"
+    },
+    "assignment_avg": {
+        "message": "— $COUNT$ 件の課題の平均 $AVG$%:"
+    },
+    "assignment_due_in": {
+        "message": "課題の期限まで $TIME$"
+    },
+    "auto": {
+        "message": "自動"
+    },
+    "auto_end_time": {
+        "message": "終了時間"
+    },
+    "auto_start_time": {
+        "message": "開始時間"
+    },
+    "automatic_dark_mode": {
+        "message": "スケジュールされたダークモード"
+    },
+    "back": {
+        "message": "戻る"
+    },
+    "back_to_assignment": {
+        "message": "課題に戻る"
+    },
+    "background_colors": {
+        "message": "背景"
+    },
+    "background_opacity": {
+        "message": "背景の不透明度"
+    },
+    "better_sidebar": {
+        "message": "改良サイドバー"
+    },
+    "better_todo": {
+        "message": "より良いToDoリスト"
+    },
+    "bg_blur": {
+        "message": "背景のぼかし"
+    },
+    "breathing_breaks": {
+        "message": "呼吸休憩"
+    },
+    "breathing_in": {
+        "message": "吸って"
+    },
+    "breathing_out": {
+        "message": "吐いて"
+    },
+    "breathing_ready": {
+        "message": "準備完了"
+    },
+    "button_1": {
+        "message": "ボタン 1"
+    },
+    "button_2": {
+        "message": "ボタン 2"
+    },
+    "button_3": {
+        "message": "ボタン 3"
+    },
+    "cancel": {
+        "message": "キャンセル"
+    },
+    "Canvas_Refined": {
+        "message": "Canvas Refined"
+    },
+    "canvas_rejected_create": {
+        "message": "Canvasがタスクの作成を拒否しました。"
+    },
+    "canvas_rejected_delete": {
+        "message": "Canvasがタスクの削除を拒否しました。"
+    },
+    "canvas_rejected_update": {
+        "message": "Canvasがタスクの更新を拒否しました。"
+    },
+    "card_assignments": {
+        "message": "カードの割り当て"
+    },
+    "card_blur": {
+        "message": "カードのぼかし"
+    },
+    "card_colors": {
+        "message": "カードの色"
+    },
+    "card_customization": {
+        "message": "カード"
+    },
+    "card_grades": {
+        "message": "カードのグレード"
+    },
+    "card_grid": {
+        "message": "カードグリッド"
+    },
+    "card_grid_preview": {
+        "message": "グリッドプレビュー"
+    },
+    "card_height": {
+        "message": "カードの高さ"
+    },
+    "card_hide_toggle": {
+        "message": "ダッシュボードで表示/非表示"
+    },
+    "card_letter": {
+        "message": "成績をアルファベットで表示"
+    },
+    "card_limit": {
+        "message": "カード上限"
+    },
+    "card_limit_desc": {
+        "message": "この数値を変更するとカードがリセットされ、ストレージの問題が発生する可能性があります。"
+    },
+    "card_method": {
+        "message": "カードの方法"
+    },
+    "card_method_desc": {
+        "message": "通常は有効にする必要はありません。"
+    },
+    "card_none": {
+        "message": "なし"
+    },
+    "card_opacity": {
+        "message": "カードの不透明度"
+    },
+    "card_padding": {
+        "message": "カードの余白"
+    },
+    "card_reset_default": {
+        "message": "カードをデフォルト設定に戻しました！"
+    },
+    "card_roundness": {
+        "message": "カードの角の丸み"
+    },
+    "card_settings_saved": {
+        "message": "カード設定を保存しました！"
+    },
+    "card_transparency": {
+        "message": "カードの透明度"
+    },
+    "card_width": {
+        "message": "カードの幅"
+    },
+    "cards_height": {
+        "message": "カードの高さ"
+    },
+    "celebration": {
+        "message": "お祝い"
+    },
+    "celebration_amount": {
+        "message": "量"
+    },
+    "celebration_confetti": {
+        "message": "紙吹雪"
+    },
+    "celebration_crazy": {
+        "message": "すごい"
+    },
+    "celebration_fireworks": {
+        "message": "花火"
+    },
+    "celebration_hearts": {
+        "message": "上昇するハート"
+    },
+    "celebration_less": {
+        "message": "少なめ"
+    },
+    "celebration_more": {
+        "message": "多め"
+    },
+    "celebration_none": {
+        "message": "なし"
+    },
+    "celebration_normal": {
+        "message": "普通"
+    },
+    "celebration_preview": {
+        "message": "お祝いをプレビュー"
+    },
+    "celebration_rocket": {
+        "message": "ロケット"
+    },
+    "celebration_sparkles": {
+        "message": "スパークル"
+    },
+    "celebration_type": {
+        "message": "お祝いの種類"
+    },
+    "center_cards": {
+        "message": "カードを中央配置"
+    },
+    "center_uneven": {
+        "message": "不均一な行を中央揃え"
+    },
+    "check_all": {
+        "message": "すべて選択"
+    },
+    "check_none": {
+        "message": "すべて解除"
+    },
+    "clear_background": {
+        "message": "背景をクリア"
+    },
+    "clear_cache": {
+        "message": "プランナーキャッシュをクリア"
+    },
+    "clear_cache_desc": {
+        "message": "キャッシュされたToDoリストのデータ(課題、お知らせ、リマインダー)を削除し、Canvasから新しく取得し直します。開いているCanvasのタブは自動で更新されます。"
+    },
+    "click_eye": {
+        "message": "コースの目のアイコンをクリックすると、カードを表示または非表示にできます。"
+    },
+    "close": {
+        "message": "閉じる"
+    },
+    "close_label": {
+        "message": "閉じる"
+    },
+    "column_spacing": {
+        "message": "列の間隔"
+    },
+    "complete": {
+        "message": "完了"
+    },
+    "completed_total": {
+        "message": "$DONE$/$TOTAL$ 完了"
+    },
+    "condensed_cards": {
+        "message": "凝縮カード"
+    },
+    "copied": {
+        "message": "コピーしました!"
+    },
+    "copy": {
+        "message": "コピー"
+    },
+    "could_not_delete": {
+        "message": "タスクを削除できませんでした。"
+    },
+    "could_not_load_preview": {
+        "message": "プレビューを読み込めませんでした"
+    },
+    "could_not_save": {
+        "message": "タスクを保存できませんでした。"
+    },
+    "create": {
+        "message": "作成"
+    },
+    "created_by": {
+        "message": "作成者"
+    },
+    "created_by_hint": {
+        "message": "名前、SNSのハンドルネーム、匿名など何でも構いません。"
+    },
+    "custom_background": {
+        "message": "カスタム背景"
+    },
+    "custom_background_desc": {
+        "message": "プリセットを選ぶか、自分の画像URLを使用してください。"
+    },
+    "custom_card_styles": {
+        "message": "カスタムカードスタイル"
+    },
+    "custom_fonts": {
+        "message": "カスタムフォント"
+    },
+    "custom_fonts_desc": {
+        "message": "Google Fontsのカスタムフォントをここで使用できます。「?family=」以降の太字部分だけを入力してください。"
+    },
+    "custom_styles": {
+        "message": "カスタムスタイル"
+    },
+    "custom_styles_desc": {
+        "message": "このエリアにカスタムCSSを記述できます。反映させるには!importantルールを追加する必要があるかもしれません。"
+    },
+    "daily_quote": {
+        "message": "今日の名言"
+    },
+    "daily_quote_default": {
+        "message": "前進する秘訣は、まず始めることだ。"
+    },
+    "daily_quotes": {
+        "message": "今日の名言"
+    },
+    "daily_random": {
+        "message": "毎日のランダム画像"
+    },
+    "dark_blue": {
+        "message": "青みがかった"
+    },
+    "dark_burn": {
+        "message": "眼球の火傷"
+    },
+    "dark_catppuccin": {
+        "message": "Catppuccin\n 作者: Angel"
+    },
+    "dark_coral": {
+        "message": "コーラル\n スーパーチド作"
+    },
+    "dark_dark": {
+        "message": "暗い"
+    },
+    "dark_darker": {
+        "message": "暗い"
+    },
+    "dark_default": {
+        "message": "デフォルト"
+    },
+    "dark_inspector": {
+        "message": "ダークモードインスペクター"
+    },
+    "dark_inspector_desc": {
+        "message": "ダークモードの隙間がないかページを検査します。"
+    },
+    "dark_light": {
+        "message": "ライト"
+    },
+    "dark_lighter": {
+        "message": "ライター"
+    },
+    "dark_lightmode": {
+        "message": "ライトモード"
+    },
+    "dark_mint": {
+        "message": "ミント"
+    },
+    "dark_mode": {
+        "message": "ダークモード"
+    },
+    "dark_mode_fixer": {
+        "message": "ダークモード修正プログラム (ベータ版)"
+    },
+    "dark_mode_fixer_text": {
+        "message": "これにより、現在のページ上のダーク モードのギャップが修正されます。"
+    },
+    "dark_pink": {
+        "message": "ピンク\n By Sayde"
+    },
+    "dark_sage": {
+        "message": "Sabia\n By LivDoesDevStuf"
+    },
+    "dark_unicorn": {
+        "message": "ユニコーン"
+    },
+    "dashboard": {
+        "message": "ダッシュボード"
+    },
+    "dashboard_font": {
+        "message": "ダッシュボードのフォント"
+    },
+    "dashboard_notes": {
+        "message": "ダッシュボードノート"
+    },
+    "date": {
+        "message": "日付"
+    },
+    "delete_confirm": {
+        "message": "このカスタムタスクを削除しますか?この操作は元に戻せません。"
+    },
+    "delete_label": {
+        "message": "削除"
+    },
+    "delete_task_title": {
+        "message": "このカスタムタスクを削除"
+    },
+    "device_dark": {
+        "message": "デバイスのダークモード設定を使用する"
+    },
+    "disable_color": {
+        "message": "カラーオーバーレイを無効にする"
+    },
+    "disable_high_contrast": {
+        "message": "ハイコントラストUIを無効化"
+    },
+    "do_you_want_submit": {
+        "message": "テーマを他の人も使えるように投稿しますか?"
+    },
+    "dp_background_0": {
+        "message": "背景メイン"
+    },
+    "dp_background_1": {
+        "message": "背景の代替"
+    },
+    "dp_background_2": {
+        "message": "背景 その他"
+    },
+    "dp_borders": {
+        "message": "国境"
+    },
+    "dp_links": {
+        "message": "リンク"
+    },
+    "dp_sidebar": {
+        "message": "サイドバー"
+    },
+    "dp_sidebar_text": {
+        "message": "サイドバーテキスト"
+    },
+    "dp_text_0": {
+        "message": "テキストメイン"
+    },
+    "dp_text_1": {
+        "message": "テキストその他"
+    },
+    "dp_text_2": {
+        "message": "テキスト代替"
+    },
+    "due": {
+        "message": "期限"
+    },
+    "due_days": {
+        "message": "期限 <strong>$COUNT$日</strong>"
+    },
+    "due_later": {
+        "message": "期限 <strong>後日</strong>"
+    },
+    "due_one_month": {
+        "message": "期限 <strong>1か月</strong>"
+    },
+    "due_overdue": {
+        "message": "<strong>期限切れ</strong>"
+    },
+    "due_today": {
+        "message": "期限 <strong>今日</strong>"
+    },
+    "due_tomorrow": {
+        "message": "期限 <strong>明日</strong>"
+    },
+    "due_weeks": {
+        "message": "期限 <strong>$COUNT$週間</strong>"
+    },
+    "edit_custom_task": {
+        "message": "このカスタムタスクを編集"
+    },
+    "edit_dark_mode": {
+        "message": "ダークモード"
+    },
+    "enter_multiple": {
+        "message": "(カンマで複数入力)"
+    },
+    "enter_none": {
+        "message": "画像とリンクを非表示にするには「none」と入力してください。"
+    },
+    "enter_url": {
+        "message": "あなたのキャンバスURL:"
+    },
+    "equal_height_cards": {
+        "message": "高さを揃える"
+    },
+    "error_log": {
+        "message": "エラーログ"
+    },
+    "example_reminder_desc": {
+        "message": "この通知は他のページでも表示され、6時間以内に期限が来る未完了の課題を知らせます。"
+    },
+    "example_reminder_title": {
+        "message": "これはリマインダーの例です"
+    },
+    "excused": {
+        "message": "免除"
+    },
+    "experimental": {
+        "message": "これは実験的な機能です。"
+    },
+    "export_background": {
+        "message": "背景と不透明度"
+    },
+    "export_card_colors": {
+        "message": "カードの色"
+    },
+    "export_card_images": {
+        "message": "カード画像"
+    },
+    "export_card_styles": {
+        "message": "カードスタイル"
+    },
+    "export_custom_css": {
+        "message": "カスタムCSS"
+    },
+    "export_custom_font": {
+        "message": "カスタムフォント"
+    },
+    "export_dark": {
+        "message": "ダークモード"
+    },
+    "export_dark_schedule": {
+        "message": "ダークモードのスケジュール"
+    },
+    "export_gpa": {
+        "message": "GPA設定"
+    },
+    "export_settings": {
+        "message": "設定をエクスポート"
+    },
+    "export_todo": {
+        "message": "ToDoリスト"
+    },
+    "export_toggles": {
+        "message": "オン/オフの切り替え"
+    },
+    "extra_spacing": {
+        "message": "カードの余分な間隔"
+    },
+    "fake_grade_high": {
+        "message": "高"
+    },
+    "fake_grade_level": {
+        "message": "偽の学年"
+    },
+    "fake_grade_medhigh": {
+        "message": "中高"
+    },
+    "fake_grade_medium": {
+        "message": "中"
+    },
+    "fake_grade_medlow": {
+        "message": "中低"
+    },
+    "fake_progress": {
+        "message": "偽の進捗表示:"
+    },
+    "fake_rerolled": {
+        "message": "偽のクラスを再抽選しました。"
+    },
+    "fake_tasks_completed": {
+        "message": "完了した偽のタスク:"
+    },
+    "fake_todo": {
+        "message": "ToDoリストを偽のコースで埋める"
+    },
+    "final_assignments": {
+        "message": "課題"
+    },
+    "final_assignments_plural": {
+        "message": "課題"
+    },
+    "final_avg": {
+        "message": "— 平均 $AVG$% ..."
+    },
+    "final_waiting": {
+        "message": "成績データを待っています…"
+    },
+    "final_weight_prompt": {
+        "message": "期末試験の配点と目標成績を入力すると、期末試験で必要な点数がわかります。"
+    },
+    "fit_image": {
+        "message": "画像を画面に合わせる"
+    },
+    "fix_dm_btn": {
+        "message": "行く"
+    },
+    "fix_dm_text": {
+        "message": "Fixer はこれらのページで自動的に実行されます:"
+    },
+    "fix_took": {
+        "message": "修正に $TIME$ms かかりました (評価: $RATING$)"
+    },
+    "flexible_grid": {
+        "message": "フレキシブルグリッド"
+    },
+    "flexible_grid_on": {
+        "message": "フレキシブルグリッドが有効です。カードは切れずに折り返して狭いウィンドウに収まります。"
+    },
+    "focus_timer": {
+        "message": "集中タイマー"
+    },
+    "full_width": {
+        "message": "ダッシュボード全幅"
+    },
+    "ga_add_assignment": {
+        "message": "+ 課題を追加"
+    },
+    "ga_add_group": {
+        "message": "+ グループを追加"
+    },
+    "ga_already_there": {
+        "message": "すでに目標を達成しています！"
+    },
+    "ga_calc_desc": {
+        "message": "期末試験の比重と目標とする総合評価を入力すると、期末試験で必要な点数が表示されます。"
+    },
+    "ga_final_weight": {
+        "message": "期末試験の比重（評価の%）"
+    },
+    "ga_fit_y": {
+        "message": "Y軸に合わせる"
+    },
+    "ga_heatmap_assignments": {
+        "message": "$COUNT$件の課題:"
+    },
+    "ga_heatmap_avg": {
+        "message": "平均"
+    },
+    "ga_heatmap_undated": {
+        "message": "期限のない評価済み課題$COUNT$件は表示されていません。"
+    },
+    "ga_line_title": {
+        "message": "総合評価の推移"
+    },
+    "ga_new_assignment": {
+        "message": "新しい課題"
+    },
+    "ga_new_group": {
+        "message": "新しいグループ"
+    },
+    "ga_no_grade_legend": {
+        "message": "評価/課題なし"
+    },
+    "ga_no_graded_short": {
+        "message": "評価済みの課題はまだありません"
+    },
+    "ga_not_counted": {
+        "message": "— 集計しない —"
+    },
+    "ga_out_of_reach": {
+        "message": "達成不可能"
+    },
+    "ga_pie_title": {
+        "message": "得点分布（評価済み課題）"
+    },
+    "ga_remove_assignment": {
+        "message": "この課題をシナリオから削除"
+    },
+    "ga_remove_group": {
+        "message": "このグループをシナリオから削除（再割り当てするまで課題は集計されません）"
+    },
+    "ga_secured": {
+        "message": "✓ 達成"
+    },
+    "ga_show_goal": {
+        "message": "概要に目標評価を表示"
+    },
+    "ga_stat_final_exam": {
+        "message": "期末試験"
+    },
+    "ga_stat_graded": {
+        "message": "評価済み"
+    },
+    "ga_stat_overall": {
+        "message": "総合評価"
+    },
+    "ga_stat_trend": {
+        "message": "評価の推移（直近5件）"
+    },
+    "ga_stat_ungraded": {
+        "message": "未評価"
+    },
+    "ga_sub_secured": {
+        "message": "期末試験で0点でも<b>$ZERO$%</b>となり、目標の<b>$TARGET$%</b>を上回ります。"
+    },
+    "ga_sub_unreachable": {
+        "message": "期末試験で満点でも<b>$PERFECT$%</b>にしかならず、目標の<b>$TARGET$%</b>を下回ります。"
+    },
+    "ga_tab_calc": {
+        "message": "期末計算"
+    },
+    "ga_tab_heatmap": {
+        "message": "ヒートマップ"
+    },
+    "ga_tab_overview": {
+        "message": "概要"
+    },
+    "ga_target_grade": {
+        "message": "目標の総合評価（%）"
+    },
+    "ga_title_assignment_name": {
+        "message": "課題名"
+    },
+    "ga_title_group_name": {
+        "message": "グループ名"
+    },
+    "ga_title_group_select": {
+        "message": "Imagine-Ifの課題グループ"
+    },
+    "ga_title_group_weight": {
+        "message": "Imagine-Ifのグループ比重（評価の%）"
+    },
+    "ga_title_points": {
+        "message": "Imagine-Ifの配点（分母）"
+    },
+    "ga_title_score": {
+        "message": "Imagine-Ifの得点（分子）。空欄 = 集計しない"
+    },
+    "ga_tooltip_assignments": {
+        "message": "$COUNT$件の課題"
+    },
+    "ga_you_got_this": {
+        "message": "いけますよ！"
+    },
+    "ga_you_need": {
+        "message": "期末試験で$PCT$%以上必要です"
+    },
+    "get_active_cards": {
+        "message": "ダッシュボードからアクティブなカードを取得"
+    },
+    "global_search": {
+        "message": "Canvas全体検索"
+    },
+    "go": {
+        "message": "実行"
+    },
+    "go_to_grades": {
+        "message": "成績へ移動"
+    },
+    "gpa_autosave": {
+        "message": "変更は自動的に保存されます"
+    },
+    "gpa_calc_cumulative": {
+        "message": "累積GPAを表示"
+    },
+    "gpa_calc_weighted": {
+        "message": "加重GPAを表示"
+    },
+    "gpa_calculator": {
+        "message": "GPA計算機"
+    },
+    "gpa_calculator_title": {
+        "message": "GPA計算機"
+    },
+    "gpa_click_to_edit": {
+        "message": "クリックして編集"
+    },
+    "gpa_col_course": {
+        "message": "コース"
+    },
+    "gpa_col_course_type": {
+        "message": "コース種別"
+    },
+    "gpa_col_credits": {
+        "message": "単位数"
+    },
+    "gpa_col_custom_grade": {
+        "message": "カスタム成績"
+    },
+    "gpa_col_grade": {
+        "message": "成績"
+    },
+    "gpa_courses": {
+        "message": "コース"
+    },
+    "gpa_credits": {
+        "message": "単位"
+    },
+    "gpa_cumulative": {
+        "message": "累積"
+    },
+    "gpa_current": {
+        "message": "現在"
+    },
+    "gpa_dashboard_notes_aria": {
+        "message": "ダッシュボードのメモ — クリックして編集"
+    },
+    "gpa_edit_calc": {
+        "message": "計算機を編集"
+    },
+    "gpa_edit_calculator": {
+        "message": "計算機を編集"
+    },
+    "gpa_grade_scale": {
+        "message": "成績スケール"
+    },
+    "gpa_header": {
+        "message": "GPA"
+    },
+    "gpa_min_pct": {
+        "message": "最低 %"
+    },
+    "gpa_pts_abbr": {
+        "message": "点"
+    },
+    "gpa_save_custom": {
+        "message": "カスタム成績を保存"
+    },
+    "gpa_save_grade": {
+        "message": "カスタム成績を保存"
+    },
+    "gpa_scale_letter": {
+        "message": "文字評価のみ"
+    },
+    "gpa_scale_note": {
+        "message": "割合が最初に最低%以下となる行のGPAが適用されます。学校が+/-評価を使用しない場合は、+/-の行の最低%を101に設定して計算から除外してください。"
+    },
+    "gpa_scale_plusminus": {
+        "message": "+/- スケール"
+    },
+    "gpa_settings": {
+        "message": "GPA設定"
+    },
+    "gpa_type_away": {
+        "message": "入力してください!"
+    },
+    "gpa_weight_ap": {
+        "message": "AP/IB"
+    },
+    "gpa_weight_dnc": {
+        "message": "カウントしない"
+    },
+    "gpa_weight_do_not_count": {
+        "message": "カウントしない"
+    },
+    "gpa_weight_honors": {
+        "message": "優等"
+    },
+    "gpa_weight_regular": {
+        "message": "通常/大学"
+    },
+    "gpa_weighted": {
+        "message": "加重"
+    },
+    "grade_analytics": {
+        "message": "成績分析"
+    },
+    "grade_analytics_desc": {
+        "message": "成績を分析するためのツールを追加します。"
+    },
+    "grade_analytics_failed": {
+        "message": "成績分析の読み込みに失敗しました: $ERROR$"
+    },
+    "grade_analytics_info_label": {
+        "message": "成績分析の情報"
+    },
+    "grade_analytics_toggle": {
+        "message": "成績分析の表示/非表示"
+    },
+    "grade_analytics_zones": {
+        "message": "色付きの成績ゾーン"
+    },
+    "grade_hover": {
+        "message": "ホバー時のみ表示"
+    },
+    "grade_settings": {
+        "message": "成績設定"
+    },
+    "gradient": {
+        "message": "グラデーション"
+    },
+    "gradient_cards": {
+        "message": "グラデーションカード"
+    },
+    "gradient_desc": {
+        "message": "2色を選んでグラデーションを作成します:"
+    },
+    "grid_includes_gpa": {
+        "message": " (GPA計算を含む)"
+    },
+    "grid_warning": {
+        "message": "グリッドには$TOTAL$枚のカード$TOTAL_S$が入りますが、$ACTIVE$枚のカード$ACTIVE_S$$GPA_NOTE$があります - 一部のカードが切れる可能性があります。"
+    },
+    "group_graded": {
+        "message": "評価済み"
+    },
+    "group_new": {
+        "message": "新規"
+    },
+    "group_seen": {
+        "message": "既読"
+    },
+    "group_ungraded": {
+        "message": "未評価"
+    },
+    "guideline_1": {
+        "message": "適切な画像/タイトル"
+    },
+    "guideline_2": {
+        "message": "他のテーマのコンポーネントを多用していない"
+    },
+    "guideline_3": {
+        "message": "独自のカスタムダークモードを使用している(プリセットのいずれでもない)"
+    },
+    "guideline_4": {
+        "message": "カスタム画像はDiscordやGmailのものを使用できません。これらの画像は公開されていません"
+    },
+    "height": {
+        "message": "高さ"
+    },
+    "hide": {
+        "message": "非表示"
+    },
+    "hide_completed": {
+        "message": "完了を非表示"
+    },
+    "hide_completed_cards": {
+        "message": "完了した課題を非表示"
+    },
+    "hide_feedback": {
+        "message": "最近のフィードバックを非表示"
+    },
+    "hide_images_temp": {
+        "message": "すべてのコース画像を一時的に削除"
+    },
+    "hide_links": {
+        "message": "リンクを非表示"
+    },
+    "hide_navbar": {
+        "message": "ナビゲーションバーを非表示"
+    },
+    "hide_new_canvas": {
+        "message": "新しい Canvas を非表示"
+    },
+    "hide_personal_details": {
+        "message": "個人情報を非表示"
+    },
+    "hide_sequence_footer": {
+        "message": "次へ/前へボタンを非表示"
+    },
+    "high_contrast_desc": {
+        "message": "更新後に色がくすんでしまう場合!サイドバーのプロフィールアイコンをクリックすると、そこでオフにできます。"
+    },
+    "high_contrast_full": {
+        "message": "更新後に色がくすんでしまう場合はハイコントラストUIを無効にしてください!サイドバーのプロフィールアイコンをクリックすると、そこでオフにできます。"
+    },
+    "horizontal": {
+        "message": "横"
+    },
+    "hover_preview": {
+        "message": "ホバーでプレビュー"
+    },
+    "image_link_error": {
+        "message": "入力した画像リンクが機能していないようです。使用したい画像を右クリックし、「画像アドレスをコピー」を選択して正しいリンクを取得してください。"
+    },
+    "image_roundness": {
+        "message": "画像の角の丸み"
+    },
+    "image_scale": {
+        "message": "画像の拡大率"
+    },
+    "image_size": {
+        "message": "画像サイズ"
+    },
+    "image_url": {
+        "message": "画像URL"
+    },
+    "imagine_if": {
+        "message": "Imagine-Ifシナリオ;実際の成績ではありません。"
+    },
+    "imagine_if_badge": {
+        "message": "Imagine-If"
+    },
+    "imagine_if_mode": {
+        "message": "Imagine-Ifモード"
+    },
+    "imagine_if_toggle": {
+        "message": "Imagine-Ifモードを切り替え"
+    },
+    "import_hint": {
+        "message": "エクスポートしたテーマをここにコピー&ペーストしてください:"
+    },
+    "import_label": {
+        "message": "インポート"
+    },
+    "invalid_url": {
+        "message": "入力したURLは無効のようです。動作しない可能性があります。"
+    },
+    "join_discord": {
+        "message": "Discordに参加"
+    },
+    "keep_font": {
+        "message": "元の課題フォントを維持"
+    },
+    "language": {
+        "message": "言語"
+    },
+    "language_auto": {
+        "message": "自動 (ブラウザ)"
+    },
+    "liked": {
+        "message": "いいね済み"
+    },
+    "loading": {
+        "message": "読み込み中…"
+    },
+    "logout": {
+        "message": "ログアウト"
+    },
+    "manual_customization": {
+        "message": "手動カスタマイズ"
+    },
+    "mark_as_seen": {
+        "message": "既読にする"
+    },
+    "max_items": {
+        "message": "最大アイテム数: "
+    },
+    "missing_cards": {
+        "message": "カードがありませんか?"
+    },
+    "missing_task_id": {
+        "message": "タスクIDが見つかりません。"
+    },
+    "more_card_styles": {
+        "message": "その他のカードスタイル"
+    },
+    "more_options": {
+        "message": "その他のオプション"
+    },
+    "my_saved_themes": {
+        "message": "保存したテーマ"
+    },
+    "my_submissions": {
+        "message": "自分の投稿"
+    },
+    "nasa_apod": {
+        "message": "NASAの天文写真"
+    },
+    "nasa_credit": {
+        "message": "クレジット: $CREDIT$"
+    },
+    "nasa_date": {
+        "message": "日付: $DATE$"
+    },
+    "need_refresh": {
+        "message": "変更を反映するにはページを更新する必要がある場合があります。"
+    },
+    "new_canvas_desc": {
+        "message": "Canvas Refinedが$HOST$でCanvasページを検出しました。canvasリストに追加しますか?"
+    },
+    "new_canvas_detected": {
+        "message": "新しいCanvasを検出"
+    },
+    "new_label": {
+        "message": "新規"
+    },
+    "next": {
+        "message": "次へ"
+    },
+    "next_timeframe": {
+        "message": "次の期間を見る"
+    },
+    "no_auto_detect": {
+        "message": "canvasを自動検出しない"
+    },
+    "no_course_cards": {
+        "message": "コースカードが見つかりません。コースを読み込むにはCanvasダッシュボードにアクセスしてください。"
+    },
+    "no_description": {
+        "message": "説明はありません。"
+    },
+    "no_details": {
+        "message": "詳細なし"
+    },
+    "no_features": {
+        "message": "機能が見つかりません"
+    },
+    "no_graded_assignments": {
+        "message": "期限付きの採点済み課題はまだありません。"
+    },
+    "no_tasks": {
+        "message": "この期間にタスクはありません"
+    },
+    "no_tasks_yet": {
+        "message": "タスクはまだありません"
+    },
+    "no_thanks": {
+        "message": "結構です"
+    },
+    "not_for_request": {
+        "message": "これはテーマのリクエスト用ではありません。リクエストによるテーマ作成は行っていません。"
+    },
+    "notes_bold": {
+        "message": "太字 (Ctrl/Cmd+B)"
+    },
+    "notes_bullet_list": {
+        "message": "箇条書き"
+    },
+    "notes_codeblock": {
+        "message": "コードブロック"
+    },
+    "notes_format": {
+        "message": "メモの書式"
+    },
+    "notes_h1": {
+        "message": "見出し1"
+    },
+    "notes_h2": {
+        "message": "見出し2"
+    },
+    "notes_hr": {
+        "message": "水平線"
+    },
+    "notes_inline_code": {
+        "message": "インラインコード"
+    },
+    "notes_italic": {
+        "message": "斜体 (Ctrl/Cmd+I)"
+    },
+    "notes_link": {
+        "message": "リンクを挿入"
+    },
+    "notes_numbered_list": {
+        "message": "番号付きリスト"
+    },
+    "notes_quote": {
+        "message": "引用"
+    },
+    "notes_strike": {
+        "message": "取り消し線"
+    },
+    "notes_task_list": {
+        "message": "タスクリスト"
+    },
+    "nothing_to_copy": {
+        "message": "コピーするものがありません — 先にエクスポートする項目を選択してください。"
+    },
+    "old_label": {
+        "message": "旧"
+    },
+    "opacity_only_background": {
+        "message": "カスタム背景でのみ使用可能"
+    },
+    "opacity_options": {
+        "message": "不透明度とぼかし"
+    },
+    "open_canvas_preview": {
+        "message": "お祝いをプレビューするにはCanvasページを開いてください。"
+    },
+    "optin_desc": {
+        "message": "オプトインメッセージが再表示され、別のオプションを選択できます。"
+    },
+    "options_click_extension": {
+        "message": "Canvas Refinedをクリックします"
+    },
+    "options_click_puzzle": {
+        "message": "右上のパズルアイコンをクリックします"
+    },
+    "options_contact": {
+        "message": "問題や提案があれば $EMAIL$ までご連絡ください。フィードバックをお待ちしています！"
+    },
+    "options_how_to_access": {
+        "message": "後でこのメニューを開く方法:"
+    },
+    "options_pin": {
+        "message": "ピン留めすると簡単にアクセスできます"
+    },
+    "options_refresh_note": {
+        "message": "設定するにはCanvasページを再読み込みしてください"
+    },
+    "options_welcome": {
+        "message": "ようこそ"
+    },
+    "output": {
+        "message": "出力"
+    },
+    "overall": {
+        "message": "全体"
+    },
+    "palette_army": {
+        "message": "アーミー"
+    },
+    "palette_base": {
+        "message": "ベース"
+    },
+    "palette_berries": {
+        "message": "ベリー"
+    },
+    "palette_blues": {
+        "message": "ブルー"
+    },
+    "palette_candy": {
+        "message": "キャンディ"
+    },
+    "palette_chess": {
+        "message": "チェス"
+    },
+    "palette_fade": {
+        "message": "フェード"
+    },
+    "palette_fade2": {
+        "message": "フェード2"
+    },
+    "palette_fruit": {
+        "message": "フルーツ"
+    },
+    "palette_greens": {
+        "message": "グリーン"
+    },
+    "palette_mesa": {
+        "message": "メサ"
+    },
+    "palette_muted": {
+        "message": "ミュート"
+    },
+    "palette_night": {
+        "message": "ナイト"
+    },
+    "palette_ocean": {
+        "message": "オーシャン"
+    },
+    "palette_oranges": {
+        "message": "オレンジ"
+    },
+    "palette_pastels": {
+        "message": "パステル"
+    },
+    "palette_pinks": {
+        "message": "ピンク"
+    },
+    "palette_popsicle": {
+        "message": "ポプシクル"
+    },
+    "palette_purples": {
+        "message": "パープル"
+    },
+    "palette_rainbow": {
+        "message": "レインボー"
+    },
+    "palette_reds": {
+        "message": "レッド"
+    },
+    "palette_sunset": {
+        "message": "サンセット"
+    },
+    "palette_watermelon": {
+        "message": "スイカ"
+    },
+    "percent_done": {
+        "message": "$PERCENT$%"
+    },
+    "personal_task": {
+        "message": "個人タスク"
+    },
+    "personal_task_label": {
+        "message": "個人タスク"
+    },
+    "placeholder_example": {
+        "message": "canvas.myschool.edu"
+    },
+    "planner_cleared": {
+        "message": "プランナーキャッシュをクリアしました。"
+    },
+    "popular": {
+        "message": "人気"
+    },
+    "popular_palettes": {
+        "message": "人気のパレット"
+    },
+    "pos_below": {
+        "message": "下"
+    },
+    "pos_cards_end": {
+        "message": "カードの後"
+    },
+    "pos_cards_start": {
+        "message": "カードの前"
+    },
+    "pos_top": {
+        "message": "上"
+    },
+    "presets": {
+        "message": "プリセット"
+    },
+    "prev_timeframe": {
+        "message": "前の期間"
+    },
+    "preview": {
+        "message": "プレビュー"
+    },
+    "preview_creator_default": {
+        "message": "クレジット"
+    },
+    "preview_hidden": {
+        "message": "個人情報が非表示の間はプレビューも非表示になります。"
+    },
+    "preview_title_default": {
+        "message": "タイトル"
+    },
+    "preview_unavailable": {
+        "message": "プレビューを利用できません"
+    },
+    "privacy": {
+        "message": "プライバシー"
+    },
+    "progress_done": {
+        "message": "$DONE$/$TOTAL$ 完了"
+    },
+    "progress_overall": {
+        "message": "$PCT$% ($DONE$/$TOTAL$)"
+    },
+    "progress_pct": {
+        "message": "$PCT$% ($DONE$/$TOTAL$)"
+    },
+    "quiz_dont_show": {
+        "message": "今後表示しない"
+    },
+    "quiz_dont_show_title": {
+        "message": "このリマインダーを完全に非表示にします。クイズセーフモードは拡張機能のポップアップでいつでも切り替えられます。"
+    },
+    "quiz_enable": {
+        "message": "クイズセーフモードを有効化"
+    },
+    "quiz_safe_desc": {
+        "message": "この拡張機能はクイズでの使用が100%承認されているわけではありません。一部の機能がクイズの動作を妨げる可能性があります。クイズセーフモードを有効にして、視覚的な変更を一時的に無効にしますか?"
+    },
+    "quiz_safe_info_label": {
+        "message": "クイズセーフモードの情報"
+    },
+    "quiz_safe_mode": {
+        "message": "クイズセーフモード"
+    },
+    "quiz_safe_mode_desc": {
+        "message": "クイズページでCanvas Refinedのほとんどの機能をオフにし、標準のCanvasクイズ体験を提供します"
+    },
+    "quiz_safe_title": {
+        "message": "Canvas Refined — クイズセーフモード"
+    },
+    "radio_gradient": {
+        "message": "グラデーション"
+    },
+    "radio_image": {
+        "message": "画像"
+    },
+    "radio_sidebar_gradient": {
+        "message": "勾配"
+    },
+    "radio_sidebar_image": {
+        "message": "画像"
+    },
+    "radio_sidebar_solid": {
+        "message": "固体"
+    },
+    "radio_solid": {
+        "message": "単色"
+    },
+    "reading_grade_data": {
+        "message": "成績データを読み込み中…"
+    },
+    "relative_ago": {
+        "message": "$TIME$前"
+    },
+    "relative_due_dates": {
+        "message": "相対的な期日"
+    },
+    "relative_in": {
+        "message": "$TIME$後"
+    },
+    "remlogo": {
+        "message": "サイドバーのロゴを削除"
+    },
+    "remove_label": {
+        "message": "削除"
+    },
+    "report_desc": {
+        "message": "問題、フィードバック、提案がある場合はDiscordサーバーに参加するか、Githubでissueを作成してください。ありがとうございます!"
+    },
+    "report_issue": {
+        "message": "問題を報告"
+    },
+    "reroll_classes": {
+        "message": "クラスを再抽選"
+    },
+    "reset_default": {
+        "message": "デフォルトに戻す"
+    },
+    "reset_optin": {
+        "message": "オプトイン状態をリセット"
+    },
+    "revert": {
+        "message": "元に戻す"
+    },
+    "revert_desc": {
+        "message": "カスタマイズを拡張機能をインストールした当初の状態に戻します。"
+    },
+    "revert_original": {
+        "message": "オリジナルに戻す"
+    },
+    "revert_theme": {
+        "message": "テーマの変更を元に戻す"
+    },
+    "row_spacing": {
+        "message": "行の間隔"
+    },
+    "save": {
+        "message": "保存"
+    },
+    "save_current": {
+        "message": "+ 現在を保存"
+    },
+    "search": {
+        "message": "検索"
+    },
+    "search_building": {
+        "message": "検索インデックスを構築中…"
+    },
+    "search_canvas": {
+        "message": "Canvasを検索"
+    },
+    "search_canvas_ctrlk": {
+        "message": "Canvasを検索 (Ctrl+K)"
+    },
+    "search_close": {
+        "message": "閉じる"
+    },
+    "search_close_title": {
+        "message": "閉じる (Esc)"
+    },
+    "search_features": {
+        "message": "機能を検索..."
+    },
+    "search_hint": {
+        "message": "モジュールや課題を検索するには入力してください。@コース名で特定のコースを検索、@gradesでコースの成績ページを開けます。"
+    },
+    "search_navigate": {
+        "message": "移動"
+    },
+    "search_new_tab": {
+        "message": "新しいタブ"
+    },
+    "search_no_course": {
+        "message": "「$QUERY$」に一致するコースはありません。"
+    },
+    "search_no_courses_grades": {
+        "message": "成績を開けるコースが見つかりません。"
+    },
+    "search_no_match": {
+        "message": "「$QUERY$」の結果はありません。"
+    },
+    "search_no_match_hint": {
+        "message": "「$QUERY$」の結果はありません。別のキーワードを試してください。"
+    },
+    "search_no_modules": {
+        "message": "モジュールや課題が見つかりません..."
+    },
+    "search_no_modules_found": {
+        "message": "モジュールや課題が見つかりません。コースの読み込み中であれば、後で検索を開き直してください。"
+    },
+    "search_no_results": {
+        "message": "「$QUERY$」の結果はありません。"
+    },
+    "search_open": {
+        "message": "開く"
+    },
+    "search_placeholder": {
+        "message": "モジュールと課題を検索… (@コース名でコースを絞り込み)"
+    },
+    "search_start_typing": {
+        "message": "入力して検索を開始..."
+    },
+    "search_title": {
+        "message": "Canvasを検索 (Ctrl+K)"
+    },
+    "search_toggle": {
+        "message": "検索を切り替え"
+    },
+    "search_type_assignment": {
+        "message": "課題"
+    },
+    "search_type_discussion": {
+        "message": "ディスカッション"
+    },
+    "search_type_external_tool": {
+        "message": "外部ツール"
+    },
+    "search_type_file": {
+        "message": "ファイル"
+    },
+    "search_type_item": {
+        "message": "項目"
+    },
+    "search_type_link": {
+        "message": "リンク"
+    },
+    "search_type_page": {
+        "message": "ページ"
+    },
+    "search_type_quiz": {
+        "message": "クイズ"
+    },
+    "search_type_section": {
+        "message": "セクション"
+    },
+    "selected_count": {
+        "message": "$COUNT$ 件選択中"
+    },
+    "show": {
+        "message": "表示"
+    },
+    "show_links": {
+        "message": "リンクを表示"
+    },
+    "show_past_due": {
+        "message": "期限超過を表示"
+    },
+    "showing_submissions": {
+        "message": "最新の3件の提出物を表示中"
+    },
+    "sidebar_blur": {
+        "message": "サイドバーのぼかし"
+    },
+    "sidebar_opacity": {
+        "message": "サイドバーの不透明度"
+    },
+    "sidebar_opacity_auto": {
+        "message": "改良サイドバーがオンの場合はそちらに、オフの場合は通常のサイドバーに適用されます。"
+    },
+    "sidebar_scale": {
+        "message": "サイドバーの拡大率: "
+    },
+    "single_color": {
+        "message": "単色"
+    },
+    "single_color_desc": {
+        "message": "すべてのカードを同じ色にする色を選択:"
+    },
+    "storage_cache_label": {
+        "message": "プランナーキャッシュ:"
+    },
+    "storage_dump": {
+        "message": "ストレージダンプ"
+    },
+    "storage_dump_desc": {
+        "message": "拡張機能が保存したすべての設定を取得します。"
+    },
+    "storage_empty": {
+        "message": "空"
+    },
+    "storage_items": {
+        "message": " ($COUNT$件)"
+    },
+    "storage_limit_error": {
+        "message": "入力したデータがストレージの上限を超えているため保存できません。リンクを短くし、リンクには「画像をコピー」ではなく「画像アドレスをコピー」を使用してください。"
+    },
+    "storage_other_label": {
+        "message": "その他のローカルデータ:"
+    },
+    "storage_quota_100kb": {
+        "message": " / 100 KBの容量"
+    },
+    "storage_quota_label": {
+        "message": "ローカル容量:"
+    },
+    "storage_reset": {
+        "message": "ストレージをリセット"
+    },
+    "storage_reset_desc": {
+        "message": "すべての設定をデフォルトに戻します。後でページを更新する必要があります。"
+    },
+    "storage_sync_label": {
+        "message": "設定 (同期):"
+    },
+    "storage_unknown": {
+        "message": "不明"
+    },
+    "storage_usage": {
+        "message": "ストレージ使用量"
+    },
+    "styles": {
+        "message": "スタイル"
+    },
+    "submission_confirmation": {
+        "message": "投稿の確認"
+    },
+    "submission_includes": {
+        "message": "投稿には、カード画像、ダークモード、フォントなど、現在のテーマ設定が含まれます。"
+    },
+    "submit": {
+        "message": "投稿"
+    },
+    "submit_your_theme": {
+        "message": "テーマを投稿"
+    },
+    "submitted_return_title": {
+        "message": "Canvasに提出済み — クリックするとタスクに戻します（ローカルのみ）"
+    },
+    "tab_icons": {
+        "message": "色分けされたタブアイコン"
+    },
+    "task_created": {
+        "message": "タスクを作成しました。"
+    },
+    "task_date_invalid": {
+        "message": "タスクの日付が無効です。"
+    },
+    "task_date_time_required": {
+        "message": "日付と時刻の両方を選択してください。"
+    },
+    "task_details_placeholder": {
+        "message": "詳細 (任意)"
+    },
+    "task_link_placeholder": {
+        "message": "リンク (任意)"
+    },
+    "task_title_placeholder": {
+        "message": "タスク名"
+    },
+    "task_title_required": {
+        "message": "タスク名は必須です。"
+    },
+    "task_updated": {
+        "message": "タスクを更新しました。"
+    },
+    "tasks_header": {
+        "message": "タスク"
+    },
+    "text_colors": {
+        "message": "文章"
+    },
+    "theme_browser_settings": {
+        "message": "テーマブラウザの設定"
+    },
+    "theme_guidelines": {
+        "message": "テーマが次のガイドラインに従っていることを確認してください:"
+    },
+    "theme_number": {
+        "message": "テーマ $NUM$"
+    },
+    "theme_optin_reset": {
+        "message": "テーマブラウザのオプトインをリセット"
+    },
+    "themes": {
+        "message": "テーマ"
+    },
+    "time_day": {
+        "message": "日"
+    },
+    "time_day_plural": {
+        "message": "日"
+    },
+    "time_day_short": {
+        "message": "日"
+    },
+    "time_hour": {
+        "message": "時間"
+    },
+    "time_hour_plural": {
+        "message": "時間"
+    },
+    "time_hour_short": {
+        "message": "時間"
+    },
+    "time_min": {
+        "message": "分"
+    },
+    "time_min_short": {
+        "message": "分"
+    },
+    "time_week": {
+        "message": "週間"
+    },
+    "time_week_plural": {
+        "message": "週間"
+    },
+    "time_week_short": {
+        "message": "週"
+    },
+    "timeframe_next": {
+        "message": "次の期間を見る"
+    },
+    "timeframe_prev": {
+        "message": "前の期間"
+    },
+    "timer_custom": {
+        "message": "カスタム"
+    },
+    "timer_hours": {
+        "message": "時間"
+    },
+    "timer_minutes": {
+        "message": "分"
+    },
+    "timer_pause": {
+        "message": "一時停止"
+    },
+    "timer_reset": {
+        "message": "リセット"
+    },
+    "timer_seconds": {
+        "message": "秒"
+    },
+    "timer_set": {
+        "message": "設定"
+    },
+    "timer_start": {
+        "message": "開始"
+    },
+    "timer_unit_h": {
+        "message": "時間"
+    },
+    "timer_unit_m": {
+        "message": "分"
+    },
+    "timer_unit_min": {
+        "message": "分"
+    },
+    "timer_unit_s": {
+        "message": "秒"
+    },
+    "title_hint": {
+        "message": "検索しやすいように、短く関連性のあるタイトルにしてください。"
+    },
+    "title_label": {
+        "message": "タイトル"
+    },
+    "toast_close": {
+        "message": "閉じる"
+    },
+    "todo_alternate_colors": {
+        "message": "交互の色"
+    },
+    "todo_click_to_edit": {
+        "message": "クリックして編集"
+    },
+    "todo_close_title": {
+        "message": "閉じる"
+    },
+    "todo_cross_off": {
+        "message": "打ち消し線"
+    },
+    "todo_date_format": {
+        "message": "$DATE$ $TIME$（$RELATIVE$）"
+    },
+    "todo_delete": {
+        "message": "削除"
+    },
+    "todo_delete_confirm": {
+        "message": "このカスタムタスクを削除しますか?この操作は元に戻せません。"
+    },
+    "todo_delete_title": {
+        "message": "このカスタムタスクを削除"
+    },
+    "todo_full_height": {
+        "message": "高さを最大にする"
+    },
+    "todo_graded": {
+        "message": "評価済み"
+    },
+    "todo_hide_feedback": {
+        "message": "最近のフィードバックを非表示"
+    },
+    "todo_hide_read": {
+        "message": "既読のお知らせを非表示"
+    },
+    "todo_ignore_colors": {
+        "message": "カードの色を無視"
+    },
+    "todo_label": {
+        "message": "ラベル:"
+    },
+    "todo_label_placeholder": {
+        "message": "ラベル"
+    },
+    "todo_none": {
+        "message": "なし"
+    },
+    "todo_progress_display": {
+        "message": "進捗表示"
+    },
+    "todo_progress_line": {
+        "message": "1行"
+    },
+    "todo_progress_lines": {
+        "message": "複数行"
+    },
+    "todo_progress_none": {
+        "message": "なし"
+    },
+    "todo_progress_rainbow": {
+        "message": "レインボー"
+    },
+    "todo_progress_rings": {
+        "message": "リング"
+    },
+    "todo_remind": {
+        "message": "ToDoリマインダー"
+    },
+    "todo_remove": {
+        "message": "削除"
+    },
+    "todo_remove_icons": {
+        "message": "アイコンを削除"
+    },
+    "todo_separate_scrollbar": {
+        "message": "スクロールバーを分離"
+    },
+    "todo_show_scores": {
+        "message": "課題の点数を表示"
+    },
+    "todo_task_details": {
+        "message": "詳細 (任意)"
+    },
+    "todo_task_link": {
+        "message": "リンク (任意)"
+    },
+    "todo_task_title": {
+        "message": "タスク名"
+    },
+    "todo_timeframe": {
+        "message": "期間"
+    },
+    "todo_timeframe_1week": {
+        "message": "1週間"
+    },
+    "todo_timeframe_2month": {
+        "message": "2か月"
+    },
+    "todo_timeframe_2week": {
+        "message": "2週間"
+    },
+    "todo_timeframe_all": {
+        "message": "全期間"
+    },
+    "todo_timeframe_custom": {
+        "message": "カスタム"
+    },
+    "todo_timeframe_days_ago": {
+        "message": "日前"
+    },
+    "todo_timeframe_days_future": {
+        "message": "日後"
+    },
+    "todo_timeframe_from": {
+        "message": "開始"
+    },
+    "todo_timeframe_month": {
+        "message": "1か月"
+    },
+    "todo_timeframe_to": {
+        "message": "終了"
+    },
+    "todo_type_away": {
+        "message": "入力してください!"
+    },
+    "top_bottom_height": {
+        "message": "上/下の高さ"
+    },
+    "trending": {
+        "message": "トレンド"
+    },
+    "updates": {
+        "message": "アップデート"
+    },
+    "useddmm": {
+        "message": "を使用 dd/mm"
+    },
+    "user_made_themes": {
+        "message": "ユーザー作成のテーマ"
+    },
+    "vertical": {
+        "message": "縦"
+    },
+    "view_less": {
+        "message": "表示を減らす"
+    },
+    "view_more": {
+        "message": "もっと見る"
+    },
+    "view_more_count": {
+        "message": "もっと見る ($COUNT$)"
+    },
+    "view_on_github": {
+        "message": "GitHubで見る"
+    },
+    "widget_order_title": {
+        "message": "ウィジェットの順序"
+    },
+    "widget_position": {
+        "message": "位置"
+    },
+    "widget_short_breathing": {
+        "message": "呼吸"
+    },
+    "widget_short_focus": {
+        "message": "集中"
+    },
+    "widget_short_gpa": {
+        "message": "GPA"
+    },
+    "widget_short_notes": {
+        "message": "メモ"
+    },
+    "widget_short_quotes": {
+        "message": "名言"
+    },
+    "widgets": {
+        "message": "ウィジェット"
+    }
 }

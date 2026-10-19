@@ -1,260 +1,1895 @@
 {
-  "better_canvas": {
-    "message": "Bättre Canvas"
-  },
-  "updates": {
-    "message": "Uppdateringar"
-  },
-  "dark_mode": {
-    "message": "Mörkt läge"
-  },
-  "automatic_dark_mode": {
-    "message": "Schemalagt mörkt läge"
-  },
-  "auto_start_time": {
-    "message": "Starttid"
-  },
-  "auto_end_time": {
-    "message": "Sluttid"
-  },
-  "edit_dark_mode": {
-    "message": "Mörkt läge"
-  },
-  "enter_url": {
-    "message": "Din canvas-url:"
-  },
-  "card_grades": {
-    "message": "Kortbetyg"
-  },
-  "gradient_cards": {
-    "message": "Gradientkort"
-  },
-  "condensed_cards": {
-    "message": "Kondenserade kort"
-  },
-  "disable_color": {
-    "message": "Inaktivera färgöverlägg"
-  },
-  "card_assignments": {
-    "message": "Kortuppdrag"
-  },
-  "card_customization": {
-    "message": "Kort"
-  },
-  "styles": {
-    "message": "Stilar"
-  },
-  "useddmm": {
-    "message": "Använd dd/mm"
-  },
-  "better_todo": {
-    "message": "Bättre att göra-lista"
-  },
-  "max_items": {
-    "message": "Max artiklar: "
-  },
-  "hover_preview": {
-    "message": "Förhandsgranskning vid hover"
-  },
-  "hide_completed": {
-    "message": "Göm slutförd"
-  },
-  "24hrformat": {
-    "message": "Använd 24 timmars format"
-  },
-  "dashboard_notes": {
-    "message": "Anteckningar på instrumentpanelen"
-  },
-  "gpa_calculator": {
-    "message": "GPA-kalkylator"
-  },
-  "gpa_settings": {
-    "message": "GPA-inställningar"
-  },
-  "grade_hover": {
-    "message": "Visa endast vid svävning"
-  },
-  "card_letter": {
-    "message": "Visa bokstavsbetyg"
-  },
-  "due": {
-    "message": "Förfaller"
-  },
-  "card_colors": {
-    "message": "Kort färger"
-  },
-  "back": {
-    "message": "Tillbaka"
-  },
-  "more_options": {
-    "message": "Fler alternativ"
-  },
-  "manual_customization": {
-    "message": "Manuell anpassning"
-  },
-  "background_colors": {
-    "message": "Bakgrund"
-  },
-  "text_colors": {
-    "message": "Text"
-  },
-  "full_width": {
-    "message": "Instrumentpanel i full bredd"
-  },
-  "report_issue": {
-    "message": "Rapportera problem"
-  },
-  "themes": {
-    "message": "Teman"
-  },
-  "move_top": {
-    "message": "Flytta till toppen"
-  },
-  "show_past_due": {
-    "message": "Visa förfallna"
-  },
-  "relative_due_dates": {
-    "message": "Relativa förfallodatum"
-  },
-  "equal_height_cards": {
-    "message": "Jämn höjd"
-  },
-  "enter_multiple": {
-    "message": "(Ange flera med komma)"
-  },
-  "todo_remind": {
-    "message": "Påminnelser om att göra"
-  },
-  "remlogo": {
-    "message": "Ta bort Sidebar-logotypen"
-  },
-  "hide_feedback": {
-    "message": "Dölj senaste feedback"
-  },
-  "tab_icons": {
-    "message": "Färgkodade flikikoner"
-  },
-  "todo_colors": {
-    "message": "Använd kortfärger"
-  },
-  "gpa_calc_cumulative": {
-    "message": "Visa kumulativ GPA"
-  },
-  "gpa_calc_weighted": {
-    "message": "Visa viktad GPA"
-  },
-  "device_dark": {
-    "message": "Använd inställningarna för enhetens mörka läge"
-  },
-  "presets": {
-    "message": "Förinställningar"
-  },
-  "dark_lighter": {
-    "message": "Tändare"
-  },
-  "dark_light": {
-    "message": "Ljus"
-  },
-  "dark_default": {
-    "message": "Standard"
-  },
-  "dark_dark": {
-    "message": "Mörk"
-  },
-  "dark_darker": {
-    "message": "Mörkare"
-  },
-  "dark_mint": {
-    "message": "Mynta"
-  },
-  "dark_blue": {
-    "message": "Blå nyans"
-  },
-  "dark_burn": {
-    "message": "Bränna ögongloben"
-  },
-  "dark_unicorn": {
-    "message": "Enhörning"
-  },
-  "dark_lightmode": {
-    "message": "Ljusläge"
-  },
-  "dark_catppuccin": {
-    "message": "Catppuccin\n Av Angel"
-  },
-  "dark_sage": {
-    "message": "Sabia\n Av LivDoesDevStuf"
-  },
-  "dark_pink": {
-    "message": "Rosa\n Av Sayde"
-  },
-  "dark_coral": {
-    "message": "Korall\n Av Superchido"
-  },
-  "dp_sidebar_text": {
-    "message": "Sidofältstext"
-  },
-  "dp_sidebar": {
-    "message": "Sidofält"
-  },
-  "radio_sidebar_solid": {
-    "message": "Fast"
-  },
-  "radio_sidebar_gradient": {
-    "message": "Lutning"
-  },
-  "radio_sidebar_image": {
-    "message": "Bild"
-  },
-  "dp_background_0": {
-    "message": "Bakgrund Huvud"
-  },
-  "dp_background_1": {
-    "message": "Bakgrund Alt"
-  },
-  "dp_background_2": {
-    "message": "Bakgrund Annat"
-  },
-  "dp_borders": {
-    "message": "Gränser"
-  },
-  "dp_links": {
-    "message": "Länkar"
-  },
-  "dp_text_0": {
-    "message": "Ordalydelse huvudsaklig"
-  },
-  "dp_text_1": {
-    "message": "Text Annat"
-  },
-  "dp_text_2": {
-    "message": "Text Alt"
-  },
-  "dark_mode_fixer": {
-    "message": "Mörk Läge Fixare (Beta)"
-  },
-  "dark_mode_fixer_text": {
-    "message": "Detta kommer att försöka fixa eventuella luckor i mörkt läge på den aktuella sidan."
-  },
-  "fix_dm_btn": {
-    "message": "Gå"
-  },
-  "fix_dm_text": {
-    "message": "Fixern körs automatiskt på dessa sidor:"
-  },
-  "hide_links": {
-    "message": "Dölj länkar"
-  },
-  "show_links": {
-    "message": "Visa länkar"
-  },
-  "center_cards": {
-    "message": "Centrera kort"
-  },
-  "hide_new_canvas": {
-    "message": "Dölj ny Canvas"
-  },
-  "hide_completed_cards": {
-    "message": "Dölj färdiga"
-  }
+    "24hrformat": {
+        "message": "Använd 24 timmars format"
+    },
+    "abc": {
+        "message": "ABC"
+    },
+    "add_canvas": {
+        "message": "+ Lägg till Canvas"
+    },
+    "add_task": {
+        "message": "+ Lägg till uppgift"
+    },
+    "add_to_list": {
+        "message": "Lägg till i listan"
+    },
+    "ago": {
+        "message": "sedan"
+    },
+    "always_show_likes": {
+        "message": "Visa alltid antal gillningar"
+    },
+    "assignment_avg": {
+        "message": "— snitt $AVG$% över $COUNT$ uppgift(er):"
+    },
+    "assignment_due_in": {
+        "message": "Uppgift förfaller om $TIME$"
+    },
+    "auto": {
+        "message": "auto"
+    },
+    "auto_end_time": {
+        "message": "Sluttid"
+    },
+    "auto_start_time": {
+        "message": "Starttid"
+    },
+    "automatic_dark_mode": {
+        "message": "Schemalagt mörkt läge"
+    },
+    "back": {
+        "message": "Tillbaka"
+    },
+    "back_to_assignment": {
+        "message": "Tillbaka till uppgiften"
+    },
+    "background_colors": {
+        "message": "Bakgrund"
+    },
+    "background_opacity": {
+        "message": "Bakgrundens opacitet"
+    },
+    "better_sidebar": {
+        "message": "Bättre sidomeny"
+    },
+    "better_todo": {
+        "message": "Bättre att göra-lista"
+    },
+    "bg_blur": {
+        "message": "Bakgrundsoskärpa"
+    },
+    "breathing_breaks": {
+        "message": "Andningspauser"
+    },
+    "breathing_in": {
+        "message": "Andas in"
+    },
+    "breathing_out": {
+        "message": "Andas ut"
+    },
+    "breathing_ready": {
+        "message": "Redo"
+    },
+    "button_1": {
+        "message": "Knapp 1"
+    },
+    "button_2": {
+        "message": "Knapp 2"
+    },
+    "button_3": {
+        "message": "Knapp 3"
+    },
+    "cancel": {
+        "message": "Avbryt"
+    },
+    "Canvas_Refined": {
+        "message": "Canvas Refined"
+    },
+    "canvas_rejected_create": {
+        "message": "Canvas avvisade skapandet av uppgiften."
+    },
+    "canvas_rejected_delete": {
+        "message": "Canvas avvisade borttagningen av uppgiften."
+    },
+    "canvas_rejected_update": {
+        "message": "Canvas avvisade uppdateringen av uppgiften."
+    },
+    "card_assignments": {
+        "message": "Kortuppdrag"
+    },
+    "card_blur": {
+        "message": "Kortets oskärpa"
+    },
+    "card_colors": {
+        "message": "Kort färger"
+    },
+    "card_customization": {
+        "message": "Kort"
+    },
+    "card_grades": {
+        "message": "Kortbetyg"
+    },
+    "card_grid": {
+        "message": "Kortrutnät"
+    },
+    "card_grid_preview": {
+        "message": "Rutnätsförhandsvisning"
+    },
+    "card_height": {
+        "message": "Korthöjd"
+    },
+    "card_hide_toggle": {
+        "message": "Visa/dölj på instrumentpanelen"
+    },
+    "card_letter": {
+        "message": "Visa bokstavsbetyg"
+    },
+    "card_limit": {
+        "message": "Kortgräns"
+    },
+    "card_limit_desc": {
+        "message": "Justering av detta nummer återställer dina kort och kan orsaka lagringsproblem."
+    },
+    "card_method": {
+        "message": "Kortmetod"
+    },
+    "card_method_desc": {
+        "message": "Du borde inte behöva ha dessa på."
+    },
+    "card_none": {
+        "message": "Ingen"
+    },
+    "card_opacity": {
+        "message": "Kortets opacitet"
+    },
+    "card_padding": {
+        "message": "Kortutfyllnad"
+    },
+    "card_reset_default": {
+        "message": "Kortet återställdes till standardinställningarna!"
+    },
+    "card_roundness": {
+        "message": "Kortens rundning"
+    },
+    "card_settings_saved": {
+        "message": "Kortinställningarna har sparats!"
+    },
+    "card_transparency": {
+        "message": "Kortets genomskinlighet"
+    },
+    "card_width": {
+        "message": "Kortbredd"
+    },
+    "cards_height": {
+        "message": "Korthöjd"
+    },
+    "celebration": {
+        "message": "Firande"
+    },
+    "celebration_amount": {
+        "message": "Mängd"
+    },
+    "celebration_confetti": {
+        "message": "Konfetti"
+    },
+    "celebration_crazy": {
+        "message": "Galet"
+    },
+    "celebration_fireworks": {
+        "message": "Fyrverkerier"
+    },
+    "celebration_hearts": {
+        "message": "Stigande hjärtan"
+    },
+    "celebration_less": {
+        "message": "Mindre"
+    },
+    "celebration_more": {
+        "message": "Mer"
+    },
+    "celebration_none": {
+        "message": "Ingen"
+    },
+    "celebration_normal": {
+        "message": "Normal"
+    },
+    "celebration_preview": {
+        "message": "Förhandsgranska firande"
+    },
+    "celebration_rocket": {
+        "message": "Raket"
+    },
+    "celebration_sparkles": {
+        "message": "Gnisterexplosion"
+    },
+    "celebration_type": {
+        "message": "Firandetyp"
+    },
+    "center_cards": {
+        "message": "Centrera kort"
+    },
+    "center_uneven": {
+        "message": "Centrera ojämna rader"
+    },
+    "check_all": {
+        "message": "Markera alla"
+    },
+    "check_none": {
+        "message": "Avmarkera alla"
+    },
+    "clear_background": {
+        "message": "Rensa bakgrund"
+    },
+    "clear_cache": {
+        "message": "Rensa planner-cache"
+    },
+    "clear_cache_desc": {
+        "message": "Detta raderar den cachade att göra-listedatan (uppgifter, meddelanden, påminnelser) så att den hämtas på nytt från Canvas. Öppna Canvas-flikar uppdateras automatiskt."
+    },
+    "click_eye": {
+        "message": "Klicka på ögat vid en kurs för att dölja eller visa dess kort."
+    },
+    "close": {
+        "message": "Stäng"
+    },
+    "close_label": {
+        "message": "Stäng"
+    },
+    "column_spacing": {
+        "message": "Kolumnavstånd"
+    },
+    "complete": {
+        "message": "klar"
+    },
+    "completed_total": {
+        "message": "$DONE$/$TOTAL$ klara"
+    },
+    "condensed_cards": {
+        "message": "Kondenserade kort"
+    },
+    "copied": {
+        "message": "Kopierat!"
+    },
+    "copy": {
+        "message": "Kopiera"
+    },
+    "could_not_delete": {
+        "message": "Kunde inte ta bort uppgiften."
+    },
+    "could_not_load_preview": {
+        "message": "Kunde inte ladda förhandsgranskningen"
+    },
+    "could_not_save": {
+        "message": "Kunde inte spara uppgiften."
+    },
+    "create": {
+        "message": "Skapa"
+    },
+    "created_by": {
+        "message": "Skapad av"
+    },
+    "created_by_hint": {
+        "message": "Detta kan vara vad som helst, inklusive ditt namn, ditt sociala mediekonto, anonymt osv."
+    },
+    "custom_background": {
+        "message": "Anpassad bakgrund"
+    },
+    "custom_background_desc": {
+        "message": "Välj en förinställning eller använd din egen bild-URL."
+    },
+    "custom_card_styles": {
+        "message": "Anpassade kortstilar"
+    },
+    "custom_fonts": {
+        "message": "Anpassade typsnitt"
+    },
+    "custom_fonts_desc": {
+        "message": "Du kan använda ett anpassat typsnitt från Google Fonts här. Se till att bara ange den fetstilta delen efter \"?family=\""
+    },
+    "custom_styles": {
+        "message": "Anpassade stilar"
+    },
+    "custom_styles_desc": {
+        "message": "Du kan använda detta område för att skriva anpassade CSS-stilar. Du kan behöva lägga till en !important-regel för att tvinga dem att träda i kraft."
+    },
+    "daily_quote": {
+        "message": "Dagens citat"
+    },
+    "daily_quote_default": {
+        "message": "Hemligheten med att komma framåt är att börja."
+    },
+    "daily_quotes": {
+        "message": "Dagliga citat"
+    },
+    "daily_random": {
+        "message": "Daglig slumpmässig bild"
+    },
+    "dark_blue": {
+        "message": "Blå nyans"
+    },
+    "dark_burn": {
+        "message": "Bränna ögongloben"
+    },
+    "dark_catppuccin": {
+        "message": "Catppuccin\n Av Angel"
+    },
+    "dark_coral": {
+        "message": "Korall\n Av Superchido"
+    },
+    "dark_dark": {
+        "message": "Mörk"
+    },
+    "dark_darker": {
+        "message": "Mörkare"
+    },
+    "dark_default": {
+        "message": "Standard"
+    },
+    "dark_inspector": {
+        "message": "Inspektör för mörkt läge"
+    },
+    "dark_inspector_desc": {
+        "message": "Detta inspekterar sidan efter luckor i det mörka läget."
+    },
+    "dark_light": {
+        "message": "Ljus"
+    },
+    "dark_lighter": {
+        "message": "Tändare"
+    },
+    "dark_lightmode": {
+        "message": "Ljusläge"
+    },
+    "dark_mint": {
+        "message": "Mynta"
+    },
+    "dark_mode": {
+        "message": "Mörkt läge"
+    },
+    "dark_mode_fixer": {
+        "message": "Mörk Läge Fixare (Beta)"
+    },
+    "dark_mode_fixer_text": {
+        "message": "Detta kommer att försöka fixa eventuella luckor i mörkt läge på den aktuella sidan."
+    },
+    "dark_pink": {
+        "message": "Rosa\n Av Sayde"
+    },
+    "dark_sage": {
+        "message": "Sabia\n Av LivDoesDevStuf"
+    },
+    "dark_unicorn": {
+        "message": "Enhörning"
+    },
+    "dashboard": {
+        "message": "Översikt"
+    },
+    "dashboard_font": {
+        "message": "Typsnitt för översikten"
+    },
+    "dashboard_notes": {
+        "message": "Anteckningar på instrumentpanelen"
+    },
+    "date": {
+        "message": "Datum"
+    },
+    "delete_confirm": {
+        "message": "Ta bort denna anpassade uppgift? Detta kan inte ångras."
+    },
+    "delete_label": {
+        "message": "Ta bort"
+    },
+    "delete_task_title": {
+        "message": "Ta bort denna anpassade uppgift"
+    },
+    "device_dark": {
+        "message": "Använd inställningarna för enhetens mörka läge"
+    },
+    "disable_color": {
+        "message": "Inaktivera färgöverlägg"
+    },
+    "disable_high_contrast": {
+        "message": "Inaktivera högkontrastgränssnitt"
+    },
+    "do_you_want_submit": {
+        "message": "Vill du skicka in ditt tema så att andra kan använda det?"
+    },
+    "dp_background_0": {
+        "message": "Bakgrund Huvud"
+    },
+    "dp_background_1": {
+        "message": "Bakgrund Alt"
+    },
+    "dp_background_2": {
+        "message": "Bakgrund Annat"
+    },
+    "dp_borders": {
+        "message": "Gränser"
+    },
+    "dp_links": {
+        "message": "Länkar"
+    },
+    "dp_sidebar": {
+        "message": "Sidofält"
+    },
+    "dp_sidebar_text": {
+        "message": "Sidofältstext"
+    },
+    "dp_text_0": {
+        "message": "Ordalydelse huvudsaklig"
+    },
+    "dp_text_1": {
+        "message": "Text Annat"
+    },
+    "dp_text_2": {
+        "message": "Text alternativ"
+    },
+    "due": {
+        "message": "Förfaller"
+    },
+    "due_days": {
+        "message": "Förfaller om <strong>$COUNT$ dagar</strong>"
+    },
+    "due_later": {
+        "message": "Förfaller <strong>senare</strong>"
+    },
+    "due_one_month": {
+        "message": "Förfaller om <strong>1 månad</strong>"
+    },
+    "due_overdue": {
+        "message": "<strong>Försenad</strong>"
+    },
+    "due_today": {
+        "message": "Förfaller <strong>idag</strong>"
+    },
+    "due_tomorrow": {
+        "message": "Förfaller <strong>imorgon</strong>"
+    },
+    "due_weeks": {
+        "message": "Förfaller om <strong>$COUNT$ veckor</strong>"
+    },
+    "edit_custom_task": {
+        "message": "Redigera denna anpassade uppgift"
+    },
+    "edit_dark_mode": {
+        "message": "Mörkt läge"
+    },
+    "enter_multiple": {
+        "message": "(Ange flera med komma)"
+    },
+    "enter_none": {
+        "message": "Ange \"none\" för att dölja bilder och länkar."
+    },
+    "enter_url": {
+        "message": "Din canvas-url:"
+    },
+    "equal_height_cards": {
+        "message": "Jämn höjd"
+    },
+    "error_log": {
+        "message": "Fellogg"
+    },
+    "example_reminder_desc": {
+        "message": "Detta meddelande visas på andra sidor för att påminna dig om ofullständiga uppgifter som förfaller inom mindre än 6 timmar."
+    },
+    "example_reminder_title": {
+        "message": "Detta är en exempelpåminnelse"
+    },
+    "excused": {
+        "message": "Befriad"
+    },
+    "experimental": {
+        "message": "Detta är en experimentell funktion."
+    },
+    "export_background": {
+        "message": "Bakgrund och opacitet"
+    },
+    "export_card_colors": {
+        "message": "Kortfärger"
+    },
+    "export_card_images": {
+        "message": "Kortbilder"
+    },
+    "export_card_styles": {
+        "message": "Kortstilar"
+    },
+    "export_custom_css": {
+        "message": "Anpassad CSS"
+    },
+    "export_custom_font": {
+        "message": "Anpassat typsnitt"
+    },
+    "export_dark": {
+        "message": "Mörkt läge"
+    },
+    "export_dark_schedule": {
+        "message": "Schema för mörkt läge"
+    },
+    "export_gpa": {
+        "message": "GPA-inställningar"
+    },
+    "export_settings": {
+        "message": "Exportera inställningar"
+    },
+    "export_todo": {
+        "message": "Att göra-lista"
+    },
+    "export_toggles": {
+        "message": "På/av-reglage"
+    },
+    "extra_spacing": {
+        "message": "Extra kortavstånd"
+    },
+    "fake_grade_high": {
+        "message": "Hög"
+    },
+    "fake_grade_level": {
+        "message": "Låtsasbetygsnivå"
+    },
+    "fake_grade_medhigh": {
+        "message": "Medel-hög"
+    },
+    "fake_grade_medium": {
+        "message": "Medel"
+    },
+    "fake_grade_medlow": {
+        "message": "Medel-låg"
+    },
+    "fake_progress": {
+        "message": "Låtsasförlopp:"
+    },
+    "fake_rerolled": {
+        "message": "Låtsasklasser slumpades om."
+    },
+    "fake_tasks_completed": {
+        "message": "Låtsasuppgifter slutförda:"
+    },
+    "fake_todo": {
+        "message": "Fyll att göra-listan med låtsaskurser"
+    },
+    "final_assignments": {
+        "message": "uppgift"
+    },
+    "final_assignments_plural": {
+        "message": "uppgifter"
+    },
+    "final_avg": {
+        "message": "— snitt $AVG$% ..."
+    },
+    "final_waiting": {
+        "message": "Väntar på betygsdata…"
+    },
+    "final_weight_prompt": {
+        "message": "Ange tentans vikt och ditt målbetyg för att se vad du behöver på tentan."
+    },
+    "fit_image": {
+        "message": "Anpassa bilden till skärmen"
+    },
+    "fix_dm_btn": {
+        "message": "Gå"
+    },
+    "fix_dm_text": {
+        "message": "Fixern körs automatiskt på dessa sidor:"
+    },
+    "fix_took": {
+        "message": "Åtgärden tog $TIME$ ms (betyg: $RATING$)"
+    },
+    "flexible_grid": {
+        "message": "Flexibelt rutnät"
+    },
+    "flexible_grid_on": {
+        "message": "Flexibelt rutnät är på – korten radbryts för att passa smala fönster i stället för att klippas av."
+    },
+    "focus_timer": {
+        "message": "Fokustimer"
+    },
+    "full_width": {
+        "message": "Instrumentpanel i full bredd"
+    },
+    "ga_add_assignment": {
+        "message": "+ Lägg till uppgift"
+    },
+    "ga_add_group": {
+        "message": "+ Lägg till grupp"
+    },
+    "ga_already_there": {
+        "message": "Du är redan där!"
+    },
+    "ga_calc_desc": {
+        "message": "Ange hur mycket tentan är värd och vilket slutbetyg du vill ha för att se vad du behöver på tentan."
+    },
+    "ga_final_weight": {
+        "message": "Tentans vikt (% av betyget)"
+    },
+    "ga_fit_y": {
+        "message": "Anpassa Y-axeln"
+    },
+    "ga_heatmap_assignments": {
+        "message": "$COUNT$ uppgift(er):"
+    },
+    "ga_heatmap_avg": {
+        "message": "snitt"
+    },
+    "ga_heatmap_undated": {
+        "message": "$COUNT$ betygsatt(a) uppgift(er) utan förfallodatum visas inte."
+    },
+    "ga_line_title": {
+        "message": "Totalt betyg över tid"
+    },
+    "ga_new_assignment": {
+        "message": "Ny uppgift"
+    },
+    "ga_new_group": {
+        "message": "Ny grupp"
+    },
+    "ga_no_grade_legend": {
+        "message": "Inget betyg/uppgift"
+    },
+    "ga_no_graded_short": {
+        "message": "Inga betygsatta uppgifter ännu"
+    },
+    "ga_not_counted": {
+        "message": "— räknas inte —"
+    },
+    "ga_out_of_reach": {
+        "message": "Utom räckhåll"
+    },
+    "ga_pie_title": {
+        "message": "Poängfördelning (betygsatta uppgifter)"
+    },
+    "ga_remove_assignment": {
+        "message": "Ta bort denna uppgift från scenariot"
+    },
+    "ga_remove_group": {
+        "message": "Ta bort denna grupp från scenariot (dess uppgifter slutar räknas tills de tilldelas igen)"
+    },
+    "ga_secured": {
+        "message": "✓ Klarat"
+    },
+    "ga_show_goal": {
+        "message": "Visa betygmål i översikten"
+    },
+    "ga_stat_final_exam": {
+        "message": "Tenta"
+    },
+    "ga_stat_graded": {
+        "message": "Betygsatta"
+    },
+    "ga_stat_overall": {
+        "message": "Totalt betyg"
+    },
+    "ga_stat_trend": {
+        "message": "Betygstrend (senaste 5)"
+    },
+    "ga_stat_ungraded": {
+        "message": "Ej betygsatta"
+    },
+    "ga_sub_secured": {
+        "message": "Även en 0 på tentan ger dig <b>$ZERO$%</b>, vilket är över ditt mål på <b>$TARGET$%</b>."
+    },
+    "ga_sub_unreachable": {
+        "message": "Även en perfekt tenta ger dig bara <b>$PERFECT$%</b>, vilket är under ditt mål på <b>$TARGET$%</b>."
+    },
+    "ga_tab_calc": {
+        "message": "Tentakalkylator"
+    },
+    "ga_tab_heatmap": {
+        "message": "Värmekarta"
+    },
+    "ga_tab_overview": {
+        "message": "Översikt"
+    },
+    "ga_target_grade": {
+        "message": "Önskat totalbetyg (%)"
+    },
+    "ga_title_assignment_name": {
+        "message": "Uppgiftsnamn"
+    },
+    "ga_title_group_name": {
+        "message": "Gruppnamn"
+    },
+    "ga_title_group_select": {
+        "message": "Imagine-If-uppgiftsgrupp"
+    },
+    "ga_title_group_weight": {
+        "message": "Imagine-If-gruppvikt (% av betyget)"
+    },
+    "ga_title_points": {
+        "message": "Imagine-If möjliga poäng (nämnare)"
+    },
+    "ga_title_score": {
+        "message": "Imagine-If-poäng (täljare); tomt = räknas inte"
+    },
+    "ga_tooltip_assignments": {
+        "message": "$COUNT$ uppgift(er)"
+    },
+    "ga_you_got_this": {
+        "message": "Det här klarar du!"
+    },
+    "ga_you_need": {
+        "message": "Du behöver ≥ $PCT$% på tentan"
+    },
+    "get_active_cards": {
+        "message": "Hämta aktiva kort från översikten"
+    },
+    "global_search": {
+        "message": "Global Canvas-sökning"
+    },
+    "go": {
+        "message": "Kör"
+    },
+    "go_to_grades": {
+        "message": "Gå till betyg"
+    },
+    "gpa_autosave": {
+        "message": "Ändringar sparas automatiskt"
+    },
+    "gpa_calc_cumulative": {
+        "message": "Visa kumulativ GPA"
+    },
+    "gpa_calc_weighted": {
+        "message": "Visa viktad GPA"
+    },
+    "gpa_calculator": {
+        "message": "GPA-kalkylator"
+    },
+    "gpa_calculator_title": {
+        "message": "GPA-kalkylator"
+    },
+    "gpa_click_to_edit": {
+        "message": "Klicka för att redigera"
+    },
+    "gpa_col_course": {
+        "message": "Kurs"
+    },
+    "gpa_col_course_type": {
+        "message": "Kurstyp"
+    },
+    "gpa_col_credits": {
+        "message": "Poäng"
+    },
+    "gpa_col_custom_grade": {
+        "message": "Anpassat betyg"
+    },
+    "gpa_col_grade": {
+        "message": "Betyg"
+    },
+    "gpa_courses": {
+        "message": "Kurser"
+    },
+    "gpa_credits": {
+        "message": "hp"
+    },
+    "gpa_cumulative": {
+        "message": "Kumulativt"
+    },
+    "gpa_current": {
+        "message": "Nuvarande"
+    },
+    "gpa_dashboard_notes_aria": {
+        "message": "Anteckningar på översikten – klicka för att redigera"
+    },
+    "gpa_edit_calc": {
+        "message": "Redigera kalkylator"
+    },
+    "gpa_edit_calculator": {
+        "message": "Redigera kalkylator"
+    },
+    "gpa_grade_scale": {
+        "message": "Betygsskala"
+    },
+    "gpa_header": {
+        "message": "GPA"
+    },
+    "gpa_min_pct": {
+        "message": "Min %"
+    },
+    "gpa_pts_abbr": {
+        "message": "p"
+    },
+    "gpa_save_custom": {
+        "message": "Spara anpassat betyg"
+    },
+    "gpa_save_grade": {
+        "message": "Spara anpassat betyg"
+    },
+    "gpa_scale_letter": {
+        "message": "Endast bokstav"
+    },
+    "gpa_scale_note": {
+        "message": "En procentandel får GPA för den första raden vars Min % ligger på eller under den. Om din skola inte använder +/-betyg anger du Min % för +/-raderna till 101 för att utesluta dem från beräkningen."
+    },
+    "gpa_scale_plusminus": {
+        "message": "+/- skala"
+    },
+    "gpa_settings": {
+        "message": "GPA-inställningar"
+    },
+    "gpa_type_away": {
+        "message": "Skriv på!"
+    },
+    "gpa_weight_ap": {
+        "message": "AP/IB"
+    },
+    "gpa_weight_dnc": {
+        "message": "Räkna inte med"
+    },
+    "gpa_weight_do_not_count": {
+        "message": "Räkna inte med"
+    },
+    "gpa_weight_honors": {
+        "message": "Honors"
+    },
+    "gpa_weight_regular": {
+        "message": "Vanlig/Högskola"
+    },
+    "gpa_weighted": {
+        "message": "Viktat"
+    },
+    "grade_analytics": {
+        "message": "Betygsanalys"
+    },
+    "grade_analytics_desc": {
+        "message": "Lägger till verktyg som hjälper dig analysera dina betyg."
+    },
+    "grade_analytics_failed": {
+        "message": "Betygsanalysen kunde inte laddas: $ERROR$"
+    },
+    "grade_analytics_info_label": {
+        "message": "Information om betygsanalys"
+    },
+    "grade_analytics_toggle": {
+        "message": "Växla betygsanalys"
+    },
+    "grade_analytics_zones": {
+        "message": "Färgade betygszoner"
+    },
+    "grade_hover": {
+        "message": "Visa endast vid svävning"
+    },
+    "grade_settings": {
+        "message": "Betygsinställningar"
+    },
+    "gradient": {
+        "message": "Gradient"
+    },
+    "gradient_cards": {
+        "message": "Gradientkort"
+    },
+    "gradient_desc": {
+        "message": "Välj 2 färger för att skapa en gradient mellan dem:"
+    },
+    "grid_includes_gpa": {
+        "message": " (inklusive GPA-kalkylatorn)"
+    },
+    "grid_warning": {
+        "message": "Ditt rutnät har plats för $TOTAL$ kort$TOTAL_S$ men du har $ACTIVE$ kort$ACTIVE_S$$GPA_NOTE$ – vissa kort kan klippas av."
+    },
+    "group_graded": {
+        "message": "Betygsatta"
+    },
+    "group_new": {
+        "message": "Nya"
+    },
+    "group_seen": {
+        "message": "Sedda"
+    },
+    "group_ungraded": {
+        "message": "Ej betygsatta"
+    },
+    "guideline_1": {
+        "message": "Lämpliga bilder/titel"
+    },
+    "guideline_2": {
+        "message": "Använder inte i stor utsträckning komponenter från andra teman"
+    },
+    "guideline_3": {
+        "message": "Använder ett unikt anpassat mörkt läge (inte någon av förinställningarna)"
+    },
+    "guideline_4": {
+        "message": "Anpassade bilder får inte komma från Discord eller Gmail. Dessa bilder är inte offentliga"
+    },
+    "height": {
+        "message": "Höjd"
+    },
+    "hide": {
+        "message": "Dölj"
+    },
+    "hide_completed": {
+        "message": "Göm slutförd"
+    },
+    "hide_completed_cards": {
+        "message": "Dölj färdiga"
+    },
+    "hide_feedback": {
+        "message": "Dölj senaste feedback"
+    },
+    "hide_images_temp": {
+        "message": "Ta tillfälligt bort alla kursbilder"
+    },
+    "hide_links": {
+        "message": "Dölj länkar"
+    },
+    "hide_navbar": {
+        "message": "Dölj navigeringsfältet"
+    },
+    "hide_new_canvas": {
+        "message": "Dölj ny Canvas"
+    },
+    "hide_personal_details": {
+        "message": "Dölj personuppgifter"
+    },
+    "hide_sequence_footer": {
+        "message": "Dölj knapparna Nästa/Föregående"
+    },
+    "high_contrast_desc": {
+        "message": "om dina färger blir mattare efter en uppdatering! I sidomenyn kan du stänga av det genom att klicka på din profilikon."
+    },
+    "high_contrast_full": {
+        "message": "Inaktivera högkontrastgränssnittet om dina färger blir mattare efter en uppdatering! I sidomenyn kan du stänga av det genom att klicka på din profilikon."
+    },
+    "horizontal": {
+        "message": "Horisontell"
+    },
+    "hover_preview": {
+        "message": "Förhandsgranskning vid hover"
+    },
+    "image_link_error": {
+        "message": "Bildlänken du angav verkar inte fungera. Högerklicka på bilderna du vill använda och välj \"kopiera bildadress\" för att få rätt länk."
+    },
+    "image_roundness": {
+        "message": "Bildens rundning"
+    },
+    "image_scale": {
+        "message": "Bildskala"
+    },
+    "image_size": {
+        "message": "Bildstorlek"
+    },
+    "image_url": {
+        "message": "Bild-URL"
+    },
+    "imagine_if": {
+        "message": "Imagine-If-scenario; inte ditt faktiska betyg."
+    },
+    "imagine_if_badge": {
+        "message": "Imagine-If"
+    },
+    "imagine_if_mode": {
+        "message": "Imagine-If-läge"
+    },
+    "imagine_if_toggle": {
+        "message": "Växla Imagine-If-läge"
+    },
+    "import_hint": {
+        "message": "Kopiera och klistra in exporterade teman här:"
+    },
+    "import_label": {
+        "message": "Importera"
+    },
+    "invalid_url": {
+        "message": "URL:en du angav verkar ogiltig, så den kanske inte fungerar."
+    },
+    "join_discord": {
+        "message": "Gå med i vår Discord"
+    },
+    "keep_font": {
+        "message": "Behåll uppgiftens ursprungliga typsnitt"
+    },
+    "language": {
+        "message": "Språk"
+    },
+    "language_auto": {
+        "message": "Auto (webbläsare)"
+    },
+    "liked": {
+        "message": "Gillad"
+    },
+    "loading": {
+        "message": "Laddar…"
+    },
+    "logout": {
+        "message": "Logga ut"
+    },
+    "manual_customization": {
+        "message": "Manuell anpassning"
+    },
+    "mark_as_seen": {
+        "message": "Markera som sedd"
+    },
+    "max_items": {
+        "message": "Max artiklar: "
+    },
+    "missing_cards": {
+        "message": "Saknas kort?"
+    },
+    "missing_task_id": {
+        "message": "Uppgifts-ID saknas."
+    },
+    "more_card_styles": {
+        "message": "Fler kortstilar"
+    },
+    "more_options": {
+        "message": "Fler alternativ"
+    },
+    "my_saved_themes": {
+        "message": "Mina sparade teman"
+    },
+    "my_submissions": {
+        "message": "Mina inlämningar"
+    },
+    "nasa_apod": {
+        "message": "NASA:s astronomiska bild för dagen"
+    },
+    "nasa_credit": {
+        "message": "Kredit: $CREDIT$"
+    },
+    "nasa_date": {
+        "message": "Datum: $DATE$"
+    },
+    "need_refresh": {
+        "message": "Du kan behöva uppdatera sidan för att se vissa ändringar."
+    },
+    "new_canvas_desc": {
+        "message": "Canvas Refined hittade en Canvas-sida på $HOST$. Lägg till den i din Canvas-lista?"
+    },
+    "new_canvas_detected": {
+        "message": "Ny Canvas hittad"
+    },
+    "new_label": {
+        "message": "Ny"
+    },
+    "next": {
+        "message": "Nästa"
+    },
+    "next_timeframe": {
+        "message": "Titta framåt mot nästa tidsram"
+    },
+    "no_auto_detect": {
+        "message": "Identifiera inte Canvas-sidor automatiskt"
+    },
+    "no_course_cards": {
+        "message": "Inga kurskort hittades. Besök din Canvas-översikt för att ladda kurser."
+    },
+    "no_description": {
+        "message": "Ingen beskrivning tillgänglig."
+    },
+    "no_details": {
+        "message": "Inga detaljer angivna"
+    },
+    "no_features": {
+        "message": "Inga funktioner hittades"
+    },
+    "no_graded_assignments": {
+        "message": "Inga betygsatta uppgifter med förfallodatum ännu."
+    },
+    "no_tasks": {
+        "message": "Inga uppgifter i denna tidsram"
+    },
+    "no_tasks_yet": {
+        "message": "Inga uppgifter ännu"
+    },
+    "no_thanks": {
+        "message": "Nej tack"
+    },
+    "not_for_request": {
+        "message": "Detta är inte för att begära ett tema. Jag skapar inte teman på begäran."
+    },
+    "notes_bold": {
+        "message": "Fet (Ctrl/Cmd+B)"
+    },
+    "notes_bullet_list": {
+        "message": "Punktlista"
+    },
+    "notes_codeblock": {
+        "message": "Kodblock"
+    },
+    "notes_format": {
+        "message": "Formatera anteckningar"
+    },
+    "notes_h1": {
+        "message": "Rubrik 1"
+    },
+    "notes_h2": {
+        "message": "Rubrik 2"
+    },
+    "notes_hr": {
+        "message": "Horisontell linje"
+    },
+    "notes_inline_code": {
+        "message": "Inbäddad kod"
+    },
+    "notes_italic": {
+        "message": "Kursiv (Ctrl/Cmd+I)"
+    },
+    "notes_link": {
+        "message": "Infoga länk"
+    },
+    "notes_numbered_list": {
+        "message": "Numrerad lista"
+    },
+    "notes_quote": {
+        "message": "Citat"
+    },
+    "notes_strike": {
+        "message": "Genomstruken"
+    },
+    "notes_task_list": {
+        "message": "Uppgiftslista"
+    },
+    "nothing_to_copy": {
+        "message": "Inget att kopiera – välj vad du vill exportera först."
+    },
+    "old_label": {
+        "message": "Gammal"
+    },
+    "opacity_only_background": {
+        "message": "Endast tillgängligt med en anpassad bakgrund"
+    },
+    "opacity_options": {
+        "message": "Opacitet och oskärpa"
+    },
+    "open_canvas_preview": {
+        "message": "Öppna en Canvas-sida för att förhandsgranska firanden."
+    },
+    "optin_desc": {
+        "message": "Detta tar tillbaka opt-in-meddelandet så att du kan välja ett annat alternativ."
+    },
+    "options_click_extension": {
+        "message": "Klicka på Canvas Refined"
+    },
+    "options_click_puzzle": {
+        "message": "Klicka på pusselikonen uppe till höger"
+    },
+    "options_contact": {
+        "message": "Min e-post är $EMAIL$ om du har problem eller förslag – all feedback uppskattas!"
+    },
+    "options_how_to_access": {
+        "message": "Så här öppnar du menyn senare:"
+    },
+    "options_pin": {
+        "message": "Du kan också fästa den för enklare åtkomst"
+    },
+    "options_refresh_note": {
+        "message": "Uppdatera din Canvas-sida för att konfigurera"
+    },
+    "options_welcome": {
+        "message": "Välkommen till"
+    },
+    "output": {
+        "message": "Utdata"
+    },
+    "overall": {
+        "message": "Totalt"
+    },
+    "palette_army": {
+        "message": "Armé"
+    },
+    "palette_base": {
+        "message": "Bas"
+    },
+    "palette_berries": {
+        "message": "Bär"
+    },
+    "palette_blues": {
+        "message": "Blå"
+    },
+    "palette_candy": {
+        "message": "Godis"
+    },
+    "palette_chess": {
+        "message": "Schack"
+    },
+    "palette_fade": {
+        "message": "Toning"
+    },
+    "palette_fade2": {
+        "message": "Toning2"
+    },
+    "palette_fruit": {
+        "message": "Frukt"
+    },
+    "palette_greens": {
+        "message": "Grön"
+    },
+    "palette_mesa": {
+        "message": "Mesa"
+    },
+    "palette_muted": {
+        "message": "Dämpad"
+    },
+    "palette_night": {
+        "message": "Natt"
+    },
+    "palette_ocean": {
+        "message": "Hav"
+    },
+    "palette_oranges": {
+        "message": "Orange"
+    },
+    "palette_pastels": {
+        "message": "Pastell"
+    },
+    "palette_pinks": {
+        "message": "Rosa"
+    },
+    "palette_popsicle": {
+        "message": "Glass"
+    },
+    "palette_purples": {
+        "message": "Lila"
+    },
+    "palette_rainbow": {
+        "message": "Regnbåge"
+    },
+    "palette_reds": {
+        "message": "Röd"
+    },
+    "palette_sunset": {
+        "message": "Solnedgång"
+    },
+    "palette_watermelon": {
+        "message": "Vattenmelon"
+    },
+    "percent_done": {
+        "message": "$PERCENT$%"
+    },
+    "personal_task": {
+        "message": "Personlig uppgift"
+    },
+    "personal_task_label": {
+        "message": "Personlig uppgift"
+    },
+    "placeholder_example": {
+        "message": "canvas.minskola.se"
+    },
+    "planner_cleared": {
+        "message": "Planner-cachen rensad."
+    },
+    "popular": {
+        "message": "Populära"
+    },
+    "popular_palettes": {
+        "message": "Populära paletter"
+    },
+    "pos_below": {
+        "message": "Botten"
+    },
+    "pos_cards_end": {
+        "message": "Efter kort"
+    },
+    "pos_cards_start": {
+        "message": "Före kort"
+    },
+    "pos_top": {
+        "message": "Topp"
+    },
+    "presets": {
+        "message": "Förinställningar"
+    },
+    "prev_timeframe": {
+        "message": "Föregående tidsram"
+    },
+    "preview": {
+        "message": "Förhandsgranska"
+    },
+    "preview_creator_default": {
+        "message": "Medverkande"
+    },
+    "preview_hidden": {
+        "message": "Förhandsgranskning dold medan personuppgifter är dolda."
+    },
+    "preview_title_default": {
+        "message": "Titel"
+    },
+    "preview_unavailable": {
+        "message": "Ingen förhandsvisning tillgänglig"
+    },
+    "privacy": {
+        "message": "Integritet"
+    },
+    "progress_done": {
+        "message": "$DONE$/$TOTAL$ klara"
+    },
+    "progress_overall": {
+        "message": "$PCT$% ($DONE$/$TOTAL$)"
+    },
+    "progress_pct": {
+        "message": "$PCT$% ($DONE$/$TOTAL$)"
+    },
+    "quiz_dont_show": {
+        "message": "Visa inte igen"
+    },
+    "quiz_dont_show_title": {
+        "message": "Döljer denna påminnelse permanent. Du kan fortfarande slå på Quizsäkert läge i tilläggets popup."
+    },
+    "quiz_enable": {
+        "message": "Aktivera Quizsäkert läge"
+    },
+    "quiz_safe_desc": {
+        "message": "Detta tillägg är inte 100 % godkänt för quiz. Vissa funktioner kan störa quizfunktionaliteten. Vill du aktivera Quizsäkert läge för att tillfälligt stänga av visuella ändringar?"
+    },
+    "quiz_safe_info_label": {
+        "message": "Information om quizsäkert läge"
+    },
+    "quiz_safe_mode": {
+        "message": "Quizsäkert läge"
+    },
+    "quiz_safe_mode_desc": {
+        "message": "Stänger av de flesta Canvas Refined-funktioner på quizsidor så att du får Canvas standardquizupplevelse"
+    },
+    "quiz_safe_title": {
+        "message": "Canvas Refined – Quizsäkert läge"
+    },
+    "radio_gradient": {
+        "message": "Gradient"
+    },
+    "radio_image": {
+        "message": "Bild"
+    },
+    "radio_sidebar_gradient": {
+        "message": "Lutning"
+    },
+    "radio_sidebar_image": {
+        "message": "Bild"
+    },
+    "radio_sidebar_solid": {
+        "message": "Fast"
+    },
+    "radio_solid": {
+        "message": "Enfärgad"
+    },
+    "reading_grade_data": {
+        "message": "Läser betygsdata…"
+    },
+    "relative_ago": {
+        "message": "$TIME$ sedan"
+    },
+    "relative_due_dates": {
+        "message": "Relativa förfallodatum"
+    },
+    "relative_in": {
+        "message": "om $TIME$"
+    },
+    "remlogo": {
+        "message": "Ta bort Sidebar-logotypen"
+    },
+    "remove_label": {
+        "message": "Ta bort"
+    },
+    "report_desc": {
+        "message": "Gå med i Discord-servern eller skapa ett Github-ärende för problem, feedback eller förslag. Tack!"
+    },
+    "report_issue": {
+        "message": "Rapportera problem"
+    },
+    "reroll_classes": {
+        "message": "Slumpa om klasser"
+    },
+    "reset_default": {
+        "message": "Återställ till standard"
+    },
+    "reset_optin": {
+        "message": "Återställ opt-in-status"
+    },
+    "revert": {
+        "message": "Återställ"
+    },
+    "revert_desc": {
+        "message": "Detta återställer anpassningarna till när du först installerade tillägget."
+    },
+    "revert_original": {
+        "message": "Återställ till original"
+    },
+    "revert_theme": {
+        "message": "Återställ temaändringar"
+    },
+    "row_spacing": {
+        "message": "Radavstånd"
+    },
+    "save": {
+        "message": "Spara"
+    },
+    "save_current": {
+        "message": "+ Spara nuvarande"
+    },
+    "search": {
+        "message": "Sök"
+    },
+    "search_building": {
+        "message": "Bygger sökindex…"
+    },
+    "search_canvas": {
+        "message": "Sök i Canvas"
+    },
+    "search_canvas_ctrlk": {
+        "message": "Sök i Canvas (Ctrl+K)"
+    },
+    "search_close": {
+        "message": "Stäng"
+    },
+    "search_close_title": {
+        "message": "Stäng (Esc)"
+    },
+    "search_features": {
+        "message": "Sök funktioner..."
+    },
+    "search_hint": {
+        "message": "Börja skriva för att söka bland moduler och uppgifter. Använd @kursnamn för att söka i en viss kurs, eller @grades för att öppna en kurs betygssida."
+    },
+    "search_navigate": {
+        "message": "navigera"
+    },
+    "search_new_tab": {
+        "message": "ny flik"
+    },
+    "search_no_course": {
+        "message": "Ingen kurs matchar \"$QUERY$\"."
+    },
+    "search_no_courses_grades": {
+        "message": "Inga kurser hittades att öppna betyg för."
+    },
+    "search_no_match": {
+        "message": "Inga resultat för \"$QUERY$\"."
+    },
+    "search_no_match_hint": {
+        "message": "Inga resultat för \"$QUERY$\". Prova andra sökord."
+    },
+    "search_no_modules": {
+        "message": "Inga moduler eller uppgifter hittades..."
+    },
+    "search_no_modules_found": {
+        "message": "Inga moduler eller uppgifter hittades. Öppna sökningen igen senare om kurserna fortfarande laddas."
+    },
+    "search_no_results": {
+        "message": "Inga resultat för \"$QUERY$\"."
+    },
+    "search_open": {
+        "message": "öppna"
+    },
+    "search_placeholder": {
+        "message": "Sök moduler och uppgifter… (@kursnamn filtrerar per kurs)"
+    },
+    "search_start_typing": {
+        "message": "Börja skriva för att söka..."
+    },
+    "search_title": {
+        "message": "Sök i Canvas (Ctrl+K)"
+    },
+    "search_toggle": {
+        "message": "växla sökning"
+    },
+    "search_type_assignment": {
+        "message": "Uppgift"
+    },
+    "search_type_discussion": {
+        "message": "Diskussion"
+    },
+    "search_type_external_tool": {
+        "message": "Externt verktyg"
+    },
+    "search_type_file": {
+        "message": "Fil"
+    },
+    "search_type_item": {
+        "message": "Objekt"
+    },
+    "search_type_link": {
+        "message": "Länk"
+    },
+    "search_type_page": {
+        "message": "Sida"
+    },
+    "search_type_quiz": {
+        "message": "Quiz"
+    },
+    "search_type_section": {
+        "message": "Avsnitt"
+    },
+    "selected_count": {
+        "message": "$COUNT$ valda"
+    },
+    "show": {
+        "message": "Visa"
+    },
+    "show_links": {
+        "message": "Visa länkar"
+    },
+    "show_past_due": {
+        "message": "Visa förfallna"
+    },
+    "showing_submissions": {
+        "message": "Visar dina tre senaste inlämningar"
+    },
+    "sidebar_blur": {
+        "message": "Sidomenyns oskärpa"
+    },
+    "sidebar_opacity": {
+        "message": "Sidomenyns opacitet"
+    },
+    "sidebar_opacity_auto": {
+        "message": "Gäller den bättre sidomenyn när den är på, annars den vanliga sidomenyn."
+    },
+    "sidebar_scale": {
+        "message": "Sidomenyskala: "
+    },
+    "single_color": {
+        "message": "En färg"
+    },
+    "single_color_desc": {
+        "message": "Välj en färg för att ställa in alla kort till den färgen:"
+    },
+    "storage_cache_label": {
+        "message": "Planner-cache:"
+    },
+    "storage_dump": {
+        "message": "Lagringsdump"
+    },
+    "storage_dump_desc": {
+        "message": "Detta hämtar alla inställningar som sparats av tillägget."
+    },
+    "storage_empty": {
+        "message": "tom"
+    },
+    "storage_items": {
+        "message": " ($COUNT$ objekt)"
+    },
+    "storage_limit_error": {
+        "message": "Uppgifterna du anger överskrider lagringsgränsen och sparas inte. Prova kortare länkar och se till att trycka på \"kopiera bildadress\" och inte \"kopiera bild\" för länkar."
+    },
+    "storage_other_label": {
+        "message": "Annan lokal data:"
+    },
+    "storage_quota_100kb": {
+        "message": " av 100 KB kvot"
+    },
+    "storage_quota_label": {
+        "message": "Lokal kvot:"
+    },
+    "storage_reset": {
+        "message": "Återställ lagring"
+    },
+    "storage_reset_desc": {
+        "message": "Detta återställer alla inställningar till standard. Du måste uppdatera sidan efteråt."
+    },
+    "storage_sync_label": {
+        "message": "Inställningar (synk):"
+    },
+    "storage_unknown": {
+        "message": "okänt"
+    },
+    "storage_usage": {
+        "message": "Lagringsanvändning"
+    },
+    "styles": {
+        "message": "Stilar"
+    },
+    "submission_confirmation": {
+        "message": "Inlämningsbekräftelse"
+    },
+    "submission_includes": {
+        "message": "Din inlämning kommer att innehålla dina nuvarande temainställningar, såsom dina kortbilder, mörkt läge och typsnitt."
+    },
+    "submit": {
+        "message": "Skicka in"
+    },
+    "submit_your_theme": {
+        "message": "Skicka in ditt tema"
+    },
+    "submitted_return_title": {
+        "message": "Inlämnad i Canvas — klicka för att skicka tillbaka den till Uppgifter (lokalt)"
+    },
+    "tab_icons": {
+        "message": "Färgkodade flikikoner"
+    },
+    "task_created": {
+        "message": "Uppgift skapad."
+    },
+    "task_date_invalid": {
+        "message": "Ogiltigt uppgiftsdatum."
+    },
+    "task_date_time_required": {
+        "message": "Välj både datum och tid."
+    },
+    "task_details_placeholder": {
+        "message": "Detaljer (valfritt)"
+    },
+    "task_link_placeholder": {
+        "message": "Länk (valfritt)"
+    },
+    "task_title_placeholder": {
+        "message": "Uppgiftstitel"
+    },
+    "task_title_required": {
+        "message": "Uppgiftens titel krävs."
+    },
+    "task_updated": {
+        "message": "Uppgift uppdaterad."
+    },
+    "tasks_header": {
+        "message": "Uppgifter"
+    },
+    "text_colors": {
+        "message": "Text"
+    },
+    "theme_browser_settings": {
+        "message": "Inställningar för temabläddrare"
+    },
+    "theme_guidelines": {
+        "message": "Se till att ditt tema följer dessa riktlinjer:"
+    },
+    "theme_number": {
+        "message": "Tema $NUM$"
+    },
+    "theme_optin_reset": {
+        "message": "Opt-in för temabläddrare återställd"
+    },
+    "themes": {
+        "message": "Teman"
+    },
+    "time_day": {
+        "message": "dag"
+    },
+    "time_day_plural": {
+        "message": "dagar"
+    },
+    "time_day_short": {
+        "message": "d"
+    },
+    "time_hour": {
+        "message": "timme"
+    },
+    "time_hour_plural": {
+        "message": "timmar"
+    },
+    "time_hour_short": {
+        "message": "h"
+    },
+    "time_min": {
+        "message": "min"
+    },
+    "time_min_short": {
+        "message": "min"
+    },
+    "time_week": {
+        "message": "vecka"
+    },
+    "time_week_plural": {
+        "message": "veckor"
+    },
+    "time_week_short": {
+        "message": "v"
+    },
+    "timeframe_next": {
+        "message": "Titta framåt mot nästa tidsram"
+    },
+    "timeframe_prev": {
+        "message": "Föregående tidsram"
+    },
+    "timer_custom": {
+        "message": "Anpassad"
+    },
+    "timer_hours": {
+        "message": "Timmar"
+    },
+    "timer_minutes": {
+        "message": "Minuter"
+    },
+    "timer_pause": {
+        "message": "Pausa"
+    },
+    "timer_reset": {
+        "message": "Återställ"
+    },
+    "timer_seconds": {
+        "message": "Sekunder"
+    },
+    "timer_set": {
+        "message": "Ställ in"
+    },
+    "timer_start": {
+        "message": "Starta"
+    },
+    "timer_unit_h": {
+        "message": "h"
+    },
+    "timer_unit_m": {
+        "message": "m"
+    },
+    "timer_unit_min": {
+        "message": "min"
+    },
+    "timer_unit_s": {
+        "message": "s"
+    },
+    "title_hint": {
+        "message": "Försök hålla det kort och relevant så att folk kan söka efter det."
+    },
+    "title_label": {
+        "message": "Titel"
+    },
+    "toast_close": {
+        "message": "Stäng"
+    },
+    "todo_alternate_colors": {
+        "message": "Alternativa färger"
+    },
+    "todo_click_to_edit": {
+        "message": "Klicka för att redigera"
+    },
+    "todo_close_title": {
+        "message": "Stäng"
+    },
+    "todo_cross_off": {
+        "message": "Stryk över"
+    },
+    "todo_date_format": {
+        "message": "$DATE$ kl. $TIME$ ($RELATIVE$)"
+    },
+    "todo_delete": {
+        "message": "Ta bort"
+    },
+    "todo_delete_confirm": {
+        "message": "Ta bort denna anpassade uppgift? Detta kan inte ångras."
+    },
+    "todo_delete_title": {
+        "message": "Ta bort denna anpassade uppgift"
+    },
+    "todo_full_height": {
+        "message": "Tvinga full höjd"
+    },
+    "todo_graded": {
+        "message": "Betygsatt"
+    },
+    "todo_hide_feedback": {
+        "message": "Dölj senaste återkoppling"
+    },
+    "todo_hide_read": {
+        "message": "Dölj lästa meddelanden"
+    },
+    "todo_ignore_colors": {
+        "message": "Ignorera kortfärger"
+    },
+    "todo_label": {
+        "message": "Etikett:"
+    },
+    "todo_label_placeholder": {
+        "message": "Etikett"
+    },
+    "todo_none": {
+        "message": "Ingen"
+    },
+    "todo_progress_display": {
+        "message": "Förloppsvisning"
+    },
+    "todo_progress_line": {
+        "message": "En rad"
+    },
+    "todo_progress_lines": {
+        "message": "Flera rader"
+    },
+    "todo_progress_none": {
+        "message": "Ingen"
+    },
+    "todo_progress_rainbow": {
+        "message": "Regnbåge"
+    },
+    "todo_progress_rings": {
+        "message": "Ringar"
+    },
+    "todo_remind": {
+        "message": "Påminnelser om att göra"
+    },
+    "todo_remove": {
+        "message": "Ta bort"
+    },
+    "todo_remove_icons": {
+        "message": "Ta bort ikoner"
+    },
+    "todo_separate_scrollbar": {
+        "message": "Separat rullningslist"
+    },
+    "todo_show_scores": {
+        "message": "Visa uppgiftspoäng"
+    },
+    "todo_task_details": {
+        "message": "Detaljer (valfritt)"
+    },
+    "todo_task_link": {
+        "message": "Länk (valfritt)"
+    },
+    "todo_task_title": {
+        "message": "Uppgiftstitel"
+    },
+    "todo_timeframe": {
+        "message": "Tidsram"
+    },
+    "todo_timeframe_1week": {
+        "message": "1 vecka"
+    },
+    "todo_timeframe_2month": {
+        "message": "2 månader"
+    },
+    "todo_timeframe_2week": {
+        "message": "2 veckor"
+    },
+    "todo_timeframe_all": {
+        "message": "All tid"
+    },
+    "todo_timeframe_custom": {
+        "message": "Anpassad"
+    },
+    "todo_timeframe_days_ago": {
+        "message": "dagar sedan"
+    },
+    "todo_timeframe_days_future": {
+        "message": "dagar från nu"
+    },
+    "todo_timeframe_from": {
+        "message": "Från"
+    },
+    "todo_timeframe_month": {
+        "message": "Månad"
+    },
+    "todo_timeframe_to": {
+        "message": "Till"
+    },
+    "todo_type_away": {
+        "message": "Skriv på!"
+    },
+    "top_bottom_height": {
+        "message": "Höjd topp/botten"
+    },
+    "trending": {
+        "message": "Trendande"
+    },
+    "updates": {
+        "message": "Uppdateringar"
+    },
+    "useddmm": {
+        "message": "Använd dd/mm"
+    },
+    "user_made_themes": {
+        "message": "Användarskapade teman"
+    },
+    "vertical": {
+        "message": "Vertikal"
+    },
+    "view_less": {
+        "message": "Visa mindre"
+    },
+    "view_more": {
+        "message": "Visa mer"
+    },
+    "view_more_count": {
+        "message": "Visa mer ($COUNT$)"
+    },
+    "view_on_github": {
+        "message": "Visa på GitHub"
+    },
+    "widget_order_title": {
+        "message": "Widgetordning"
+    },
+    "widget_position": {
+        "message": "Position"
+    },
+    "widget_short_breathing": {
+        "message": "Andning"
+    },
+    "widget_short_focus": {
+        "message": "Fokus"
+    },
+    "widget_short_gpa": {
+        "message": "GPA"
+    },
+    "widget_short_notes": {
+        "message": "Anteckningar"
+    },
+    "widget_short_quotes": {
+        "message": "Citat"
+    },
+    "widgets": {
+        "message": "Widgetar"
+    }
 }

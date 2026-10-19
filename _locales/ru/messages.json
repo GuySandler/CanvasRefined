@@ -1,260 +1,1895 @@
 {
-  "better_canvas": {
-    "message": "Лучший холст"
-  },
-  "updates": {
-    "message": "Обновления"
-  },
-  "dark_mode": {
-    "message": "Темный режим"
-  },
-  "automatic_dark_mode": {
-    "message": "Запланированный темный режим"
-  },
-  "auto_start_time": {
-    "message": "Время начала"
-  },
-  "auto_end_time": {
-    "message": "Время окончания"
-  },
-  "edit_dark_mode": {
-    "message": "Темный режим"
-  },
-  "enter_url": {
-    "message": "Url-адрес вашего холста:"
-  },
-  "card_grades": {
-    "message": "Оценки карт"
-  },
-  "gradient_cards": {
-    "message": "Градиентные карты"
-  },
-  "condensed_cards": {
-    "message": "Сжатые карты"
-  },
-  "disable_color": {
-    "message": "Отключить наложение цвета"
-  },
-  "card_assignments": {
-    "message": "Задания карт"
-  },
-  "card_customization": {
-    "message": "Карты"
-  },
-  "styles": {
-    "message": "Стили"
-  },
-  "useddmm": {
-    "message": "Используйте дд/мм"
-  },
-  "better_todo": {
-    "message": "Лучший список дел"
-  },
-  "max_items": {
-    "message": "Максимальное количество предметов: "
-  },
-  "hover_preview": {
-    "message": "Предпросмотр при наведении"
-  },
-  "hide_completed": {
-    "message": "Скрыть Завершено"
-  },
-  "24hrformat": {
-    "message": "Использовать 24-часовой формат"
-  },
-  "dashboard_notes": {
-    "message": "Заметки на панели инструментов"
-  },
-  "gpa_calculator": {
-    "message": "Калькулятор среднего балла"
-  },
-  "gpa_settings": {
-    "message": "Настройки среднего балла"
-  },
-  "grade_hover": {
-    "message": "Показывать только при наведении"
-  },
-  "card_letter": {
-    "message": "Показывать буквенную оценку"
-  },
-  "due": {
-    "message": "Должный"
-  },
-  "card_colors": {
-    "message": "Цвета карт"
-  },
-  "back": {
-    "message": "Назад"
-  },
-  "more_options": {
-    "message": "Больше вариантов"
-  },
-  "manual_customization": {
-    "message": "Ручная настройка"
-  },
-  "background_colors": {
-    "message": "Фон"
-  },
-  "text_colors": {
-    "message": "Текст"
-  },
-  "full_width": {
-    "message": "Приборная панель на всю ширину"
-  },
-  "report_issue": {
-    "message": "Сообщить о проблеме"
-  },
-  "themes": {
-    "message": "Темы"
-  },
-  "move_top": {
-    "message": "Переместить наверх"
-  },
-  "show_past_due": {
-    "message": "Показать просроченные"
-  },
-  "relative_due_dates": {
-    "message": "Относительные сроки выполнения"
-  },
-  "equal_height_cards": {
-    "message": "Одинаковая высота"
-  },
-  "enter_multiple": {
-    "message": "(Введите несколько через запятую)"
-  },
-  "todo_remind": {
-    "message": "Напоминания о задачах"
-  },
-  "remlogo": {
-    "message": "Удалить логотип боковой панели"
-  },
-  "hide_feedback": {
-    "message": "Скрыть последние отзывы"
-  },
-  "tab_icons": {
-    "message": "Цветные значки вкладок"
-  },
-  "todo_colors": {
-    "message": "Используйте цвета карт"
-  },
-  "gpa_calc_cumulative": {
-    "message": "Показать накопленный средний балл"
-  },
-  "gpa_calc_weighted": {
-    "message": "Показать взвешенный средний балл"
-  },
-  "device_dark": {
-    "message": "Использовать настройки темного режима устройства"
-  },
-  "presets": {
-    "message": "Пресеты"
-  },
-  "dark_lighter": {
-    "message": "Зажигалка"
-  },
-  "dark_light": {
-    "message": "Свет"
-  },
-  "dark_default": {
-    "message": "По умолчанию"
-  },
-  "dark_dark": {
-    "message": "Темный"
-  },
-  "dark_darker": {
-    "message": "Темнее"
-  },
-  "dark_mint": {
-    "message": "Мята"
-  },
-  "dark_blue": {
-    "message": "Синий оттенок"
-  },
-  "dark_burn": {
-    "message": "Ожог глазного яблока"
-  },
-  "dark_unicorn": {
-    "message": "Единорог"
-  },
-  "dark_lightmode": {
-    "message": "Lightmode"
-  },
-  "dark_catppuccin": {
-    "message": "Catppuccin\n К Ангел"
-  },
-  "dark_sage": {
-    "message": "Сабия\n Автор: LivDoesDevStuf"
-  },
-  "dark_pink": {
-    "message": "Розовый\n Автор Sayde"
-  },
-  "dark_coral": {
-    "message": "Коралл\n Автор: Superchido"
-  },
-  "dp_sidebar_text": {
-    "message": "Текст боковой панели"
-  },
-  "dp_sidebar": {
-    "message": "Боковая панель"
-  },
-  "radio_sidebar_solid": {
-    "message": "Твердый"
-  },
-  "radio_sidebar_gradient": {
-    "message": "Градиент"
-  },
-  "radio_sidebar_image": {
-    "message": "Изображение"
-  },
-  "dp_background_0": {
-    "message": "Фон Основной"
-  },
-  "dp_background_1": {
-    "message": "Фон альт"
-  },
-  "dp_background_2": {
-    "message": "Фон Другое"
-  },
-  "dp_borders": {
-    "message": "Границы"
-  },
-  "dp_links": {
-    "message": "Ссылки"
-  },
-  "dp_text_0": {
-    "message": "Текст Основной"
-  },
-  "dp_text_1": {
-    "message": "Текст Другое"
-  },
-  "dp_text_2": {
-    "message": "Текст Альтернативный"
-  },
-  "dark_mode_fixer": {
-    "message": "Dark Mode Fixer (бета-версия)"
-  },
-  "dark_mode_fixer_text": {
-    "message": "Это позволит исправить любые пробелы темного режима на текущей странице."
-  },
-  "fix_dm_btn": {
-    "message": "Идти"
-  },
-  "fix_dm_text": {
-    "message": "Fixer автоматически запускается на этих страницах:"
-  },
-  "hide_links": {
-    "message": "Скрыть ссылки"
-  },
-  "show_links": {
-    "message": "Показать ссылки"
-  },
-  "center_cards": {
-    "message": "Центрировать карточки"
-  },
-  "hide_new_canvas": {
-    "message": "Скрыть новый Canvas"
-  },
-  "hide_completed_cards": {
-    "message": "Скрыть выполненные"
-  }
+    "24hrformat": {
+        "message": "Использовать 24-часовой формат"
+    },
+    "abc": {
+        "message": "ABC"
+    },
+    "add_canvas": {
+        "message": "+ Добавить Canvas"
+    },
+    "add_task": {
+        "message": "+ Добавить задачу"
+    },
+    "add_to_list": {
+        "message": "Добавить в список"
+    },
+    "ago": {
+        "message": "назад"
+    },
+    "always_show_likes": {
+        "message": "Всегда показывать число лайков"
+    },
+    "assignment_avg": {
+        "message": "— в среднем $AVG$% по $COUNT$ заданиям:"
+    },
+    "assignment_due_in": {
+        "message": "Задание нужно сдать через $TIME$"
+    },
+    "auto": {
+        "message": "авто"
+    },
+    "auto_end_time": {
+        "message": "Время окончания"
+    },
+    "auto_start_time": {
+        "message": "Время начала"
+    },
+    "automatic_dark_mode": {
+        "message": "Запланированный темный режим"
+    },
+    "back": {
+        "message": "Назад"
+    },
+    "back_to_assignment": {
+        "message": "Назад к заданию"
+    },
+    "background_colors": {
+        "message": "Фон"
+    },
+    "background_opacity": {
+        "message": "Непрозрачность фона"
+    },
+    "better_sidebar": {
+        "message": "Улучшенная боковая панель"
+    },
+    "better_todo": {
+        "message": "Лучший список дел"
+    },
+    "bg_blur": {
+        "message": "Размытие фона"
+    },
+    "breathing_breaks": {
+        "message": "Дыхательные паузы"
+    },
+    "breathing_in": {
+        "message": "Вдох"
+    },
+    "breathing_out": {
+        "message": "Выдох"
+    },
+    "breathing_ready": {
+        "message": "Готово"
+    },
+    "button_1": {
+        "message": "Кнопка 1"
+    },
+    "button_2": {
+        "message": "Кнопка 2"
+    },
+    "button_3": {
+        "message": "Кнопка 3"
+    },
+    "cancel": {
+        "message": "Отмена"
+    },
+    "Canvas_Refined": {
+        "message": "Canvas Refined"
+    },
+    "canvas_rejected_create": {
+        "message": "Canvas отклонил создание задачи."
+    },
+    "canvas_rejected_delete": {
+        "message": "Canvas отклонил удаление задачи."
+    },
+    "canvas_rejected_update": {
+        "message": "Canvas отклонил обновление задачи."
+    },
+    "card_assignments": {
+        "message": "Задания карт"
+    },
+    "card_blur": {
+        "message": "Размытие карточек"
+    },
+    "card_colors": {
+        "message": "Цвета карт"
+    },
+    "card_customization": {
+        "message": "Карты"
+    },
+    "card_grades": {
+        "message": "Оценки карт"
+    },
+    "card_grid": {
+        "message": "Сетка карточек"
+    },
+    "card_grid_preview": {
+        "message": "Предпросмотр сетки"
+    },
+    "card_height": {
+        "message": "Высота карточки"
+    },
+    "card_hide_toggle": {
+        "message": "Скрыть/показать на панели"
+    },
+    "card_letter": {
+        "message": "Показывать буквенную оценку"
+    },
+    "card_limit": {
+        "message": "Лимит карточек"
+    },
+    "card_limit_desc": {
+        "message": "Изменение этого числа сбросит карточки и может вызвать проблемы с хранилищем."
+    },
+    "card_method": {
+        "message": "Способ карточек"
+    },
+    "card_method_desc": {
+        "message": "Обычно это включать не нужно."
+    },
+    "card_none": {
+        "message": "Нет"
+    },
+    "card_opacity": {
+        "message": "Непрозрачность карточек"
+    },
+    "card_padding": {
+        "message": "Отступы карточек"
+    },
+    "card_reset_default": {
+        "message": "Настройки карточки сброшены по умолчанию!"
+    },
+    "card_roundness": {
+        "message": "Скругление карточек"
+    },
+    "card_settings_saved": {
+        "message": "Настройки карточки успешно сохранены!"
+    },
+    "card_transparency": {
+        "message": "Прозрачность карточек"
+    },
+    "card_width": {
+        "message": "Ширина карточки"
+    },
+    "cards_height": {
+        "message": "Высота карточек"
+    },
+    "celebration": {
+        "message": "Празднование"
+    },
+    "celebration_amount": {
+        "message": "Количество"
+    },
+    "celebration_confetti": {
+        "message": "Конфетти"
+    },
+    "celebration_crazy": {
+        "message": "Безумно"
+    },
+    "celebration_fireworks": {
+        "message": "Фейерверк"
+    },
+    "celebration_hearts": {
+        "message": "Взлетающие сердца"
+    },
+    "celebration_less": {
+        "message": "Меньше"
+    },
+    "celebration_more": {
+        "message": "Больше"
+    },
+    "celebration_none": {
+        "message": "Нет"
+    },
+    "celebration_normal": {
+        "message": "Обычно"
+    },
+    "celebration_preview": {
+        "message": "Предпросмотр празднования"
+    },
+    "celebration_rocket": {
+        "message": "Ракета"
+    },
+    "celebration_sparkles": {
+        "message": "Вспышка искр"
+    },
+    "celebration_type": {
+        "message": "Тип празднования"
+    },
+    "center_cards": {
+        "message": "Центрировать карточки"
+    },
+    "center_uneven": {
+        "message": "Центрировать неровные ряды"
+    },
+    "check_all": {
+        "message": "Выбрать все"
+    },
+    "check_none": {
+        "message": "Снять все"
+    },
+    "clear_background": {
+        "message": "Очистить фон"
+    },
+    "clear_cache": {
+        "message": "Очистить кеш планера"
+    },
+    "clear_cache_desc": {
+        "message": "Это удалит кешированные данные списка дел (задания, объявления, напоминания), и они будут заново загружены из Canvas. Открытые вкладки Canvas обновятся автоматически."
+    },
+    "click_eye": {
+        "message": "Нажмите на глаз у курса, чтобы скрыть или показать его карточку."
+    },
+    "close": {
+        "message": "Закрыть"
+    },
+    "close_label": {
+        "message": "Закрыть"
+    },
+    "column_spacing": {
+        "message": "Расстояние между столбцами"
+    },
+    "complete": {
+        "message": "готово"
+    },
+    "completed_total": {
+        "message": "$DONE$/$TOTAL$ выполнено"
+    },
+    "condensed_cards": {
+        "message": "Сжатые карты"
+    },
+    "copied": {
+        "message": "Скопировано!"
+    },
+    "copy": {
+        "message": "Копировать"
+    },
+    "could_not_delete": {
+        "message": "Не удалось удалить задачу."
+    },
+    "could_not_load_preview": {
+        "message": "Не удалось загрузить предпросмотр"
+    },
+    "could_not_save": {
+        "message": "Не удалось сохранить задачу."
+    },
+    "create": {
+        "message": "Создать"
+    },
+    "created_by": {
+        "message": "Автор"
+    },
+    "created_by_hint": {
+        "message": "Здесь может быть что угодно: ваше имя, ник в соцсетях, «аноним» и т. п."
+    },
+    "custom_background": {
+        "message": "Свой фон"
+    },
+    "custom_background_desc": {
+        "message": "Выберите пресет или используйте свою ссылку на изображение."
+    },
+    "custom_card_styles": {
+        "message": "Свои стили карточек"
+    },
+    "custom_fonts": {
+        "message": "Свои шрифты"
+    },
+    "custom_fonts_desc": {
+        "message": "Здесь можно использовать свой шрифт с Google Fonts. Вводите только часть после \"?family=\"."
+    },
+    "custom_styles": {
+        "message": "Свои стили"
+    },
+    "custom_styles_desc": {
+        "message": "Здесь можно писать собственные CSS-стили. Возможно, потребуется добавить правило !important, чтобы они применились."
+    },
+    "daily_quote": {
+        "message": "Цитата дня"
+    },
+    "daily_quote_default": {
+        "message": "Секрет успеха — начать."
+    },
+    "daily_quotes": {
+        "message": "Ежедневные цитаты"
+    },
+    "daily_random": {
+        "message": "Случайное изображение дня"
+    },
+    "dark_blue": {
+        "message": "Синий оттенок"
+    },
+    "dark_burn": {
+        "message": "Ожог глазного яблока"
+    },
+    "dark_catppuccin": {
+        "message": "Catppuccin\n К Ангел"
+    },
+    "dark_coral": {
+        "message": "Коралл\n Автор: Superchido"
+    },
+    "dark_dark": {
+        "message": "Темный"
+    },
+    "dark_darker": {
+        "message": "Темнее"
+    },
+    "dark_default": {
+        "message": "По умолчанию"
+    },
+    "dark_inspector": {
+        "message": "Инспектор тёмного режима"
+    },
+    "dark_inspector_desc": {
+        "message": "Проверит страницу на пробелы в тёмном режиме."
+    },
+    "dark_light": {
+        "message": "Свет"
+    },
+    "dark_lighter": {
+        "message": "Зажигалка"
+    },
+    "dark_lightmode": {
+        "message": "Светлый режим"
+    },
+    "dark_mint": {
+        "message": "Мята"
+    },
+    "dark_mode": {
+        "message": "Темный режим"
+    },
+    "dark_mode_fixer": {
+        "message": "Dark Mode Fixer (бета-версия)"
+    },
+    "dark_mode_fixer_text": {
+        "message": "Это позволит исправить любые пробелы темного режима на текущей странице."
+    },
+    "dark_pink": {
+        "message": "Розовый\n Автор Sayde"
+    },
+    "dark_sage": {
+        "message": "Сабия\n Автор: LivDoesDevStuf"
+    },
+    "dark_unicorn": {
+        "message": "Единорог"
+    },
+    "dashboard": {
+        "message": "Панель"
+    },
+    "dashboard_font": {
+        "message": "Шрифт панели"
+    },
+    "dashboard_notes": {
+        "message": "Заметки на панели инструментов"
+    },
+    "date": {
+        "message": "Дата"
+    },
+    "delete_confirm": {
+        "message": "Удалить эту пользовательскую задачу? Это действие нельзя отменить."
+    },
+    "delete_label": {
+        "message": "Удалить"
+    },
+    "delete_task_title": {
+        "message": "Удалить эту пользовательскую задачу"
+    },
+    "device_dark": {
+        "message": "Использовать настройки темного режима устройства"
+    },
+    "disable_color": {
+        "message": "Отключить наложение цвета"
+    },
+    "disable_high_contrast": {
+        "message": "Отключить высококонтрастный интерфейс"
+    },
+    "do_you_want_submit": {
+        "message": "Хотите отправить свою тему, чтобы ею могли пользоваться другие?"
+    },
+    "dp_background_0": {
+        "message": "Фон Основной"
+    },
+    "dp_background_1": {
+        "message": "Фон альт"
+    },
+    "dp_background_2": {
+        "message": "Фон Другое"
+    },
+    "dp_borders": {
+        "message": "Границы"
+    },
+    "dp_links": {
+        "message": "Ссылки"
+    },
+    "dp_sidebar": {
+        "message": "Боковая панель"
+    },
+    "dp_sidebar_text": {
+        "message": "Текст боковой панели"
+    },
+    "dp_text_0": {
+        "message": "Текст Основной"
+    },
+    "dp_text_1": {
+        "message": "Текст Другое"
+    },
+    "dp_text_2": {
+        "message": "Текст Альтернативный"
+    },
+    "due": {
+        "message": "Должный"
+    },
+    "due_days": {
+        "message": "Срок через <strong>$COUNT$ дн.</strong>"
+    },
+    "due_later": {
+        "message": "Срок <strong>позже</strong>"
+    },
+    "due_one_month": {
+        "message": "Срок через <strong>1 месяц</strong>"
+    },
+    "due_overdue": {
+        "message": "<strong>Просрочено</strong>"
+    },
+    "due_today": {
+        "message": "Срок <strong>сегодня</strong>"
+    },
+    "due_tomorrow": {
+        "message": "Срок <strong>завтра</strong>"
+    },
+    "due_weeks": {
+        "message": "Срок через <strong>$COUNT$ нед.</strong>"
+    },
+    "edit_custom_task": {
+        "message": "Изменить эту задачу"
+    },
+    "edit_dark_mode": {
+        "message": "Темный режим"
+    },
+    "enter_multiple": {
+        "message": "(Введите несколько через запятую)"
+    },
+    "enter_none": {
+        "message": "Введите \"none\", чтобы скрыть изображения и ссылки."
+    },
+    "enter_url": {
+        "message": "Url-адрес вашего холста:"
+    },
+    "equal_height_cards": {
+        "message": "Одинаковая высота"
+    },
+    "error_log": {
+        "message": "Журнал ошибок"
+    },
+    "example_reminder_desc": {
+        "message": "Это уведомление будет появляться на других страницах, напоминая о несданных заданиях, срок которых истекает менее чем через 6 часов."
+    },
+    "example_reminder_title": {
+        "message": "Это пример напоминания"
+    },
+    "excused": {
+        "message": "Освобождено"
+    },
+    "experimental": {
+        "message": "Это экспериментальная функция."
+    },
+    "export_background": {
+        "message": "Фон и непрозрачность"
+    },
+    "export_card_colors": {
+        "message": "Цвета карточек"
+    },
+    "export_card_images": {
+        "message": "Изображения карточек"
+    },
+    "export_card_styles": {
+        "message": "Стили карточек"
+    },
+    "export_custom_css": {
+        "message": "Свой CSS"
+    },
+    "export_custom_font": {
+        "message": "Свой шрифт"
+    },
+    "export_dark": {
+        "message": "Тёмный режим"
+    },
+    "export_dark_schedule": {
+        "message": "Расписание тёмного режима"
+    },
+    "export_gpa": {
+        "message": "Настройки GPA"
+    },
+    "export_settings": {
+        "message": "Экспорт настроек"
+    },
+    "export_todo": {
+        "message": "Список дел"
+    },
+    "export_toggles": {
+        "message": "Переключатели вкл/выкл"
+    },
+    "extra_spacing": {
+        "message": "Дополнительное расстояние карточек"
+    },
+    "fake_grade_high": {
+        "message": "Высокий"
+    },
+    "fake_grade_level": {
+        "message": "Поддельный уровень оценок"
+    },
+    "fake_grade_medhigh": {
+        "message": "Выше среднего"
+    },
+    "fake_grade_medium": {
+        "message": "Средний"
+    },
+    "fake_grade_medlow": {
+        "message": "Ниже среднего"
+    },
+    "fake_progress": {
+        "message": "Поддельный прогресс:"
+    },
+    "fake_rerolled": {
+        "message": "Поддельные курсы обновлены."
+    },
+    "fake_tasks_completed": {
+        "message": "Поддельные задачи выполнены:"
+    },
+    "fake_todo": {
+        "message": "Заполнить список дел поддельными курсами"
+    },
+    "final_assignments": {
+        "message": "задание"
+    },
+    "final_assignments_plural": {
+        "message": "заданий"
+    },
+    "final_avg": {
+        "message": "— в среднем $AVG$% ..."
+    },
+    "final_waiting": {
+        "message": "Ожидание данных об оценках…"
+    },
+    "final_weight_prompt": {
+        "message": "Укажите вес итогового экзамена и желаемую оценку, чтобы узнать, что нужно за экзамен."
+    },
+    "fit_image": {
+        "message": "Вписать изображение в экран"
+    },
+    "fix_dm_btn": {
+        "message": "Идти"
+    },
+    "fix_dm_text": {
+        "message": "Fixer автоматически запускается на этих страницах:"
+    },
+    "fix_took": {
+        "message": "Исправление заняло $TIME$ мс (оценка: $RATING$)"
+    },
+    "flexible_grid": {
+        "message": "Гибкая сетка"
+    },
+    "flexible_grid_on": {
+        "message": "Включена гибкая сетка — карточки переносятся, чтобы помещаться в узкие окна, а не обрезаются."
+    },
+    "focus_timer": {
+        "message": "Таймер фокуса"
+    },
+    "full_width": {
+        "message": "Приборная панель на всю ширину"
+    },
+    "ga_add_assignment": {
+        "message": "+ Добавить задание"
+    },
+    "ga_add_group": {
+        "message": "+ Добавить группу"
+    },
+    "ga_already_there": {
+        "message": "Вы уже на месте!"
+    },
+    "ga_calc_desc": {
+        "message": "Укажите вес итогового экзамена и желаемую итоговую оценку, чтобы узнать, какая оценка нужна за экзамен."
+    },
+    "ga_final_weight": {
+        "message": "Вес итогового экзамена (% оценки)"
+    },
+    "ga_fit_y": {
+        "message": "По размеру оси Y"
+    },
+    "ga_heatmap_assignments": {
+        "message": "$COUNT$ заданий:"
+    },
+    "ga_heatmap_avg": {
+        "message": "сред."
+    },
+    "ga_heatmap_undated": {
+        "message": "$COUNT$ оценённых заданий без срока не показано."
+    },
+    "ga_line_title": {
+        "message": "Итоговая оценка во времени"
+    },
+    "ga_new_assignment": {
+        "message": "Новое задание"
+    },
+    "ga_new_group": {
+        "message": "Новая группа"
+    },
+    "ga_no_grade_legend": {
+        "message": "Нет оценки/задания"
+    },
+    "ga_no_graded_short": {
+        "message": "Оценённых заданий пока нет"
+    },
+    "ga_not_counted": {
+        "message": "— не учитывается —"
+    },
+    "ga_out_of_reach": {
+        "message": "Недостижимо"
+    },
+    "ga_pie_title": {
+        "message": "Распределение оценок (оценённые задания)"
+    },
+    "ga_remove_assignment": {
+        "message": "Убрать это задание из сценария"
+    },
+    "ga_remove_group": {
+        "message": "Убрать эту группу из сценария (её задания не учитываются до переназначения)"
+    },
+    "ga_secured": {
+        "message": "✓ Обеспечено"
+    },
+    "ga_show_goal": {
+        "message": "Показывать цель оценки в обзоре"
+    },
+    "ga_stat_final_exam": {
+        "message": "Итоговый экзамен"
+    },
+    "ga_stat_graded": {
+        "message": "Оценено"
+    },
+    "ga_stat_overall": {
+        "message": "Итоговая оценка"
+    },
+    "ga_stat_trend": {
+        "message": "Динамика оценок (последние 5)"
+    },
+    "ga_stat_ungraded": {
+        "message": "Не оценено"
+    },
+    "ga_sub_secured": {
+        "message": "Даже 0 за экзамен оставит вас на <b>$ZERO$%</b>, что выше вашей цели <b>$TARGET$%</b>."
+    },
+    "ga_sub_unreachable": {
+        "message": "Даже идеальный экзамен даст только <b>$PERFECT$%</b>, что ниже вашей цели <b>$TARGET$%</b>."
+    },
+    "ga_tab_calc": {
+        "message": "Калькулятор экзамена"
+    },
+    "ga_tab_heatmap": {
+        "message": "Тепловая карта"
+    },
+    "ga_tab_overview": {
+        "message": "Обзор"
+    },
+    "ga_target_grade": {
+        "message": "Целевая итоговая оценка (%)"
+    },
+    "ga_title_assignment_name": {
+        "message": "Название задания"
+    },
+    "ga_title_group_name": {
+        "message": "Название группы"
+    },
+    "ga_title_group_select": {
+        "message": "Группа заданий Imagine-If"
+    },
+    "ga_title_group_weight": {
+        "message": "Вес группы Imagine-If (% оценки)"
+    },
+    "ga_title_points": {
+        "message": "Максимум баллов Imagine-If (знаменатель)"
+    },
+    "ga_title_score": {
+        "message": "Баллы Imagine-If (числитель); пусто = не учитывается"
+    },
+    "ga_tooltip_assignments": {
+        "message": "$COUNT$ заданий"
+    },
+    "ga_you_got_this": {
+        "message": "У вас всё получится!"
+    },
+    "ga_you_need": {
+        "message": "Вам нужно ≥ $PCT$% за экзамен"
+    },
+    "get_active_cards": {
+        "message": "Получить активные карточки с панели"
+    },
+    "global_search": {
+        "message": "Глобальный поиск Canvas"
+    },
+    "go": {
+        "message": "Перейти"
+    },
+    "go_to_grades": {
+        "message": "Перейти к оценкам"
+    },
+    "gpa_autosave": {
+        "message": "Изменения сохраняются автоматически"
+    },
+    "gpa_calc_cumulative": {
+        "message": "Показать накопленный средний балл"
+    },
+    "gpa_calc_weighted": {
+        "message": "Показать взвешенный средний балл"
+    },
+    "gpa_calculator": {
+        "message": "Калькулятор среднего балла"
+    },
+    "gpa_calculator_title": {
+        "message": "Калькулятор GPA"
+    },
+    "gpa_click_to_edit": {
+        "message": "Нажмите, чтобы изменить"
+    },
+    "gpa_col_course": {
+        "message": "Курс"
+    },
+    "gpa_col_course_type": {
+        "message": "Тип курса"
+    },
+    "gpa_col_credits": {
+        "message": "Кредиты"
+    },
+    "gpa_col_custom_grade": {
+        "message": "Своя оценка"
+    },
+    "gpa_col_grade": {
+        "message": "Оценка"
+    },
+    "gpa_courses": {
+        "message": "Курсы"
+    },
+    "gpa_credits": {
+        "message": "кр."
+    },
+    "gpa_cumulative": {
+        "message": "Суммарный"
+    },
+    "gpa_current": {
+        "message": "Текущий"
+    },
+    "gpa_dashboard_notes_aria": {
+        "message": "Заметки панели — нажмите, чтобы изменить"
+    },
+    "gpa_edit_calc": {
+        "message": "Изменить калькулятор"
+    },
+    "gpa_edit_calculator": {
+        "message": "Изменить калькулятор"
+    },
+    "gpa_grade_scale": {
+        "message": "Шкала оценок"
+    },
+    "gpa_header": {
+        "message": "GPA"
+    },
+    "gpa_min_pct": {
+        "message": "Мин. %"
+    },
+    "gpa_pts_abbr": {
+        "message": "балл"
+    },
+    "gpa_save_custom": {
+        "message": "Сохранить свою оценку"
+    },
+    "gpa_save_grade": {
+        "message": "Сохранить свою оценку"
+    },
+    "gpa_scale_letter": {
+        "message": "Только буквы"
+    },
+    "gpa_scale_note": {
+        "message": "Процент получает GPA первой строки, у которой Мин. % не выше него. Если в вашей школе не используется шкала +/-, установите Мин. % для строк +/- на 101, чтобы исключить их из расчёта."
+    },
+    "gpa_scale_plusminus": {
+        "message": "Шкала +/-"
+    },
+    "gpa_settings": {
+        "message": "Настройки среднего балла"
+    },
+    "gpa_type_away": {
+        "message": "Печатайте!"
+    },
+    "gpa_weight_ap": {
+        "message": "AP/IB"
+    },
+    "gpa_weight_dnc": {
+        "message": "Не учитывать"
+    },
+    "gpa_weight_do_not_count": {
+        "message": "Не учитывать"
+    },
+    "gpa_weight_honors": {
+        "message": "Углублённый"
+    },
+    "gpa_weight_regular": {
+        "message": "Обычный/колледж"
+    },
+    "gpa_weighted": {
+        "message": "Взвешенный"
+    },
+    "grade_analytics": {
+        "message": "Анализ оценок"
+    },
+    "grade_analytics_desc": {
+        "message": "Добавляет инструменты для анализа ваших оценок."
+    },
+    "grade_analytics_failed": {
+        "message": "Не удалось загрузить анализ оценок: $ERROR$"
+    },
+    "grade_analytics_info_label": {
+        "message": "Сведения об анализе оценок"
+    },
+    "grade_analytics_toggle": {
+        "message": "Переключить аналитику оценок"
+    },
+    "grade_analytics_zones": {
+        "message": "Цветные зоны оценок"
+    },
+    "grade_hover": {
+        "message": "Показывать только при наведении"
+    },
+    "grade_settings": {
+        "message": "Настройки оценок"
+    },
+    "gradient": {
+        "message": "Градиент"
+    },
+    "gradient_cards": {
+        "message": "Градиентные карты"
+    },
+    "gradient_desc": {
+        "message": "Выберите 2 цвета, чтобы создать между ними градиент:"
+    },
+    "grid_includes_gpa": {
+        "message": " (включая калькулятор GPA)"
+    },
+    "grid_warning": {
+        "message": "В вашей сетке помещается $TOTAL$ карточек$TOTAL_S$, но у вас $ACTIVE$ карточка$ACTIVE_S$$GPA_NOTE$ — некоторые карточки могут обрезаться."
+    },
+    "group_graded": {
+        "message": "С оценкой"
+    },
+    "group_new": {
+        "message": "Новые"
+    },
+    "group_seen": {
+        "message": "Просмотренные"
+    },
+    "group_ungraded": {
+        "message": "Без оценки"
+    },
+    "guideline_1": {
+        "message": "Подходящие изображения/название"
+    },
+    "guideline_2": {
+        "message": "Не использует в больших объёмах компоненты других тем"
+    },
+    "guideline_3": {
+        "message": "Использует уникальный тёмный режим (не один из пресетов)"
+    },
+    "guideline_4": {
+        "message": "Свои изображения не могут быть из Discord или Gmail. Эти изображения не являются публичными"
+    },
+    "height": {
+        "message": "Высота"
+    },
+    "hide": {
+        "message": "Скрыть"
+    },
+    "hide_completed": {
+        "message": "Скрыть Завершено"
+    },
+    "hide_completed_cards": {
+        "message": "Скрыть выполненные"
+    },
+    "hide_feedback": {
+        "message": "Скрыть последние отзывы"
+    },
+    "hide_images_temp": {
+        "message": "Временно убрать все изображения курсов"
+    },
+    "hide_links": {
+        "message": "Скрыть ссылки"
+    },
+    "hide_navbar": {
+        "message": "Скрыть панель навигации"
+    },
+    "hide_new_canvas": {
+        "message": "Скрыть новый Canvas"
+    },
+    "hide_personal_details": {
+        "message": "Скрыть личные данные"
+    },
+    "hide_sequence_footer": {
+        "message": "Скрыть кнопки «Назад/Далее»"
+    },
+    "high_contrast_desc": {
+        "message": "если цвета стали тусклее после обновления! На боковой панели, если нажать на значок профиля, это можно отключить там."
+    },
+    "high_contrast_full": {
+        "message": "Отключите высококонтрастный интерфейс, если цвета стали тусклее после обновления! На боковой панели, если нажать на значок профиля, это можно отключить там."
+    },
+    "horizontal": {
+        "message": "Горизонтально"
+    },
+    "hover_preview": {
+        "message": "Предпросмотр при наведении"
+    },
+    "image_link_error": {
+        "message": "Похоже, указанная ссылка на изображение не работает. Щёлкните правой кнопкой по нужному изображению и выберите «копировать адрес изображения», чтобы получить правильную ссылку."
+    },
+    "image_roundness": {
+        "message": "Скругление изображений"
+    },
+    "image_scale": {
+        "message": "Масштаб изображения"
+    },
+    "image_size": {
+        "message": "Размер изображения"
+    },
+    "image_url": {
+        "message": "URL изображения"
+    },
+    "imagine_if": {
+        "message": "Сценарий «Представьте, если»; это не ваша реальная оценка."
+    },
+    "imagine_if_badge": {
+        "message": "Imagine-If"
+    },
+    "imagine_if_mode": {
+        "message": "Режим Imagine-If"
+    },
+    "imagine_if_toggle": {
+        "message": "Переключить режим Imagine-If"
+    },
+    "import_hint": {
+        "message": "Скопируйте и вставьте экспортированные темы сюда:"
+    },
+    "import_label": {
+        "message": "Импорт"
+    },
+    "invalid_url": {
+        "message": "Введённый URL кажется недействительным, поэтому может не работать."
+    },
+    "join_discord": {
+        "message": "Присоединиться к нашему Discord"
+    },
+    "keep_font": {
+        "message": "Сохранять исходный шрифт заданий"
+    },
+    "language": {
+        "message": "Язык"
+    },
+    "language_auto": {
+        "message": "Авто (браузер)"
+    },
+    "liked": {
+        "message": "Понравилось"
+    },
+    "loading": {
+        "message": "Загрузка…"
+    },
+    "logout": {
+        "message": "Выйти"
+    },
+    "manual_customization": {
+        "message": "Ручная настройка"
+    },
+    "mark_as_seen": {
+        "message": "Отметить как просмотренное"
+    },
+    "max_items": {
+        "message": "Максимальное количество предметов: "
+    },
+    "missing_cards": {
+        "message": "Не хватает карточек?"
+    },
+    "missing_task_id": {
+        "message": "Отсутствует id задачи."
+    },
+    "more_card_styles": {
+        "message": "Больше стилей карточек"
+    },
+    "more_options": {
+        "message": "Больше вариантов"
+    },
+    "my_saved_themes": {
+        "message": "Мои сохранённые темы"
+    },
+    "my_submissions": {
+        "message": "Мои отправки"
+    },
+    "nasa_apod": {
+        "message": "Астрономическое изображение дня NASA"
+    },
+    "nasa_credit": {
+        "message": "Автор: $CREDIT$"
+    },
+    "nasa_date": {
+        "message": "Дата: $DATE$"
+    },
+    "need_refresh": {
+        "message": "Возможно, потребуется обновить страницу, чтобы увидеть некоторые изменения."
+    },
+    "new_canvas_desc": {
+        "message": "Canvas Refined обнаружил страницу Canvas по адресу $HOST$. Добавить её в ваш список Canvas?"
+    },
+    "new_canvas_detected": {
+        "message": "Обнаружен новый Canvas"
+    },
+    "new_label": {
+        "message": "Новое"
+    },
+    "next": {
+        "message": "Далее"
+    },
+    "next_timeframe": {
+        "message": "Показать следующий период"
+    },
+    "no_auto_detect": {
+        "message": "Не определять Canvas автоматически"
+    },
+    "no_course_cards": {
+        "message": "Карточки курсов не найдены. Откройте панель Canvas, чтобы загрузить курсы."
+    },
+    "no_description": {
+        "message": "Описание недоступно."
+    },
+    "no_details": {
+        "message": "Детали не указаны"
+    },
+    "no_features": {
+        "message": "Функции не найдены"
+    },
+    "no_graded_assignments": {
+        "message": "Пока нет оценённых заданий со сроками сдачи."
+    },
+    "no_tasks": {
+        "message": "В этом периоде нет задач"
+    },
+    "no_tasks_yet": {
+        "message": "Пока нет задач"
+    },
+    "no_thanks": {
+        "message": "Нет, спасибо"
+    },
+    "not_for_request": {
+        "message": "Это не для запроса темы. Я не создаю темы по запросу."
+    },
+    "notes_bold": {
+        "message": "Жирный (Ctrl/Cmd+B)"
+    },
+    "notes_bullet_list": {
+        "message": "Маркированный список"
+    },
+    "notes_codeblock": {
+        "message": "Блок кода"
+    },
+    "notes_format": {
+        "message": "Форматирование заметок"
+    },
+    "notes_h1": {
+        "message": "Заголовок 1"
+    },
+    "notes_h2": {
+        "message": "Заголовок 2"
+    },
+    "notes_hr": {
+        "message": "Горизонтальная линия"
+    },
+    "notes_inline_code": {
+        "message": "Встроенный код"
+    },
+    "notes_italic": {
+        "message": "Курсив (Ctrl/Cmd+I)"
+    },
+    "notes_link": {
+        "message": "Вставить ссылку"
+    },
+    "notes_numbered_list": {
+        "message": "Нумерованный список"
+    },
+    "notes_quote": {
+        "message": "Цитата"
+    },
+    "notes_strike": {
+        "message": "Зачёркнутый"
+    },
+    "notes_task_list": {
+        "message": "Список задач"
+    },
+    "nothing_to_copy": {
+        "message": "Нечего копировать — сначала выберите, что экспортировать."
+    },
+    "old_label": {
+        "message": "Старое"
+    },
+    "opacity_only_background": {
+        "message": "Доступно только со своим фоном"
+    },
+    "opacity_options": {
+        "message": "Непрозрачность и размытие"
+    },
+    "open_canvas_preview": {
+        "message": "Откройте страницу Canvas, чтобы увидеть предпросмотр празднований."
+    },
+    "optin_desc": {
+        "message": "Это вернёт сообщение с предложением согласия, чтобы вы могли выбрать другой вариант."
+    },
+    "options_click_extension": {
+        "message": "Нажмите на Canvas Refined"
+    },
+    "options_click_puzzle": {
+        "message": "Нажмите на значок пазла в правом верхнем углу"
+    },
+    "options_contact": {
+        "message": "Моя почта — $EMAIL$. Если у вас есть проблемы или предложения, буду рад обратной связи!"
+    },
+    "options_how_to_access": {
+        "message": "Как открыть это меню позже:"
+    },
+    "options_pin": {
+        "message": "Вы также можете закрепить его для быстрого доступа"
+    },
+    "options_refresh_note": {
+        "message": "Обновите страницу Canvas для настройки"
+    },
+    "options_welcome": {
+        "message": "Добро пожаловать в"
+    },
+    "output": {
+        "message": "Вывод"
+    },
+    "overall": {
+        "message": "Общее"
+    },
+    "palette_army": {
+        "message": "Хаки"
+    },
+    "palette_base": {
+        "message": "Базовый"
+    },
+    "palette_berries": {
+        "message": "Ягоды"
+    },
+    "palette_blues": {
+        "message": "Синие"
+    },
+    "palette_candy": {
+        "message": "Конфеты"
+    },
+    "palette_chess": {
+        "message": "Шахматы"
+    },
+    "palette_fade": {
+        "message": "Затухание"
+    },
+    "palette_fade2": {
+        "message": "Затухание 2"
+    },
+    "palette_fruit": {
+        "message": "Фрукты"
+    },
+    "palette_greens": {
+        "message": "Зелёные"
+    },
+    "palette_mesa": {
+        "message": "Меса"
+    },
+    "palette_muted": {
+        "message": "Приглушённые"
+    },
+    "palette_night": {
+        "message": "Ночь"
+    },
+    "palette_ocean": {
+        "message": "Океан"
+    },
+    "palette_oranges": {
+        "message": "Оранжевые"
+    },
+    "palette_pastels": {
+        "message": "Пастельные"
+    },
+    "palette_pinks": {
+        "message": "Розовые"
+    },
+    "palette_popsicle": {
+        "message": "Фруктовый лёд"
+    },
+    "palette_purples": {
+        "message": "Фиолетовые"
+    },
+    "palette_rainbow": {
+        "message": "Радуга"
+    },
+    "palette_reds": {
+        "message": "Красные"
+    },
+    "palette_sunset": {
+        "message": "Закат"
+    },
+    "palette_watermelon": {
+        "message": "Арбуз"
+    },
+    "percent_done": {
+        "message": "$PERCENT$%"
+    },
+    "personal_task": {
+        "message": "Личная задача"
+    },
+    "personal_task_label": {
+        "message": "Личная задача"
+    },
+    "placeholder_example": {
+        "message": "canvas.myschool.edu"
+    },
+    "planner_cleared": {
+        "message": "Кеш планера очищен."
+    },
+    "popular": {
+        "message": "Популярное"
+    },
+    "popular_palettes": {
+        "message": "Популярные палитры"
+    },
+    "pos_below": {
+        "message": "Внизу"
+    },
+    "pos_cards_end": {
+        "message": "После карточек"
+    },
+    "pos_cards_start": {
+        "message": "Перед карточками"
+    },
+    "pos_top": {
+        "message": "Сверху"
+    },
+    "presets": {
+        "message": "Пресеты"
+    },
+    "prev_timeframe": {
+        "message": "Предыдущий период"
+    },
+    "preview": {
+        "message": "Предпросмотр"
+    },
+    "preview_creator_default": {
+        "message": "Авторы"
+    },
+    "preview_hidden": {
+        "message": "Предпросмотр скрыт, пока скрыты личные данные."
+    },
+    "preview_title_default": {
+        "message": "Название"
+    },
+    "preview_unavailable": {
+        "message": "Предпросмотр недоступен"
+    },
+    "privacy": {
+        "message": "Конфиденциальность"
+    },
+    "progress_done": {
+        "message": "$DONE$/$TOTAL$ выполнено"
+    },
+    "progress_overall": {
+        "message": "$PCT$% ($DONE$/$TOTAL$)"
+    },
+    "progress_pct": {
+        "message": "$PCT$% ($DONE$/$TOTAL$)"
+    },
+    "quiz_dont_show": {
+        "message": "Больше не показывать"
+    },
+    "quiz_dont_show_title": {
+        "message": "Скрывает это напоминание навсегда. Вы по-прежнему можете включить безопасный режим для тестов в попапе расширения."
+    },
+    "quiz_enable": {
+        "message": "Включить безопасный режим для тестов"
+    },
+    "quiz_safe_desc": {
+        "message": "Это расширение не одобрено на 100% для тестов. Некоторые функции могут мешать работе тестов. Включить безопасный режим, чтобы временно отключить визуальные изменения?"
+    },
+    "quiz_safe_info_label": {
+        "message": "Сведения о безопасном режиме тестов"
+    },
+    "quiz_safe_mode": {
+        "message": "Безопасный режим для тестов"
+    },
+    "quiz_safe_mode_desc": {
+        "message": "Отключает большинство функций Canvas Refined на страницах тестов, чтобы вы получили стандартный опыт Canvas"
+    },
+    "quiz_safe_title": {
+        "message": "Canvas Refined — безопасный режим для тестов"
+    },
+    "radio_gradient": {
+        "message": "Градиент"
+    },
+    "radio_image": {
+        "message": "Изображение"
+    },
+    "radio_sidebar_gradient": {
+        "message": "Градиент"
+    },
+    "radio_sidebar_image": {
+        "message": "Изображение"
+    },
+    "radio_sidebar_solid": {
+        "message": "Твердый"
+    },
+    "radio_solid": {
+        "message": "Сплошной"
+    },
+    "reading_grade_data": {
+        "message": "Чтение данных об оценках…"
+    },
+    "relative_ago": {
+        "message": "$TIME$ назад"
+    },
+    "relative_due_dates": {
+        "message": "Относительные сроки выполнения"
+    },
+    "relative_in": {
+        "message": "через $TIME$"
+    },
+    "remlogo": {
+        "message": "Удалить логотип боковой панели"
+    },
+    "remove_label": {
+        "message": "Удалить"
+    },
+    "report_desc": {
+        "message": "Присоединяйтесь к серверу Discord или создайте issue на GitHub, если есть проблемы, отзывы или предложения. Спасибо!"
+    },
+    "report_issue": {
+        "message": "Сообщить о проблеме"
+    },
+    "reroll_classes": {
+        "message": "Перегенерировать курсы"
+    },
+    "reset_default": {
+        "message": "Сбросить по умолчанию"
+    },
+    "reset_optin": {
+        "message": "Сбросить статус согласия"
+    },
+    "revert": {
+        "message": "Отменить"
+    },
+    "revert_desc": {
+        "message": "Это вернёт настройки к состоянию после первой установки расширения."
+    },
+    "revert_original": {
+        "message": "Вернуть исходное"
+    },
+    "revert_theme": {
+        "message": "Отменить изменения темы"
+    },
+    "row_spacing": {
+        "message": "Расстояние между рядами"
+    },
+    "save": {
+        "message": "Сохранить"
+    },
+    "save_current": {
+        "message": "+ Сохранить текущее"
+    },
+    "search": {
+        "message": "Поиск"
+    },
+    "search_building": {
+        "message": "Построение поискового индекса…"
+    },
+    "search_canvas": {
+        "message": "Поиск по Canvas"
+    },
+    "search_canvas_ctrlk": {
+        "message": "Поиск по Canvas (Ctrl+K)"
+    },
+    "search_close": {
+        "message": "Закрыть"
+    },
+    "search_close_title": {
+        "message": "Закрыть (Esc)"
+    },
+    "search_features": {
+        "message": "Поиск функций..."
+    },
+    "search_hint": {
+        "message": "Начните вводить текст, чтобы искать модули и задания. Используйте @названиекурса для поиска по конкретному курсу или @grades, чтобы открыть страницу оценок курса."
+    },
+    "search_navigate": {
+        "message": "перемещение"
+    },
+    "search_new_tab": {
+        "message": "новая вкладка"
+    },
+    "search_no_course": {
+        "message": "Нет курса, соответствующего \"$QUERY$\"."
+    },
+    "search_no_courses_grades": {
+        "message": "Курсы для открытия оценок не найдены."
+    },
+    "search_no_match": {
+        "message": "Нет результатов по \"$QUERY$\"."
+    },
+    "search_no_match_hint": {
+        "message": "Нет результатов по \"$QUERY$\". Попробуйте другие ключевые слова."
+    },
+    "search_no_modules": {
+        "message": "Модули или задания не найдены..."
+    },
+    "search_no_modules_found": {
+        "message": "Модули или задания не найдены. Откройте поиск позже, если ваши курсы ещё загружаются."
+    },
+    "search_no_results": {
+        "message": "Нет результатов по \"$QUERY$\"."
+    },
+    "search_open": {
+        "message": "открыть"
+    },
+    "search_placeholder": {
+        "message": "Поиск модулей и заданий… (@названиекурса фильтрует по курсу)"
+    },
+    "search_start_typing": {
+        "message": "Начните вводить для поиска..."
+    },
+    "search_title": {
+        "message": "Поиск по Canvas (Ctrl+K)"
+    },
+    "search_toggle": {
+        "message": "переключить поиск"
+    },
+    "search_type_assignment": {
+        "message": "Задание"
+    },
+    "search_type_discussion": {
+        "message": "Обсуждение"
+    },
+    "search_type_external_tool": {
+        "message": "Внешний инструмент"
+    },
+    "search_type_file": {
+        "message": "Файл"
+    },
+    "search_type_item": {
+        "message": "Элемент"
+    },
+    "search_type_link": {
+        "message": "Ссылка"
+    },
+    "search_type_page": {
+        "message": "Страница"
+    },
+    "search_type_quiz": {
+        "message": "Тест"
+    },
+    "search_type_section": {
+        "message": "Раздел"
+    },
+    "selected_count": {
+        "message": "Выбрано: $COUNT$"
+    },
+    "show": {
+        "message": "Показать"
+    },
+    "show_links": {
+        "message": "Показать ссылки"
+    },
+    "show_past_due": {
+        "message": "Показать просроченные"
+    },
+    "showing_submissions": {
+        "message": "Показаны последние 3 отправки"
+    },
+    "sidebar_blur": {
+        "message": "Размытие боковой панели"
+    },
+    "sidebar_opacity": {
+        "message": "Непрозрачность боковой панели"
+    },
+    "sidebar_opacity_auto": {
+        "message": "Применяется к улучшенной боковой панели, когда она включена, иначе к обычной."
+    },
+    "sidebar_scale": {
+        "message": "Масштаб боковой панели: "
+    },
+    "single_color": {
+        "message": "Один цвет"
+    },
+    "single_color_desc": {
+        "message": "Выберите цвет, чтобы окрасить все карточки в него:"
+    },
+    "storage_cache_label": {
+        "message": "Кеш планера:"
+    },
+    "storage_dump": {
+        "message": "Дамп хранилища"
+    },
+    "storage_dump_desc": {
+        "message": "Это извлечёт все настройки, сохранённые расширением."
+    },
+    "storage_empty": {
+        "message": "пусто"
+    },
+    "storage_items": {
+        "message": " ($COUNT$ элем.)"
+    },
+    "storage_limit_error": {
+        "message": "Вводимые данные превышают лимит хранилища, поэтому они не сохранятся. Используйте более короткие ссылки и обязательно нажимайте «копировать адрес изображения», а не «копировать изображение»."
+    },
+    "storage_other_label": {
+        "message": "Другие локальные данные:"
+    },
+    "storage_quota_100kb": {
+        "message": " из квоты 100 КБ"
+    },
+    "storage_quota_label": {
+        "message": "Локальная квота:"
+    },
+    "storage_reset": {
+        "message": "Сброс хранилища"
+    },
+    "storage_reset_desc": {
+        "message": "Это сбросит все настройки по умолчанию. После этого потребуется обновить страницу."
+    },
+    "storage_sync_label": {
+        "message": "Настройки (sync):"
+    },
+    "storage_unknown": {
+        "message": "неизвестно"
+    },
+    "storage_usage": {
+        "message": "Использование хранилища"
+    },
+    "styles": {
+        "message": "Стили"
+    },
+    "submission_confirmation": {
+        "message": "Подтверждение отправки"
+    },
+    "submission_includes": {
+        "message": "Ваша отправка будет включать текущие тематические настройки, такие как изображения карточек, тёмный режим и шрифт."
+    },
+    "submit": {
+        "message": "Отправить"
+    },
+    "submit_your_theme": {
+        "message": "Отправить свою тему"
+    },
+    "submitted_return_title": {
+        "message": "Отправлено в Canvas — нажмите, чтобы вернуть в задачи (локально)"
+    },
+    "tab_icons": {
+        "message": "Цветные значки вкладок"
+    },
+    "task_created": {
+        "message": "Задача создана."
+    },
+    "task_date_invalid": {
+        "message": "Неверная дата задачи."
+    },
+    "task_date_time_required": {
+        "message": "Выберите и дату, и время."
+    },
+    "task_details_placeholder": {
+        "message": "Детали (необязательно)"
+    },
+    "task_link_placeholder": {
+        "message": "Ссылка (необязательно)"
+    },
+    "task_title_placeholder": {
+        "message": "Название задачи"
+    },
+    "task_title_required": {
+        "message": "Название задачи обязательно."
+    },
+    "task_updated": {
+        "message": "Задача обновлена."
+    },
+    "tasks_header": {
+        "message": "Задачи"
+    },
+    "text_colors": {
+        "message": "Текст"
+    },
+    "theme_browser_settings": {
+        "message": "Настройки браузера тем"
+    },
+    "theme_guidelines": {
+        "message": "Убедитесь, что ваша тема соответствует этим правилам:"
+    },
+    "theme_number": {
+        "message": "Тема $NUM$"
+    },
+    "theme_optin_reset": {
+        "message": "Сброс согласия браузера тем"
+    },
+    "themes": {
+        "message": "Темы"
+    },
+    "time_day": {
+        "message": "дн."
+    },
+    "time_day_plural": {
+        "message": "дн."
+    },
+    "time_day_short": {
+        "message": "д"
+    },
+    "time_hour": {
+        "message": "ч"
+    },
+    "time_hour_plural": {
+        "message": "ч"
+    },
+    "time_hour_short": {
+        "message": "ч"
+    },
+    "time_min": {
+        "message": "мин"
+    },
+    "time_min_short": {
+        "message": "мин"
+    },
+    "time_week": {
+        "message": "нед."
+    },
+    "time_week_plural": {
+        "message": "нед."
+    },
+    "time_week_short": {
+        "message": "нед."
+    },
+    "timeframe_next": {
+        "message": "Показать следующий период"
+    },
+    "timeframe_prev": {
+        "message": "Предыдущий период"
+    },
+    "timer_custom": {
+        "message": "Своё"
+    },
+    "timer_hours": {
+        "message": "Часы"
+    },
+    "timer_minutes": {
+        "message": "Минуты"
+    },
+    "timer_pause": {
+        "message": "Пауза"
+    },
+    "timer_reset": {
+        "message": "Сброс"
+    },
+    "timer_seconds": {
+        "message": "Секунды"
+    },
+    "timer_set": {
+        "message": "Задать"
+    },
+    "timer_start": {
+        "message": "Старт"
+    },
+    "timer_unit_h": {
+        "message": "ч"
+    },
+    "timer_unit_m": {
+        "message": "м"
+    },
+    "timer_unit_min": {
+        "message": "мин"
+    },
+    "timer_unit_s": {
+        "message": "с"
+    },
+    "title_hint": {
+        "message": "Старайтесь делать название коротким и по теме, чтобы люди могли его найти."
+    },
+    "title_label": {
+        "message": "Название"
+    },
+    "toast_close": {
+        "message": "Закрыть"
+    },
+    "todo_alternate_colors": {
+        "message": "Чередующиеся цвета"
+    },
+    "todo_click_to_edit": {
+        "message": "Нажмите, чтобы изменить"
+    },
+    "todo_close_title": {
+        "message": "Закрыть"
+    },
+    "todo_cross_off": {
+        "message": "Вычеркнуть"
+    },
+    "todo_date_format": {
+        "message": "$DATE$ в $TIME$ ($RELATIVE$)"
+    },
+    "todo_delete": {
+        "message": "Удалить"
+    },
+    "todo_delete_confirm": {
+        "message": "Удалить эту пользовательскую задачу? Это действие нельзя отменить."
+    },
+    "todo_delete_title": {
+        "message": "Удалить эту пользовательскую задачу"
+    },
+    "todo_full_height": {
+        "message": "Принудительная полная высота"
+    },
+    "todo_graded": {
+        "message": "Оценено"
+    },
+    "todo_hide_feedback": {
+        "message": "Скрыть недавние отзывы"
+    },
+    "todo_hide_read": {
+        "message": "Скрыть прочитанные объявления"
+    },
+    "todo_ignore_colors": {
+        "message": "Игнорировать цвета карточек"
+    },
+    "todo_label": {
+        "message": "Метка:"
+    },
+    "todo_label_placeholder": {
+        "message": "Метка"
+    },
+    "todo_none": {
+        "message": "Нет"
+    },
+    "todo_progress_display": {
+        "message": "Отображение прогресса"
+    },
+    "todo_progress_line": {
+        "message": "Одна линия"
+    },
+    "todo_progress_lines": {
+        "message": "Несколько линий"
+    },
+    "todo_progress_none": {
+        "message": "Нет"
+    },
+    "todo_progress_rainbow": {
+        "message": "Радуга"
+    },
+    "todo_progress_rings": {
+        "message": "Кольца"
+    },
+    "todo_remind": {
+        "message": "Напоминания о задачах"
+    },
+    "todo_remove": {
+        "message": "Удалить"
+    },
+    "todo_remove_icons": {
+        "message": "Убрать значки"
+    },
+    "todo_separate_scrollbar": {
+        "message": "Отдельная полоса прокрутки"
+    },
+    "todo_show_scores": {
+        "message": "Показывать оценки за задания"
+    },
+    "todo_task_details": {
+        "message": "Детали (необязательно)"
+    },
+    "todo_task_link": {
+        "message": "Ссылка (необязательно)"
+    },
+    "todo_task_title": {
+        "message": "Название задачи"
+    },
+    "todo_timeframe": {
+        "message": "Период времени"
+    },
+    "todo_timeframe_1week": {
+        "message": "1 неделя"
+    },
+    "todo_timeframe_2month": {
+        "message": "2 месяца"
+    },
+    "todo_timeframe_2week": {
+        "message": "2 недели"
+    },
+    "todo_timeframe_all": {
+        "message": "Всё время"
+    },
+    "todo_timeframe_custom": {
+        "message": "Свой"
+    },
+    "todo_timeframe_days_ago": {
+        "message": "дней назад"
+    },
+    "todo_timeframe_days_future": {
+        "message": "дней вперёд"
+    },
+    "todo_timeframe_from": {
+        "message": "С"
+    },
+    "todo_timeframe_month": {
+        "message": "Месяц"
+    },
+    "todo_timeframe_to": {
+        "message": "По"
+    },
+    "todo_type_away": {
+        "message": "Печатайте!"
+    },
+    "top_bottom_height": {
+        "message": "Высота сверху / снизу"
+    },
+    "trending": {
+        "message": "В тренде"
+    },
+    "updates": {
+        "message": "Обновления"
+    },
+    "useddmm": {
+        "message": "Используйте дд/мм"
+    },
+    "user_made_themes": {
+        "message": "Пользовательские темы"
+    },
+    "vertical": {
+        "message": "Вертикально"
+    },
+    "view_less": {
+        "message": "Показать меньше"
+    },
+    "view_more": {
+        "message": "Показать больше"
+    },
+    "view_more_count": {
+        "message": "Показать больше ($COUNT$)"
+    },
+    "view_on_github": {
+        "message": "Посмотреть на GitHub"
+    },
+    "widget_order_title": {
+        "message": "Порядок виджетов"
+    },
+    "widget_position": {
+        "message": "Положение"
+    },
+    "widget_short_breathing": {
+        "message": "Дыхание"
+    },
+    "widget_short_focus": {
+        "message": "Фокус"
+    },
+    "widget_short_gpa": {
+        "message": "GPA"
+    },
+    "widget_short_notes": {
+        "message": "Заметки"
+    },
+    "widget_short_quotes": {
+        "message": "Цитаты"
+    },
+    "widgets": {
+        "message": "Виджеты"
+    }
 }
