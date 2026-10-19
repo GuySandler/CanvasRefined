@@ -430,6 +430,31 @@
 .canvasrefined-dashboard-notes.in-cards .canvasrefined-notes-surface {flex: 1; display: flex; flex-direction: column;}
 .canvasrefined-dashboard-notes.in-cards .canvasrefined-notes-editor,
 .canvasrefined-dashboard-notes.in-cards .canvasrefined-notes-rendered {flex: 1; resize: none; border: none; outline: none; background: transparent;}
+/* Keep before/after-card widgets inline with Canvas loading skeletons (which are
+   flex items). Without this, the grid falls back to inline-block wrapping and
+   widgets misalign during the reload skeleton phase. */
+.ic-DashboardCard__box__container:has(> .canvasrefined-widget-card.in-cards),
+.ic-DashboardCard__box__container:has(> .canvasrefined-dashboard-notes.in-cards),
+.ic-DashboardCard__box__container:has(> .canvasrefined-gpa-card:not(.container-mode)) {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+}
+/* While Canvas is showing loading skeletons (no real card links yet), hide
+   in-cards widgets so "before" doesn't sit on a row above the skeletons and
+   "after" doesn't blow out the skeleton row. Covers both grid wrappers. */
+#DashboardCard_Container.cr-loading .canvasrefined-widget-card.in-cards,
+#DashboardCard_Container:not(:has(.ic-DashboardCard__link)) .canvasrefined-widget-card.in-cards,
+#DashboardCard_Container.cr-loading .canvasrefined-dashboard-notes.in-cards,
+#DashboardCard_Container:not(:has(.ic-DashboardCard__link)) .canvasrefined-dashboard-notes.in-cards,
+#DashboardCard_Container.cr-loading .canvasrefined-gpa-card:not(.container-mode),
+#DashboardCard_Container.cr-loading .canvasrefined-gpa:not(.container-mode),
+#DashboardCard_Container:not(:has(.ic-DashboardCard__link)) .canvasrefined-gpa-card:not(.container-mode),
+.ic-DashboardCard__box__container:not(:has(.ic-DashboardCard__link)) .canvasrefined-widget-card.in-cards,
+.ic-DashboardCard__box__container:not(:has(.ic-DashboardCard__link)) .canvasrefined-dashboard-notes.in-cards,
+.ic-DashboardCard__box__container:not(:has(.ic-DashboardCard__link)) .canvasrefined-gpa-card:not(.container-mode) {
+    display: none !important;
+}
 #canvasrefined-gpa-modal {
     --cr-gpa-course-cols: 30px minmax(0,1fr) 80px 58px 118px 16px minmax(88px,auto);
     --cr-gpa-accent: var(--ic-brand-primary,#0374b5);

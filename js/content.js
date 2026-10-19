@@ -1650,6 +1650,12 @@ function resetTimer() {
     }, 1);
 }
 
+function syncDashboardLoadingState() {
+    const dc = document.querySelector("#DashboardCard_Container");
+    if (!dc) return;
+    const hasRealCards = !!dc.querySelector(".ic-DashboardCard__link");
+    dc.classList.toggle("cr-loading", !hasRealCards);
+}
 function checkDashboardReady() {
     const isDashboard = () => current_page == "/" || current_page == "" || /^\/courses\/(\d+)(?:\/|$)/.test(current_page);
 
@@ -1665,6 +1671,7 @@ function checkDashboardReady() {
             dashboardReadyTimer = setTimeout(() => {
                 dashboardReadyTimer = null;
 
+                syncDashboardLoadingState();
                 const c = document.querySelector("#DashboardCard_Container");
                 if (c) {
                     let cards = document.querySelectorAll(".ic-DashboardCard");
