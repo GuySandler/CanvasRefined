@@ -1,23 +1,16 @@
 const domain = window.location.origin;
 let current_page = window.location.pathname;
 
-// Canvas' "New Canvas" UI navigates client-side via history.pushState/
-// replaceState without a full page reload. current_page is captured once at
-// document_start, so without this hook it goes stale and page-specific features
-// (Back to Assignment button, sequence-footer hiding, profile logout button)
-// never activate when the user clicks into a page instead of loading it directly.
+// Canvas' New UI navigates via pushState; without this hook current_page goes stale.
 function setupNavigationListener() {
     const update = () => {
         const next = window.location.pathname;
         if (next === current_page) return;
         current_page = next;
-        // Re-run the page-scoped watchers so they evaluate against the new URL.
         watchSequenceFooter();
         watchSubmissionPageButton();
         watchProfileLogoutPageButton();
         watchGradeAnalytics();
-        // Show/hide the Better Todo sidebar for the new page (course home vs
-        // sub-page) without needing a full reload.
         updateTodoSidebarVisibility();
     };
     for (const method of ["pushState", "replaceState"]) {
@@ -68,24 +61,19 @@ function isProfilePage() {
     return /^\/profile(?:\/|$)/.test(current_page);
 }
 
-// The Better Todo sidebar belongs only on the main dashboard and each
-// course's homepage (/courses/<id>, optional trailing slash) — not on
-// sub-pages like assignments, modules, quizzes or the syllabus.
+// Better Todo sidebar: dashboard and course homepages only, not sub-pages.
 function isTodoAllowedPage() {
     if (current_page === "/" || current_page === "") return true;
     return /^\/courses\/\d+\/?$/.test(current_page);
 }
 
-// Show/hide an already-mounted Better Todo sidebar when the user navigates
-// client-side into or out of an allowed page (Canvas' New UI doesn't reload).
 function updateTodoSidebarVisibility() {
     const list = document.getElementById("canvasrefined-todo-list");
     if (!list) return;
     list.style.display = isTodoAllowedPage() ? "" : "none";
 }
 
-// Quiz pages: /courses/123/quizzes/456 (pre-take/intro) and
-// /courses/123/quizzes/456/take (the actual quiz).
+// Quiz pages: /courses/123/quizzes/456 and .../456/take.
 function isQuizPage() {
     return /^\/courses\/\d+\/quizzes\/\d+(?:\/|$)/.test(current_page);
 }
@@ -95,26 +83,19 @@ function isQuizTakePage() {
 function isQuizPreTakePage() {
     return isQuizPage() && !isQuizTakePage();
 }
-// "Quiz safe mode" disables features that interfere with the default Canvas
-// quiz experience. Only active on quiz pages when the user has opted in.
+// Quiz safe mode: opted-in features are off on quiz pages.
 function quizSafeModeActive() {
     return isQuizPage() && options.quiz_safe_mode === true;
 }
 
-// Read the URL live: Canvas' "New Canvas" UI navigates client-side via
-// history.pushState/replaceState, and current_page (captured at document_start)
-// can be stale when the user clicks into a submission page. Reading
-// window.location.pathname at check time makes this correct regardless.
+// Read the URL live: SPA navigation can leave current_page stale.
 function getSubmissionAssignmentLink() {
     const match = window.location.pathname.match(/^\/courses\/(\d+)\/assignments\/(\d+)\/submissions\/(\d+)(?:\/|$)/);
     if (!match) return null;
     return `${domain}/courses/${match[1]}/assignments/${match[2]}/`;
 }
 
-// The content container isn't always #content on every Canvas layout (submission
-// pages in particular may render into .ic-Layout-contentMain or #main). Match the
-// quiz-safe-mode banner's container finder so the button lands in the visible
-// content area; fall back to <body> so injection never silently no-ops.
+// Container varies by layout; fall back to <body> so injection never no-ops.
 function findContentContainer() {
     return document.querySelector(".ic-Layout-contentMain")
         || document.getElementById("content")
@@ -128,10 +109,7 @@ let assignmentButtonScheduled = false;
 let profileLogoutButtonObserver = null;
 let newCanvasButtonObserver = null;
 
-// Current user id, needed to build "Go to Grades" links on assignment pages.
-// The page's ENV global isn't visible to content scripts (isolated world), so
-// ask the Canvas API once and cache the result.
-// undefined = not fetched yet, null = fetch failed, number = ok.
+// undefined = not fetched, null = fetch failed, number = ok.
 let currentUserIdCache;
 let currentUserIdPromise = null;
 function ensureCurrentUserId() {
@@ -152,9 +130,7 @@ function ensureCurrentUserId() {
     return currentUserIdPromise;
 }
 
-// Assignment pages (/courses/123/assignments/456) link to the current user's
-// submission ("grades") page for that assignment. The lookahead keeps this
-// from matching the submission pages themselves (/.../submissions/678).
+// Assignment pages link to the current user's submission page; the lookahead skips /submissions/678.
 function getAssignmentGradesLink() {
     const match = window.location.pathname.match(/^\/courses\/(\d+)\/assignments\/(\d+)(?!\/submissions)(?:\/|$)/);
     if (!match || currentUserIdCache == null) return null;
@@ -164,20 +140,13 @@ function getAssignmentGradesLink() {
 function addSubmissionPageButton() {
     const assignmentLink = getSubmissionAssignmentLink();
     if (!assignmentLink) return;
-    // Place the button inline with the "Submission Details" heading and the
-    // grade-values table, inside the .submission-details-header__heading-and-grades
-    // flex row (appended so it sits to the right of the grade summary). Only inject
-    // once that row exists; if it's not there yet the persistent MutationObserver
-    // re-tries on the next DOM change so we never fall back to body/#content
-    // (which would put the button at the bottom of the page).
+    // Only inject once the heading+grades row exists; the observer retries on later DOM changes.
     const row = document.querySelector(".submission-details-header__heading-and-grades")
         || document.querySelector(".submission-details-header")
         || document.querySelector(".submission_details");
     if (!row || row.querySelector("#canvasrefined-assignment-return")) return;
 
-    // Insert between the h1 heading and the grade-summary div so it reads
-    // [Heading] [Back to Assignment] [Grade]. Falls back to appending if the
-    // grade-summary div isn't found for some reason.
+    // Insert between h1 and grade summary: [Heading] [Button] [Grade].
     const gradeSummary = row.querySelector(".submission-details-header__grade-summary");
     const btn = makeElement("a", row, {
         id: "canvasrefined-assignment-return",
@@ -191,15 +160,10 @@ function addSubmissionPageButton() {
     }
 }
 
-// Assignment pages: /courses/123/assignments/456 — add a "Go to Grades" button
-// to the right edge of the title row.
 function addAssignmentPageButton() {
     const link = getAssignmentGradesLink();
     if (!link) return;
-    // Place the button inside the assignment header's .title-content block,
-    // pinned to its right edge on the title's line. .title-content is a plain
-    // block wrapping the <h1>, so switch it to a flex row (h1 left, button
-    // right); the h1 still wraps its text when long.
+    // .title-content is a plain block; make it a flex row to pin the button right of the h1.
     const titleContent = document.querySelector(".assignment-title .title-content")
         || document.querySelector(".title-content");
     if (!titleContent || titleContent.querySelector("#canvasrefined-assignment-grades")) return;
@@ -263,9 +227,7 @@ function watchProfileLogoutPageButton() {
     }, 10000);
 }
 
-// Reconcile the button against the current page on a rAF-throttled schedule.
-// Canvas (React-based "New Canvas" UI) re-renders the content area on SPA
-// navigation and can wipe our injected node; a persistent observer re-adds it.
+// Canvas re-renders wipe the button; a persistent observer re-adds it.
 function maintainSubmissionPageButton() {
     if (submissionButtonScheduled) return;
     submissionButtonScheduled = true;
@@ -285,10 +247,7 @@ function maintainSubmissionPageButton() {
     });
 }
 
-// Same reconciliation pattern as maintainSubmissionPageButton, but for the
-// "Go to Grades" button on assignment pages. The grades link needs the
-// current user id, so on the first assignment page visit we kick off the API
-// fetch and re-run once it resolves.
+// Same pattern as maintainSubmissionPageButton; needs currentUserId, fetched once.
 function maintainAssignmentPageButton() {
     if (assignmentButtonScheduled) return;
     assignmentButtonScheduled = true;
@@ -300,7 +259,6 @@ function maintainAssignmentPageButton() {
             if (existing) {
                 const titleContent = existing.closest(".title-content");
                 existing.remove();
-                // Undo the flex-row layout we applied to the title block.
                 if (titleContent) {
                     titleContent.style.display = "";
                     titleContent.style.alignItems = "";
@@ -327,13 +285,7 @@ function isAssignmentPage() {
     return /^\/courses\/\d+\/assignments(?:\/\d+)?(?:\/|$)/.test(current_page);
 }
 
-// CSS-based hiding is the only mechanism: the style element persists across
-// Canvas re-renders and full reloads, and toggling the option off just removes
-// the style — the footer comes back instantly with no refresh. (An earlier
-// version also stripped the footer from the DOM on assignment pages, but that
-// made the toggle one-way until a reload, and display:none collapses the
-// footer gaplessly anyway — verified the content panel height shrinks by
-// exactly the footer height.)
+// CSS-only hiding: survives re-renders and toggles back instantly.
 function applyHideSequenceFooter() {
     let style = document.getElementById("canvasrefined-hide-sequence-footer");
     if (options.hide_sequence_footer === true) {
@@ -342,11 +294,7 @@ function applyHideSequenceFooter() {
             style.id = "canvasrefined-hide-sequence-footer";
             (document.head || document.documentElement).appendChild(style);
         }
-        // #sequence_footer is the wrapper Canvas uses on assignment, discussion
-        // and quiz show pages; page show (/courses/:id/pages/:slug) renders the
-        // same Previous/Next bar without that wrapper, as a bare
-        // .module-sequence-footer inside #module_navigation_target — so both
-        // selectors are needed.
+        // #sequence_footer on show pages; page show renders a bare .module-sequence-footer.
         style.textContent = "#sequence_footer,.module-sequence-footer{display:none!important}";
     } else if (style) {
         style.remove();
@@ -357,13 +305,8 @@ function watchSequenceFooter() {
     applyHideSequenceFooter();
 }
 
-// One persistent, rAF-throttled observer that keeps both assignment-page
-// navigation buttons present: the "Back to Assignment" button on submission
-// pages and the "Go to Grades" button on assignment pages. Unlike the old
-// 10s-disconnecting observer, this survives Canvas' post-navigation re-renders
-// that remove injected nodes. The extra delayed checks cover React hydration
-// that wipes the button after our first add without emitting any later mutation
-// for the observer to catch.
+// Persistent observer keeping both assignment nav buttons mounted;
+// the delayed re-checks cover React hydration.
 function maintainAssignmentNavButtons() {
     maintainSubmissionPageButton();
     maintainAssignmentPageButton();
@@ -399,7 +342,7 @@ function watchNewCanvasButton() {
             }
             return;
         }
-        // Only scan when nodes were actually added, and coalesce to one pass per frame.
+        // Coalesce to one pass per frame.
         let added = false;
         for (const mutation of mutationList) {
             if (mutation.addedNodes && mutation.addedNodes.length) { added = true; break; }
@@ -508,7 +451,7 @@ function createNasaInfoOverlay() {
     const panel = nasaInfoOverlayEl.querySelector("#nasa-info-panel");
     
     const populatePanel = async () => {
-        // Search backward up to 7 days for the APOD actually cached, since today's may not be ready.
+        // Today's APOD may not be cached yet; search back up to 7 days.
         const date = new Date();
         for (let i = 0; i < 7; i++) {
             const dateStr = date.toISOString().slice(0, 10);
@@ -592,32 +535,17 @@ let grades = null;
 let announcements = [];
 let completed = [];
 let assignmentsDue = [];
-// Render-generation counters. createTodoSections/loadCardAssignments render
-// asynchronously (inside a .then), while several code paths re-render by
-// calling clearTodoList() + createTodoSections() again. Without a guard, a
-// render whose data promise resolves AFTER a newer clear+render started would
-// append a second full set of group wrappers/items on top of the fresh render
-// — the reported "todo list is all doubled" glitch. Each render captures the
-// counter at call time and aborts if a newer render has started by the time
-// its data arrives.
+// Bumped per render; rendering aborts when its data lands after a newer render started.
 let todoRenderGen = 0;
 let cardRenderGen = 0;
 let options = {};
 let timeCheck = null;
 let reminderCheck = null;
-// Set while a background planner-cache refresh is in flight so overlapping
-// schedules (multiple loads, multiple tabs) can't run concurrently.
 let plannerRefreshRunning = false;
 let betterSidebarLoading = false;
 let dashboardReadyTimer = null;
 let sidebarReadyTimer = null;
-// Signature of the dashboard card set last time we ran the full setup pass.
-// The MutationObserver in checkDashboardReady fires on every childList change
-// in the document — including the ones our own setup pass (loadCardAssignments,
-// customizeCards, etc.) causes. Without a guard, that re-triggers the observer
-// and re-runs the whole pass every animation frame (an infinite reflow loop).
-// We only need to re-run when Canvas actually changes the dashboard cards, so
-// we skip the heavy pass whenever the card set is unchanged.
+// Skips the setup pass when the card set is unchanged (stops a self-retriggering reflow loop).
 let lastDashboardCardSignature = null;
 let sidebarBadgeObserver = null;
 let sidebarBadgeSyncTimer = null;
@@ -637,10 +565,7 @@ const canvas_svg = `<svg xmlns="http://www.w3.org/2000/svg" fill="#ff4545" width
 async function insertReminders(reminders) {
     const storage = await chrome.storage.sync.get("reminders");
     const stored = Array.isArray(storage["reminders"]) ? storage["reminders"] : [];
-    // Keyed by link ("h"). Dedupes while loading: older versions replaced a
-    // matching entry in place for submitted items (c === -1) but ALSO appended
-    // the insert again, so one extra copy accumulated in storage on every
-    // load/refresh. Rebuilding the map here heals already-duplicated storage.
+    // Keyed by link ("h"); rebuilding the map heals duplicates left by older versions.
     const byHref = new Map();
     for (const r of stored) {
         if (!r || !r.h) continue;
@@ -655,9 +580,7 @@ async function insertReminders(reminders) {
             byHref.set(insert.h, insert);
             changed = true;
         } else if (insert.c === -1 && prev.c !== -1) {
-            // Recently submitted: update the existing entry in place instead of
-            // adding a second copy. An unsubmitted insert never overwrites an
-            // existing entry, and a submitted entry stays submitted.
+            // Submitted: update in place instead of appending a second copy.
             byHref.set(insert.h, insert);
             changed = true;
         }
@@ -727,8 +650,7 @@ function updateReminders() {
             if (item.plannable_type === "announcement") return;
             if (due < now) return;
             if (due > now + fiveDays * 2) return;
-            // { due, title, href, hide count }
-            // hide count of -1 indicates the item has a submission
+            // { due, title, href, hideCount }; hideCount -1 = has a submission.
             list.push({ "d": due, "t": item.plannable.title, "h": domain + item.html_url, "c": item?.submissions?.submitted || false ? -1 : 0 });
         });
         insertReminders(list);
@@ -747,10 +669,7 @@ function showExampleReminder() {
 }
 
 
-// Canvas detection: if the domain is in the user's list, start normally.
-// Otherwise probe it (unless detection was declined for it); an empty list
-// auto-adds the first canvas, and with canvases already in the list the user
-// is asked once per domain.
+// Canvas detection: empty list auto-adds the first canvas, otherwise ask once per domain.
 isDomainCanvasPage();
 
 function isDomainCanvasPage() {
@@ -763,8 +682,7 @@ function isDomainCanvasPage() {
             return;
         }
 
-        // not in the list — no prompting/probing if the user turned auto detect
-        // off, or already said no here; just run reminders
+        // auto detect off or already declined here: no prompt, just reminders
         if (result.auto_detect_disabled === true || denied.some(d => domain.includes(d))) {
             startReminderMode();
             return;
@@ -776,12 +694,10 @@ function isDomainCanvasPage() {
                 return;
             }
             if (domains.length === 0) {
-                // first canvas ever — add it automatically (original first-run
-                // behavior) and reload so the extension starts
+                // first canvas ever: add it and reload
                 addCanvasDomain(courses).then(() => location.reload());
             } else {
-                // at least one canvas already in the list: ask the first time
-                // this page is seen. Saying no means we never ask again here.
+                // canvases exist: ask once per domain
                 promptAddCanvasDomain(courses);
             }
         });
@@ -791,7 +707,6 @@ function isDomainCanvasPage() {
 function startReminderMode() {
     setTimeout(reminderWatch, 2000);
     setInterval(reminderWatch, 60000);
-    // turn the reminders on/off if the option is changed
     chrome.storage.onChanged.addListener((changes) => {
         Object.keys(changes).forEach(key => {
             if (key === "remind") reminderWatch();
@@ -814,13 +729,7 @@ async function detectCanvasPage() {
     }
 }
 
-// Verify the /api/v1/courses response actually looks like Canvas course
-// objects, not just "some JSON array". Real Canvas entries always carry a
-// numeric id, a name, and identifying fields (uuid/course_code/enrollments).
-// Without this check unrelated sites that coincidentally serve their own
-// JSON at the same path were misdetected as Canvas — e.g.
-// apstudents.collegeboard.org, whose AP-course list uses the shape
-// { course_id, course_name, course_url }.
+// Real Canvas courses carry a numeric id and name; looser checks misdetected sites like apstudents.collegeboard.org.
 function isCanvasCourseList(courses) {
     return Array.isArray(courses) && courses.length > 0 && courses.every(c =>
         c && c.id != null && typeof c.name === "string" &&
@@ -828,9 +737,7 @@ function isCanvasCourseList(courses) {
     );
 }
 
-// Register the domain in the canvas list. `courses` (from detectCanvasPage) is
-// passed to getCards so this school's courses are indexed before the reload,
-// exactly like the original first-run flow did.
+// Register the domain; its courses are indexed before the reload.
 function addCanvasDomain(courses) {
     return getCards(courses).then(() => new Promise(resolve => {
         setTimeout(() => {
@@ -838,8 +745,7 @@ function addCanvasDomain(courses) {
             chrome.storage.sync.get(["custom_domain"], storage => {
                 const domains = (storage.custom_domain || []).filter(d => d && d !== "");
                 domains.push(domain);
-                // the domain was just accepted — make sure it isn't on the
-                // "don't ask again" list
+                // just accepted: drop it from the decline list
                 chrome.storage.sync.get(["custom_domain_denied"], deniedStorage => {
                     const denied = (deniedStorage.custom_domain_denied || []).filter(d => !domain.includes(d));
                     chrome.storage.sync.set({ custom_domain: domains, custom_domain_denied: denied }).then(resolve);
@@ -860,7 +766,7 @@ function showCanvasPrompt(courses) {
     if (document.getElementById("canvasrefined-domain-prompt-backdrop")) return;
 
     const host = domain.replace(/^https?:\/\//, "");
-    // modal with a backdrop so the ask is impossible to miss
+    // modal with a backdrop so the ask can't be missed
     const backdrop = makeElement("div", document.body, { "id": "canvasrefined-domain-prompt-backdrop" });
     const prompt = makeElement("div", backdrop, { "id": "canvasrefined-domain-prompt" });
     makeElement("h3", prompt, { "textContent": "New Canvas detected" });
@@ -890,7 +796,7 @@ function showCanvasPrompt(courses) {
 }
 
 function startExtension() {
-    // Remove footer robustly - run first so a crash below can't block it
+    // run first so a crash below can't block it
     const removeFooter = () => {
         const footer = document.querySelector('footer#footer.ic-app-footer, footer#footer');
         if (footer) footer.remove();
@@ -898,8 +804,6 @@ function startExtension() {
     removeFooter();
     let footerScheduled = false;
     const footerObserver = new MutationObserver(() => {
-        // Canvas mutates the DOM constantly; only check for the footer at most once
-        // per animation frame instead of running a querySelector on every mutation.
         if (footerScheduled) return;
         footerScheduled = true;
         requestAnimationFrame(() => {
@@ -909,20 +813,13 @@ function startExtension() {
     });
     footerObserver.observe(document.documentElement, { childList: true, subtree: true });
 
-    // Start the submission-page "Back to Assignment" button watcher and the SPA
-    // navigation hook immediately, before the async storage callbacks below.
-    // These don't depend on `options`, and running them first means a throw in
-    // any later init step can't prevent the button from appearing. The watcher
-    // reads window.location.pathname live and uses a persistent MutationObserver
-    // to (re)inject the button once the content container exists.
+    // Watchers start before the async storage callbacks, so a later throw can't block them.
     setupNavigationListener();
     watchSubmissionPageButton();
 
     toggleDarkMode();
 
-    // Include bg_opacity/bg_blur so setupBetterSidebar (called below) tints the
-    // course-content panel with the user's slider values on first load, instead
-    // of falling back to the defaults until a slider is touched.
+    // Include bg_opacity/bg_blur so the panel tints with the user's sliders on first load.
     chrome.storage.sync.get(["better_sidebar", "sidebar_scale", "bg_opacity", "bg_blur"], result => {
         options = { ...options, ...result };
         ensureBetterSidebar();
@@ -932,7 +829,6 @@ function startExtension() {
         options = { ...options, ...result };
         applyTodoAlternateColors();
         toggleAutoDarkMode();
-        // toggleScheduledReminders();
         getApiData();
         checkDashboardReady();
         loadCustomFont();
@@ -957,12 +853,7 @@ function startExtension() {
         setTimeout(() => runDarkModeFixer(false), 4500);
     });
 
-    // Custom CSS lives in storage.local (unlimitedStorage) because
-    // storage.sync's 8KB per-item quota silently dropped long stylesheets.
-    // Merge it into options once sync data is in, re-applying styles. If the
-    // user has CSS only in the legacy sync key (pre-migration), copy it over
-    // to local so it keeps working — sync keeps its copy as a rollback-safe
-    // backup until the next popup save.
+    // Custom CSS lives in storage.local: sync's 8KB per-item quota dropped long stylesheets.
     chrome.storage.local.get("custom_styles", local => {
         if (local && local["custom_styles"] !== undefined) {
             options = { ...options, custom_styles: local["custom_styles"] };
@@ -992,8 +883,6 @@ function applyOptionsChanges(changes) {
     });
     options = { ...options, ...rewrite };
 
-    // when an option is updated it will call the necessary functions again
-    // so any changes made in the menu no longer require a refresh to apply
 
     Object.keys(changes).forEach(key => {
         switch (key) {
@@ -1002,8 +891,6 @@ function applyOptionsChanges(changes) {
 			case "device_dark":
 				toggleDarkMode();
 				applyTodoAlternateColors();
-				// "Ignore card colors" picks black vs. theme text color based on dark
-				// mode, so re-render the Better Todo list to keep it in sync.
 				if (options.todo_ignore_card_colors && options.better_todo && document.getElementById("better-todo-main")) {
 					clearTodoList();
 					createTodoSections(document.querySelector("#canvasrefined-todo-list"));
@@ -1049,7 +936,6 @@ function applyOptionsChanges(changes) {
 				loadDailyQuotesWidget();
 				break;
 			case "daily_quote":
-				// Background refreshed the cached quote for today.
 				document.querySelectorAll(".canvasrefined-quotes").forEach(el => {
 					renderDailyQuote(el, changes["daily_quote"].newValue);
 				});
@@ -1060,10 +946,7 @@ function applyOptionsChanges(changes) {
 					if (row) applyWidgetRowLayout(row, area);
 				});
 				applyCardWidgetOrder(document.querySelector(".ic-DashboardCard__box__container"));
-				// A widget moved between areas (or joined/left a shared row) needs
-				// the OTHER widgets to re-place too: each widget only repositions
-				// itself on its own position key, so without this the widget left
-				// behind would keep the old layout until reload.
+				// Neighbouring widgets must re-place too, or the vacated slot keeps the old layout.
 				if (options.dashboard_notes === true) loadDashboardNotes();
 				if (options.gpa_calc === true && current_page === "/") setupGPACalc();
 				loadAllSimpleWidgets();
@@ -1088,9 +971,7 @@ function applyOptionsChanges(changes) {
 				)
 					setupCardAssignments();
 				loadCardAssignments();
-				// The card overflow fix in applyAestheticChanges() depends on
-				// assignments_due, so re-run it when that option toggles to keep
-				// the overflow rule in sync without a page reload.
+				// The card overflow fix depends on assignments_due.
 				applyAestheticChanges();
 				break;
 			case "custom_assignments":
@@ -1101,17 +982,14 @@ function applyOptionsChanges(changes) {
 				loadCardAssignments();
 				break;
 			case "equal_height_cards":
-				// Stretch or reset card heights in place instead of rebuilding rows.
 				equalizeCardHeights();
 				break;
 			case "hide_completed_cards":
-				// Assignment elements are already preloaded; just re-filter the render.
 				loadCardAssignments();
 				break;
 			case "custom_cards":
 				customizeCards();
-				// Hiding/unhiding a card changes which courses appear in the todo
-				// list and the progress display, so re-render them immediately.
+				// Hidden cards change which courses show in the todo list and progress display.
 				if (options.better_todo && document.getElementById("better-todo-main")) {
 					moreAnnouncementCount = 0;
 					moreAssignmentCount = 0;
@@ -1130,7 +1008,6 @@ function applyOptionsChanges(changes) {
 			case "todo_timeframe":
 			case "todo_timeframe_custom_past":
 			case "todo_timeframe_custom_future":
-			// case "todo_overdues":
 			case "todo_hide_feedback":
 			case "todo_hide_read":
 			case "todo_full_height":
@@ -1141,7 +1018,6 @@ function applyOptionsChanges(changes) {
 				if (options.better_todo && document.getElementById("better-todo-main")) {
 					moreAnnouncementCount = 0;
 					moreAssignmentCount = 0;
-					// A new timeframe starts back at the current window.
 					betterTodoTimeframeOffset = 0;
 					clearTodoList();
 					createTodoSections(document.querySelector("#canvasrefined-todo-list"));
@@ -1150,18 +1026,13 @@ function applyOptionsChanges(changes) {
 			case "hide_personal_details":
 			case "anon_grade_level":
 			case "anon_grade_seed":
-				// "Reroll classes": the fake-course mapping is memoized, so a new
-				// seed has to reset it before anything re-renders.
+				// New seed invalidates the memoized fake-course mapping.
 				if (key === "anon_grade_seed") anonCourseMap.clear();
-				// The GPA calculator caches its rendered state; drop the marker
-				// so setupGPACalc below rebuilds it with fake/real values instead
-				// of leaving the previous inputs in place.
+				// Drop the GPA cached marker so setupGPACalc rebuilds.
 				document.querySelectorAll(".canvasrefined-gpa-card, .canvasrefined-gpa").forEach(el => el.removeAttribute("data-canvasrefined-gpa-rendered"));
-				// Starts/stops the DOM watcher; with it off, restores the real
-				// text/attributes stashed in dataset markers.
+				// Toggles the DOM watcher; turning it off restores the stashed real text.
 				setupPersonalDetailsHiding();
-				// Todo item text, card grades and card assignment names are baked
-				// in at render time, so re-render them to swap fake/real data.
+				// Item text, grades and assignment names are baked in at render time.
 				if (options.better_todo && document.getElementById("better-todo-main")) {
 					moreAnnouncementCount = 0;
 					moreAssignmentCount = 0;
@@ -1178,8 +1049,7 @@ function applyOptionsChanges(changes) {
 			case "anon_progress_enabled":
 			case "anon_progress_done":
 			case "anon_progress_total":
-				// Adds/removes the fake todo items (or changes how many are done,
-				// or rewrites the progress readout) without touching anything else.
+				// Rebuild the fake todo items without touching anything else.
 				if (options.better_todo && document.getElementById("better-todo-main")) {
 					moreAnnouncementCount = 0;
 					moreAssignmentCount = 0;
@@ -1198,9 +1068,7 @@ function applyOptionsChanges(changes) {
 			case "gpa_calc_cumulative":
 				if (!grades) getGrades();
 				setupGPACalc();
-				// The GPA elements participate in the card grid layout (see
-				// applyAestheticChanges), so toggling GPA on/off has to
-				// regenerate the grid CSS too.
+				// GPA elements take part in the grid layout, so regenerate the grid CSS.
 				if (options.card_grid === true) debouncedApplyAestheticChanges();
 				break;
 			case "gpa_calc_bounds":
@@ -1222,11 +1090,7 @@ function applyOptionsChanges(changes) {
 			case "custom_styles":
 			case "hide_navbar":
 				applyAestheticChanges();
-				// Better Sidebar also hides the nav-toggle + breadcrumbs bar with
-				// an inline style (part of its layout). The "Hide Navigation
-				// Bar" sub-option is the single source of truth for that
-				// element, so live-apply/restore the inline style here too —
-				// setupBetterSidebar only sets it once, on first mount.
+				// "Hide Navigation Bar" owns that inline style; setupBetterSidebar only sets it on first mount.
 				if (options.better_sidebar) {
 					const crumbsBar = document.querySelector(".ic-app-nav-toggle-and-crumbs");
 					if (options.hide_navbar === true) {
@@ -1234,9 +1098,7 @@ function applyOptionsChanges(changes) {
 					} else {
 						crumbsBar?.style.removeProperty("display");
 					}
-					// The mobile context nav + arrow button follow the same
-					// "Hide Navigation Bar" gate — restyle to add/remove the
-					// hide rules live.
+					// Mobile context nav follows the same "Hide Navigation Bar" gate.
 					setupMobileNavStyle();
 				}
 				break;
@@ -1289,11 +1151,7 @@ function applyOptionsChanges(changes) {
 			case "card_grid_center_rows":
 			case "card_grid_flex":
 			case "customCardStyles":
-				// Coalesce rapid card-style edits (e.g. holding the arrow keys on a
-			// number input) into a single applyAestheticChanges() call. Each
-			// storage onChanged event would otherwise re-run the dashboard style
-			// pass immediately; a ~150ms cooldown is barely noticeable but keeps
-			// the page from thrashing while the user is still adjusting values.
+				// Coalesce rapid card-style edits into one applyAestheticChanges() (~150ms).
 				debouncedApplyAestheticChanges();
 				break;
 			case "customBackgroundLink":
@@ -1325,7 +1183,6 @@ function applyOptionsChanges(changes) {
 				}
                     break;
                 case "todo_progress_rings": {
-                    // toggle progress rings immediately
                     const placeholder = document.getElementById("better-todo-progress-placeholder");
                     if (!placeholder) break;
                     if (progressRingsEnabled()) {
@@ -1333,7 +1190,6 @@ function applyOptionsChanges(changes) {
                             assignments.then(data => {
                                 const courseId = getCurrentCourseId();
                                 const scopedData = getTodoScopedData(data, courseId);
-                                // Rings must match the list when fake items are shown.
                                 if (options.hide_personal_details === true && options.anon_fake_todo === true) {
                                     scopedData.push(...buildFakeTodoItems());
                                 }
@@ -1346,10 +1202,7 @@ function applyOptionsChanges(changes) {
                     break;
                 }
 			case "better_sidebar":
-				// Better Sidebar mounts its whole layout on page load, so either
-				// direction of the toggle reloads the page for a clean mount/
-				// removal. The old-value guard keeps a re-save of the same value
-				// from looping the reload.
+				// Either direction reloads for a clean mount; the old-value guard prevents a reload loop.
 				if (changes["better_sidebar"]?.oldValue !== options.better_sidebar) {
 					window.location.reload();
 					break;
@@ -1366,12 +1219,10 @@ function applyOptionsChanges(changes) {
                 watchGradeAnalytics();
                 break;
             case "grade_analytics_zones":
-                // Colored 10% zones on the line chart — just redraw the charts.
                 if (gradeAnalyticsActive() && gaOpen && gaData) renderGradeAnalytics();
                 break;
             case "quiz_safe_mode":
-                // Toggling safe mode changes which features run on quiz pages; reload
-                // so the gating is applied cleanly.
+                // Feature gating changes on quiz pages; reload to apply cleanly.
                 if (isQuizPage()) window.location.reload();
                 break;
             case "sidebar_scale": {
@@ -1420,7 +1271,7 @@ function resetBetterSidebarLayout() {
 
 function ensureBetterSidebar() {
     if (!options.better_sidebar) return;
-    // Quiz safe mode: don't replace the Canvas sidebar on quiz pages.
+    // Quiz safe mode: keep Canvas' sidebar.
     if (quizSafeModeActive()) return;
     if (document.querySelector("#better-sidebar-container")) return;
     if (!document.querySelector("#wrapper") || !document.querySelector(".ic-Layout-contentWrapper")) return;
@@ -1428,9 +1279,8 @@ function ensureBetterSidebar() {
 }
 
 async function applyCustomBackground() {
-    // Quiz safe mode: leave the quiz page background untouched.
+    // Quiz safe mode: leave the background untouched.
     if (quizSafeModeActive()) return;
-    // let style = document.querySelector("#DashboardCard_Container")
     let style = document.querySelector("#canvasrefined-background") || document.createElement('style');
     style.id = "canvasrefined-background";
 
@@ -1443,23 +1293,15 @@ async function applyCustomBackground() {
     const backgroundScale = Number(activeBackground.scale) || 100;
     const backgroundUrl = JSON.stringify(activeBackground.url);
     const fitToScreen = options.fitImageToScreen === true;
-    // Opacity sliders (0-100). 100 = fully opaque surface, 0 = fully transparent
-    // so the background image shows through. Only emitted while a background is
-    // active, since transparency without an image just exposes the dark body.
+    // Opacity (0-100): 100 = opaque, 0 = background shows through. Only emitted with a background active.
     const bgOpacity = Math.max(0, Math.min(100, Number(options.bg_opacity ?? 65)));
     const sidebarOpacity = Math.max(0, Math.min(100, Number(options.sidebar_opacity ?? 100)));
     const bgTransparent = 100 - bgOpacity;
     const sidebarTransparent = 100 - sidebarOpacity;
-    // Blur sliders (px). Pairs with opacity: blur only has a visible effect when
-    // the surface is semi-transparent (opacity < 100) so the background behind
-    // shows through and gets blurred. Default 8px on content surfaces preserves
-    // the previous dashboard-header glass look; sidebar defaults to none.
+    // Blur (px): only visible when opacity < 100. Content surfaces default to 8px.
     const bgBlur = Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)));
     const sidebarBlur = Math.max(0, Math.min(30, Number(options.sidebar_blur ?? 0)));
-    // Card transparency mirrors the content-panel glass effect (bg_opacity/
-    // bg_blur) but applies it to dashboard course cards (.ic-DashboardCard).
-    // Only active when the user explicitly enables it, since transparent cards
-    // over a busy background can hurt legibility.
+    // Card glass effect, off by default (transparent cards can hurt legibility).
     const cardTransparency = options.card_transparency === true;
     const cardOpacity = Math.max(0, Math.min(100, Number(options.card_opacity ?? 80)));
     const cardBlur = Math.max(0, Math.min(30, Number(options.card_blur ?? 8)));
@@ -1479,7 +1321,6 @@ async function applyCustomBackground() {
         }
         .ic-Dashboard-header__layout {
             background: none !important;
-            /* backdrop-filter: blur(10px) !important; */
             border-radius: 5px;
             padding-left: 20px !important;
         }
@@ -1496,13 +1337,7 @@ async function applyCustomBackground() {
             backdrop-filter: blur(${bgBlur}px) saturate(120%) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) saturate(120%) !important;
         }
-        /* Dashboard list view (planner). Canvas paints each day block an
-           opaque theme color, so with a background image the whole list reads
-           as one solid slab that hides the image — unlike card view, where
-           the glass header and (optionally) translucent cards let it show
-           through. Give each day group the same glass treatment as the module
-           panels (color-mix tint + slider blur + rounded border) so the
-           background peeks through between the day cards. */
+        /* glass day groups so a background image shows through between day cards */
         #dashboard-planner .planner-day,
         #dashboard-planner .planner-empty-days {
             background: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
@@ -1513,13 +1348,7 @@ async function applyCustomBackground() {
             padding: 8px 12px !important;
             box-sizing: border-box !important;
         }
-        /* Inner surfaces Canvas keeps opaque (the "Show N completed
-           item" facade, "Nothing Planned" filler, and the Today/Add To Do
-           header cluster that sits on the glass dashboard header bar):
-           flatten them so the glass behind shows through. The course-
-           grouping label instead gets a subtle chip behind the course name —
-           it sits over the course hero image, so without a backdrop the
-           text can be hard to read on busy images. */
+        /* canvas keeps these inner surfaces opaque; flatten so the glass shows */
         #dashboard-planner .CompletedItemsFacade-styles__root,
         #dashboard-planner .EmptyDays-styles__nothingPlanned,
         #dashboard-planner-header .PlannerHeader-styles__root {
@@ -1529,8 +1358,7 @@ async function applyCustomBackground() {
             background: var(--bcbackground-1) !important;
             border-radius: 6px !important;
         }
-        /* Item-row hover: subtle tint on the glass instead of Canvas's flat
-           gray, so rows feel alive on the translucent day cards. */
+        /* hover tint on glass instead of Canvas's flat gray */
         #dashboard-planner .planner-item:hover,
         #dashboard-planner .Grouping-styles__heroHover:hover {
             background: color-mix(in srgb, var(--bctext-0) 5%, transparent) !important;
@@ -1542,25 +1370,13 @@ async function applyCustomBackground() {
             background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%);
             border-radius: 5px;
         }
-        /* Native left nav column: #left-side > #sticky-container.ic-sticky-frame
-           (the course/account/group menu links). Tint the whole #left-side column
-           rather than the inner .ic-sticky-frame, whose height only wraps its
-           links — the column spans the full viewport height like the other
-           sidebars, at the same bg_opacity/bg_blur as the Better Todo List
-           panel. Without this, a custom background (most visible in light mode)
-           shows through untinted behind the nav links. */
+        /* tint the whole #left-side column (the inner frame only wraps the links) */
         #left-side {
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
         }
-        /* Recent feedback lives in #right-side. The dark-mode CSS
-           (darkmodecss.js) recolors its text, but those rules are dark-mode-
-           only — so in light mode + custom background the sub-text (context,
-           grade, quote) keeps Canvas's default gray on the now-translucent
-           panel and becomes hard to read. Recolor to the theme text color so
-           it stays readable in both modes whenever a background is active.
-           Mirrors the dark-mode selectors; redundant (same value) in dark mode. */
+        /* #right-side sub-text keeps Canvas gray in light mode; recolor for contrast */
         .recent_feedback .event-details {
             background: none !important;
         }
@@ -1573,15 +1389,7 @@ async function applyCustomBackground() {
         .event-details strong {
             color: var(--bctext-0) !important;
         }
-        /* Native global nav sidebar. color-mix only accepts a solid color, so
-           gradient/image sidebars keep their existing look (rule is invalid and
-           ignored). At 100% opacity this is equivalent to var(--bcsidebar).
-           Sidebar blur only shows when sidebar opacity < 100.
-           The icon/text colors are recolored to var(--bcsidebar-text) to match
-           the background we just set — without this, light mode (where
-           --bcsidebar is the light default #e3e3e3) would leave institution-
-           themed light icons on a now-light background = white-on-white.
-           Mirrors the dark-mode rules in css/darkmodecss.js. */
+        /* color-mix needs a solid color, so gradient/image sidebars are left alone */
         .ic-app-header {
             background: color-mix(in srgb, var(--bcsidebar), transparent ${sidebarTransparent}%) !important;
             backdrop-filter: blur(${sidebarBlur}px) !important;
@@ -1600,11 +1408,7 @@ async function applyCustomBackground() {
         .ic-app-header__menu-list-link:hover {
             background: #0000004f !important;
         }
-        /* Better sidebar. The inline background-color is var(--bcsidebar), so the
-           !important here is required to override it. The same sidebar_opacity /
-           sidebar_blur sliders drive both surfaces, so whichever sidebar is
-           active (Better Sidebar when enabled, otherwise the native nav) picks
-           up the value. */
+        /* !important required: the inline background-color is var(--bcsidebar) */
         #better-sidebar-container {
             background-color: color-mix(in srgb, var(--bcsidebar), transparent ${sidebarTransparent}%) !important;
             backdrop-filter: blur(${sidebarBlur}px) !important;
@@ -1615,15 +1419,7 @@ async function applyCustomBackground() {
             padding: 0 !important;
             border: none !important;
         }
-        /* Page show (/courses/:id/pages/:slug): Canvas paints h1.page-title and
-           the Previous/Next module-sequence footer as opaque slabs, so with a
-           custom background they sit as solid blocks on the glass content
-           panel (dark mode also paints both var(--bcbackground-0) via
-           darkmodecss.js). Flatten the title to match assignment/quiz titles
-           (plain text on the glass panel) and give the sequence footer the
-           same glass treatment as the other content surfaces. Selectors match
-           darkmodecss.js exactly and this style element is appended after it,
-           so these rules win the !important cascade tie. */
+        /* page show: flatten title + sequence footer to match the other glass panels */
         .pages.show .page-title,
         .page-title {
             background: none !important;
@@ -1641,13 +1437,11 @@ async function applyCustomBackground() {
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 12px !important;
             border: 1px solid color-mix(in srgb, var(--bcborders) 75%, transparent) !important;
-            /* box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important; */
         }
         #context_modules_sortable_container {
             border: none !important;
             background: none !important;
             padding: 0 !important;
-            /* backdrop-filter: blur(0) !important; */
         }
         .item-group-condensed .ig-header,
         .item-group-condensed .ig-row,
@@ -1669,30 +1463,14 @@ async function applyCustomBackground() {
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
         }
-        /* InstUI flex View panel (emotion hash css-fiozi7-view--flex-flex)
-           ships a hardcoded opaque surface that sits untinted on top of the
-           background image. Give it the same glass treatment as the other
-           content panels: theme tint at the bg_opacity slider value plus the
-           bg_blur backdrop. */
+        /* InstUI flex View ships an opaque surface; give it the glass treatment */
         .css-fiozi7-view--flex-flex {
             background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
         }
-        /* Inner InstUI Views of that panel (author row, title row, message
-           container...) keep their own opaque backgrounds, which read as
-           dark/light slabs covering the glass. Flatten them so the panel
-           reads as one glass surface — with exceptions:
-           - avatar circles (their backdrop is part of the picture),
-           - the whole role-pill subtree (Canvas pairs its white uppercase
-             text with a chip painted on the list items; flattening it left
-             white text on glass),
-           - base buttons: flattened to bare glass buttons instead. The
-             button root, its content span and its icon wrapper all go
-             transparent so the white label/icon read on the glass — this
-             also overrides the dark-mode baseButton__content chip, which
-             would otherwise double-stack inside the flattened panel. */
+        /* flatten inner Views to one surface; keep avatars, role pills, buttons */
         .css-fiozi7-view--flex-flex [class*="-view"]:not([class*="-avatar"]):not([data-testid="pill-container"]):not([data-testid="pill-container"] *):not([class*="-baseButton"]) {
             background: none !important;
         }
@@ -1703,18 +1481,12 @@ async function applyCustomBackground() {
             border: none !important;
             box-shadow: none !important;
         }
-        /* De-dupe stacked surfaces: a nested copy of the panel (the header
-           renders one View inside another) must not add a second backdrop
-           blur over the outer glass. */
+        /* nested copy of the panel: no second blur over the outer glass */
         .css-fiozi7-view--flex-flex .css-fiozi7-view--flex-flex {
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
         }
-        /* The discussion threads toolbar (emotion hash css-1n94jrf-view,
-           themed opaque in dark mode) sits directly under the glass header
-           panel; with a custom background the two read as a double opaque
-           surface. Give the toolbar the same glass treatment so the area is
-           one continuous surface. */
+        /* threads toolbar sits under the header panel; same glass treatment */
         .css-1n94jrf-view {
             background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
@@ -1750,13 +1522,7 @@ async function applyCustomBackground() {
             box-sizing: border-box !important;
         }
         ` : ""}
-        /* Course content pages (sidebar layout "course": /courses/:id/* and
-           /profile): tint the #content.ic-Layout-contentMain panel so the
-           bg_opacity/bg_blur sliders have a surface to control even without Better
-           Sidebar. setupBetterSidebar only adds this panel when Better Sidebar is
-           on; this mirrors its inline values so the panel shows regardless. When
-           Better Sidebar is on, its inline !important overrides these (same values),
-           so this rule is inert in that case. */
+        /* #content tint so bg_opacity/bg_blur apply without Better Sidebar */
         ${getSidebarLayoutMode() === "course" ? `
         .ic-Layout-contentMain {
             margin: 26px 38px 38px !important;
@@ -1791,8 +1557,6 @@ async function applyCustomBackground() {
         .item-group-condensed .context_module_item,
         .item-group-container .context_module_item {
             background: transparent !important;
-            /* backdrop-filter: blur(10px) saturate(115%) !important;
-               -webkit-backdrop-filter: blur(10px) saturate(115%) !important; */
         }
         .item-group-condensed .context_module_item:hover,
         .item-group-container .context_module_item:hover,
@@ -1807,7 +1571,6 @@ async function applyCustomBackground() {
             border: 1px solid color-mix(in srgb, var(--bcborders) 75%, transparent) !important;
         }
         .ig-header {
-            /* backdrop-filter: blur(10px) !important; */
         }
         .item-group-condensed.context_module,
         .item-group-condensed.context_module_item,
@@ -1822,7 +1585,7 @@ async function applyCustomBackground() {
             padding-top: 0 !important;
         }
 
-        /* Module panels keep the slider blur on hover (previously a fixed 5px). */
+        /* module panels keep the slider blur on hover */
         .item-group-condensed.context_module,
         .item-group-condensed.context_module_item,
         .item-group-condensed[class~="context_module"],
@@ -1842,15 +1605,7 @@ async function applyCustomBackground() {
             -webkit-backdrop-filter: blur(${cardBlur}px) saturate(120%) !important;`
                 : `background: var(--bcbackground-0) !important;`}
         }
-        /* Card header strip (the course-nickname bar under the hero). Canvas
-           paints it a solid light color ($ic-color-light) and nothing overrides
-           that in light mode, so with card transparency on it reads as a solid
-           band across an otherwise translucent card. Mirror the card surface:
-           transparent cards drop the strip's background so the card's glass
-           (tint + blur already applied to .ic-DashboardCard) shows through;
-           opaque cards paint it the same solid theme color as the card body.
-           Dark mode already flattens this strip via darkmodecss.js, so this
-           is inert there (same value). */
+        /* card header strip: transparent on translucent cards, theme color otherwise */
         .ic-DashboardCard__header_content {
             ${cardTransparency
                 ? `background: none !important;`
@@ -1899,7 +1654,6 @@ function checkDashboardReady() {
     const isDashboard = () => current_page == "/" || current_page == "" || /^\/courses\/(\d+)(?:\/|$)/.test(current_page);
 
     const callback = (mutationList) => {
-        // Ignore attribute-only mutations; only structural (childList) changes matter here.
         let hasChildList = false;
         for (const mutation of mutationList) {
             if (mutation.type === "childList") { hasChildList = true; break; }
@@ -1907,7 +1661,6 @@ function checkDashboardReady() {
         if (!hasChildList) return;
 
         if (isDashboard()) {
-            // Debounce: a single setup pass per burst of mutations.
             if (dashboardReadyTimer) return;
             dashboardReadyTimer = setTimeout(() => {
                 dashboardReadyTimer = null;
@@ -1915,27 +1668,14 @@ function checkDashboardReady() {
                 const c = document.querySelector("#DashboardCard_Container");
                 if (c) {
                     let cards = document.querySelectorAll(".ic-DashboardCard");
-                    // Build a cheap signature of the current card set. The setup
-                    // pass below mutates the cards' internals (assignment rows,
-                    // grades, etc.) but never adds/removes the .ic-DashboardCard
-                    // elements themselves, so the signature stays stable across
-                    // our own mutations. It only changes when Canvas re-renders the
-                    // dashboard (cards added/removed/reordered/replaced). Skipping
-                    // when it's unchanged breaks the self-retriggering reflow loop.
+                    // Cheap signature of the card set; our own mutations never change it.
                     let signature = cards.length + "";
                     for (let i = 0; i < cards.length; i++) {
                         const link = cards[i].querySelector(".ic-DashboardCard__link");
                         signature += "|" + (link ? link.getAttribute("href") : "");
                     }
-                    // Canvas often re-renders the dashboard on a hard reload and
-                    // replaces the .ic-DashboardCard nodes with fresh ones that have
-                    // the same courses/links (so the signature is unchanged) but no
-                    // longer carry our .canvasrefined-card-assignment marker. The
-                    // signature guard alone would skip re-setup in that case, leaving
-                    // card assignments empty until a popup toggle forces a reload.
-                    // Re-run whenever any card is missing its marker too. This is safe
-                    // from the self-retriggering reflow loop: after the pass every
-                    // card has the marker, so our own subsequent mutation bursts skip.
+                    // A hard reload replaces the card nodes with ones missing our marker, so
+                    // also re-run whenever any card lacks it.
                     let missingMarker = false;
                     for (let i = 0; i < cards.length; i++) {
                         if (!cards[i].querySelector(".canvasrefined-card-assignment")) {
@@ -1969,8 +1709,7 @@ function checkDashboardReady() {
                 }
             }, 0);
         } else if (options.better_sidebar) {
-            // Throttle sidebar setup checks on non-dashboard (course) pages instead
-            // of calling ensureBetterSidebar() on every mutation burst.
+            // Throttle sidebar setup checks on course pages.
             if (sidebarReadyTimer) return;
             sidebarReadyTimer = setTimeout(() => {
                 sidebarReadyTimer = null;
@@ -1981,10 +1720,7 @@ function checkDashboardReady() {
 
     const observer = new MutationObserver(callback);
     observer.observe(document.documentElement, { childList: true, subtree: true });
-    // On a fast load (or cached dashboard) Canvas can finish rendering before
-    // this observer is attached, so no structural mutation would ever trigger
-    // the setup pass and widgets (notably the GPA card) would only appear on
-    // the next unrelated DOM change. Kick one pass immediately.
+    // Canvas can finish rendering before this observer attaches; kick one pass immediately.
     callback([{ type: "childList" }]);
 }
 
@@ -2000,11 +1736,7 @@ function recieveMessage(request, sender, sendResponse) {
         case ("setcolors"): changeColorPreset(request.options); sendResponse(true); break;
         case ("getcolors"): getCardColors().then(colors => sendResponse(colors)); return true; // keep the message channel open for async sendResponse
         case ("getGridCardCount"): {
-            // Popup card-grid warning asks the real page instead of guessing
-            // from stored card data: only cards actually rendered on this
-            // dashboard that aren't display:none (hidden via the card menu)
-            // occupy grid cells. Null means "no dashboard here" so the popup
-            // falls back to its storage-derived count.
+            // Only cards actually rendered and not display:none occupy grid cells; null = no dashboard here.
             try {
                 const dashCards = Array.from(document.querySelectorAll(".ic-DashboardCard"));
                 if (!dashCards.length) { sendResponse(null); break; }
@@ -2020,9 +1752,7 @@ function recieveMessage(request, sender, sendResponse) {
         case ("fixdm"): sendResponse(runDarkModeFixer(true)); break;
 		case ("updateBackground"): applyCustomBackground(); sendResponse(true); break;
         case ("clearPlannerCache"):
-            // "Clear planner cache" (Report issue tab in the popup): drop
-            // the cache, re-fetch fresh planner data, and re-render every
-            // consumer in this tab.
+            // Clear planner cache: refetch and re-render every consumer in this tab.
             (async () => {
                 try { await chrome.storage.local.remove(PLANNER_CACHE_KEY); } catch (e) { /* nothing stored */ }
                 if (options.assignments_due === true || options.better_todo === true) {
@@ -2101,9 +1831,7 @@ function inspectDarkMode(withOutput = false) {
 }
 
 async function getCardColors() {
-    // Same display order changeColorPreset uses to APPLY palettes, so an
-    // exported theme's color list maps back onto the same courses when
-    // applied. Works in list mode too (API fallback inside getPaletteCards).
+    // Same order changeColorPreset applies palettes with, so exports map back to courses.
     const { cards, apiColors } = await getPaletteCards();
     if (cards.length === 0) return [];
     return cards.map(card => card.el
@@ -2138,7 +1866,6 @@ function getCardsFromDashboard() {
         
                     cards_3[id] = { "url": domain };
                 } else {
-                    // backfill full name for cards created before this field existed
                     const full = card.querySelector(".ic-DashboardCard__header-title")?.textContent?.trim() || "";
                     if (full && cards[id].fullName !== full) {
                         cards[id].fullName = full;
@@ -2148,13 +1875,10 @@ function getCardsFromDashboard() {
                 count++;
             });
 
-            // there shouldn't be 0 cards
             if (count === 0) return;
 
-            //delete cards that aren't on the dashboard anymore
             Object.keys(cards).forEach(key => {
                 let found = false;
-                // ignore cards that are not for the current url
                 if (cards_3[key] && cards_3[key].url !== domain) {
                     found = true;
                 } else {
@@ -2195,7 +1919,6 @@ async function getCards(api = null) {
         let cards_3 = storage["custom_cards_3"] || {};
         let newCards = false;
         let count = 0;
-        // sort cards by enrollment id (i think the higher the id, the more recent it is)
         if (options["card_method_date"] === true) {
             dashboard_cards.sort((a, b) => (b?.created_at) > (a?.created_at) ? 1 : -1);
         } else {
@@ -2234,10 +1957,8 @@ async function getCards(api = null) {
 
             });
 
-            //delete cards that aren't on the dashboard anymore
             Object.keys(cards).forEach(key => {
                 let found = false;
-                // ignore cards that are not for the current url
                 if (cards_3[key] && cards_3[key].url !== domain) {
                     found = true;
                 } else {
@@ -2287,22 +2008,15 @@ function updateIndicator(element) {
 		const btn = document.getElementById(`better-todo-${button}`);
 		if (btn == element) {
 			btn.firstElementChild.style.opacity = "1";
-			// btn.style.filter = "none";
 		}
 		else {
 			btn.firstElementChild.style.opacity = ".5";
-			// btn.style.filter = "grayscale(100%)";
 		}
 	})
 
 }
-// better todo html
 betterTodoFilter = "tasks";
-// Timeframe filter for the upcoming Tasks tab. "all" = no limit; otherwise
-// items are limited to a window around now: one week of history back through
-// now+range (older overdue backlog is cut). Only affects the Tasks (upcoming)
-// tab; announcements and completed are unaffected because their dates are in
-// the past.
+// Timeframe filter for the Tasks tab; "all" = no limit. Announcements and completed are unaffected.
 let betterTodoTimeframe = "all";
 const BETTER_TODO_TIMEFRAME_DAYS = {
 	"1week": 7,
@@ -2310,39 +2024,23 @@ const BETTER_TODO_TIMEFRAME_DAYS = {
 	"month": 30,
 	"2month": 60,
 };
-// How much history the preset timeframes include: the current window starts
-// this many days in the past so recently overdue work stays visible while
-// older backlog is cut. Custom timeframes pick their own "days ago" bound.
+// Presets include this many days of history so recently overdue work stays visible.
 const TODO_TIMEFRAME_LOOKBACK_DAYS = 4;
-// Announcements older than this are never shown in the Better Todo list (and
-// never count toward the unread badge). Unlike assignments, an announcement
-// stops being an actionable to-do once it's old: the planner cache keeps a
-// full year of history (PLANNER_LOOKBACK_DAYS, needed for overdue
-// assignments), so without this cutoff never-opened announcements from a
-// year ago kept showing under "New" forever. Old announcements are still
-// available on the course's own Announcements page.
+// Announcements older than this never show and never count toward the unread badge.
 const TODO_ANNOUNCEMENT_MAX_AGE_DAYS = 30;
-// Look-ahead paging for the timeframe window (arrow buttons under the Tasks
-// header). 0 = the current window (from the lookback bound — 1 week back for
-// presets, "X days ago" for custom — through the future edge). Each press of
-// the right arrow advances one full window further out, e.g. a 1-week
-// timeframe on offset 1 shows only items due in week 2 (the current window is
-// skipped over).
+// Look-ahead paging: each right-arrow press advances one full window.
 let betterTodoTimeframeOffset = 0;
-// null = show every class; a string courseId = only that class's tasks.
+// null = all classes.
 let betterTodoProgressFilter = null;
 let domContainers = {};
 
-// Resolve the persisted todo_timeframe option to a valid key ("all" when
-// unset/unknown).
+// Resolve the persisted todo_timeframe option ("all" when unset/unknown).
 function getTodoTimeframeKey() {
     const allowed = ["all", "1week", "2week", "month", "2month", "custom"];
     return allowed.includes(options.todo_timeframe) ? options.todo_timeframe : "all";
 }
 
-// Custom timeframe bounds ("custom" option): the window runs from X days ago
-// to Y days in the future. Clamped to 0-365 days; the defaults match the
-// popup's initial inputs (1 week of history, 2 weeks ahead).
+// Custom bounds: X days ago to Y days ahead, clamped to 0-365.
 function getTodoCustomTimeframeDays() {
     const past = parseInt(options.todo_timeframe_custom_past);
     const future = parseInt(options.todo_timeframe_custom_future);
@@ -2352,10 +2050,6 @@ function getTodoCustomTimeframeDays() {
     };
 }
 
-// Total length of the current timeframe window in days ("all" = 0). Presets
-// cover their range ahead plus the shared 1-week lookback; custom windows are
-// as long as their past+future range. Either way the pager tiles windows back
-// to back.
 function getTodoTimeframeSpanDays() {
     const tf = getTodoTimeframeKey();
     if (tf === "all") return 0;
@@ -2366,9 +2060,6 @@ function getTodoTimeframeSpanDays() {
     return BETTER_TODO_TIMEFRAME_DAYS[tf] + TODO_TIMEFRAME_LOOKBACK_DAYS;
 }
 
-// Days before "now" where the current window starts. Presets start at the
-// shared 1-week lookback (recently overdue work is kept, older backlog is
-// cut); custom windows start `past` days in the past per the user's setting.
 function getTodoTimeframePastDays() {
     const tf = getTodoTimeframeKey();
     if (tf === "all") return 0;
@@ -2376,11 +2067,7 @@ function getTodoTimeframePastDays() {
     return TODO_TIMEFRAME_LOOKBACK_DAYS;
 }
 
-// True when the item's due date is before today (start of day), matching the
-// "Overdue" group (-1) in the task list. Used so overdue work bypasses the
-// timeframe window: overdue items are current workload and must always stay
-// visible, no matter which timeframe is selected (or how far the pager has
-// been advanced).
+// Before start of today (matches the Overdue group); overdue work bypasses the window.
 function isTodoOverdueItem(item) {
     const due = new Date(item?.plannable_date);
     if (isNaN(due.getTime())) return false;
@@ -2390,21 +2077,8 @@ function isTodoOverdueItem(item) {
     return due.getTime() < today.getTime();
 }
 
-// Better Todo timeframe filter, shared by the task list and the progress
-// display so their counts always agree: keeps items due inside the current
-// window. Offset 0 runs from the lookback bound (1 week back for presets,
-// "X days ago" for custom) through the future edge; offset N>0 shows only the
-// strict window (now+N*span, now+(N+1)*span] so the current timeframe can be
-// paged through with the look-ahead arrows. "all" keeps everything. Overdue
-// items always pass the filter regardless of the window (see
-// isTodoOverdueItem) — the timeframe only bounds upcoming work, it never
-// hides overdue backlog.
-// `lenientPast` (Announcements / Completed tabs): on the current window those
-// tabs keep everything on/before the cutoff — completed history and unread
-// announcements older than the lookback are still meaningful there — while
-// paging forward uses the same strict windows as Tasks. The overdue bypass
-// only applies to the Tasks tab: old announcements/completed history have
-// past dates but are not overdue work.
+// Shared by the task list and the progress display so their counts agree.
+// Overdue items always pass; lenientPast keeps old announcements/completed on the current window.
 function applyTodoTimeframe(items, lenientPast) {
     betterTodoTimeframe = getTodoTimeframeKey();
     if (betterTodoTimeframe === "all") return items;
@@ -2412,11 +2086,7 @@ function applyTodoTimeframe(items, lenientPast) {
     const now = Date.now();
     const days = getTodoTimeframeSpanDays();
     const pastDays = getTodoTimeframePastDays();
-    // End of the current window: the future edge (presets end `days` out,
-    // custom windows end `future` days out; span - past = future in both).
     const cutoff = now + ((betterTodoTimeframeOffset + 1) * days - pastDays) * dayMs;
-    // Start of the current window: the lookback bound (skipped for the
-    // lenient tabs on the current window).
     if (lenientPast === true && betterTodoTimeframeOffset <= 0) {
         return items.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
     }
@@ -2428,9 +2098,6 @@ function applyTodoTimeframe(items, lenientPast) {
     });
 }
 
-// Date range for the timeframe pager under the Tasks header. The offset is
-// measured in full windows from now, so the dates shown are the exact slice
-// of items the list is currently filtered to.
 function getTodoTimeframeWindow() {
     const tf = getTodoTimeframeKey();
     const days = getTodoTimeframeSpanDays();
@@ -2443,11 +2110,7 @@ function getTodoTimeframeWindow() {
     return { tf, range: fmt(start) + " \u2013 " + fmt(end) };
 }
 
-// Refresh the timeframe pager (arrows under the Tasks header) after every
-// render: update its label/date range, disable the back arrow on the
-// current window, and hide it entirely when there is no window to page
-// ("all"). Shown on every tab — the pager pages time itself, so each tab
-// shows its slice of the selected window.
+// Update the pager after each render; hidden when the timeframe is "all".
 function updateTodoTimeframeNav() {
     const nav = document.getElementById("better-todo-timeframe-nav");
     if (!nav) return;
@@ -2466,8 +2129,6 @@ function updateTodoTimeframeNav() {
     }
 }
 
-// Strict [start, end] bounds of the timeframe window the pager is currently
-// showing, or null when the timeframe is "all" (no window).
 function getTodoTimeframeBounds() {
     const tf = getTodoTimeframeKey();
     if (tf === "all") return null;
@@ -2478,14 +2139,10 @@ function getTodoTimeframeBounds() {
     return { start, end: start + spanDays * 24 * 60 * 60 * 1000 };
 }
 
-// true when `courseId` is the dimmed-out class because another class is selected.
 function progressFilterDim(courseId) {
     return betterTodoProgressFilter != null && String(courseId) !== String(betterTodoProgressFilter);
 }
-// Canvas serves gradable work as several plannable types: assignments, quizzes,
-// and graded discussions (plus extension-created planner notes/custom tasks).
-// All of these are "tasks" for the Better Todo list; announcements are
-// handled separately.
+// Assignments, quizzes and graded discussions (plus custom planner notes) are tasks.
 function isTodoTaskType(item) {
     return item.plannable_type == "assignment"
         || item.plannable_type == "planner_note"
@@ -2493,9 +2150,7 @@ function isTodoTaskType(item) {
         || item.plannable_type == "discussion_topic";
 }
 
-// Make an element filter the todo list to one class on click. A no-op on
-// course pages (where only one class is in scope anyway); toggles off when the
-// active class is clicked again.
+// Click filters the todo list to one class; no-op on course pages, toggles off.
 function attachProgressFilterClick(el, courseId) {
     if (getCurrentCourseId() != null) { el.style.cursor = ''; el.onclick = null; return; }
     el.style.cursor = 'pointer';
@@ -2528,7 +2183,6 @@ function getProgressRingMode() {
     if (v === true || v === undefined || v === null) return "rings";
     const allowed = ["none", "rings", "rainbow", "lines", "line"];
     if (allowed.includes(v)) return v;
-    // migrate unreleased string values from the prior experimental set
     if (v === "per_course") return "rings";
     if (v === "combined" || v === "segmented") return "line";
     return "rings";
@@ -2549,9 +2203,7 @@ function courseRingLabel(courseId) {
     return card?.default || `Course ${courseId}`;
 }
 
-// Planner items for courses the user has hidden from their dashboard should
-// not appear in the Better Todo list or its progress display. Personal
-// tasks (planner notes with no course) are always kept.
+// Courses hidden from the dashboard drop out; personal tasks are always kept.
 function isCourseHidden(courseId) {
     if (courseId === undefined || courseId === null) return false;
     const cards = options.custom_cards || {};
@@ -2559,11 +2211,7 @@ function isCourseHidden(courseId) {
     return !!card && card.hidden === true;
 }
 
-// Courses the user ticked "Hide this course from the Better Todo list" in the
-// card edit menu are dropped from the todo list and its progress display.
-// This is independent of dashboard visibility (isCourseHidden), so a course
-// can stay on the dashboard while its items stay off the todo list, and
-// vice versa. Personal tasks (planner notes with no course) are always kept.
+// "Hide this course from the Better Todo list" is independent of dashboard visibility.
 function isCourseTodoHidden(courseId) {
     if (courseId === undefined || courseId === null) return false;
     const cards = options.custom_cards || {};
@@ -2578,8 +2226,6 @@ function filterHiddenCourses(data) {
     });
 }
 
-// Build scoped data for the Better Todo list: drop hidden courses, then (on
-// a course page) restrict to the current course.
 function getTodoScopedData(data, courseId) {
     const visible = filterHiddenCourses(data);
     if (!courseId) return visible;
@@ -2589,9 +2235,6 @@ function getTodoScopedData(data, courseId) {
     });
 }
 
-// Returns a Map of courseId (string) -> dashboard position index, read from
-// the live dashboard card DOM order. Empty when not on the dashboard. Used
-// to order the progress display the same way the user ordered their cards.
 function getDashboardCourseOrder() {
     const order = new Map();
     document.querySelectorAll('.ic-DashboardCard').forEach((card, idx) => {
@@ -2601,21 +2244,14 @@ function getDashboardCourseOrder() {
     return order;
 }
 
-// Keep the centered % / count text clear of the progress graphics (the rings'
-// center hole and the rainbow's bowl). The text block is measured after each
-// render; if it would cross into the strokes its fonts are scaled down, and
-// when the hole is really tight the count line is dropped before the % is
-// allowed to shrink below readable size. Font sizes reset to the defaults on
-// every render so the text grows back when there is room again.
-// `neededRadius(hw, hh)` returns the distance from the hole's center to the
-// farthest text corner; the text fits when that is <= availableRadius.
+// Scale the centered % / count text down when it would cross the strokes, dropping
+// the count line when the hole is really tight. `neededRadius(hw, hh)` = distance
+// from the hole's center to the farthest text corner.
 function fitProgressOverlayText(overlay, neededRadius, availableRadius) {
     const textWrap = overlay?.firstElementChild;
     const pct = overlay?.querySelector('.canvasrefined-progress-percent');
     const cnt = overlay?.querySelector('.canvasrefined-progress-count');
     if (!textWrap || !pct || !cnt || textWrap === pct || textWrap === cnt) return;
-    // Undo any shrink applied by a previous render before measuring (these
-    // are the default sizes the overlays are created with).
     pct.style.fontSize = '20px';
     cnt.style.fontSize = '12px';
     cnt.style.display = '';
@@ -2627,7 +2263,6 @@ function fitProgressOverlayText(overlay, neededRadius, availableRadius) {
     if (needed <= availableRadius) return;
     let scale = availableRadius / needed;
     if (20 * scale < 11) {
-        // Too tight for both lines: drop the count and re-fit the % alone.
         cnt.style.display = 'none';
         w = textWrap.offsetWidth;
         h = textWrap.offsetHeight;
@@ -2637,8 +2272,6 @@ function fitProgressOverlayText(overlay, neededRadius, availableRadius) {
     }
     pct.style.fontSize = `${Math.max(10, Math.round(20 * scale))}px`;
     if (cnt.style.display !== 'none') cnt.style.fontSize = `${Math.max(9, Math.round(12 * scale))}px`;
-    // Final safety: if the readable-size floors above still don't fit, drop
-    // the count line so the % is guaranteed to clear the strokes.
     if (neededRadius(textWrap.offsetWidth / 2, textWrap.offsetHeight / 2) > availableRadius) {
         cnt.style.display = 'none';
     }
@@ -2683,9 +2316,6 @@ function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent
     const decrement = stroke + gap;
     const ringCount = shown.length;
     const startRadius = outerRadius - stroke / 2;
-    // Keep the center hole big enough for the % / count text so the numbers
-    // never sit on top of the ring strokes (fitProgressOverlayText shrinks the
-    // text as a safety net for unusually wide labels).
     const minCenterRadius = 44;
     const requiredSpace = (ringCount - 1) * decrement + stroke / 2 + minCenterRadius;
     let adjustFactor = 1;
@@ -2748,8 +2378,6 @@ function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent
         bg.style.opacity = dim ? '0.25' : '';
         fg.style.opacity = dim ? '0.3' : '';
         requestAnimationFrame(() => requestAnimationFrame(() => fg.setAttribute('stroke-dashoffset', target)));
-        // transparent hit band on top so the whole ring is easy to click;
-        // width tracks the ring spacing so adjacent bands don't overlap.
         const step = Math.max(1, Math.floor(decrement * adjustFactor));
         let hit = svg.querySelector(`circle[data-idx='${idx}'][data-role='hit']`);
         if (!hit) {
@@ -2774,7 +2402,6 @@ function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent
         };
     });
 
-    // Shrink the % / count text if it would reach the innermost ring.
     fitProgressOverlayText(overlay, (hw, hh) => Math.hypot(hw, hh), Math.max(0, innerEdge - 2));
 
     const maxIdx = shown.length - 1;
@@ -2784,8 +2411,7 @@ function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent
     });
 }
 
-// Mode "rainbow": like "rings" (one arc per class) but condensed into a top
-// half-circle and colored with a rainbow palette instead of course colors.
+// Mode "rainbow": one arc per class, condensed into a top half-circle.
 function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) {
     const containerWidth = wrapper.clientWidth || 240;
     const size = Math.min(280, Math.floor(containerWidth * 0.99));
@@ -2796,7 +2422,7 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
     const ringCount = shown.length;
     const pad = 2;
     const outerRadius = Math.max(20, Math.floor(size / 2) - stroke / 2 - pad);
-    // diameter line; arcs bulge UPWARD from here (into y < baseY)
+    // Arcs bulge upward from the diameter line (y < baseY).
     const baseY = outerRadius + stroke / 2 + pad;
     const svgHeight = Math.ceil(baseY + stroke / 2 + 2);
 
@@ -2811,10 +2437,6 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
     svg.setAttribute('height', String(svgHeight));
     svg.setAttribute('viewBox', `0 0 ${size} ${svgHeight}`);
 
-    // shrink spacing if too many classes would overflow the inner radius;
-    // keep the inner bowl big enough for the % / count text so the numbers
-    // never sit on top of the arcs (fitProgressOverlayText shrinks the text
-    // as a safety net for unusually wide labels).
     const minInnerRadius = 56;
     const requiredSpace = (ringCount - 1) * decrement;
     let adjustFactor = 1;
@@ -2825,12 +2447,11 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
     shown.forEach((entry, idx) => {
         const radius = outerRadius - idx * Math.max(1, Math.floor(decrement * adjustFactor));
         if (radius <= 0) return;
-        // sweep-flag 1 => arc bulges UPWARD (top semicircle), drawn left -> right
+        // sweep-flag 1 draws the top semicircle, left to right.
         const arcPath = `M ${cx - radius} ${baseY} A ${radius} ${radius} 0 0 1 ${cx + radius} ${baseY}`;
         const prog = entry.total === 0 ? 0 : entry.completed / entry.total;
         const color = courseRingColor(entry.courseId, idx);
 
-        // track: full semicircle, faded class color
         let track = svg.querySelector(`path[data-idx='${idx}'][data-role='bg']`);
         if (!track) {
             track = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -2847,7 +2468,7 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
         track.removeAttribute('stroke-dasharray');
         track.removeAttribute('stroke-dashoffset');
 
-        // progress arc: completed portion drawn from the left, via pathLength=100
+        // Completed portion from the left, via pathLength=100.
         let progArc = svg.querySelector(`path[data-idx='${idx}'][data-role='fg']`);
         const targetOff = (100 * (1 - prog)).toFixed(3);
         if (!progArc) {
@@ -2871,7 +2492,6 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
         track.style.opacity = dim ? '0.25' : '';
         progArc.style.opacity = dim ? '0.3' : '';
         requestAnimationFrame(() => requestAnimationFrame(() => progArc.setAttribute('stroke-dashoffset', targetOff)));
-        // transparent hit arc on top so the whole arc is easy to click.
         let hit = svg.querySelector(`path[data-idx='${idx}'][data-role='hit']`);
         if (!hit) {
             hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -2894,21 +2514,13 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
         };
     });
 
-    // drop arcs for classes no longer shown
     const maxIdx = shown.length - 1;
     svg.querySelectorAll('path').forEach(p => {
         const idx = parseInt(p.getAttribute('data-idx'));
         if (Number.isNaN(idx) || idx > maxIdx) p.remove();
     });
 
-    // Overlay the percent/count text INSIDE the rainbow's semicircle hole
-    // (the empty bowl bounded by the INNERMOST arc) instead of beneath it or
-    // up among the arcs. The SVG is centered in the wrapper, so an absolutely-
-    // positioned overlay covering the wrapper with flex centering aligns the
-    // text to the SVG's horizontal center. Vertically we target the centroid of
-    // the innermost semicircle (a touch above the diameter line) so the text
-    // sits in the arc-free pocket near the bottom rather than near the apexes
-    // of the inner arcs, where it would overlap the rainbow strokes.
+    // Text sits in the empty bowl inside the innermost arc, near the bottom.
     const step = Math.max(1, Math.floor(decrement * adjustFactor));
     const innerRadius = ringCount > 0 ? Math.max(1, outerRadius - (ringCount - 1) * step) : outerRadius;
     const holeCenterY = baseY - (4 * innerRadius) / (3 * Math.PI) + 6;
@@ -2918,8 +2530,6 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
         overlay = document.createElement('div');
         overlay.className = 'canvasrefined-progress-overlay';
         overlay.style.cssText = `position:absolute;left:0;top:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;transform:translateY(${nudge}px);`;
-        // Same textWrap structure as rings mode so fitProgressOverlayText
-        // measures the whole percent+count block, not just one line.
         const textWrap = document.createElement('div');
         textWrap.style.cssText = 'text-align:center;color:var(--bctext-0);';
         textWrap.innerHTML = `<div class='canvasrefined-progress-percent' style='font-weight:700;font-size:20px;line-height:1;'></div><div class='canvasrefined-progress-count' style='font-size:12px;margin-top:3px;'></div>`;
@@ -2931,10 +2541,6 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
     overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
     overlay.querySelector('.canvasrefined-progress-count').textContent = `${completedAll}/${totalAll} done`;
 
-    // Shrink the % / count text if any corner would cross the innermost arc.
-    // The text is centered at (cx, holeCenterY); the bowl is the semicircle
-    // of innerRadius around (cx, baseY), so check the farthest text corner
-    // against the bowl's inner edge.
     const bowlRadius = Math.max(0, innerRadius - stroke / 2 - 2);
     fitProgressOverlayText(overlay, (hw, hh) => {
         const dv = Math.max(
@@ -2991,9 +2597,7 @@ function renderProgressLines(wrapper, shown) {
     });
 }
 
-// Mode "line": one horizontal bar where each class's COMPLETED portion is packed
-// to the left (full course color) and its UNCOMPLETED portion to the right
-// (faded course color), with no gaps between segments. Overall % shown above.
+// Mode "line": completed portions packed left in full color, remaining portions right in faded color.
 function renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent) {
     let box = wrapper.querySelector('.canvasrefined-progress-oneline');
     if (!box) {
@@ -3012,7 +2616,6 @@ function renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent) 
         box.appendChild(head);
     }
     box.querySelector('.cr-ol-pct').textContent = `${percent}% (${completedAll}/${totalAll})`;
-    // Clicking the "Overall" header clears the active class filter.
     if (getCurrentCourseId() == null) {
         head.style.cursor = betterTodoProgressFilter != null ? 'pointer' : '';
         head.onclick = () => {
@@ -3030,25 +2633,18 @@ function renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent) 
     if (!bar) {
         bar = document.createElement('div');
         bar.className = 'cr-ol-bar';
-        // position:relative so absolutely-positioned segments anchor to it
         bar.style.cssText = 'position:relative;width:100%;height:14px;border-radius:999px;overflow:hidden;background:var(--bcbackground-1);';
         box.appendChild(bar);
     }
 
-    // Build the segment list left -> right: ALL completed blocks first (each
-    // class's full course color), then ALL remaining blocks (each class's faded
-    // course color). This keeps every completed segment on the left and every
-    // remaining segment on the right. Consecutive segments share edges, so
-    // there are no gaps between them.
+    // Completed segments first (left), then remaining (right); no gaps.
     const segs = [];
     let left = 0;
-    // First pass: completed blocks for every class (left side).
     shown.forEach((entry, idx) => {
         const color = courseRingColor(entry.courseId, idx);
         const doneW = totalAll === 0 ? 0 : (entry.completed / totalAll) * 100;
         if (doneW > 0) { segs.push({ left, w: doneW, bg: color, courseId: entry.courseId }); left += doneW; }              // completed: full color
     });
-    // Second pass: remaining blocks for every class (right side).
     shown.forEach((entry, idx) => {
         const color = courseRingColor(entry.courseId, idx);
         const remW = totalAll === 0 ? 0 : ((entry.total - entry.completed) / totalAll) * 100;
@@ -3080,13 +2676,8 @@ function renderProgressRings(container, scopedData) {
     const mode = getProgressRingMode();
     if (mode === "none") { container.innerHTML = ""; return; }
 
-    // Apply the same timeframe window the list pages through so the counts
-    // in the display match what's shown below it. Overdue work always counts
-    // (the Tasks tab never hides it, see isTodoOverdueItem); finished work
-    // from before the window is history, not current workload, so it never
-    // counts. The window is otherwise a strict slice (from the lookback bound
-    // through the future edge), so the counts always match the Tasks tab
-    // exactly.
+    // Same timeframe window the list pages through; overdue work always counts, finished
+    // work from before the window does not.
     const taskItems = scopedData.filter(item => isTodoTaskType(item));
     const bounds = getTodoTimeframeBounds();
     const isDone = (item) => (item.submissions?.submitted || item.planner_override?.marked_complete === true) && !isPinnedIncomplete(item);
@@ -3115,10 +2706,7 @@ function renderProgressRings(container, scopedData) {
     }).filter(e => e.total > 0);
 
     if (!entries.length) {
-        // Don't just blank the display: an empty window (e.g. after advancing
-        // the pager to a week with nothing due) previously made the whole
-        // progress display disappear, which read as a bug. Show a quiet
-        // empty state instead.
+        // Quiet empty state instead of blanking the display.
         container.innerHTML = "";
         const empty = document.createElement('div');
         empty.className = 'canvasrefined-progress-empty';
@@ -3128,10 +2716,7 @@ function renderProgressRings(container, scopedData) {
         return;
     }
 
-    // Order courses to match the user's dashboard card order. Courses that
-    // aren't on the dashboard (personal tasks, dropped courses) sort after
-    // dashboard courses, keeping their relative order; ties fall back to
-    // most assignments first so the display stays stable.
+    // Order by dashboard card order; others sort after, most assignments first.
     const dashboardOrder = getDashboardCourseOrder();
     entries.sort((a, b) => {
         const ai = dashboardOrder.has(a.courseId) ? dashboardOrder.get(a.courseId) : Infinity;
@@ -3141,11 +2726,7 @@ function renderProgressRings(container, scopedData) {
     });
     const shown = entries.slice(0, 6);
 
-    // "Fake progress display" (Hide personal details): when enabled, the
-    // readout reports the user's chosen completed/total instead of the real
-    // counts. Per-course rings are re-distributed around that ratio (with a
-    // little per-course variation, so every ring isn't filled identically)
-    // and the sums are corrected to add up to exactly x/y.
+    // Fake progress display: report the chosen completed/total, redistributed across courses.
     if (options.hide_personal_details === true && options.anon_progress_enabled === true && shown.length > 0) {
         applyAnonProgressOverride(shown);
     }
@@ -3154,7 +2735,6 @@ function renderProgressRings(container, scopedData) {
     const completedAll = shown.reduce((s, e) => s + e.completed, 0);
     const percent = totalAll === 0 ? 0 : Math.round((completedAll / totalAll) * 100);
 
-    // wrapper reused across renders; clear on mode switch so each mode rebuilds fresh DOM
     let wrapper = container.querySelector('.canvasrefined-progress-wrapper');
     if (!wrapper) {
         wrapper = document.createElement('div');
@@ -3204,7 +2784,7 @@ function buildPlannerNotePayload(form) {
         details,
         link,
         courseId: courseIdRaw ? parseInt(courseIdRaw) : null,
-        // Canvas accepts local timestamp strings more reliably than UTC ISO strings for planner notes.
+        // Canvas prefers local timestamp strings over UTC ISO for planner notes.
         todoDate: `${dateValue}T${timeValue}:00`,
     };
 }
@@ -3272,7 +2852,6 @@ async function createCanvasPlannerNote(payload) {
                 lastError = errData.message;
             }
         } catch (_) {
-            // Keep prior error text when body is not JSON.
         }
     }
 
@@ -3333,16 +2912,13 @@ function deleteCustomTaskLink(noteId) {
 async function updateCanvasPlannerNote(id, payload) {
     if (!id) throw new Error("Missing task id.");
     const csrfToken = CSRFtoken();
-    // Canvas's planner_notes update endpoint permits FLAT parameters
-    // (title, details, course_id, todo_date) — NOT nested under planner_note.
-    // Sending nested params is silently ignored, so note.update({}) runs and
-    // returns 200 with the unchanged note, making edits appear to "not save".
-    // Always include details (even empty) so the field can be cleared.
+    // FLAT params only: nested under planner_note they are silently ignored and the note
+    // comes back unchanged. details is always sent (even empty) so it can be cleared.
     const plannerNote = {
         title: payload.title,
         todo_date: payload.todoDate,
         details: payload.details || "",
-        // Sending course_id as empty string disassociates the note from its course.
+        // Empty course_id disassociates the note from its course.
         course_id: payload.courseId || "",
     };
 
@@ -3392,7 +2968,6 @@ async function updateCanvasPlannerNote(id, payload) {
                 lastError = errData.message;
             }
         } catch (_) {
-            // Keep prior error text when body is not JSON.
         }
     }
 
@@ -3424,7 +2999,7 @@ async function deleteCanvasPlannerNote(id) {
     throw new Error(lastError);
 }
 
-/* Scroll a task form field into view, leaving room below for the native date/time picker. */
+/* Scroll a field into view, leaving room below for the native date/time picker. */
 function scrollTodoIntoView(el, smooth = true) {
     if (!el) return;
     const sidebar = document.getElementById("right-side-wrapper");
@@ -3449,7 +3024,6 @@ function fillTaskCourseOptions(courseSelect) {
     const cards = options.custom_cards || {};
     const courseColors = options.custom_cards_3 || {};
     const currentCourseId = getCurrentCourseId();
-    // Hidden courses should not be offered as a target for custom tasks.
     const entries = Object.entries(cards)
         .filter(([, card]) => card?.hidden !== true)
         .map(([id, card]) => ({
@@ -3583,13 +3157,12 @@ function ensureTodoTaskMenu(location, feedbackElement) {
 
         menu.querySelector("#better-todo-add-task-submit").addEventListener("click", submitTask);
 
-        // Close (×) button: dismiss the form without creating/editing a task.
         menu.querySelector("#better-todo-add-task-close")?.addEventListener("click", () => {
             resetTaskFormToCreate(menu);
             menu.classList.remove("canvasrefined-custom-open");
         });
 
-        // Reposition the field on focus so the picker opens on screen.
+        // Reposition on focus so the picker opens on screen.
         ["#better-todo-new-task-date", "#better-todo-new-task-time"].forEach((sel) => {
             const input = menu.querySelector(sel);
             input?.addEventListener("focus", () => scrollTodoIntoView(input, false));
@@ -3632,7 +3205,6 @@ function ensureTodoTaskMenu(location, feedbackElement) {
     }
 }
 
-// Reset the shared add/edit task form back to a blank "create" state.
 function resetTaskFormToCreate(menu) {
     if (!menu) return;
     menu.querySelector("#better-todo-new-task-title").value = "";
@@ -3655,7 +3227,6 @@ function resetTaskFormToCreate(menu) {
     delete menu.dataset.editingId;
 }
 
-// Open the shared form pre-filled with a custom task for editing or deletion.
 function openTaskForEdit(item) {
     const location = document.getElementById("canvasrefined-todo-list");
     if (!location) return;
@@ -3692,10 +3263,7 @@ function openTaskForEdit(item) {
 
 async function createTodoSections(location) {
 	if (!location || !assignments || typeof assignments.then !== "function") return;
-	// Render-generation guard: capture the counter at call time and bail out of
-	// the async render if a newer call has started by the time our data
-	// resolves. Incremented only after the guards above, so a bail-out can
-	// never cancel an in-flight render without scheduling a replacement.
+	// Render-generation guard: capture the counter at call time and bail if a newer render started.
 	const renderGen = ++todoRenderGen;
 	if (!location.querySelector("#better-todo-header")) {
 		let header = makeElement("div", location, { id: "better-todo-header" });
@@ -3708,11 +3276,7 @@ async function createTodoSections(location) {
                 <h2 style="border:none !important;padding: 0">${todayString}</h2>
             `;
 
-        // Timeframe pager below the header: arrows page through the timeframe
-        // window (e.g. a 1-week timeframe pages this week -> week 2 -> week 3,
-        // skipping over everything before the window being shown). The left
-        // arrow is disabled on the current window. Arrow keys also work while
-        // hovering the pager.
+        // Timeframe pager: arrows (or arrow keys while hovering) page the timeframe window.
         const timeframeNav = makeElement("div", location, { id: "better-todo-timeframe-nav" });
         timeframeNav.style = "display:none;align-items:center;justify-content:center;width:100%;margin-top:8px;user-select:none;";
         timeframeNav.innerHTML = `
@@ -3742,8 +3306,7 @@ async function createTodoSections(location) {
         };
         timeframeNav.querySelector("#better-todo-timeframe-prev").addEventListener("click", () => changeTimeframeOffset(-1));
         timeframeNav.querySelector("#better-todo-timeframe-next").addEventListener("click", () => changeTimeframeOffset(1));
-        // Keyboard arrows page the timeframe while hovering the pager (and
-        // only then, so normal arrow-key use elsewhere is untouched).
+        // Arrow keys page only while the pager is hovered.
         const timeframeKeyHandler = (e) => {
             if (e.key === "ArrowRight") { e.preventDefault(); changeTimeframeOffset(1); }
             else if (e.key === "ArrowLeft") { e.preventDefault(); changeTimeframeOffset(-1); }
@@ -3751,7 +3314,6 @@ async function createTodoSections(location) {
         timeframeNav.addEventListener("mouseenter", () => document.addEventListener("keydown", timeframeKeyHandler));
         timeframeNav.addEventListener("mouseleave", () => document.removeEventListener("keydown", timeframeKeyHandler));
 
-        // placeholder for progress rings above the tab/filter control
         makeElement("div", location, { id: "better-todo-progress-placeholder", style: "display:flex;justify-content:center;margin-top:8px;" });
 
 		let filterControl = makeElement("div", location, { "id": "better-todo-filter" });
@@ -3817,25 +3379,19 @@ async function createTodoSections(location) {
 		mainSection.style = "display:flex;flex-direction:column;";
 	}
 	let mainSection = location.querySelector("#better-todo-main");
-	// Refresh the timeframe pager's label/arrows on every render (visibility
-	// depends on the current tab and the todo_timeframe option).
+	// Label/arrows depend on the current tab and todo_timeframe, so refresh each render.
 	updateTodoTimeframeNav();
 	assignments.then(data => {
-	    // A newer render superseded this one — appending now would duplicate
-	    // the whole list on top of it.
+    // A newer render superseded this one; appending would duplicate the list.
 	    if (renderGen !== todoRenderGen) return;
         const courseId = getCurrentCourseId();
         const scopedData = getTodoScopedData(data, courseId);
-        // "Fill the todo list with fake courses": fake items join the same
-        // scoped pipeline as real ones, so the Tasks list AND the progress
-        // rings count them identically (rings read from scopedData too).
+        // Fake items ride the same scoped pipeline so the list and rings count them.
         if (options.hide_personal_details === true && options.anon_fake_todo === true) {
             scopedData.push(...buildFakeTodoItems());
         }
 
-        // Clicking a color in the progress display filters the list to that
-        // one class. The filter only makes sense where multiple classes show
-        // (dashboard/profile), so it is cleared on course pages.
+        // A progress-color filter only applies where multiple classes show.
         if (courseId) betterTodoProgressFilter = null;
         const displayData = (betterTodoProgressFilter == null)
             ? scopedData
@@ -3844,17 +3400,9 @@ async function createTodoSections(location) {
                 return cid === String(betterTodoProgressFilter);
             });
 
-        // Announcements: dismissed (marked-complete) ones are always
-        // hidden, and already-read ones are hidden unless the user turned
-        // "Hide read announcements" off. This mirrors how native Canvas
-        // clears announcements from the to-do once seen; without it the list
-        // accumulated every announcement in the lookback window (reporters
-        // saw 200+ "Seen" entries from a single year). Read-state filters
-        // alone don't fix the whole window, though: an announcement the user
-        // simply never opened stays "unread" forever, so year-old ones kept
-        // appearing under "New" and inflating the unread badge. Anything
-        // older than TODO_ANNOUNCEMENT_MAX_AGE_DAYS is stale regardless of
-        // read state and is dropped here (see that constant for rationale).
+        // Dismissed announcements are always hidden, read ones unless todo_hide_read is off,
+        // and anything older than TODO_ANNOUNCEMENT_MAX_AGE_DAYS (never-opened ones stay
+        // "unread" forever and inflate the badge).
         announcements = displayData.filter(item => {
             if (item.plannable_type != "announcement") return false;
             if (item.planner_override?.marked_complete === true) return false;
@@ -3863,34 +3411,17 @@ async function createTodoSections(location) {
             if (!Number.isNaN(postedAt) && postedAt < Date.now() - TODO_ANNOUNCEMENT_MAX_AGE_DAYS * 86400000) return false;
             return true;
         });
-        // Planner items arrive oldest-first (sortAndTrimPlannerItems), so
-        // without this the Announcements tab showed the newest posts at the
-        // bottom. Display newest-first instead: sort a descending copy by
-        // posted date (filter() already returns a fresh array, so this never
-        // mutates the shared planner list).
+        // Show newest first (planner items arrive oldest-first).
         announcements.sort((a, b) => new Date(b.plannable_date) - new Date(a.plannable_date));
-        // Pinned items (locally forced incomplete, e.g. a submitted assignment
-        // the user sent back to Tasks) always count as due; everything else is
-        // due only when neither submitted nor marked complete.
+        // Pinned ("sent back") items always count as due.
         assignmentsDue = displayData.filter(item => isTodoTaskType(item) && ((!item.submissions?.submitted && !item.planner_override?.marked_complete) || isPinnedIncomplete(item)));
         completed = displayData.filter(item => isTodoTaskType(item) && (item.submissions?.submitted || item.planner_override?.marked_complete) && !isPinnedIncomplete(item));
-        // The timeframe is a persisted Better Todo List sub-option set in the
-        // popup. Read the current value each render so popup changes apply on
-        // the next render. Every tab is paged through time: Tasks by due
-        // date, Announcements by posted date, Completed by due date. The
-        // Tasks tab bounds the past (1 week of history back), while
-        // Announcements/Completed keep their older history on the current
-        // window and only narrow when paged forward. Overdue items bypass
-        // the window filter entirely (isTodoOverdueItem) so overdue backlog
-        // always stays visible, and pinned items ("sent back" submissions)
-        // bypass it too so an old pinned item still shows up under Tasks.
+        // Read the timeframe each render so popup changes apply; overdue and pinned items
+        // bypass the window filter so they stay visible.
         const pinnedItems = assignmentsDue.filter(item => isPinnedIncomplete(item));
         assignmentsDue = applyTodoTimeframe(assignmentsDue.filter(item => !isPinnedIncomplete(item)), false).concat(pinnedItems);
         announcements = applyTodoTimeframe(announcements, true);
         completed = applyTodoTimeframe(completed, true);
-		// console.log("assignments", assignmentsDue);
-		// console.log("announcements", announcements);
-		// console.log("completed", completed);
 
         if (document.getElementById("better-todo-announcement-badge")) {
             document.getElementById("better-todo-announcement-badge").remove();
@@ -3960,7 +3491,6 @@ async function createTodoSections(location) {
             }
         }
 
-        // Only show the Add Task control on the Assignments (tasks) tab.
         if (betterTodoFilter === "tasks") {
             ensureTodoTaskMenu(location, feedbackElement);
         } else {
@@ -3996,20 +3526,15 @@ async function createTodoSections(location) {
 			sidebar.style.top = "";
 			sidebar.style.height = "";
 			sidebar.style.overflowY = "";
-			// maybe invisible scrollbar?
 		}
 	}).catch(err => {
-		// A rejected data promise must not leave the todo list half-rendered or
-		// throw unhandled; the generation guard above keeps renders idempotent.
+		// A rejected promise must not leave the list half-rendered or throw unhandled.
 		if (renderGen === todoRenderGen) console.warn("Canvas Refined - todo list render failed", err);
 	});
 }
 
-// Height the todo sidebar must shed to fit the viewport: the nav-toggle +
-// breadcrumbs bar sits above the content column, so a full-viewport (100vh)
-// sidebar forces the page to scroll by exactly the bar's height now that the
-// bar is visible again (Hide Navigation Bar defaults to off). Returns 0 when
-// the bar is hidden or absent (dashboard pages have no crumbs bar).
+// Height the todo sidebar must shed to fit the viewport: the nav-toggle + crumbs bar
+// sits above it, so 100vh would force the page to scroll by exactly that height.
 function todoViewportOffsetPx() {
 	if (options.hide_navbar === true) return 0;
 	const crumbs = document.querySelector(".ic-app-nav-toggle-and-crumbs");
@@ -4017,8 +3542,7 @@ function todoViewportOffsetPx() {
 	return h > 0 ? h : 0;
 }
 
-// The navbar height changes with window size/zoom, so re-apply the height
-// styles on resize (without a full todo re-render).
+// Navbar height changes with window size/zoom, so re-apply on resize.
 let todoHeightResizeTimer = null;
 window.addEventListener("resize", () => {
 	if (todoHeightResizeTimer) clearTimeout(todoHeightResizeTimer);
@@ -4058,8 +3582,7 @@ function clearTodoList() {
     if (seeMoreBtn) {
         seeMoreBtn.remove();
     }
-    // Called from storage-change handlers on every page; without this guard it
-    // throws on pages that have no todo list mounted.
+    // Called from storage-change handlers on every page; bail when no list is mounted.
     if (!main) return;
 
 	main.querySelectorAll(".todo-group-list").forEach(list => {
@@ -4070,11 +3593,7 @@ function clearTodoList() {
 	});
 }
 
-// "Alternate colors" (Better Todo List, light mode only): recolors the main
-// todo-list icon fill to white instead of the default --bctext-0, so icons
-// stay visible on lighter course-color strips. Implemented through a CSS
-// variable so toggling the option or dark mode recolors existing icons live
-// without a re-render.
+// "Alternate colors" (light mode only): icon fill goes white for lighter course strips.
 const TODO_ALT_ICON_COLOR = "#ffffff";
 let todoAltStyleEl = null;
 function applyTodoAlternateColors() {
@@ -4088,12 +3607,7 @@ function applyTodoAlternateColors() {
     todoAltStyleEl.textContent = `:root{--cr-todo-icon:${color};}`;
 }
 
-// --- Hover preview (Better Todo List: "Previews on hover") ---
-// The todo list is rendered by createTodoSections -> populateAssignments /
-// populateAnnouncements (the old loadBetterTodo renderer is no longer called).
-// A single shared, body-level tooltip is reused across items so it is never
-// clipped by the sidebar's scroll/overflow containers. It reuses the
-// .canvasrefined-hover-preview class so existing light/dark styling applies.
+// Hover preview: one shared body-level tooltip so the sidebar's overflow can't clip it.
 let todoPreviewDelay = null;
 let todoPreviewToken = 0;
 const todoPreviewCache = new Map();
@@ -4140,11 +3654,9 @@ async function getTodoPreviewText(item) {
     const id = item.plannable_id;
     const key = type + ":" + id;
     if (todoPreviewCache.has(key)) return todoPreviewCache.get(key);
-    // Fake todo items ("Fill the todo list with fake courses") have no real
-    // Canvas page behind them, so never hit the API for them.
+    // Fake items have no Canvas page behind them; never hit the API for them.
     if (item.anonFake === true) return "No details given";
-    // Custom task (planner note): the description is already on the planner
-    // item as item.plannable.details, so no API call is needed.
+    // Custom tasks already carry their description in item.plannable.details.
     if (type === "planner_note" || (item.planner_override && item.planner_override.custom === true)) {
         const raw = item.plannable && item.plannable.details ? item.plannable.details : "";
         const text = stripHtmlPreview(raw) || "No details given";
@@ -4214,22 +3726,12 @@ function attachTodoHoverPreview(anchor, item) {
     });
 }
 
-// Task-type icons for the Better Todo task rows (quiz / graded discussion),
-// adapted from the legacy todo renderer so quizzes and discussions get a
-// recognizable icon instead of the generic assignment one. Same fill
-// variable as the assignment icon so "Remove icons"/theme tweaks apply.
+// Quiz / discussion row icons, sharing the assignment icon's fill variable.
 const TODO_QUIZ_ICON_SVG = '<svg fill="var(--cr-todo-icon)" label="Quiz" name="IconQuiz" viewBox="0 0 1920 1920" rotate="0" aria-hidden="true" role="presentation" focusable="false"  ><g role="presentation"><g fill-rule="evenodd" stroke="none" stroke-width="1"><path d="M746.255375,1466.76417 L826.739372,1547.47616 L577.99138,1796.11015 L497.507383,1715.51216 L746.255375,1466.76417 Z M580.35118,1300.92837 L660.949178,1381.52637 L329.323189,1713.15236 L248.725192,1632.55436 L580.35118,1300.92837 Z M414.503986,1135.20658 L495.101983,1215.80457 L80.5979973,1630.30856 L0,1549.71056 L414.503986,1135.20658 Z M1119.32036,264.600006 C1475.79835,-91.8779816 1844.58834,86.3040124 1848.35034,88.1280123 L1848.35034,88.1280123 L1865.45034,96.564012 L1873.88634,113.664011 C1875.71034,117.312011 2053.89233,486.101999 1697.30034,842.693987 L1697.30034,842.693987 L1550.69635,989.297982 L1548.07435,1655.17196 L1325.43235,1877.81395 L993.806366,1546.30196 L415.712386,968.207982 L84.0863971,636.467994 L306.72839,413.826001 L972.602367,411.318001 Z M1436.24035,1103.75398 L1074.40436,1465.70397 L1325.43235,1716.61796 L1434.30235,1607.74796 L1436.24035,1103.75398 Z M1779.26634,182.406009 C1710.18234,156.41401 1457.90035,87.1020124 1199.91836,345.198004 L1199.91836,345.198004 L576.90838,968.207982 L993.806366,1385.10597 L1616.70235,762.095989 C1873.65834,505.139998 1804.68834,250.920007 1779.26634,182.406009 Z M858.146371,525.773997 L354.152388,527.597997 L245.282392,636.467994 L496.310383,887.609985 L858.146371,525.773997 Z"></path><path d="M1534.98715,372.558003 C1483.91515,371.190003 1403.31715,385.326002 1321.69316,466.949999 L1281.22316,507.305998 L1454.61715,680.585992 L1494.97315,640.343994 C1577.16715,558.035996 1591.87315,479.033999 1589.82115,427.164001 L1587.65515,374.610003 L1534.98715,372.558003 Z"></path></g></g></svg>';
 const TODO_DISCUSSION_ICON_SVG = '<svg fill="var(--cr-todo-icon)" name="IconDiscussion" viewBox="0 0 1920 1920" rotate="0" aria-hidden="true" role="presentation" focusable="false"  ><g role="presentation"><path d="M677.647059,16 L677.647059,354.936471 L790.588235,354.936471 L790.588235,129.054118 L1807.05882,129.054118 L1807.05882,919.529412 L1581.06353,919.529412 L1581.06353,1179.29412 L1321.41176,919.529412 L1242.24,919.529412 L1242.24,467.877647 L677.647059,467.877647 L0,467.877647 L0,1484.34824 L338.710588,1484.34824 L338.710588,1903.24706 L756.705882,1484.34824 L1242.24,1484.34824 L1242.24,1032.47059 L1274.99294,1032.47059 L1694.11765,1451.59529 L1694.11765,1032.47059 L1920,1032.47059 L1920,16 L677.647059,16 Z M338.789647,919.563294 L903.495529,919.563294 L903.495529,806.622118 L338.789647,806.622118 L338.789647,919.563294 Z M338.789647,1145.44565 L677.726118,1145.44565 L677.726118,1032.39153 L338.789647,1032.39153 L338.789647,1145.44565 Z M112.941176,580.705882 L1129.41176,580.705882 L1129.41176,1371.40706 L710.4,1371.40706 L451.651765,1631.05882 L451.651765,1371.40706 L112.941176,1371.40706 L112.941176,580.705882 Z" fill-rule="evenodd" stroke="none" stroke-width="1"></path></g></svg>';
 
-// --- Assignment scores on the Better Todo List ("Show assignment scores") ---
-// Canvas's planner items API omits the actual submission score (its
-// `submissions` object only carries booleans like graded/late), so points
-// possible come straight from the plannable and the earned score is lazily
-// fetched per course (students/submissions?student_ids[]=self) and cached for
-// the session. Badges always render as "{score}/{points} pts" — an en dash
-// stands in for the earned score until the fetch lands (or while the item is
-// ungraded/unsubmitted), and "Excused" replaces the whole badge for excused
-// submissions.
+// Scores: planner items omit the earned score, so it is fetched per course and cached;
+// badges read "{score}/{points} pts" (en dash until known) or "Excused".
 const todoScoreCache = new Map(); // `${courseId}:${plannableId}` -> {score, excused}
 let todoScoreLoadToken = 0;
 
@@ -4237,13 +3739,8 @@ function formatTodoScoreNumber(n) {
     return String(Math.round(n * 100) / 100);
 }
 
-// Tiny green check shown right after the score on graded assignments. Kept
-// as a constant string so both the initial render and the async patch can
-// insert the exact same markup.
 const TODO_GRADED_BADGE_HTML = `<svg class="better-todo-graded" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:10px;height:10px;margin-left:5px;display:inline-block;vertical-align:-1px;" title="Graded"><path d="M20 6L9 17l-5-5" stroke="#28a745" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-// Small inline badge shown next to the due date. "" when the item has no
-// meaningful points (custom tasks, wiki pages, etc.).
 function todoScoreBadgeHtml(item) {
     if (item.plannable_type == "planner_note" || item.planner_override?.custom === true) return "";
     const points = item.plannable?.points_possible;
@@ -4251,9 +3748,7 @@ function todoScoreBadgeHtml(item) {
     const pts = formatTodoScoreNumber(points);
     const key = `${item.course_id}:${item.plannable_id}`;
     const cached = todoScoreCache.get(key);
-    // Graded state: the live fetched score is the strongest signal, otherwise
-    // fall back to the planner API's boolean — but only while the score fetch
-    // hasn't run yet (a cached null score means the fetch confirmed no grade).
+    // Live fetched score wins over the planner boolean until a fetch confirms no grade.
     const graded = cached ? cached.score != null : item.submissions?.graded === true;
     let text;
     // "Hide personal details": never reveal the real earned score.
@@ -4264,12 +3759,8 @@ function todoScoreBadgeHtml(item) {
     return `<span class="better-todo-score" ${attrs} style="margin-left:6px;opacity:.85;">${text}</span>${graded ? TODO_GRADED_BADGE_HTML : ""}`;
 }
 
-// Fetches the current user's submission scores for every course with visible
-// todo items still missing a score, then patches the badges in place (a full
-// re-render would reset the "View More" expansion state). The token guards
-// against overlapping loads from rapid option/tab switches: an outdated run
-// stops touching the DOM, and any newer run re-collects the still-missing
-// items anyway.
+// Patch score badges in place (a re-render would reset "View More"); the token drops
+// runs superseded by a newer one.
 async function loadTodoScores(items) {
     if (options.todo_show_scores !== true) return;
     const byCourse = new Map();
@@ -4290,8 +3781,7 @@ async function loadTodoScores(items) {
     for (const [cid] of byCourse) {
         try {
             let url = `${domain}/api/v1/courses/${cid}/students/submissions?student_ids[]=self&per_page=100`;
-            // 10 pages * 100 submissions is a safety net against a malformed
-            // next link, same as fetchActiveCourseIds.
+            // Page cap guards against a malformed next link.
             for (let page = 0; page < 10 && url; page++) {
                 const response = await fetch(url, {
                     method: "GET",
@@ -4310,12 +3800,10 @@ async function loadTodoScores(items) {
                 url = getNextPageUrl(response.headers.get("Link"));
             }
         } catch (e) {
-            // Leave these items uncached so a later render retries the fetch
-            // (e.g. teacher accounts, which the submissions endpoint rejects).
+            // Leave uncached so a later render retries (teacher accounts are rejected).
         }
     }
     if (token !== todoScoreLoadToken) return;
-    // Patch every badge that now has data, on either tab.
     document.querySelectorAll("#better-todo-main .better-todo-score").forEach(el => {
         const cached = todoScoreCache.get(`${el.dataset.todoCourse}:${el.dataset.todoPlannable}`);
         if (!cached) return;
@@ -4343,9 +3831,7 @@ function populateAssignments(iscompleted = false) {
             return new Date(b.plannable_date) - new Date(a.plannable_date);
         });
     } else {
-        // Keep a stable chronological order (overdue first) so the visible
-        // item budget below counts from due today onward. The planner API
-        // normally returns ascending order already; this makes it guaranteed.
+        // Sort ascending so the visible-item budget below counts from due today onward.
         assignments.sort((a, b) => new Date(a.plannable_date) - new Date(b.plannable_date));
     }
 
@@ -4371,9 +3857,7 @@ function populateAssignments(iscompleted = false) {
 
 		let assignment
 		const targetContainer = domContainers[dueGroup];
-		// Overdue items are always shown and don't consume the visible-item
-		// budget: the count starts at items due today. (On the Completed tab,
-		// whose groups are Graded/Ungraded, every item still counts.)
+		// Overdue items are always shown and don't use up the item budget.
 		const isOverdue = !iscompleted && dueGroup === -1;
 		if (!isOverdue) assignmentCount++;
 		let isHidden = !isOverdue && assignmentCount > maxElements;
@@ -4391,7 +3875,6 @@ function populateAssignments(iscompleted = false) {
 				}
 			}
 
-			// targetContainer.wrapper.style.display = "block";
 			assignment = makeElement("div", targetContainer.listContainer, {
 				class: "better-todo-assignment",
 			});
@@ -4409,31 +3892,22 @@ function populateAssignments(iscompleted = false) {
 				options.custom_cards_3?.[item.plannable.course_id]?.color ??
 				"#cccccc");
 
-        // "Ignore card colors" (Better Todo List): when on, the class name is
-        // rendered black in light mode or the theme text color in dark mode
-        // instead of the course's card color.
+        // "Ignore card colors": course name in black (light) or theme text (dark).
         const classNameColor = options.todo_ignore_card_colors
             ? (options.dark_mode === true ? "var(--bctext-0)" : "#000000")
             : courseColor;
-        // "Remove icons" (Better Todo List): when on, the task-type icon is
-        // omitted from the colored strip on the left of each task.
+        // "Remove icons": drop the task-type icon from the colored strip.
         const removeIcons = options.todo_remove_icons === true;
 
         const isCustomTask = item.plannable_type == "planner_note" || item.planner_override?.custom === true;
-        // True when Canvas has a real submission for this item: the Completed
-        // list shows it regardless of the checkmark state, so the toggle is
-        // disabled for it (see the checkmark listener below).
+        // Submitted to Canvas: the Completed tab shows it whatever the checkmark says.
         const wasSubmitted = item.submissions?.submitted === true;
         const taskHref = isCustomTask ? customTaskHref(item) : (item.anonFake === true ? "#" : domain + item.html_url);
         const editButtonSvg = isCustomTask
             ? `<svg class="better-todo-assignment-edit" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:18px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="Edit this custom task"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
             : "";
         const iconSize = isCustomTask ? 26 : 20;
-        // Optical centering inside the colored strip: the assignment icon's
-        // glyph hugs its viewBox's left edge, so it gets a 5px nudge right.
-        // The quiz glyph's visual weight already sits right of center (its
-        // thin "motion lines" occupy the left edge), so it needs less of a
-        // nudge — otherwise it reads as off-center next to the others.
+        // Optical centering: glyphs hug their viewBox's left edge; quiz needs less of a nudge.
         const iconLeftOffset = isCustomTask ? 2 : item.plannable_type == "quiz" ? 2 : 5;
         const scoreBadge = options.todo_show_scores === true ? todoScoreBadgeHtml(item) : "";
         const taskIcon = removeIcons ? "" : isCustomTask
@@ -4472,10 +3946,7 @@ function populateAssignments(iscompleted = false) {
 			</div>
 		</div>
 		`;
-		// The checkmark reflects the tab it is rendered in: on the Tasks tab it
-		// marks the item complete; on the Completed tab it makes it incomplete
-		// again (for genuinely submitted items this sets a local pin, since
-		// Canvas has no way to un-submit).
+		// On the Completed tab the checkmark un-completes; submitted items get a local pin.
 		assignment.querySelector(".better-todo-assignment-checkmark").addEventListener("click", () => {
 			if (item.anonFake === true) return; // fake items can't be completed in Canvas
 			console.log("marking ", item.plannable.title, iscompleted ? "as incomplete" : "as complete");
@@ -4530,7 +4001,6 @@ function populateAnnouncements() {
 		let dueGroup = item.plannable.read_state == "read" ? "Seen" : "New";
 
 		let announcement;
-		// console.log(domContainers)
 		const targetContainer = domContainers[dueGroup];
 		if (targetContainer) {
 			targetContainer.wrapper.style.display = "block";
@@ -4545,11 +4015,9 @@ function populateAnnouncements() {
 			options.custom_cards_3?.[item.plannable.course_id]?.color ??
 			"#cccccc";
 
-		// "Ignore card colors": black in light mode, theme text color in dark.
 		const classNameColor = options.todo_ignore_card_colors
 			? (options.dark_mode === true ? "var(--bctext-0)" : "#000000")
 			: courseColor;
-		// "Remove icons": drop the announcement icon from the colored strip.
 		const removeIcons = options.todo_remove_icons === true;
 
 		let filter = "";
@@ -4584,10 +4052,7 @@ function populateAnnouncements() {
 			</div>
 		</div>
 		`;
-		// "Mark as seen": sets the same planner override the task checkmark
-		// uses, which also hides the announcement from the list (see the
-		// announcements filter in createTodoSections). Two-way, so with "Hide
-		// read announcements" off a dismissed one can be un-seen again.
+		// "Mark as seen" shares the task checkmark's planner override; the toggle is two-way.
 		announcement.querySelector(".better-todo-announcement-checkmark").addEventListener("click", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
@@ -4597,11 +4062,7 @@ function populateAnnouncements() {
 	});
 }
 
-// Particle effects (confetti, fireworks, sparkles) render into ONE fullscreen
-// <canvas> per burst instead of individual DOM elements. Dozens of animated
-// layers compositing over Canvas's blurred dashboard is itself the lag; a
-// single canvas is one layer with cheap 2D draws, so even "crazy" volumes
-// stay smooth.
+// One fullscreen canvas per burst instead of DOM particles — keeps "crazy" volumes smooth.
 function celebrationCanvas() {
     const canvas = document.createElement('canvas');
     canvas.style.cssText = 'position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:2147483647;';
@@ -4614,8 +4075,7 @@ function celebrationCanvas() {
     return { canvas, ctx, w: window.innerWidth, h: window.innerHeight };
 }
 
-// Shared rAF driver: runs `step(now)` until it returns false, then removes
-// the canvas (after a grace period so trailing fades finish).
+// rAF driver: runs step(now) until it returns false, then removes the canvas.
 function runCelebrationCanvas(view, step, graceMs) {
     let rafId = null;
     const loop = (now) => {
@@ -4629,7 +4089,6 @@ function runCelebrationCanvas(view, step, graceMs) {
         }
     };
     rafId = requestAnimationFrame(loop);
-    // Hard stop so a backgrounded tab (rAF throttling) can't leak the canvas.
     setTimeout(() => { try { rafId && cancelAnimationFrame(rafId); view.canvas.remove(); } catch (e) { /* ignore */ } }, 9000);
 }
 
@@ -4638,8 +4097,7 @@ function createConfettiBurst(targetElement, opts = {}) {
         const amountScale = celebrationAmountScale();
         const count = Math.min(220, Math.round((opts.count || 48) * amountScale * (amountScale >= 4 ? 1.25 : amountScale >= 2 ? 1.2 : 1)));
         const durationFactor = amountScale >= 4 ? 1.6 : amountScale >= 2 ? 1.35 : amountScale < 1 ? 0.85 : 1;
-        // Fan the burst out as the amount grows so bigger bursts don't read
-        // as one dense clump.
+        // Fan the burst wider as the amount grows so it doesn't read as one clump.
         const spread = (opts.spread || 110) * (amountScale >= 4 ? 1.9 : amountScale >= 2 ? 1.45 : 1);
         const colors = opts.colors || ['#ff4d4f', '#ffc107', '#28a745', '#17a2b8', '#6f42c1', '#ff6b6b', '#ff8a65', '#ffd54f'];
         const rect = targetElement.getBoundingClientRect();
@@ -4689,8 +4147,7 @@ function createConfettiBurst(targetElement, opts = {}) {
                 if (elapsed < 0) { active = true; continue; }
                 const p = Math.min(1, elapsed / pc.duration);
                 if (p < 1) active = true;
-                // Same arc as before: fast rise through the bezier peak, then
-                // settle into the end point while fading out.
+                // Bezier arc: fast rise, then settle at the end point while fading.
                 const eased = 1 - Math.pow(1 - p, 3);
                 const inv = 1 - eased;
                 const x = inv * inv * pc.ox + 2 * inv * eased * pc.ctrlX + eased * eased * pc.endX;
@@ -4718,18 +4175,11 @@ function createConfettiBurst(targetElement, opts = {}) {
     }
 }
 
-// --- Completion celebrations ------------------------------------------------
-// Every effect renders into its own fixed-position container (pointer-events
-// none, topmost z-index) so it ignores page scroll and layout. Overlay-particle
-// effects keep the default task exit (slide right); "rocket" replaces the
-// task's own exit animation by flying the element off the page, so
-// runCelebration returns which exit the caller should apply.
+// --- Completion celebrations ---
+// Each effect renders into a fixed container; "rocket" also replaces the task exit.
 const CELEBRATION_EFFECT_IDS = ["confetti", "fireworks", "sparkles", "hearts", "rocket"];
 
-// Intensity tiers for the Celebrations "Amount" dropdown. "less" halves the
-// particle counts; "more" doubles them and enlarges fireworks/hearts; "crazy"
-// quadruples with even bigger visuals. Rocket uses the raw factor for its
-// thruster size/length at every tier.
+// Intensity tiers for the "Amount" dropdown; rocket uses the raw factor.
 const CELEBRATION_AMOUNT_SCALES = { less: 0.5, normal: 1, more: 2, crazy: 4 };
 function celebrationAmountScale() {
     const v = options.todo_celebration_amount;
@@ -4737,31 +4187,18 @@ function celebrationAmountScale() {
 }
 
 function enabledCelebrationTypes() {
-    // Master Celebrations toggle (default on).
     if (options.todo_celebrations_enabled === false) return [];
-    // Legacy migration: before the Celebrations box there was a single
-    // "show confetti on complete" checkbox (todo_confetti).
+    // Legacy migration from the old todo_confetti checkbox.
     const list = options.todo_celebrations;
     if (Array.isArray(list)) return list.filter(t => CELEBRATION_EFFECT_IDS.includes(t));
     return options.todo_confetti === false ? [] : ["confetti"];
 }
 
-// Picks a random enabled effect and runs it against the task element.
-// Returns the exit animation for the task element:
-// "slide" (default slide-out), "wave", "rocket" or "rainbow".
-// Small pause before the celebration fires and the exit animation starts, so
-// the task is actually seen before everything happens (without it, overlay
-// effects fired while the slide-out was already running, so the card seemed
-// to never appear).
+// Lead-in pause so the task is visible before the effect and its exit start.
 const CELEBRATION_LEAD_IN = 250;
-// How long after the effect starts the task begins its exit.
 const CELEBRATION_SLIDE_AFTER = 200;
 
-// Picks a random enabled effect and schedules it against the task element.
-// Returns the task's exit as { style, delay, startDelay, start }: "slide" is
-// the default slide-out, "rocket" flies the card off page. start/startDelay
-// run the overlay effect; delay holds the exit back so the effect can play
-// out first (hearts stay while they float).
+// Returns the task's exit as { style, delay, startDelay, start }.
 function runCelebration(targetElement) {
     const types = enabledCelebrationTypes();
     if (!types.length) return { style: "slide", delay: 0 };
@@ -4772,23 +4209,17 @@ function runCelebration(targetElement) {
         case "confetti": return { style: "slide", delay: lead + CELEBRATION_SLIDE_AFTER, startDelay: lead, start: () => createConfettiBurst(targetElement) };
         case "fireworks": return { style: "slide", delay: lead + 350, startDelay: lead, start: () => createFireworksBurst(targetElement) };
         case "sparkles": return { style: "slide", delay: lead + CELEBRATION_SLIDE_AFTER, startDelay: lead, start: () => createSparkleBurst(targetElement) };
-        // Keep the task on screen a little longer so the hearts get going,
-        // but only about half their runtime — don't hold it hostage.
+        // Hearts stay on screen about half their runtime.
         case "hearts": return { style: "slide", delay: lead + Math.round(risingHeartsRuntime() * 0.5), startDelay: lead, start: () => createRisingHearts(targetElement) };
-        // The exhaust trail is spawned by applyTodoExitAnimation once the
-        // flying clone exists (it needs to track the clone's position), so
-        // the rocket has no separate start fn — its whole exit IS the effect.
+        // The rocket's exhaust is spawned by applyTodoExitAnimation, so it has no start fn.
         case "rocket": return { style: "rocket", delay: lead, startDelay: lead, start: null };
     }
     return { style: "slide", delay: 0 };
 }
 
-// Duration (ms) of each exit style's task-element animation. The todo list
-// re-render waits at least this long so the element isn't ripped out of the
-// DOM mid-animation ("slide" keeps the previous 400ms behavior).
+// Exit animation duration per style; the list re-render waits at least this long.
 const CELEBRATION_EXIT_DURATIONS = { slide: 400, rocket: 1250 };
-// Small headroom after the slide's transition ends before the list re-render
-// swaps the DOM, so the swipe always plays out fully.
+// Headroom so the swipe finishes before the re-render swaps the DOM.
 const CELEBRATION_EXIT_SETTLE = 60;
 function celebrationExitDuration(exitStyle, delay) {
     return (delay || 0) + (CELEBRATION_EXIT_DURATIONS[exitStyle] || CELEBRATION_EXIT_DURATIONS.slide) + CELEBRATION_EXIT_SETTLE;
@@ -4799,13 +4230,8 @@ function applyTodoExitAnimation(element, exitStyle, delay) {
         if (element.__crCelebrationCancelled === true) return;
     try {
         if (exitStyle === "rocket") {
-            // The task launches off the page. The list container clips
-            // overflow, so animating the real element would cut it off
-            // halfway up — instead a fixed-position clone of the card is
-            // flown off screen while the original just disappears in place.
+            // The list clips overflow, so a fixed-position clone is flown off screen instead.
             const rect = element.getBoundingClientRect();
-            // Crazy rockets fly farther (and their exhaust travels farther to
-            // keep up with the higher speed).
             const distF = celebrationAmountScale() >= 4 ? 1.9 : 1;
             const clone = element.cloneNode(true);
             clone.classList.remove("canvasrefined-rocket-exit");
@@ -4827,18 +4253,13 @@ function applyTodoExitAnimation(element, exitStyle, delay) {
             element.style.transition = "none";
             element.style.opacity = "0";
             requestAnimationFrame(() => clone.classList.add("canvasrefined-rocket-exit"));
-            // Exhaust flames track the flying clone.
             createRocketCelebration(clone);
             setTimeout(() => {
                 try { clone.remove(); } catch (e) { /* ignore */ }
                 if (element.__crRocketClone === clone) element.__crRocketClone = null;
             }, 1500);
         } else {
-            // Slide-out (delay was already consumed by the wrapper above).
-            // The swipe relies on the row's inline "transition: all .4s ease";
-            // if that's missing (e.g. cleared by an earlier revert on this
-            // element) the card would teleport instead of sliding, so make
-            // sure a transition exists before moving it.
+            // The row's transition may have been cleared by a revert; restore it first.
             if (getComputedStyle(element).transitionDuration === "0s") {
                 element.style.transition = "transform .4s ease, opacity .4s ease";
             }
@@ -4877,21 +4298,13 @@ function ensureCelebrationStyles() {
   100% { transform: translate(var(--cr-rx2, 8vw), var(--cr-ry2, -125vh)) rotate(8deg); opacity: 1; }
 }
 .canvasrefined-rocket-exit { animation: canvasrefined-rocket-exit 1.2s cubic-bezier(.55, 0, .85, .4) forwards !important; }
-/* Rocket exhaust flames are animated with the Web Animations API
-   (el.animate): literal keyframe values, so Chrome always runs them on the
-   compositor. Confetti, firework and sparkle particles are canvas-rendered
-   instead (see celebrationCanvas). */
+/* Rocket flames use WAAPI keyframes (compositor); other particles are canvas-drawn. */
 .canvasrefined-rocket-flame { position: fixed; border-radius: 50%; pointer-events: none; z-index: 2147483647; }
-/* Sparkle bursts are canvas-rendered now (see celebrationCanvas); no DOM
-   sparkle elements or keyframes are needed anymore. */
-/* Outer span rises + fades; inner span sways side to side on an eased
-   alternate loop, so the float reads as one smooth sinusoidal drift
-   (single-element keyframes made the sway/rotation visibly change
-   direction mid-flight). */
+/* outer span rises, inner sways: reads as one smooth drift */
 @keyframes canvasrefined-heart-rise {
   0%   { transform: translateY(6px) scale(.55); opacity: 0; animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
   6%   { transform: translateY(0) scale(var(--cr-s, 1)); opacity: 1; animation-timing-function: cubic-bezier(.3, .6, .5, 1); }
-  /* fast launch: a quarter of the climb happens in the first ~15% */
+  /* a quarter of the climb happens in the first ~15% */
   15%  { transform: translateY(calc(var(--cr-hy, -160px) * .28)) scale(var(--cr-s, 1)); }
   80%  { opacity: .92; }
   100% { transform: translateY(var(--cr-hy, -160px)) scale(var(--cr-s, 1)); opacity: 0; }
@@ -4927,7 +4340,6 @@ function createFireworksBurst(targetElement) {
         const originX = rect.left + rect.width / 2;
         const originY = rect.top + rect.height * 0.4;
         const scale = celebrationAmountScale();
-        // more/crazy launch more shells AND bigger bursts; less only trims.
         const burstScale = scale > 1 ? (scale >= 4 ? 2.2 : 1.5) : 1;
         const shellCount = Math.max(1, Math.round(3 * scale));
         const shellGap = 260 / Math.sqrt(scale);
@@ -4938,7 +4350,6 @@ function createFireworksBurst(targetElement) {
             shells.push({
                 start: i * shellGap + Math.random() * 130,
                 apexX: originX + (Math.random() - 0.5) * 90 * burstScale,
-                // Lower bursts overall, with per-shell height variation.
                 apexY: originY - (55 + Math.random() * 110) * burstScale,
                 duration: 320 + Math.random() * 160,
                 color: colors[(Math.random() * colors.length) | 0],
@@ -4974,7 +4385,6 @@ function createFireworksBurst(targetElement) {
             ctx.clearRect(0, 0, view.w, view.h);
             let active = false;
 
-            // shells climb from the task toward their apex
             for (let i = shells.length - 1; i >= 0; i--) {
                 const sh = shells[i];
                 const elapsed = now - startTime - sh.start;
@@ -4991,7 +4401,6 @@ function createFireworksBurst(targetElement) {
                 else active = true;
             }
 
-            // soft radial flashes at each burst point
             for (let i = flashes.length - 1; i >= 0; i--) {
                 const f = flashes[i];
                 const p = (now - f.born) / 300;
@@ -5006,7 +4415,6 @@ function createFireworksBurst(targetElement) {
                 ctx.fill();
             }
 
-            // sparks: simple ballistic drift with gravity + drag
             const gravity = 300;
             for (let i = sparks.length - 1; i >= 0; i--) {
                 const sp = sparks[i];
@@ -5068,7 +4476,6 @@ function createSparkleBurst(targetElement) {
                 if (elapsed < 0) { active = true; continue; }
                 const p = Math.min(1, elapsed / sp.dur);
                 if (p < 1) active = true;
-                // ease-out drift to the end point while scaling up then down
                 const eased = 1 - Math.pow(1 - p, 2.2);
                 const scalePulse = p < 0.3 ? 0.2 + (p / 0.3) * 0.8 : Math.max(0.1, 1 - ((p - 0.3) / 0.7) * 0.9);
                 const x = originX + sp.dx * eased;
@@ -5078,7 +4485,6 @@ function createSparkleBurst(targetElement) {
                 ctx.globalAlpha = Math.max(0, 1 - p * p);
                 ctx.translate(x, y);
                 ctx.rotate(((sp.rot + 220 * p) * Math.PI) / 180);
-                // 4-point star path
                 const q = r * 0.38;
                 ctx.fillStyle = sp.color;
                 ctx.beginPath();
@@ -5097,9 +4503,7 @@ function createSparkleBurst(targetElement) {
     }
 }
 
-// Total ms until the last heart finishes rising (used to hold the task's
-// exit animation until the hearts have almost finished). Computed from the
-// same formula the effect uses, so it's known before the effect starts.
+// Runtime of the hearts effect, so the task exit can wait for it.
 function risingHeartsRuntime() {
     const heartCount = Math.round(13 * celebrationAmountScale());
     return Math.min(2200, (heartCount - 1) * 20 + 1500) + 300;
@@ -5131,14 +4535,10 @@ function createRisingHearts(targetElement) {
             el.style.setProperty('--cr-s', (0.8 + Math.random() * 0.7).toFixed(2));
             el.style.setProperty('--cr-rot', Math.round(6 + Math.random() * 8) + 'deg');
             el.style.setProperty('--cr-dur', (900 + Math.random() * 600) + 'ms');
-            // Lead the slide-away: hearts pop out instantly (fill-mode "both"
-            // keeps them hidden during their delay) and stream up in tight
-            // succession — the task is still on screen while they launch.
+            // Staggered delays; fill-mode "both" keeps each heart hidden until it starts.
             el.style.setProperty('--cr-cdelay', Math.round(i * (i < 3 ? 16 : 20)) + 'ms');
             container.appendChild(el);
         }
-        // The container removal clears every heart; no per-heart timers needed.
-        // Scale the timeout with the count so big amounts aren't cut off.
         setTimeout(() => { try { container.remove(); } catch (e) { /* ignore */ } }, 2400 + heartCount * 20);
         return risingHeartsRuntime();
     } catch (e) {
@@ -5146,9 +4546,6 @@ function createRisingHearts(targetElement) {
     }
 }
 
-// The rocket exit flies the task element itself off the page (via the
-// canvasrefined-rocket-exit keyframes applied by applyTodoExitAnimation);
-// this spawns the exhaust flame trail that follows the flying card.
 function createRocketCelebration(targetElement) {
     try {
         const container = celebrationContainer();
@@ -5157,16 +4554,10 @@ function createRocketCelebration(targetElement) {
         const scale = celebrationAmountScale();
         const start = performance.now();
         const flames = []; // tracked so expiry is swept in the same pass
-        // Continuous emission: flames/sec = rate, so the trail never gaps.
-        // Spawning per-frame burst-saturated the pool cap at higher amounts,
-        // then paused until old flames expired — that read as broken
-        // segments with the thruster visibly switching off.
+        // Continuous emission: per-frame bursts saturated the pool cap and read as gaps.
         const flameRate = 26 * scale; // flames per second
-        // Base thrust: less/normal get a stronger base size than before
-        // (they looked weak); more/crazy scale up on top.
         const sizeScale = scale >= 4 ? 3 : scale >= 2 ? 2.4 : scale >= 1 ? 1.8 : 1;
-        // Cap = steady-state concurrent flames (rate x max life) + headroom,
-        // so sustained emission never gets throttled into gaps.
+        // Cap = steady-state concurrent flames + headroom, so emission never gets throttled.
         const poolCap = Math.ceil(flameRate * 1.1) + 8;
         let emitAcc = 0;
         let lastEmit = start;
@@ -5174,7 +4565,6 @@ function createRocketCelebration(targetElement) {
         const tick = (now) => {
             let r;
             try { r = targetElement.getBoundingClientRect(); } catch (e) { r = null; }
-            // retire expired flames in the same pass (no per-flame timers)
             for (let i = flames.length - 1; i >= 0; i--) {
                 if (now >= flames[i].expire) {
                     flames[i].el.remove();
@@ -5184,15 +4574,11 @@ function createRocketCelebration(targetElement) {
             const gone = !r || r.width === 0 || r.bottom < -110 || r.top > window.innerHeight + 110;
             if (!gone && now - start < flightMs + 150) {
                 const climb = Math.max(0.45, Math.min(1, (now - start) / 500)); // throttle ramps up after liftoff
-                // Accumulate emission time and spawn the owed flames — a
-                // steady stream whose density is set by the amount tier,
-                // never bursts that exhaust (and starves) the pool.
                 const dt = Math.min(0.1, (now - lastEmit) / 1000);
                 lastEmit = now;
                 emitAcc = Math.min(emitAcc + flameRate * dt, 3); // don't bank a backlog
                 while (emitAcc >= 1 && flames.length < poolCap) {
                     emitAcc -= 1;
-                    // Amount tier drives thruster particle size and flame length.
                     const size = (5 + Math.random() * 7) * sizeScale;
                     const life = (520 + Math.random() * 300) * (scale >= 4 ? 1.3 : 1);
                     const el = document.createElement('div');
@@ -5202,9 +4588,7 @@ function createRocketCelebration(targetElement) {
                     el.style.left = Math.round(r.left + r.width * (0.38 + Math.random() * 0.24)) + 'px';
                     el.style.top = Math.round(r.bottom - 4) + 'px';
                     el.style.background = colors[(Math.random() * colors.length) | 0];
-                    // WAAPI: compositor-run motion; flame travel distance
-                    // scales with the amount tier so the exhaust keeps up
-                    // with bigger/faster rockets.
+                    // WAAPI so the flames animate on the compositor.
                     const fx = (Math.random() - 0.5) * 28 * scale;
                     const fy = 30 * scale;
                     el.animate([
@@ -5216,7 +4600,6 @@ function createRocketCelebration(targetElement) {
                 }
                 rafId = requestAnimationFrame(tick);
             } else {
-                // Let the last flames finish, then drop the whole container.
                 setTimeout(() => { try { container.remove(); } catch (e) { /* ignore */ } }, 1100);
             }
         };
@@ -5226,23 +4609,16 @@ function createRocketCelebration(targetElement) {
     }
 }
 
-// --- Celebration preview -----------------------------------------------------
-// "Preview" (popup Celebrations box): runs the currently selected effect +
-// amount against a disposable fake task so the user can see what they'll get
-// without completing a real task. The fake card drops into the real todo list
-// when it's rendered here, or floats top-right as a fallback.
+// --- Celebration preview ---
+// Runs the selected effect against a disposable fake card in the real todo list.
 function runCelebrationPreview() {
     try {
         if (enabledCelebrationTypes().length === 0) return { ok: false, reason: "disabled" };
 
-        // Clean up any preview that's still playing.
         const stale = document.getElementById("canvasrefined-celebration-preview");
         if (stale) stale.remove();
 
-        // Drop the fake task into the "Due Today" group so the celebration
-        // plays exactly where a real completion happens. The preview card
-        // reuses the real task-row markup (colored strip, title, due date)
-        // so its size/position matches an actual task.
+        // Reuse a real task row, dropped into the Due Today group when possible.
         const todayContainer = domContainers["0"];
         const listEl = document.getElementById("canvasrefined-todo-list");
         const onTasksTab = betterTodoFilter === "tasks" && todayContainer && todayContainer.wrapper.isConnected && listEl;
@@ -5272,10 +4648,7 @@ function runCelebrationPreview() {
         if (onTasksTab) {
             const groupList = todayContainer.wrapper.querySelector(".todo-group-list");
             if (groupList) groupList.insertBefore(card, groupList.firstChild);
-            // Force the Due Today group visible for the preview, but remember
-            // its previous state: when the group has no real items it starts
-            // hidden, and without restoring it the empty "Due Today" header
-            // would stay behind after the sample card leaves.
+            // Force Due Today visible and remember its state so the empty header doesn't linger.
             restoreWrapper = {
                 wrapper: todayContainer.wrapper,
                 display: todayContainer.wrapper.style.display,
@@ -5284,16 +4657,11 @@ function runCelebrationPreview() {
             todayContainer.wrapper.style.display = "block";
             todayContainer.wrapper.setAttribute("data-has-visible", "true");
         } else {
-            // Tasks tab not rendered here (other filter, other page) — float
-            // the sample card top-right so a preview is still possible.
             card.style.cssText += "position:fixed;top:70px;right:16px;width:300px;z-index:2147483646;box-shadow:0 2px 10px rgba(0,0,0,.25);";
             document.body.appendChild(card);
         }
 
-        // Same flow as a real completion: pick a random enabled effect with
-        // the current amount, then apply the matching exit animation. The
-        // effect start honours the lead-in pause and is skipped if the sample
-        // card is gone by then (e.g. an immediate re-preview).
+        // Mirror a real completion: effect plus matching exit, honouring the lead-in.
         const celebration = runCelebration(card);
         if (celebration.start) {
             const startFn = celebration.start;
@@ -5302,7 +4670,6 @@ function runCelebrationPreview() {
         applyTodoExitAnimation(card, celebration.style, celebration.delay);
         setTimeout(() => {
             try { card.remove(); } catch (e) { /* ignore */ }
-            // Put the Due Today group back the way we found it.
             if (restoreWrapper) {
                 try {
                     restoreWrapper.wrapper.style.display = restoreWrapper.display;
@@ -5317,12 +4684,8 @@ function runCelebrationPreview() {
     }
 }
 
-// --- Local "incomplete" pins -----------------------------------------------
-// Canvas records real submissions server-side and offers no API to un-submit,
-// so an assignment the user actually handed in can never leave the Completed
-// list via the planner override. For those items the checkmark instead sets a
-// local pin that forces the item back into the Tasks list. The pin lives in
-// chrome.storage.sync and clears when the item is checked off again.
+// --- Local "incomplete" pins ---
+// Canvas can't un-submit, so submitted items are pinned back into Tasks locally.
 function todoPinKey(item) {
     return item.plannable_type + "_" + item.plannable_id;
 }
@@ -5337,22 +4700,16 @@ function setPinnedIncomplete(item, pinned) {
     chrome.storage.sync.set({ todo_force_incomplete: pins });
 }
 
-// opts.celebrate === false suppresses the completion celebration — used for
-// announcement "mark as seen", which shares the marked-complete plumbing but
-// isn't a task the user finished, and keeps celebrations strictly on task
-// completion (never on uncompleting, which is already gated by completeState).
+// opts.celebrate === false suppresses the celebration (announcement "mark as seen").
 function markAs(item, element, makeComplete, opts = {}) {
 	const csrfToken = CSRFtoken();
 	const completeState = makeComplete;
 
-    // Pre-click state, captured so the optimistic UI can be rolled back if
-    // the server definitively refuses the change (see revertOptimisticUI).
+    // Pre-click state, for rollback if the server refuses the change.
     const previousComplete = item.planner_override ? item.planner_override.marked_complete === true : false;
     const hadPin = isPinnedIncomplete(item);
 
-    // Checking an item off clears any local incomplete pin; unchecking a
-    // genuinely submitted item sets one, since the submission itself can't
-    // be undone server-side.
+    // Checking off clears a pin; unchecking a submitted item sets one.
     if (completeState) {
         if (isPinnedIncomplete(item)) setPinnedIncomplete(item, false);
     } else if (item.submissions?.submitted) {
@@ -5360,30 +4717,17 @@ function markAs(item, element, makeComplete, opts = {}) {
     }
 
     // --- Optimistic UI ---
-    // Canvas's /planner/overrides endpoint occasionally returns 400 (Bad
-    // Request) for both custom tasks and normal tasks, even though the action
-    // is actually applied server-side shortly after. When that happens the
-    // item would neither visually mark nor animate, and would later appear
-    // "secretly complete" on reload. To avoid that confusing UX, we update the
-    // UI as if the request succeeded immediately, and fire the actual API
-    // call in the background for persistence.
+    // Canvas sometimes 400s even though the change lands: update the UI now, persist later.
     item.planner_override = item.planner_override || {};
     item.planner_override.marked_complete = completeState;
 
-    // A previous markAs on this same element may still have celebration or
-    // exit timers pending (fast double-click). Cancel them so the new action
-    // starts clean instead of racing the old one's scheduled effect/exit.
+    // Cancel timers left by a previous markAs on this element (fast double-click).
     element.__crCelebrationCancelled = true;
     if (element.__crExitTimer) { clearTimeout(element.__crExitTimer); element.__crExitTimer = null; }
     if (element.__crCelebTimer) { clearTimeout(element.__crCelebTimer); element.__crCelebTimer = null; }
     element.__crCelebrationCancelled = false;
 
-    // Celebrate only when marking complete (not when unmarking).
-    // Must happen BEFORE the exit animation below: the effects measure the
-    // element with getBoundingClientRect(), which reflects transforms —
-    // measuring after translate(100%) would place the origin one full card
-    // width to the right (off screen) whenever the transform applies
-    // instantly, i.e. on cards without a transition (announcements).
+    // Celebrate before the exit moves the element: effects measure its rect.
     let exitStyle = "slide";
     let exitDelay = 0;
     if (completeState && opts.celebrate !== false) {
@@ -5391,9 +4735,6 @@ function markAs(item, element, makeComplete, opts = {}) {
             const celebration = runCelebration(element);
             exitStyle = celebration.style;
             exitDelay = celebration.delay || 0;
-            // Overlay effects (confetti/fireworks/sparkles/hearts) fire after
-            // the lead-in pause; the exit is scheduled separately. Both are
-            // cancelled if the optimistic UI gets reverted meanwhile.
             if (celebration.start) {
                 const startFn = celebration.start;
                 const fire = () => {
@@ -5415,7 +4756,7 @@ function markAs(item, element, makeComplete, opts = {}) {
 
     applyTodoExitAnimation(element, exitStyle, exitDelay);
 
-    // update progress rings immediately so they animate while the item slides/fades
+    // Update progress rings now so they animate along with the exit.
     const refreshProgressRings = () => {
         const progressPlaceholder = document.getElementById("better-todo-progress-placeholder");
         if (!progressPlaceholder || typeof assignments?.then !== 'function' || !progressRingsEnabled()) return;
@@ -5423,7 +4764,6 @@ function markAs(item, element, makeComplete, opts = {}) {
             const courseId = getCurrentCourseId();
             const scopedData = getTodoScopedData(data.map(d => Object.assign({}, d)), courseId);
 
-            // reflect the updated state for this item in the snapshot
             for (let i = 0; i < scopedData.length; i++) {
                 if (scopedData[i].plannable_id === item.plannable_id && scopedData[i].plannable_type === item.plannable_type) {
                     scopedData[i].planner_override = scopedData[i].planner_override || {};
@@ -5431,7 +4771,6 @@ function markAs(item, element, makeComplete, opts = {}) {
                     break;
                 }
             }
-            // Keep the rings consistent with the list when fake items are shown.
             if (options.hide_personal_details === true && options.anon_fake_todo === true) {
                 scopedData.push(...buildFakeTodoItems());
             }
@@ -5442,27 +4781,18 @@ function markAs(item, element, makeComplete, opts = {}) {
     refreshProgressRings();
 
     // --- Failure rollback ---
-    // Restores the pre-click state when the server definitively refuses the
-    // toggle: a POST 400 whose existing override can't be recovered, a failed
-    // PUT, or a network error. Canvas's planner_override uniqueness scope is
-    // (user, plannable_type, plannable_id) regardless of workflow_state, but
-    // soft-deleted override rows are invisible to BOTH read endpoints, so a
-    // dormant row can permanently block the POST with 400 "already exists".
-    // Without a rollback the optimistic UI would silently lie until the next
-    // reload, when the item reappears unchecked — the reported "cannot check
-    // off / won't move to Completed" bug.
+    // Restore the pre-click state when the server refuses: soft-deleted override rows are
+    // invisible to the read endpoints yet still block the POST with 400 "already exists".
     const revertOptimisticUI = (reason) => {
         item.planner_override = item.planner_override || {};
         item.planner_override.marked_complete = previousComplete;
-        // undo the pin side effects of this toggle
         if (completeState) {
             if (hadPin) setPinnedIncomplete(item, true);
         } else if (item.submissions?.submitted && !hadPin) {
             setPinnedIncomplete(item, false);
         }
         console.warn("planner override not persisted, reverting UI:", reason);
-        // snap the card back if it is still in the DOM (before the swap);
-        // also undo any celebration exit animation applied to it
+        // Snap the card back and undo any exit animation still applied to it.
         element.style.transform = "";
         element.style.opacity = "";
         element.style.transition = "";
@@ -5492,13 +4822,7 @@ function markAs(item, element, makeComplete, opts = {}) {
     }, celebrationExitDuration(exitStyle, exitDelay));
 
     // --- Persistence (background, best-effort) ---
-    // Toggle the planner override server-side. The override id returned by a
-    // successful POST/PUT is stored on the in-memory item so subsequent
-    // toggles PUT (update) instead of POSTing a duplicate. If a POST still
-    // collides with an existing override (400 "already exists"), we look up
-    // the real id and retry with a PUT. If every attempt fails, the
-    // optimistic UI is rolled back so the card visibly returns instead of
-    // silently dropping the check-off on the next reload.
+    // Store the override id so later toggles PUT instead of POSTing a duplicate.
     const sendOverride = (override) => fetch(domain + "/api/v1/planner/overrides" + (override && override.id ? "/" + override.id : ""), {
         method: override && override.id ? "PUT" : "POST",
         headers: {
@@ -5514,17 +4838,8 @@ function markAs(item, element, makeComplete, opts = {}) {
         })
     });
 
-    // Loads every planner override the user has. The index endpoint is
-    // paginated at 10 items per page and only ever returns ACTIVE overrides —
-    // Canvas soft-deletes overrides (workflow_state="deleted") instead of
-    // removing the row, and those dormant rows still satisfy the
-    // (user, plannable_type, plannable_id) uniqueness constraint. A dormant
-    // row therefore makes POST create fail with 400 "already exists" while
-    // being unlistable, which is why items in some courses could never be
-    // checked off: the old recovery read a single un-paginated page, missed
-    // the row, and never PUT. Page through with per_page=100 following the
-    // Link header (same pattern as the planner items fetch). Returns null on
-    // any failure so the caller can distinguish "no match" from "unknown".
+    // Every active override, following the Link header. Soft-deleted rows are unlistable
+    // but still block POST with 400, hence the PUT retry. Returns null on failure.
     const fetchAllOverrides = async () => {
         const all = [];
         let url = domain + "/api/v1/planner/overrides?per_page=100";
@@ -5539,11 +4854,7 @@ function markAs(item, element, makeComplete, opts = {}) {
         return all;
     };
 
-    // A stored override may not carry the identity the planner items feed
-    // gave us: Canvas re-points overrides on save (discussion overrides move
-    // to the root topic id, assignment overrides can be re-typed to
-    // quiz/discussion_topic/wiki_page with a different id), so also match on
-    // the associated assignment_id as a fallback.
+    // Canvas re-points overrides on save, so fall back to matching assignment_id.
     const matchesItem = (o) => {
         if (!o) return false;
         if (String(o.plannable_id) === String(item.plannable_id) &&
@@ -5557,11 +4868,7 @@ function markAs(item, element, makeComplete, opts = {}) {
     sendOverride(item.planner_override)
     .then(async resp => {
         if (resp.ok) {
-            // Capture the override id from the response. A POST creates the
-            // override server-side with an id we don't know yet; without
-            // storing it, every later toggle on this item would POST again and
-            // collide with the existing override (400 "already exists"), so
-            // unchecking would never actually persist.
+            // Keep the id: without it every later toggle POSTs a duplicate and 400s.
             try {
                 const saved = await resp.json();
                 if (saved && saved.id) {
@@ -5572,11 +4879,7 @@ function markAs(item, element, makeComplete, opts = {}) {
             console.log("marked as complete");
             return;
         }
-        // A POST can return 400 because an override already exists server-side
-        // under an id we never learned (e.g. it was created earlier without the
-        // response being captured, or a dormant soft-deleted row blocks it).
-        // Look up the user's overrides, find the one for this item, and retry
-        // with a PUT so the toggle actually persists.
+        // No known id: look the item's override up and retry as a PUT.
         if (!(item.planner_override && item.planner_override.id)) {
             try {
                 const overrides = await fetchAllOverrides();
@@ -5596,16 +4899,12 @@ function markAs(item, element, makeComplete, opts = {}) {
                     console.warn("planner override PUT retry returned", retry.status);
                     return revertOptimisticUI("PUT retry returned " + retry.status);
                 }
-                // No matching override (or the listing failed): nothing to
-                // PUT against, so the change was never persisted.
                 return revertOptimisticUI("POST returned " + resp.status + " and no matching override was found");
             } catch (e) {
                 console.error("error recovering planner override id", e);
                 return revertOptimisticUI("override recovery failed: " + e);
             }
         }
-        // A PUT on a known id failed (e.g. the override was removed
-        // server-side between our listing and the toggle): roll back.
         return revertOptimisticUI("request returned " + resp.status);
     })
     .catch(err => {
@@ -5617,7 +4916,6 @@ function markAs(item, element, makeComplete, opts = {}) {
 
 function createTodoViewMore(location, type) {
     let viewMoreButton = makeElement("button", location, { "className": "canvasrefined-custom-btn canvasrefined-viewmore-btn", "textContent": "View More" });
-    //viewMoreButton.classList.add("canvasrefined-viewmore-btn");
     const showMoreCount = 3;
     viewMoreButton.addEventListener("click", function (e) {
         if (type === "announcement") {
@@ -5629,25 +4927,16 @@ function createTodoViewMore(location, type) {
     });
 }
 
-// better todo init
 function setupBetterTodo() {
-    // Better Todo list is removed from quizzes (it interferes with the quiz page).
     if (isQuizPage()) return;
-    // Only the main dashboard and course homepages get the todo sidebar;
-    // sub-pages (assignments, modules, files, ...) keep Canvas's own sidebar.
+    // Only the dashboard and course homepages get the todo sidebar.
     if (!isTodoAllowedPage()) return;
     if (options.better_todo !== true || isGradesPage()) return;
     if (document.querySelector('#canvasrefined-todo-list')) return;
-    // The dashboard MutationObserver can fire before getApiData() has assigned
-    // the `assignments` promise. Creating the sidebar now would leave it
-    // permanently empty: createTodoSections would throw on `assignments.then`
-    // after the shell was built, and the existing-element guard above prevents
-    // any retry. Bail instead — Canvas keeps mutating the DOM during load, so
-    // checkDashboardReady calls us again once data is ready.
+    // `assignments` may not be set yet; bail and let checkDashboardReady call us again.
     if (!assignments || typeof assignments.then !== "function") return;
     let list = document.querySelector("#right-side");
     if (!list) return;
-    //if (!list || list.childElementCount === 0 || list.children[0].id === "canvasrefined-todo-list") return;
     try {
         /* save the feedback to append it later */
         const feedback = list.querySelector(".events_list.recent_feedback");
@@ -5677,16 +4966,9 @@ function applySidebarScaleStyles(sidebarList) {
     sidebarList.style.setProperty("--bc-sidebar-label-size", `${Math.round(14 * scale)}px`);
 }
 
-// --- Mobile global-nav tray (Better Sidebar styling) ------------------------
-// Below Canvas' responsive breakpoint the global nav collapses into an InstUI
-// tray dialog ([role="dialog"][aria-label="Global Navigation"]) instead of the
-// .ic-app-header rail, so none of the rail's theming reaches it. When Better
-// Sidebar is enabled, give that dialog the same look as the rail: --bcsidebar
-// surface at the sidebar opacity/blur slider values, --bcsidebar-text ink, and
-// rounded sidebar-style rows. The dialog's behavior, item list and a11y
-// attributes are left untouched — styling only. Selectors use stable
-// attributes ([role], [aria-label], [data-cid]) instead of emotion hashes,
-// which shift between Canvas releases; an unmatched rule is simply inert.
+// --- Mobile global-nav tray (Better Sidebar styling) ---
+// Below Canvas' breakpoint the nav is an InstUI tray dialog, so restyle it to match the
+// rail. Selectors use stable attributes, not emotion hashes.
 function setupMobileNavStyle() {
     let style = document.getElementById("canvasrefined-mobile-nav") || document.createElement("style");
     style.id = "canvasrefined-mobile-nav";
@@ -5699,13 +4981,12 @@ function setupMobileNavStyle() {
     const sidebarTransparent = 100 - sidebarOpacity;
     const dialog = '[role="dialog"][aria-label="Global Navigation"]';
     style.textContent = `
-        /* Tray wrapper: consistent drawer width instead of InstUI's inline
-           width, so labels have room on any narrow window. */
+        /* tray wrapper: fixed drawer width instead of InstUI's inline width */
         span:has(> ${dialog}) {
             width: min(320px, 90vw) !important;
             max-width: 90vw !important;
         }
-        /* Panel: the same glass surface as the Better Sidebar rail */
+        /* same glass surface as the Better Sidebar rail */
         ${dialog} {
             background: color-mix(in srgb, var(--bcsidebar), transparent ${sidebarTransparent}%) !important;
             backdrop-filter: blur(${sidebarBlur}px) !important;
@@ -5715,11 +4996,7 @@ function setupMobileNavStyle() {
             box-shadow: 8px 0 40px rgba(0, 0, 0, .28) !important;
             color: var(--bcsidebar-text) !important;
         }
-        /* Ink: recolor labels, icons and expand arrows to the sidebar text
-           color. Tray icons are fill-based InstUI SVGIcons, so fill covers
-           them; stroke-based icons inherit currentColor from the dialog.
-           Canvas ships some tray text with color="brand" (link-blue), so
-           cover every text/emotion View span too, not just <a>. */
+        /* recolor labels/icons/arrows to sidebar text; fill + currentColor both */
         ${dialog} svg {
             fill: var(--bcsidebar-text) !important;
         }
@@ -5730,13 +5007,11 @@ function setupMobileNavStyle() {
             color: var(--bcsidebar-text) !important;
             text-decoration: none !important;
         }
-        /* The tray header's big institution logo link (Canvas renders it as a
-           large image or wordmark). Hide it so the header collapses to just
-           the close button, matching the rail's compact top. */
+        /* hide the big institution logo so the header collapses to the close button */
         ${dialog} .ic-brand-mobile-global-nav-logo {
             display: none !important;
         }
-        /* Rows: padded, rounded, same hover tint as the rail's links */
+        /* rows: padded, rounded, same hover tint as the rail */
         ${dialog} li[data-cid="ListItem"] > a,
         ${dialog} li[data-cid="ListItem"] > div[data-cid="ToggleDetails"] > button {
             padding: 12px 14px !important;
@@ -5749,8 +5024,7 @@ function setupMobileNavStyle() {
         ${dialog} li[data-cid="ListItem"] > div[data-cid="ToggleDetails"] > button:focus-visible {
             background: #0000004f !important;
         }
-        /* Expanded sub-items (Account/Courses/History/Help details), indented
-           under their parent like the rail's expanded section links */
+        /* expanded sub-items, indented like the rail's section links */
         ${dialog} div[id^="Expandable"] a {
             padding: 10px 14px 10px 40px !important;
             border-radius: 10px !important;
@@ -5761,8 +5035,7 @@ function setupMobileNavStyle() {
         ${dialog} div[id^="Expandable"] a:focus-visible {
             background: #0000004f !important;
         }
-        /* Close button: bare glass circle (data-cid holds multiple tokens, so
-           match on substring) */
+        /* close button: bare glass circle (data-cid holds several tokens) */
         ${dialog} button[data-cid*="BaseButton"] {
             background: color-mix(in srgb, var(--bcsidebar-text) 12%, transparent) !important;
             border-radius: 999px !important;
@@ -5772,11 +5045,11 @@ function setupMobileNavStyle() {
         ${dialog} button[data-cid*="BaseButton"]:hover {
             background: color-mix(in srgb, var(--bcsidebar-text) 22%, transparent) !important;
         }
-        /* Avatar: subtle ring so it reads on the glass surface */
+        /* avatar ring so it reads on the glass */
         ${dialog} [class*="-avatar"] {
             box-shadow: 0 0 0 2px color-mix(in srgb, var(--bcsidebar-text) 30%, transparent) !important;
         }
-        /* Thin, theme-tinted scrollbar for the tray content */
+        /* theme-tinted thin scrollbar */
         ${dialog} ::-webkit-scrollbar { width: 8px; height: 8px; }
         ${dialog} ::-webkit-scrollbar-track { background: transparent; }
         ${dialog} ::-webkit-scrollbar-thumb {
@@ -5784,12 +5057,7 @@ function setupMobileNavStyle() {
             border-radius: 999px;
         }
     `;
-    // The mobile course-context nav (#mobileContextNavContainer — the
-    // Home/Assignments/Grades list behind the arrow button) is the narrow-
-    // window counterpart of the desktop nav-toggle + breadcrumbs bar, which
-    // Better Sidebar already hides under the "Hide Navigation Bar" sub-option.
-    // Apply the same gate here: hide the nav and its .mobile-header-arrow
-    // button only when Better Sidebar is on AND "Hide Navigation Bar" is on.
+    // Hide the mobile context nav with the same "Hide Navigation Bar" gate as the rail.
     if (options.hide_navbar === true) {
         style.textContent += `
             #mobileContextNavContainer,
@@ -5801,10 +5069,7 @@ function setupMobileNavStyle() {
     if (!style.isConnected) document.documentElement.append(style);
 }
 
-// Re-apply the tinted course-content panel when the background opacity slider
-// changes. Only the better sidebar (course mode) gives .ic-Layout-contentMain a
-// tinted panel in the first place (see setupBetterSidebar). Re-applies both the
-// opacity and blur sliders so changing either updates the panel live.
+// Re-apply the tinted content panel when the opacity or blur slider changes.
 function applyBetterSidebarContentPanel() {
     if (!options.better_sidebar) return;
     if (getSidebarLayoutMode() !== "course") return;
@@ -5828,7 +5093,6 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
         let expanded = await getSidebarExpandedState(layoutMode);
         const outerWrapper = document.getElementById("main");
         outerWrapper?.style.setProperty("display", "flex", "important");
-        // document.getElementById("not_right_side").style.setProperty("display", "none", "important");
         const leftSide = document.getElementById("left-side");
         leftSide?.style.setProperty("opacity", "1");
         leftSide?.style.setProperty("position", "static");
@@ -5879,13 +5143,7 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
             contentMain?.style.setProperty("backdrop-filter", `blur(${Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)))}px)`, "important");
             contentMain?.style.setProperty("-webkit-backdrop-filter", `blur(${Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)))}px)`, "important");
         }
-        // The rail must always render leftmost. Course-layout pages already
-        // prepend it into #left-side; dash-layout pages that still have a
-        // native left nav (accounts, groups, etc.) must too — otherwise the
-        // native #left-side column (made position:static above) flows before
-        // #not_right_side and shows up to the LEFT of the Better Sidebar,
-        // looking like a competing sidebar once the custom background tints
-        // it. Prepending keeps the order: [Better Sidebar rail][native nav].
+        // Prepending keeps the order [rail][native nav], so the native column can't render left of it.
         const sidebarParent = leftSide ? leftSide : mainWrapper;
         if (leftSide) {
             leftSide.style.display = "flex";
@@ -5894,10 +5152,7 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
             leftSide.style.minWidth = "0";
             leftSide.style.gap = "0";
         }
-        // Only hide the nav-toggle + breadcrumbs bar when the Better Sidebar
-        // "Hide Navigation Bar" sub-option is on — this used to be hidden
-        // unconditionally. (The global hide lives in applyAestheticChanges;
-        // live toggling is handled in applyOptionsChanges.)
+        // Only when "Hide Navigation Bar" is on.
         if (options.hide_navbar === true) {
             document.querySelector(".ic-app-nav-toggle-and-crumbs")?.style.setProperty("display", "none");
         }
@@ -5969,7 +5224,6 @@ function getNavBadgeCount(item) {
 
 function addSidebarButtonBadge(button, count) {
     if (!button) return;
-    // Always clear any existing badge first so a drop to 0 unread removes it.
     button.querySelector(".better-sidebar-badge")?.remove();
     if (!count) return;
     makeElement("div", button, {
@@ -5979,9 +5233,7 @@ function addSidebarButtonBadge(button, count) {
     });
 }
 
-// Re-read the global nav badge for each better-sidebar button and update its dot.
-// Canvas loads the unread counts (Inbox/announcements) asynchronously after the
-// page renders, so the dot captured at build time is often missing or stale.
+// Re-read nav badges: Canvas loads unread counts after render, so build-time dots go stale.
 function syncSidebarBadges() {
     document.querySelectorAll(".better-sidebar-btn").forEach(button => {
         const navId = button.dataset.navItemId;
@@ -6000,8 +5252,7 @@ function scheduleSidebarBadgeSync() {
     }, 100);
 }
 
-// Watch the global nav for badge changes (late load, new mail, read/unread)
-// and keep the better-sidebar dots in sync.
+// Keep the sidebar dots in sync with the nav badges.
 function watchSidebarBadges() {
     const navMenu = document.getElementById("menu");
     if (!navMenu) {
@@ -6029,11 +5280,7 @@ function populateSidebarFromNav(sidebarContent) {
 	const navMenu = document.getElementById("menu");
     let hasDashboardButton = false;
 
-    // Keep the global-search trigger last in the sidebar. The search button's
-    // placement pass and this populate pass run on independent rAF callbacks,
-    // so either can execute first. If the search button was appended before
-    // the nav buttons exist, slot the nav buttons in ahead of it so Search
-    // always stays at the bottom of the sidebar.
+    // Nav buttons go in ahead of the search trigger so Search stays last.
     const searchBtn = sidebarContent.querySelector("#canvasrefined-gs-sidebar-btn");
     const insertNavButton = (text, href, icon) => {
         const button = createSidebarButton(text, href, sidebarContent, icon);
@@ -6053,7 +5300,6 @@ function populateSidebarFromNav(sidebarContent) {
             let textEl = item.querySelector(".menu-item__text");
             let text = textEl?.textContent?.trim();
 		
-            // If text not found, try other sources
             if (!text) {
                 text = item.getAttribute("aria-label")?.trim() || 
                         item.getAttribute("title")?.trim() || 
@@ -6067,25 +5313,19 @@ function populateSidebarFromNav(sidebarContent) {
                 const svg = item.querySelector("svg");
                 if (svg) {
                     icon = svg.outerHTML;
-                    // Detect and scale down large viewBox SVGs
                     const viewBoxMatch = icon.match(/viewBox="([^"]+)"/);
                     if (viewBoxMatch) {
                         const [, viewBox] = viewBoxMatch;
                         const parts = viewBox.split(/\s+/);
                         const width = parseFloat(parts[2]);
                         const height = parseFloat(parts[3]);
-                        // If viewBox is large, add fixed size to scale it down
                         if (width > 32 || height > 32) {
-                            // Check if svg already has a style attribute
                             if (icon.includes('style="')) {
-                                // Append to existing style
                                 icon = icon.replace(/style="([^"]*)"/, `style="$1 width:20px;height:20px;flex-shrink:0;fill:var(--bcsidebar-text);stroke:var(--bcsidebar-text);"`);
                             } else {
-                                // Add new style attribute
                                 icon = icon.replace("<svg", '<svg style="width:20px;height:20px;flex-shrink:0;fill:var(--bcsidebar-text);stroke:var(--bcsidebar-text);"');
                             }
                         } else {
-                            // Smaller SVG - just add colors
                             if (icon.includes('style="')) {
                                 icon = icon.replace(/style="([^"]*)"/, `style="$1 fill:var(--bcsidebar-text);stroke:var(--bcsidebar-text);flex-shrink:0;"`);
                             } else {
@@ -6093,7 +5333,6 @@ function populateSidebarFromNav(sidebarContent) {
                             }
                         }
                     } else {
-                        // No viewBox - just add colors
                         if (icon.includes('style="')) {
                             icon = icon.replace(/style="([^"]*)"/, `style="$1 fill:var(--bcsidebar-text);stroke:var(--bcsidebar-text);"`);
                         } else {
@@ -6133,10 +5372,8 @@ function updateSidebar(expanded, sidebarList, expander) {
         svg.style.height = "var(--bc-sidebar-icon-size,20px)";
     });
 
-    // Expand (or restore) the entire left-side column when the sidebar toggles
     const leftSide = document.getElementById("left-side");
     if (leftSide) {
-        // on first run store the original width (prefer computed) and inline flex/maxWidth
         if (!leftSide.dataset.bcOrigWidth) {
             const computed = getComputedStyle(leftSide).width || "";
             leftSide.dataset.bcOrigWidth = leftSide.style.width || "";
@@ -6160,7 +5397,6 @@ function updateSidebar(expanded, sidebarList, expander) {
                 leftSide.style.maxWidth = `${expandedWidth}px`;
             }
         } else {
-            // restore original inline values if present, otherwise remove the properties
             if (leftSide.dataset.bcOrigWidth !== "") leftSide.style.width = leftSide.dataset.bcOrigWidth; else leftSide.style.removeProperty('width');
             if (leftSide.dataset.bcOrigFlex !== "") leftSide.style.flex = leftSide.dataset.bcOrigFlex; else leftSide.style.removeProperty('flex');
             if (leftSide.dataset.bcOrigMaxWidth !== "") leftSide.style.maxWidth = leftSide.dataset.bcOrigMaxWidth; else leftSide.style.removeProperty('max-width');
@@ -6170,7 +5406,6 @@ function updateSidebar(expanded, sidebarList, expander) {
     const courseLinksTitle = document.getElementById("better-course-links-title");
     if (courseLinksTitle) {
         courseLinksTitle.style.display = expanded ? "block" : "none";
-        // Also hide separator when collapsed
         const separator = courseLinksTitle.nextElementSibling;
         if (separator) separator.style.display = expanded ? "block" : "none";
         
@@ -6197,13 +5432,11 @@ async function loadBetterTodo() {
         const x_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg>';
         const check_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M5 12l5 5l10 -10"></path></svg>';
         const tag_svg = '<svg  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3z" /></svg>';
-        // end of SVGs
 
         const maxAssignmentCount = parseInt(options.num_todo_items) + moreAssignmentCount;
         const maxAnnouncementCount = parseInt(options.num_todo_items) + moreAnnouncementCount;
         const hr24 = options.todo_hr24;
         const now = new Date();
-        //const csrfToken = CSRFtoken();
         let todoAnnouncements = document.querySelector("#canvasrefined-announcement-list");
         let todoAssignments = document.querySelector("#canvasrefined-todo-list");
         let assignmentsToInsert = [];
@@ -6211,11 +5444,8 @@ async function loadBetterTodo() {
 
         assignments.then(data => {
             chrome.storage.sync.get(options.custom_assignments_overflow, storage => {
-                //assignmentData = assignmentData === null ? data : assignmentData;
                 let items = combineAssignments(data);
-                // Same "fill the todo list with fake courses" behavior as the
-                // modern renderer (see createTodoSections). Re-sorted so the
-                // fake items slot into chronological order like real ones.
+                // Fake courses join the real items, re-sorted chronologically.
                 if (options.hide_personal_details === true && options.anon_fake_todo === true) {
                     items = items.concat(buildFakeTodoItems())
                         .sort((a, b) => new Date(a.plannable_date) - new Date(b.plannable_date));
@@ -6233,15 +5463,12 @@ async function loadBetterTodo() {
                         default: return;
                     }
 
-                    // if (item.plannable_type === "announcement") {
-                    //if (announcementsToInsert.length >= maxAnnouncementCount + 1) return;
                     if (item.plannable_type !== "announcement") {
-                        // leaving one extra assignment in the array to indicate there are more and the "view more" button should be created
+                        // Keep one extra item so the "View More" button appears.
                         if (assignmentsToInsert.length >= maxAssignmentCount + 1) return;
                         if (filter === "todo" && options.hide_completed === true && item.submissions.submitted === true) return;
                         if (filter === "todo" && ((options.todo_overdues !== true && now >= date) || (options.todo_overdues === true && item.submissions.submitted === true))) return;
                         if (filter === "done" && now <= date && !(itemState?.["rem"] === true || item?.submissions?.submitted === true)) return;
-                        //if (item.plannable_type !== "assignment" && item.plannable_type !== "quiz" && item.plannable_type !== "discussion_topic") return;
                     }
                     if (filter === "todo" && ((itemState && itemState["rem"] === true) || (item.planner_override && item.planner_override.marked_complete === true))) return;
 
@@ -6291,7 +5518,6 @@ async function loadBetterTodo() {
                                         preview.style.display = "block";
                                         return;
                                     }
-                                    // custom assignment (planner note): preview its description/details
                                     if (customItem) {
                                         const details = item.plannable && item.plannable.details ? item.plannable.details : "";
                                         previewText.textContent = details === "" ? "No details given" : details.replace(/<\/?[^>]+(>|$)/g, " ");
@@ -6371,7 +5597,6 @@ async function loadBetterTodo() {
                     removeBtn.addEventListener('click', function () {
                         setAssignmentState(item.plannable_id, { "rem": filter === "todo", "expire": dueAt });
                         if (item.planner_override && item.planner_override.custom && item.planner_override.custom === true) {
-                            // set item as complete locally
                             chrome.storage.sync.get("custom_assignments_overflow", overflow => {
                                 chrome.storage.sync.get(overflow["custom_assignments_overflow"], storage => {
                                     overflow["custom_assignments_overflow"].forEach(overflow => {
@@ -6401,7 +5626,6 @@ async function loadBetterTodo() {
 
                 });
 
-                // appending assignments all at once
                 todoAssignments.textContent = "";
                 if (assignmentsToInsert.length > 0) {
                     let i;
@@ -6413,7 +5637,6 @@ async function loadBetterTodo() {
                     makeElement("p", todoAssignments, { "className": "canvasrefined-none-due", "textContent": "None" });
                 }
 
-                // appending announcements all at once
                 todoAnnouncements.textContent = "";
                 if (announcementsToInsert.length > 0) {
                     let i;
@@ -6441,16 +5664,8 @@ Card color palettes
 let changeColorInterval = null;
 let colorChanges = [];
 
-// Course list for palette operations, in DISPLAY order (first shown to
-// last) so palette colors land on courses in the order the user sees them.
-// Card view: dashboard cards are already in the DOM in display order.
-// List mode: there are no .ic-DashboardCard elements (which used to make the
-// palette silently do nothing), so fall back to the dashboard_cards API —
-// ordered by where each course's planner grouping first appears top-to-
-// bottom, with any courses not currently displayed (no items in the loaded
-// date range) at the end in API order. Also returns the user's current
-// course colors from the users/self/colors API (used for "revert colors"
-// when no DOM cards exist to read inline styles from).
+// Courses in display order (card view: DOM cards; list mode: dashboard_cards API),
+// plus the user's current course colors for "revert colors".
 async function getPaletteCards() {
     let cards = [];
     let apiColors = {};
@@ -6486,8 +5701,6 @@ async function changeColorPreset(colors) {
 
     if (colors.length === 0) return;
 
-    // reset everything
-    //let res = await getData(`${domain}/api/v1/users/self/colors`);
     clearInterval(changeColorInterval);
     const csrfToken = CSRFtoken();
     const delay = 250;
@@ -6499,7 +5712,6 @@ async function changeColorPreset(colors) {
     // colors apply from the first course on screen to the last)
     const { cards: sortedCards, apiColors } = await getPaletteCards();
 
-    // push each color change into a queue
     try {
         sortedCards.forEach((card, i) => {
             let course_id = card.href.split("courses/")[1];
@@ -6510,19 +5722,13 @@ async function changeColorPreset(colors) {
 
             let cnum = i % colors.length;
 
-            // Apply the new color to whatever surface is rendered: dashboard
-            // card elements (card view) or planner item avatars (list view),
-            // so the change is visible immediately instead of only after a
-            // reload.
+            // paint card view or planner list avatars so it shows without a reload
             let applyColor = () => {
                 if (card.el) {
                     card.el.querySelector(".ic-DashboardCard__header_hero").style.backgroundColor = colors[cnum];
                     card.el.querySelector(".ic-DashboardCard__header-title span").style.color = colors[cnum];
                     card.el.querySelector(".ic-DashboardCard__header-button-bg").style.backgroundColor = colors[cnum];
-                    // Recompute this card's gradient from its NEW color right
-                    // away — changeGradientCards() outside the queue ran too
-                    // early (colors land later, on the 250ms interval), which
-                    // left gradients built from the previous course colors.
+                    // after the 250ms queue lands the color, not before
                     changeGradientCards();
                 } else {
                     const coursePrefix = "/courses/" + course_id;
@@ -6563,7 +5769,6 @@ async function changeColorPreset(colors) {
 
     changeGradientCards();
 
-    // go through the queue until empty
     changeColorInterval = setInterval(() => {
         if (colorChanges.length > 0) {
             let current = colorChanges.shift();
@@ -6573,15 +5778,10 @@ async function changeColorPreset(colors) {
         }
     }, delay);
 
-    // set colors to revert back to
     chrome.storage.local.get("previous_colors", local => {
         const now = Date.now();
         const prev = local["previous_colors"];
-        // Overwrite when missing or expired — and when an old list-mode run
-        // (which found no dashboard cards) stored an empty list, which made
-        // revert a silent no-op. Never store an empty capture (nothing to
-        // revert to). chrome.storage.local.get yields undefined (not null)
-        // for an unset key, so the old `=== null` check never matched it.
+        // also overwrite empty captures and undefined (unset key), both broke revert
         if (previous.length > 0 && (!prev || now >= prev.expire || !Array.isArray(prev.colors) || prev.colors.length === 0)) {
             chrome.storage.local.set({ "previous_colors": { "colors": previous, "expire": now + 86400000 } });
         }
@@ -6592,7 +5792,7 @@ async function changeColorPreset(colors) {
 Dark mode
 */
 
-// Light-mode fallbacks for the --bc* variables, always emitted so extension UI renders in light mode; dark mode overrides below.
+// always emitted so extension UI renders in light mode too
 const BC_LIGHT_DEFAULTS = {
     "background-0": "#ffffff",
     "background-1": "#c7c7c7",
@@ -6607,7 +5807,6 @@ const BC_LIGHT_DEFAULTS = {
 };
 
 function generateDarkModeCSS() {
-    // Always-on light-mode defaults so var(--bc*) resolves in light mode too.
     let css = ":root{\n";
     Object.keys(BC_LIGHT_DEFAULTS).forEach((key) => {
         css += "    --bc" + key + ": " + BC_LIGHT_DEFAULTS[key] + ";\n";
@@ -6635,15 +5834,8 @@ function generateDarkModeCSS() {
 }
 
 let darkStyleInserted = false;
-// --- Submission tray dark-mode fixer ---------------------------------------
-// The comment chip on the grades page (…/grades) opens an InstUI
-// "Submission Comments Tray". Its "Attempt N Feedback" card, close-button
-// glyph, and some labels arrive with Canvas's light surface and dark ink
-// through emotion classes whose hashes change between Canvas releases, so
-// they can't be themed from the static dark stylesheet. Instead, watch for
-// the tray and recolor at runtime, scoped strictly to elements inside it.
-// Touched elements are tagged (data-crdarkfix) so turning dark mode off can
-// restore the original colors.
+// Canvas emotion class hashes change between releases, so the submission comments
+// tray is recolored at runtime; touched elements are tagged for revert
 let submissionTrayObserver = null;
 let submissionTrayFixScheduled = false;
 
@@ -6667,7 +5859,6 @@ function fixSubmissionTrayColors(root) {
         const cs = getComputedStyle(el);
         const bg = rgb(cs.backgroundColor);
         if (bg && light(bg[0], bg[1], bg[2])) {
-            // light card/surface -> theme surface with readable text
             crApplySubmissionTrayFix(el, {
                 "background-color": preset["background-2"],
                 "color": preset["text-0"]
@@ -6675,7 +5866,6 @@ function fixSubmissionTrayColors(root) {
         } else {
             const c = rgb(cs.color);
             if (c && darkInk(c[0], c[1], c[2])) {
-                // dark ink on dark tray (headings, icon glyphs)
                 crApplySubmissionTrayFix(el, { "color": preset["text-0"] });
             }
         }
@@ -6694,9 +5884,7 @@ function setupSubmissionTrayWatcher() {
         const tray = document.querySelector('[data-testid="submission-tray"]');
         if (tray) fixSubmissionTrayColors(tray);
     };
-    // Canvas mutates the DOM constantly; debounce to one run per frame (same
-    // pattern as the footer observer in startExtension). Comments load into
-    // the tray asynchronously, so re-run whenever the tray subtree changes.
+    // rAF-debounced; tray contents load async so re-run on every subtree change
     submissionTrayObserver = new MutationObserver(() => {
         if (submissionTrayFixScheduled) return;
         submissionTrayFixScheduled = true;
@@ -6720,8 +5908,7 @@ function teardownSubmissionTrayFixes() {
 function toggleDarkMode() {
     const css = generateDarkModeCSS();
     const darkOn = options.dark_mode === true || options.device_dark === true;
-    // Reuse the existing #darkcss style if present (never create a duplicate), so a
-    // document_start dark-mode bootstrap and later updates stay on one element.
+    // reuse the existing #darkcss element (document_start bootstrap may have made it)
     let style = document.querySelector("#darkcss");
     if (!style) {
         style = document.createElement('style');
@@ -6731,9 +5918,6 @@ function toggleDarkMode() {
     style.textContent = css;
     style.className = darkOn ? "canvasrefined-darkmode-enabled" : "";
     darkStyleInserted = true;
-    // The InstUI submission tray is themed at runtime (emotion class hashes
-    // change between Canvas releases); keep the watcher in sync with the
-    // current mode, and undo inline fixes when dark mode turns off.
     if (darkOn) {
         setupSubmissionTrayWatcher();
     } else {
@@ -6771,8 +5955,7 @@ function autoDarkModeCheck() {
         status = currentHour > startHour && currentHour < endHour;
     }
     if (options.auto_dark === true) {
-        // Skip the write (and the storage.onChanged cascade it would trigger) when the
-        // computed state already matches dark_mode, so the 60s timer is a cheap no-op.
+        // skip the write (and its storage.onChanged cascade) when nothing changed
         if (status === options.dark_mode) return;
         options.dark_mode = status;
         chrome.storage.sync.set({ "dark_mode": status }, toggleDarkMode);
@@ -6780,7 +5963,6 @@ function autoDarkModeCheck() {
 }
 
 
-// }
 
 function toggleAutoDarkMode() {
     clearInterval(timeCheck);
@@ -6810,8 +5992,7 @@ function runiframeChecker() {
             if (mutation.type !== 'childList' || !mutation.addedNodes.length) continue;
             for (const node of mutation.addedNodes) {
                 if (node.nodeName !== 'IFRAME') continue;
-                // Cross-origin iframes expose no contentDocument; access it safely so we
-                // don't throw a TypeError into the console on every added iframe.
+                // cross-origin frames throw on contentDocument access
                 let doc;
                 try { doc = node.contentDocument; } catch (_) { continue; }
                 if (!doc || !doc.documentElement || !doc.body) continue;
@@ -6834,10 +6015,7 @@ function runiframeChecker() {
 Hide personal details (screenshot privacy mode)
 */
 
-// Pregenerated pool of fake courses (15 entries). Every real course is mapped
-// to a unique entry (stable per course via a hash, collisions probed away),
-// so the same course always shows the same fake name everywhere — dashboard
-// cards, the Better Todo List and recent feedback.
+// stable fake course per real course — same name on cards, todo list and feedback
 const FAKE_COURSES = [
     { name: "Algebra II", teacher: "Martinez" },
     { name: "AP Biology", teacher: "Nguyen" },
@@ -6868,7 +6046,7 @@ const FAKE_FEEDBACK_COMMENTS = [
     "Great improvement!", "Strong submission.", "Excellent detail.",
 ];
 
-// FNV-1a — small, dependency-free, deterministic string hash.
+// FNV-1a — deterministic, dependency-free
 function anonHash(str) {
     let h = 2166136261;
     const s = String(str);
@@ -6879,15 +6057,11 @@ function anonHash(str) {
     return h >>> 0;
 }
 
-// Same hash, but mixed with the "Reroll classes" seed so the popup button can
-// reshuffle every fake course/assignment/grade at once without a page refresh.
 function anonSeededHash(key) {
     return anonHash(String(key) + "/" + String(options.anon_grade_seed ?? 0));
 }
 
-// key -> index into FAKE_COURSES. Hash-based so a course keeps its fake name
-// across reloads, with linear probing so every real course gets a UNIQUE fake
-// course. Once the pool is exhausted (more than 15 courses), reuse is allowed.
+// key -> FAKE_COURSES index; linear probing keeps each real course unique
 const anonCourseMap = new Map();
 function getAnonCourse(key) {
     const k = String(key ?? "unknown");
@@ -6906,7 +6080,6 @@ function fakeCourseLabel(key) {
     return `${c.name} - ${c.teacher}`;
 }
 
-// "a:<assignment id>" when the id is known, "t:<title text>" otherwise.
 function fakeAssignmentTitle(key) {
     return FAKE_ASSIGNMENT_TITLES[anonSeededHash(key) % FAKE_ASSIGNMENT_TITLES.length];
 }
@@ -6914,17 +6087,12 @@ function fakeFeedbackComment(key) {
     return FAKE_FEEDBACK_COMMENTS[anonSeededHash(key) % FAKE_FEEDBACK_COMMENTS.length];
 }
 
-// Deterministic fake "x out of 20" score for recent feedback entries.
 function fakeFeedbackScore(key) {
     const earned = 13 + (anonSeededHash(key) % 8);
     return `${earned} out of 20`;
 }
 
-// Letter-grade mixes for the "Fake grade level" dropdown. Each preset is a
-// general blend of letter grades centered on that level — real gradebooks
-// have spread, so a screenshot shows a believable mix (mostly that level,
-// with a tail of grades above and below) instead of a wall of identical
-// letters. Weights are percentages and sum to 100.
+// fake-grade presets: weighted letter mixes, weights in percent summing to 100
 const ANON_GRADE_MIXES = {
     high:    [["A+", 16], ["A", 30], ["A-", 22], ["B+", 14], ["B", 10], ["B-", 8]],
     medhigh: [["A", 5], ["A-", 13], ["B+", 22], ["B", 24], ["B-", 18], ["C+", 12], ["C", 6]],
@@ -6932,28 +6100,21 @@ const ANON_GRADE_MIXES = {
     medlow:  [["C", 5], ["C-", 12], ["D+", 20], ["D", 23], ["D-", 20], ["F", 20]],
 };
 
-// Letters ordered highest -> lowest, used to derive each letter's percent band
-// from the user's own GPA cutoffs (a "B+" lives at [B+.cutoff, A-.cutoff)).
+// highest -> lowest, for percent bands derived from the user's GPA cutoffs
 const ANON_LETTER_ORDER = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"];
 
-// Deterministic fake percent for a key: pick a letter from the selected
-// preset's mix, then a plausible percent inside that letter's band on the
-// user's own GPA scale, so the number and letter always agree (the GPA
-// calculator re-derives the letter from the percent).
+// letter from the selected preset, then a percent inside that letter's band
 function fakeGradePercent(key) {
     const mix = ANON_GRADE_MIXES[options.anon_grade_level] || ANON_GRADE_MIXES.high;
     const bounds = options.gpa_calc_bounds;
-    // Letter pick and percent pick use different hash channels so two
-    // courses with the same letter still get different percentages.
+    // separate hash channels so same-letter courses still differ
     let pick = anonSeededHash(key) % 100;
     let letter = mix[mix.length - 1][0];
     for (const [l, weight] of mix) {
         if (pick < weight) { letter = l; break; }
         pick -= weight;
     }
-    // Small outlier chance: ~1 in 9 courses jumps two letters up or down
-    // from its drawn grade, like the one surprise class every real transcript
-    // seems to have. Outliers never leave the A..F range.
+    // ~1 in 9 courses jumps two letters, like real transcripts
     if (anonSeededHash(key + ":out") % 9 === 0) {
         const dir = anonSeededHash(key + ":dir") % 2 === 0 ? -2 : 2;
         const idx = ANON_LETTER_ORDER.indexOf(letter);
@@ -6974,31 +6135,24 @@ function fakeGradeText(key) {
     return (letter ? `${letter} ` : "") + `${percent}%`;
 }
 
-// Fake GPA (out of 4) for the calculator's cumulative row: take the letter of
-// the fake grade and look up what the user's own GPA scale awards for it.
 function fakeCumulativeGpa() {
     const letter = percentToLetterGrade(fakeGradePercent("cumulative"));
     const bounds = options.gpa_calc_bounds;
     return bounds && bounds[letter] ? bounds[letter].gpa : 3.5;
 }
 
-// Term strings look like "2026/2027 - Campolindo High School - Year": keep the
-// year and the term type, swap the school name for a fake one.
+// "2026/2027 - School - Year" -> fake school name, term and type kept
 function anonFakeTerm(orig) {
     const parts = String(orig).split(" - ").map(p => p.trim()).filter(p => p !== "");
     if (parts.length >= 3) return `${parts[0]} - ${FAKE_SCHOOL_NAME} - ${parts[parts.length - 1]}`;
     return FAKE_SCHOOL_NAME;
 }
 
-// Render-time helpers so text baked into todo/assignment templates is fake
-// from the start (a DOM pass alone can't beat async re-renders clobbering it).
+// render-time fakes: a DOM pass alone loses to async re-renders
 function anonCourseNameForItem(item) {
     const real = item?.context_name ?? "";
     if (options.hide_personal_details !== true) return real;
     const cid = item?.course_id ?? item?.context_id;
-    // Numeric course ids hash under the same "id:<n>" key the dashboard cards
-    // use, so a course shows the SAME fake name everywhere (card, todo list,
-    // fake items impersonating it).
     const key = (cid != null && /^\d+$/.test(String(cid)))
         ? "id:" + cid
         : (cid != null ? String(cid) : "name:" + String(real).trim().toLowerCase());
@@ -7011,16 +6165,9 @@ function anonTitleForItem(item) {
     return fakeAssignmentTitle(id != null ? "a:" + id : "t:" + String(real).trim());
 }
 
-// Fallback palette for fake todo items when the dashboard has no colored
-// cards to impersonate (fresh install / no card data).
 const ANON_FAKE_COLORS = ["#E24C4B", "#E28227", "#7A9E29", "#0B99AF", "#6A68D9", "#9B59D0", "#C24A9F", "#357FA3"];
 
-// Pool of real dashboard courses fake todo items impersonate. Using the
-// user's actual courses means fake items inherit their real card colors and
-// the same fake name their dashboard card shows, so the todo list matches
-// the dashboard in a screenshot. Courses hidden from the dashboard or from
-// the todo list are excluded so a fake item never appears for a course whose
-// real items wouldn't.
+// fake items impersonate the user's real courses (color + fake name); hidden ones excluded
 function getAnonFakeCoursePool() {
     const cards = options.custom_cards_3 || {};
     const pool = [];
@@ -7034,24 +6181,18 @@ function getAnonFakeCoursePool() {
     return pool;
 }
 
-// "Fill the todo list with fake courses" (Hide personal details sub-option):
-// builds extra planner-style items impersonating the user's real dashboard
-// courses (same color, same fake name the card shows), so a screenshot of
-// the Better Todo List doesn't reveal how many real courses or assignments
-// exist. Items are deterministic per reroll seed and marked with anonFake so
-// click/hover handlers never hit the Canvas API with fake ids.
+// fake todo items so a screenshot hides the real course/assignment count; seeded, and
+// anonFake keeps click/hover handlers off the Canvas API
 function buildFakeTodoItems() {
     const types = ["assignment", "quiz", "assignment", "discussion_topic", "assignment", "quiz", "assignment"];
     const dayOffsets = [0, 1, 2, 3, 5, 8, 12];
     const dueHours = [23, 23, 20, 23, 18, 23, 22];
     const pool = getAnonFakeCoursePool();
     const now = Date.now();
-    // "Fake tasks completed" (popup spinner): how many of the fake items show
-    // as done. The progress rings count them, so this sets the x/y in the
-    // rings' "x/y done" readout (and the Completed tab, if the user opens it).
+    // "Fake tasks completed" spinner: drives the rings' x/y readout
     const rawDone = parseInt(options.anon_fake_completed);
     const doneCount = isNaN(rawDone) ? 2 : Math.max(0, Math.min(types.length, rawDone));
-    // Which items are done is a seeded shuffle so rerolling changes it too.
+    // seeded shuffle so rerolling changes which ones are done
     const doneSet = new Set(
         types.map((_, i) => i)
             .sort((a, b) => anonSeededHash("done:" + b) - anonSeededHash("done:" + a))
@@ -7088,16 +6229,14 @@ function buildFakeTodoItems() {
             context_id: courseId,
             context_name: fakeCourseLabel(courseId),
             html_url: "#",
-            // Done fake items carry a submitted+graded submission so both the
-            // rings and the Completed tab count them; unfinished ones don't.
+            // done items need submitted+graded for the rings and Completed tab
             submissions: isDone ? { submitted: true, graded: true } : { submitted: false },
         });
     }
     return items;
 }
 
-// Marked-text helpers. Original text/attributes are stashed in dataset entries
-// so toggling the option off restores the real content in place.
+// originals kept in dataset so toggling off restores in place
 function anonText(el, computeFake) {
     if (!el || el.dataset.crAnonOrig !== undefined) return;
     const orig = el.textContent;
@@ -7133,7 +6272,6 @@ function restoreAnonymized(root = document) {
     });
 }
 
-// Anonymize one dashboard card's visible + screenreader text.
 function anonymizeDashboardCard(card) {
     const link = card.querySelector('.ic-DashboardCard__link[href*="/courses/"]');
     const idMatch = link ? (link.getAttribute("href") || "").match(/courses\/(\d+)/) : null;
@@ -7142,10 +6280,8 @@ function anonymizeDashboardCard(card) {
         : "name:" + (card.querySelector(".ic-DashboardCard__header-title")?.textContent || "").trim().toLowerCase();
     const fakeLabel = fakeCourseLabel(key);
 
-    // Snapshot the real names BEFORE anything is anonymized so substring
-    // replacement in aria-labels/screenreader spans works off originals.
-    // Both forms matter: the h2 text is the course nickname ("Calculus BC -
-    // Schoen") while the title attr/subtitle use the full course name.
+    // snapshot real names first: aria-labels/screenreader spans need them, and the h2
+    // nickname differs from the full course name
     const titleEl = card.querySelector(".ic-DashboardCard__header-title");
     const origNames = [];
     if (titleEl) {
@@ -7178,19 +6314,15 @@ function anonymizeDashboardCard(card) {
         anonText(termEl, anonFakeTerm);
         anonAttr(termEl, "title", anonFakeTerm);
     }
-    // querySelectorAll only matches descendants, so the card's own
-    // aria-label needs handling separately.
+    // querySelectorAll skips the card itself, so handle its own aria-label
     anonAttr(card, "aria-label", replaceNames);
     card.querySelectorAll("[aria-label]").forEach(el => anonAttr(el, "aria-label", replaceNames));
     card.querySelectorAll(".screenreader-only").forEach(el => anonText(el, replaceNames));
-    // The fake grade is normally written directly by insertGrades(); this
-    // covers cards rendered before that ran or with grades unavailable.
+    // fallback for cards rendered before insertGrades() ran
     const gradeEl = card.querySelector(".canvasrefined-card-grade");
     if (gradeEl && gradeEl.textContent.trim() !== "") anonText(gradeEl, () => fakeGradeText(key));
 }
 
-// Anonymize one recent-feedback entry (the classic right-sidebar widget, which
-// the Better Todo List re-appends as-is).
 function anonymizeFeedbackLink(a) {
     const details = a.querySelector(".event-details");
     if (!details) return;
@@ -7210,7 +6342,7 @@ function anonymizeFeedbackLink(a) {
     if (scoreEl && /out of|\/.|%/.test(scoreEl.textContent)) {
         anonText(scoreEl, () => fakeFeedbackScore(aMatch ? "a:" + aMatch[1] : "t:" + (titleEl ? titleEl.textContent : "")));
     }
-    // The comment is the last <p> and is quoted feedback text.
+    // the comment is the last <p> and is quoted text
     const ps = details.querySelectorAll("p");
     const commentP = ps.length ? ps[ps.length - 1] : null;
     if (commentP && commentP !== scoreEl?.parentElement && !commentP.querySelector("strong")) {
@@ -7221,7 +6353,6 @@ function anonymizeFeedbackLink(a) {
     }
 }
 
-// One anonymizer sweep over the current DOM.
 function anonymizePersonalDetails(root = document) {
     if (options.hide_personal_details !== true) return;
     try {
@@ -7232,9 +6363,7 @@ function anonymizePersonalDetails(root = document) {
     }
 }
 
-// Course image removal (small checkbox under the toggle): hides the course
-// photos on dashboard cards via a style element, so no upload/refresh is
-// needed and unchecking restores them instantly.
+// hide course images via a style element so unchecking restores instantly
 function applyCourseImageHiding() {
     const on = options.hide_course_images === true;
     let style = document.getElementById("canvasrefined-hide-course-images");
@@ -7255,7 +6384,6 @@ function applyCourseImageHiding() {
 let personalDetailsObserver = null;
 let anonPassScheduled = false;
 
-// Master switch: starts/stops the DOM watcher and (de)anonymizes in place.
 function setupPersonalDetailsHiding() {
     applyCourseImageHiding();
     if (options.hide_personal_details === true) {
@@ -7284,13 +6412,8 @@ function setupPersonalDetailsHiding() {
 Dashboard grades 
 */
 
-// Map a percentage to a letter grade using the user's configurable GPA
-// calculator cutoffs (A+ down to F). Returns null when no grade is present.
-// Picks the letter with the HIGHEST cutoff the percent meets so the result
-// doesn't depend on the key order of the stored bounds object — theme imports
-// can reorder keys (e.g. alphabetically, where "A" precedes "A+"), which made
-// "+" grades unreachable and displayed e.g. 100% as "A". Cutoffs are coerced
-// with Number() so string values carried in by imported themes still match.
+// percent -> letter via the user's GPA cutoffs: picks the highest cutoff met so an
+// imported theme can't reorder keys, and Number()-coerces string cutoffs
 function percentToLetterGrade(percent) {
     const bounds = options.gpa_calc_bounds;
     if (!bounds || typeof percent !== "number") return null;
@@ -7317,14 +6440,12 @@ function insertGrades() {
                     data.forEach(grade => {
                         if (course_id === grade.id) {
                             let gradepercent = grade.enrollments[0].has_grading_periods === true ? grade.enrollments[0].current_period_computed_current_score : grade.enrollments[0].computed_current_score;
-                            //let gradepercent = grade.enrollments[0].computed_current_score;
                             let percent = (gradepercent || "--") + "%";
                             if (options.card_letter === true) {
                                 const letter = percentToLetterGrade(gradepercent);
                                 if (letter) percent = `${letter} ${percent}`;
                             }
                             let gradeContainer = cards[i].querySelector(".canvasrefined-card-grade") || makeElement("a", cards[i].querySelector(".ic-DashboardCard__header"), { "className": "canvasrefined-card-grade" });
-                            // "Hide personal details": show a deterministic fake grade instead.
                             gradeContainer.textContent = options.hide_personal_details === true ? fakeGradeText("id:" + course_id) : percent;
                             if (options.grade_hover === true) {
                                 gradeContainer.classList.add("canvasrefined-hover-only");
@@ -7386,7 +6507,6 @@ function equalizeCardHeights() {
 
     const enabled = options.equal_height_cards === true && options.assignments_due === true;
 
-    // Clear prior min-height so we can measure fresh or fully reset.
     cards.forEach(card => {
         const area = card.querySelector(".canvasrefined-card-assignment");
         if (area) area.style.removeProperty("min-height");
@@ -7394,7 +6514,6 @@ function equalizeCardHeights() {
 
     if (!enabled) return;
 
-    // Stretch each assignment area to the tallest one.
     let maxHeight = 0;
     cards.forEach(card => {
         const area = card.querySelector(".canvasrefined-card-assignment");
@@ -7418,9 +6537,7 @@ function preloadAssignmentEls() {
     return new Promise((resolve) => {
         let assignmentEls = {};
         const now = new Date();
-        // Resolve (never reject, never hang): a throw inside the data callback
-        // previously left this promise pending forever, so every dashboard
-        // card kept showing its blinking "loading" skeleton indefinitely.
+        // Resolve even on error: a throw here used to leave this promise pending forever.
         const finish = () => resolve(assignmentEls);
         if (!assignments || typeof assignments.then !== "function") { finish(); return; }
         assignments.then(data => {
@@ -7464,9 +6581,7 @@ function loadCardAssignments() {
     }
     setupCardAssignments();
     if (!cardAssignments || typeof cardAssignments.then !== "function") return;
-    // Render-generation guard: cardAssignments is reassigned whenever the
-    // planner data refreshes; a stale callback re-queried the live cards and
-    // re-appended outdated rows over the fresh render.
+    // Ignore stale planner data: it would re-append old rows over a newer render.
     const renderGen = ++cardRenderGen;
     cardAssignments.then(els => {
         if (renderGen !== cardRenderGen) return;
@@ -7494,7 +6609,6 @@ function loadCardAssignments() {
                         if ((options.card_overdues !== true && now >= assignment.due) || (options.card_overdues === true && assignment.submitted === true)) return;
                         if (assignment.type !== "assignment" && assignment.type !== "quiz" && assignment.type !== "discussion_topic") return;
                         if (assignment.override === true) return;
-                        //assignment.el.querySelector(".canvasrefined-assignment-dueat").textContent = formatCardDue(assignment.due);
                         cardContainer.appendChild(assignment.el);
                         count++;
                     });
@@ -7505,8 +6619,6 @@ function loadCardAssignments() {
                     let assignmentDivLink = makeElement("a", assignmentContainer, { "className": "canvasrefined-assignment-link", "textContent": "None" });
                 }
             });
-            // Wait one frame so the browser lays out the freshly appended
-            // assignment rows before measuring/equalizing card heights.
             requestAnimationFrame(equalizeCardHeights);
         } catch (e) {
             logError(e);
@@ -7544,14 +6656,12 @@ function getCardId(card) {
     if (!href || !href.includes("courses/")) return -1;
     let id = href.split("courses/")[1];
     if (!id) return -1;
-    // no ~
     if (!id.includes("~")) return id;
 
-    // has ~ but dashboard card method is used
+    // has ~ but the dashboard-card id is the one to use
     if (options["custom_cards"][id]) return id;
 
-    // weird case, some canvases replace consecutive 0s with a ~ in the id
-    // but the number of 0s isn't consistent between schools
+    // some Canvas hosts replace runs of 0s with ~, with varying counts
     id = id.split("~");
     let re = new RegExp(`${id[0]}0+${id[1]}`);
     for (const c of Object.keys(options["custom_cards"])) {
@@ -7571,10 +6681,8 @@ function customizeCards(c = null) {
             let cardOptions = options["custom_cards"][id] || null;
             let cardOptions_2 = options["custom_cards_2"][id] || null;
             if (!cardOptions) return;
-            // hide card
             card.style.display = cardOptions.hidden === true ? "none" : "inline-block";
 
-            // card image
             if (cardOptions.img === "none") {
                 let currentImg = card.querySelector(".ic-DashboardCard__header_image");
                 if (currentImg) {
@@ -7589,17 +6697,14 @@ function customizeCards(c = null) {
                 topColor.style.opacity = .5;
             }
 
-            // card name
             if (cardOptions.name !== "") {
                 card.querySelector(".ic-DashboardCard__header-title > span").textContent = cardOptions.name;
             }
 
-            // card code
             if (cardOptions.code !== "") {
                 card.querySelector(".ic-DashboardCard__header-subtitle").textContent = cardOptions.code;
             }
 
-            // card links
             let links = card.querySelectorAll(".ic-DashboardCard__action");
             for (let i = links.length; i < 4; i++) {
                 makeElement("a", card.querySelector(".ic-DashboardCard__action-container"), { "className": "ic-DashboardCard__action" });
@@ -7626,8 +6731,7 @@ function customizeCards(c = null) {
 
         });
 
-        // Hiding/unhiding cards changes how many cards sit in each grid row,
-        // so recompute the uneven-row centering offset after visibility is set.
+        // Visibility changes row widths, so re-center the uneven rows.
         centerUnevenGridRows();
 
     } catch (e) {
@@ -7656,8 +6760,6 @@ GPA calculator
 */
 
 function calculateGPA2() {
-    // The shell renders before the grades data arrives; nothing to compute until
-    // the cumulative row exists (populated by setupGPACalc).
     if (!document.querySelector("#canvasrefined-cumulative-gpa")) return;
     let qualityPoints = 0, numCredits = 0, weightedQualityPoints = 0, cumulativePoints = 0, cumulativeCredits = 0;
     document.querySelectorAll('.canvasrefined-gpa-course').forEach(course => {
@@ -7731,7 +6833,6 @@ function calculateGPA2() {
     const c = parseInt(cGPA.querySelector(".canvasrefined-course-credit").value);
     const cumulativeTotal = (options.gpa_calc_weighted === true ? weightedQualityPoints : qualityPoints) + (g * c);
     document.querySelector("#canvasrefined-gpa-cumulative").textContent = Number.isFinite(cumulativeTotal / (numCredits + c)) ? (cumulativeTotal / (numCredits + c)).toFixed(2) : "--";
-    // Mirror the live results into the open calculator modal's header tiles.
     const gpaModal = document.getElementById("canvasrefined-gpa-modal");
     if (gpaModal) gpaModal.querySelectorAll("[data-gpa-mirror]").forEach(tile => {
         const src = document.getElementById("canvasrefined-gpa-" + tile.dataset.gpaMirror);
@@ -7776,10 +6877,7 @@ function createGPACalcCourse(location, course) {
     let percent = makeElement("span", changerContainer, { "className": "canvasrefined-course-percent-sign", "textContent": course.id === "cumulative" ? "/4" : "%" });
     let courseGrade = course?.enrollments[0].has_grading_periods === true ? course.enrollments[0].current_period_computed_current_score : course.enrollments[0].computed_current_score;
 
-    // "Hide personal details": the calculator gets the same fake grade the
-    // dashboard card shows for this course (same "id:<id>" key, so rerolling
-    // keeps them consistent). The cumulative row gets a fake GPA derived from
-    // the fake grade's letter on the user's own scale.
+    // Hidden details: same fake grade as the card, and a fake GPA from its letter.
     const anonGpa = options.hide_personal_details === true;
     if (anonGpa) {
         changer.value = course.id === "cumulative" ? fakeCumulativeGpa() : fakeGradePercent("id:" + course.id);
@@ -7791,7 +6889,6 @@ function createGPACalcCourse(location, course) {
         changer.value = "--";
     }
 
-    // Same fake label the dashboard card uses for this course.
     if (anonGpa && course.id !== "cumulative") {
         courseName.textContent = fakeCourseLabel("id:" + course.id);
     }
@@ -7800,8 +6897,7 @@ function createGPACalcCourse(location, course) {
         let weightSelections = makeElement("form", courseContainer, { "className": "canvasrefined-course-weights" });
         weightSelections.innerHTML = '<select name="weight-selection" class="canvasrefined-course-weight"><option value="dnc">Do not count</option><option value="regular">Regular/College</option><option value="honors">Honors</option><option value="ap">AP/IB</option></select>';
         let weightChanger = weightSelections.querySelector(".canvasrefined-course-weight");
-        // Count the course only when it has a real grade (or a saved custom
-        // one) — a fake grade must not resurrect courses the user left blank.
+        // Only courses with a real (or saved) grade count; a fake must not revive blanks.
         weightChanger.value = (courseGrade || customs["gr"] !== null) ? customs.weight : "dnc";   
         weightChanger.addEventListener('change', () => changeGPASettings(course.id, { "weight": weightSelections.querySelector(".canvasrefined-course-weight").value }));
 
@@ -7816,15 +6912,11 @@ function createGPACalcCourse(location, course) {
                     changeGPASettings(course.id, { "gr": changer.value });
                 }
             }
-            // While personal details are hidden the input holds a fake grade;
-            // put it back so a stray toggle can't reveal (or save) the real one.
             if (options.hide_personal_details === true) changer.value = fakeGradePercent("id:" + course.id);
         });
     }   
 
     changer.addEventListener('input', (e) => {
-        // While personal details are hidden the input shows a fake grade —
-        // recalculate the display but never persist fake values to storage.
         if (options.hide_personal_details === true) {
             calculateGPA2();
             return;
@@ -7840,22 +6932,15 @@ function createGPACalcCourse(location, course) {
     return courseContainer;
 }
 
-// Widgets tab position for the GPA widget. Falls back to the legacy "Move to
-// top" checkbox for users who set it before the dropdown existed.
 function gpaCalcPosition() {
     if (options.gpa_calc_position !== undefined) return options.gpa_calc_position;
     return options.gpa_calc_prepend === true ? "cards_start" : "cards_end";
 }
 
-// Place the GPA card (container2) and its expanded calculator (container) at
-// the position chosen in the Widgets tab. Guards avoid re-inserting nodes
-// that are already in place — re-inserting would ping the dashboard mutation
-// observer and retrigger this whole pass.
+// Place the pair at the chosen position; re-inserting in-place nodes retriggers this pass.
 function placeGPAElements(dashboardContainer, container, container2) {
-    // While the calculator is hosted in the open modal, leave it alone — a
-    // dashboard setup pass must not yank it out from under the user.
+    // Leave it alone while the calculator is hosted in the open modal.
     if (container.closest && container.closest("#canvasrefined-gpa-modal")) return;
-    // Disabled: make sure the pair isn't still reserving a slot in a shared row.
     if (options.gpa_calc !== true) {
         releaseWidgetFromRow("gpa_calc", [container2, container], dashboardContainer);
         return;
@@ -7906,16 +6991,12 @@ function placeGPAElements(dashboardContainer, container, container2) {
     }
 }
 
-// Every dashboard widget known to the placement system. Kept in one place so
-// the ordering/filtering helpers don't each hardcode their own list.
 const CR_WIDGET_IDS = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes"];
-// Widgets rendered by the generic card loader (single root element, no GPA-style
-// paired elements).
+// Widgets rendered by the generic loader: one root element, no GPA-style pair.
 const CR_SIMPLE_WIDGET_IDS = ["focus_timer", "breathing", "daily_quotes"];
 function isCRWidget(id) { return CR_WIDGET_IDS.indexOf(id) !== -1; }
 
-// Shared full-width container ("top"/"below" positions): widgets live in a
-// flex row; each widget's slot width is the % chosen in the Widgets tab.
+// Shared full-width row (top/below): slot width is the % from the Widgets tab.
 function containerWidgetOrder(area) {
     const saved = options.widget_order && options.widget_order[area];
     if (!Array.isArray(saved)) return [];
@@ -7929,9 +7010,7 @@ function containerWidgetOrder(area) {
     }).filter(e => e && isCRWidget(e.id));
 }
 
-// Card-grid order ("Before cards"/"After cards" positions): saved order of
-// the card-shaped widgets living inside the card grid, used to decide which
-// one comes first when several share the same anchor.
+// Card widgets keep their own before/after anchor; saved order sequences the tie.
 function cardWidgetOrder() {
     const saved = options.widget_order && options.widget_order.cards;
     if (!Array.isArray(saved)) return [];
@@ -7942,17 +7021,11 @@ function cardWidgetOrder() {
     }).filter(id => isCRWidget(id));
 }
 
-// Normalize the relative order of card-shaped widgets inside the card grid.
-// Each widget keeps its own anchor (before vs. after the course cards);
-// widgets sharing an anchor are sequenced by the saved card order. Only
-// re-inserts when the DOM order is actually wrong, so idle passes don't ping
-// the dashboard mutation observer into another pass.
+// Order card widgets per the saved order; only re-inserts when the DOM order is wrong.
 function applyCardWidgetOrder(grid) {
     if (!grid) return;
     const saved = cardWidgetOrder();
     const units = [];
-    // Simple card widgets (focus timer, breathing, quotes) are a
-    // single element each, so they join the ordering straight from the DOM.
     grid.querySelectorAll(":scope > .canvasrefined-widget-card[data-cr-widget]").forEach(el => {
         if (!el.classList.contains("in-cards")) return;
         const id = el.dataset.crWidget;
@@ -7971,9 +7044,7 @@ function applyCardWidgetOrder(grid) {
     if (gpaCard && !gpaCard.classList.contains("container-mode")) {
         const pos = gpaCalcPosition();
         const anchor = pos === "cards_start" ? "start" : "end";
-        // The GPA renders as two adjacent direct children (hidden calculator
-        // + visible card). Keep the pair in its natural placement order so
-        // the check below doesn't fight the placement code.
+        // The GPA is two adjacent children (calculator + card); keep the pair in order.
         const calc = grid.querySelector(":scope > .canvasrefined-gpa");
         const els = calc ? (anchor === "start" ? [calc, gpaCard] : [gpaCard, calc]) : [gpaCard];
         units.push({ id: "gpa_calc", anchor, els });
@@ -7994,8 +7065,7 @@ function applyCardWidgetOrder(grid) {
             anchor === "start" ? positions[i] === sorted[i] : positions[i] === sorted[sorted.length - 1 - i]);
         if (inOrder) return;
         if (anchor === "start") {
-            // Insert in reverse so the first widget of the group ends up
-            // leftmost, right before the course cards.
+            // Insert in reverse so the group's first widget ends up leftmost.
             for (let i = desired.length - 1; i >= 0; i--) grid.insertBefore(desired[i], grid.firstChild);
         } else {
             desired.forEach(el => grid.appendChild(el));
@@ -8003,10 +7073,7 @@ function applyCardWidgetOrder(grid) {
     });
 }
 
-// Both widgets must share one row: normalize the anchor to the outer
-// DashboardCard_Container. The GPA's dashboardContainer can be the inner
-// .ic-DashboardCard__box__container, whose parent is INSIDE the card
-// container — that's what caused GPA and Notes to build two separate rows.
+// Anchor both widgets to the outer card container, or they build two separate rows.
 function widgetContainerAnchor(container) {
     if (container && container.id === "DashboardCard_Container") return container;
     return document.querySelector("#DashboardCard_Container") || container;
@@ -8026,13 +7093,10 @@ function ensureWidgetRow(area, container) {
     return row;
 }
 
-// Lay out a widget row: order slots per the saved order, size each slot by
-// its saved % (normalized across the widgets actually present).
 function applyWidgetRowLayout(row, area) {
     const slots = [...row.querySelectorAll(":scope > .canvasrefined-widget-slot")];
     if (!slots.length) { row.remove(); return; }
-    // Shared Top/Bottom row height (px; 0 = auto). Applied to the row so every
-    // widget in it matches; cards in container-mode stretch to fill it.
+    // Shared row height (px; 0 = auto) so every widget in the row matches.
     const rowHeight = parseInt(options.widget_row_height, 10);
     if (Number.isFinite(rowHeight) && rowHeight > 0) row.style.height = rowHeight + "px";
     else row.style.height = "";
@@ -8042,20 +7106,14 @@ function applyWidgetRowLayout(row, area) {
     const order = entries.map(e => e.id).filter(id => byId[id]);
     slots.forEach(slot => { if (!order.includes(slot.dataset.widget)) order.push(slot.dataset.widget); });
 
-    // Only re-append when the DOM order differs, so our own layout pass
-    // doesn't ping the dashboard mutation observer into another pass.
     const currentOrder = slots.map(s => s.dataset.widget);
     if (currentOrder.join("|") !== order.join("|")) {
         order.forEach(id => row.appendChild(byId[id]));
     }
 
-    // Stale dividers from a previous layout are rebuilt below.
     row.querySelectorAll(":scope > .canvasrefined-widget-divider").forEach(d => d.remove());
 
-    // Sizing: saved % values are normalized across the widgets actually in
-    // the row. A widget with no saved size (e.g. just enabled) borrows the
-    // average of the sized ones, so the weights ALWAYS sum to 1 — otherwise a
-    // mix of sized + new widgets could exceed 100% or collapse a slot to 0.
+    // Unsized widgets borrow the average, so the weights always sum to 1.
     const byIdEntry = Object.fromEntries(entries.map(e => [e.id, e]));
     const raw = order.map(id => {
         const e = byIdEntry[id];
@@ -8073,8 +7131,6 @@ function applyWidgetRowLayout(row, area) {
     });
 }
 
-// Put a widget (one or more elements forming one unit) into its slot in the
-// shared top/below container row.
 function placeWidgetInRow(id, area, els, container) {
     const row = ensureWidgetRow(area, widgetContainerAnchor(container));
     if (!row) return;
@@ -8085,9 +7141,7 @@ function placeWidgetInRow(id, area, els, container) {
         slot.dataset.widget = id;
         row.appendChild(slot);
     }
-    // If the widget sat in a slot of a DIFFERENT row (moving top <-> below),
-    // drop that old slot first: appendChild moves the element but leaves the
-    // empty slot behind, still reserving its old % width.
+    // Drop the slot it held in a different row, or its old % keeps reserving space.
     const first = els[0];
     const oldSlot = first && first.closest && first.closest(".canvasrefined-widget-slot");
     if (oldSlot && oldSlot !== slot) {
@@ -8099,7 +7153,6 @@ function placeWidgetInRow(id, area, els, container) {
     applyWidgetRowLayout(row, area);
 }
 
-// Take a widget back out of a container row (e.g. moved into the card grid).
 function releaseWidgetFromRow(id, els, container) {
     const first = els[0];
     const slot = first && first.closest && first.closest(".canvasrefined-widget-slot");
@@ -8113,11 +7166,7 @@ function releaseWidgetFromRow(id, els, container) {
     else if (row) applyWidgetRowLayout(row, row.dataset.area);
 }
 
-// GPA calculator modal: the "Edit Calculator" button opens a centered modal
-// combining the course calculator with the grade-scale editor. Built fresh
-// per open (no shared state with the dashboard DOM except the calculator
-// body, which is moved in/out), and everything syncs through chrome.storage
-// (gpa_calc_bounds / custom_cards / cumulative_gpa).
+// Edit Calculator modal: built fresh per open; state syncs through chrome.storage.
 const GPA_BOUNDS_ORDER = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"];
 
 const GPA_PLUS_MINUS_PRESET = {
@@ -8152,9 +7201,6 @@ const GPA_BY_LETTER_PRESET = {
     "F": { "cutoff": 0, "gpa": 0 }
 };
 
-// Grade-scale editor: rows of letter | min % | GPA points. Writes the
-// gpa_calc_bounds key; the modal re-renders on storage changes (which also
-// re-syncs which preset button is highlighted).
 function renderGpaBoundsEditor(host) {
     if (!host.isConnected) return;
     chrome.storage.sync.get(["gpa_calc_bounds"], storage => {
@@ -8180,7 +7226,6 @@ function renderGpaBoundsEditor(host) {
             gpa.addEventListener("change", save("gpa"));
             host.appendChild(row);
         });
-        // Highlight the preset that currently matches the saved scale, if either does.
         const modal = host.closest("#canvasrefined-gpa-modal");
         if (modal) {
             const json = JSON.stringify(bounds);
@@ -8198,8 +7243,6 @@ function closeGpaModal(dashboardContainer, container, container2) {
         if (modal.__crKeyHandler) document.removeEventListener("keydown", modal.__crKeyHandler);
         modal.remove();
     }
-    // Return the calculator body to its resting spot next to the GPA card;
-    // placeGPAElements corrects the position for the current widget placement.
     if (container2.parentNode) container2.parentNode.insertBefore(container, container2.nextSibling);
     container.style.display = "none";
     placeGPAElements(dashboardContainer, container, container2);
@@ -8246,20 +7289,15 @@ function openGpaModal(dashboardContainer, container, container2) {
         </div>`;
     document.body.appendChild(modal);
 
-    // Only show the result tiles the user actually tracks on the card.
     if (options.gpa_calc_weighted !== true) modal.querySelector('[data-gpa-mirror="weighted"]').style.display = "none";
     if (options.gpa_calc_cumulative !== true) modal.querySelector('[data-gpa-mirror="cumulative"]').style.display = "none";
 
-    // Seed the result tiles from the card's current numbers; calculateGPA2
-    // keeps them live from here on (see its mirror block).
+    // Seed the tiles from the card's numbers; calculateGPA2 keeps them live.
     modal.querySelectorAll("[data-gpa-mirror]").forEach(tile => {
         const src = document.getElementById("canvasrefined-gpa-" + tile.dataset.gpaMirror);
         if (src) tile.querySelector(".cr-gpa-result-value").textContent = src.textContent || "--";
     });
 
-    // The calculator body (with all its wired course rows) MOVES into the
-    // modal while open — one set of course nodes in the DOM, and
-    // calculateGPA2 keeps working unchanged.
     modal.querySelector(".cr-gpa-courses-host").appendChild(container);
     container.style.display = "block";
 
@@ -8273,16 +7311,13 @@ function openGpaModal(dashboardContainer, container, container2) {
     });
 
     const close = () => closeGpaModal(dashboardContainer, container, container2);
-    // Escape closes from anywhere (the old modal only caught keys while it
-    // itself held focus).
     modal.__crKeyHandler = (e) => { if (e.key === "Escape") close(); };
     document.addEventListener("keydown", modal.__crKeyHandler);
     modal.querySelector(".cr-gpa-close").addEventListener("click", close);
     modal.addEventListener("mousedown", (e) => { if (e.target === modal) close(); });
 }
 
-// Bounded retry while Canvas finishes rendering the dashboard container, so
-// the GPA card doesn't wait for the next MutationObserver pass.
+// Bounded retry while Canvas renders the container, instead of waiting for the observer.
 let gpaSetupRetryTimer = null;
 let gpaSetupAttempts = 0;
 function setupGPACalc() {
@@ -8291,9 +7326,6 @@ function setupGPACalc() {
         const sortableContainer = document.querySelector(".ic-DashboardCard__box__container");
         const dashboardContainer = sortableContainer || document.querySelector("#DashboardCard_Container");
         if (!dashboardContainer) {
-            // The dashboard DOM isn't there yet (Canvas renders it async).
-            // Retry briefly instead of silently giving up, otherwise the GPA
-            // card waits for the next mutation pass to show up.
             if (!gpaSetupRetryTimer && gpaSetupAttempts < 20) {
                 gpaSetupAttempts++;
                 gpaSetupRetryTimer = setTimeout(() => {
@@ -8321,10 +7353,7 @@ function setupGPACalc() {
         container2.style.display = options.gpa_calc === true ? "inline-block" : "none";
 
         if (!alreadyRendered) {
-            // Render the shell immediately (with "--" placeholders) so the GPA
-            // card joins the dashboard at the same time as every other widget.
-            // The numbers and course rows are filled in when the grades API
-            // resolves, which is the only part that actually needs the data.
+            // Render the shell now (with "--") and fill the numbers once grades resolve.
             container2.innerHTML = `<h3 class="canvasrefined-gpa-header">GPA</h3><div><div><p id="canvasrefined-gpa-unweighted">--</p><p>Current</p></div><div style="display:${options["gpa_calc_weighted"] ? "block" : "none"}"><p id="canvasrefined-gpa-weighted">--</p><p>Weighted</p></div><div style="display:${options["gpa_calc_cumulative"] ? "block" : "none"}"><p id="canvasrefined-gpa-cumulative">--</p><p>Cumulative</p></div></div>`;
             let editBtn = makeElement("button", container2, { "className": "canvasrefined-gpa-edit-btn", "textContent": "Edit Calculator" });
 
@@ -8351,7 +7380,6 @@ function setupGPACalc() {
             }
         } catch (e) {}
 
-        // Populate course rows + numbers once the grades request resolves.
         grades?.then(result => {
             const location = container.querySelector(".canvasrefined-gpa-courses");
             if (!location || !container.isConnected) return;
@@ -8462,7 +7490,6 @@ function notesApplyFormat(editor, action) {
         fire();
     };
 
-    // Range covering every line touched by the selection.
     const lineBlock = () => {
         const ls = start === 0 ? 0 : value.lastIndexOf("\n", start - 1) + 1;
         let le = value.indexOf("\n", end);
@@ -8536,8 +7563,7 @@ function notesApplyFormat(editor, action) {
     }
 }
 
-/* Toggle the Nth rendered Markdown task checkbox and re-render, using a task
-   ordinal that skips fenced code blocks. */
+/* Toggle the Nth rendered Markdown task checkbox (ordinal skips code blocks). */
 function toggleDashboardNoteTask(editor, taskIndex) {
     if (!editor) return;
     const value = editor.value || "";
@@ -8608,7 +7634,6 @@ function wireDashboardNotes(notes) {
     };
 
     rendered.addEventListener("click", (e) => {
-        // Clicking a checkbox toggles the task; clicking the text edits.
         const t = e.target;
         if (t && t.nodeType === 1 && t.tagName === "INPUT" && t.type === "checkbox" && t.closest && t.closest("li.cr-task")) {
             e.stopPropagation();
@@ -8626,7 +7651,6 @@ function wireDashboardNotes(notes) {
         delayDashboardNotesStorage(this.value);
     });
 
-    // preventDefault on the toolbar keeps focus in the editor across misclicks.
     const toolbar = notes.querySelector(".canvasrefined-notes-toolbar");
     if (toolbar) toolbar.addEventListener("mousedown", e => e.preventDefault());
     notes.querySelectorAll(".cr-fmt").forEach(btn => {
@@ -8647,11 +7671,7 @@ function wireDashboardNotes(notes) {
     });
 }
 
-// Mount the notes at the position chosen in the Widgets tab:
-//   top    — full-width container above the card grid
-//   cards_start / cards_end — card-shaped cell inside the card grid (same
-//                             grid the GPA card uses), before/after cards
-//   below  — full-width container below the grid, with some margin
+// Mount at the Widgets-tab position: top / cards_start / cards_end / below.
 function placeDashboardNotes(notes, container) {
     const pos = options.dashboard_notes_position || "top";
     crApplyCardHeight("dashboard_notes", notes, pos === "cards_start" || pos === "cards_end");
@@ -8659,16 +7679,11 @@ function placeDashboardNotes(notes, container) {
         notes.classList.remove("in-cards");
         const slot = notes.closest && notes.closest(".canvasrefined-widget-slot");
         const row = slot && slot.parentNode;
-        // Already in the right shared row? Leave it alone.
         if (notes.dataset.crPos === pos && row && row.dataset.area === pos && slot.dataset.widget === "dashboard_notes") return;
-        // Full-width container above/below the cards; shares the row with any
-        // other container-mode widget, widths from the Widgets tab.
         placeWidgetInRow("dashboard_notes", pos, [notes], container);
     } else {
         notes.classList.add("in-cards");
-        // Same container the GPA card uses for before/after-cards placement,
-        // resolved here (not at call sites) so every entry path lands in the
-        // real card grid.
+        // Same card-grid container the GPA uses, resolved here for every entry path.
         const grid = document.querySelector(".ic-DashboardCard__box__container") || container;
         if (notes.dataset.crPos === pos && notes.parentNode === grid) return;
         releaseWidgetFromRow("dashboard_notes", [notes], container);
@@ -8678,8 +7693,6 @@ function placeDashboardNotes(notes, container) {
             grid.appendChild(notes);
         }
         applyCardWidgetOrder(grid);
-        // The card grid is Canvas's jQuery sortable list; refresh it so our
-        // injected cell is recognized when cards are drag-reordered.
         try {
             if (grid !== container && window.jQuery && window.jQuery.fn && window.jQuery.fn.sortable) {
                 window.jQuery(grid).sortable('refresh');
@@ -8694,7 +7707,6 @@ function loadDashboardNotes() {
     if (options.dashboard_notes === true) {
         if (!container) return;
         let notes = document.querySelector('.canvasrefined-dashboard-notes');
-        // Rebuild older (split edit/preview) markup into the new single-surface layout.
         if (notes && !notes.querySelector(".canvasrefined-notes-surface")) {
             notes.remove();
             notes = null;
@@ -8708,7 +7720,6 @@ function loadDashboardNotes() {
             notes.style.display = "";
             const editor = notes.querySelector(".canvasrefined-notes-editor");
             const rendered = notes.querySelector(".canvasrefined-notes-rendered");
-            // Only sync and render in view mode; the textarea is the source of truth while editing.
             if (!notes.classList.contains("is-editing")) {
                 if (editor && editor.value !== (options.dashboard_notes_text || "")) {
                     editor.value = options.dashboard_notes_text || "";
@@ -8721,7 +7732,6 @@ function loadDashboardNotes() {
         let notes = document.querySelector('.canvasrefined-dashboard-notes');
         if (notes) {
             notes.style.display = "none";
-            // Give its width back to the other widgets sharing the row.
             releaseWidgetFromRow("dashboard_notes", [notes]);
         }
     }
@@ -8748,9 +7758,7 @@ function crWidgetPosition(id) {
     return CR_WIDGET_DEFAULT_POSITION[id] || "cards_end";
 }
 
-// Per-widget height used when the widget sits before/after the course cards
-// (px; 0 = auto). Cleared in container (Top/Bottom) mode so the shared row
-// height controls that layout instead.
+// Per-widget height in px (0 = auto) for cards_* placement; container mode uses row height.
 function crApplyCardHeight(id, el, inCards) {
     if (!el) return;
     const h = parseInt(options[id + "_height"], 10);
@@ -8763,9 +7771,6 @@ function crApplyCardHeight(id, el, inCards) {
     }
 }
 
-// Move a single-element widget to its configured spot, mirroring the Notes/GPA
-// placement rules: top/below join the shared full-width row, cards_* sit in the
-// course-card grid before/after the cards.
 function placeSimpleWidget(id, el, container) {
     const pos = crWidgetPosition(id);
     crApplyCardHeight(id, el, pos === "cards_start" || pos === "cards_end");
@@ -8794,13 +7799,11 @@ function placeSimpleWidget(id, el, container) {
     el.dataset.crPos = pos;
 }
 
-// Create (once), show/hide and place one generic widget from its spec.
 function crLoadWidget(id, spec) {
     const existing = document.querySelector("." + spec.className);
     if (options[id] !== true) {
         if (existing) {
             existing.style.display = "none";
-            // Give its width back to the other widgets sharing the row.
             releaseWidgetFromRow(id, [existing]);
         }
         return;
@@ -8828,7 +7831,7 @@ function crTimer(id) {
     if (!crTimers[id]) crTimers[id] = { total: 0, remaining: 0, running: false, raf: null, endTime: 0 };
     return crTimers[id];
 }
-// Countdown readout: ceil so a fresh 25:00 only shows 24:59 after a full second.
+// ceil, so a fresh 25:00 shows 24:59 only after a full second.
 function crTimerFormat(sec) {
     const s = Math.max(0, Math.ceil(sec - 0.001));
     const h = Math.floor(s / 3600);
@@ -8837,7 +7840,6 @@ function crTimerFormat(sec) {
     if (h > 0) return h + ":" + String(m).padStart(2, "0") + ":" + String(r).padStart(2, "0");
     return String(m).padStart(2, "0") + ":" + String(r).padStart(2, "0");
 }
-// Human label for a preset button ("15 min", "1h 30m", "45s").
 function crFormatDuration(sec) {
     const s = Math.max(0, Math.round(sec));
     const h = Math.floor(s / 3600);
@@ -8874,8 +7876,7 @@ function crTimerRender(id, el) {
     const customBtn = el.querySelector(".cr-timer-custom");
     if (customBtn) customBtn.classList.toggle("active", !st.running && !matched && st.total > 0);
 }
-// rAF loop: the bar (and the readout) are driven by real elapsed time, so the
-// fill moves continuously instead of stepping once a second.
+// rAF loop off real elapsed time, so the fill moves continuously.
 function crTimerFrame(id, el) {
     const st = crTimer(id);
     if (!st.running) return;
@@ -8919,7 +7920,6 @@ function crTimerReset(id, el) {
     st.remaining = st.total;
     crTimerRender(id, el);
 }
-// Only the three preset slots are configurable; Custom is typed on the widget.
 function crTimerApplyCfg(el, cfg) {
     el.querySelectorAll(".cr-timer-preset[data-slot]").forEach(btn => {
         const slot = parseInt(btn.dataset.slot, 10);
@@ -8932,7 +7932,6 @@ function crTimerHideCustom(el) {
     const row = el.querySelector(".cr-timer-custom-row");
     if (row) row.hidden = true;
 }
-// Read the compact h:mm:ss custom fields as a whole number of seconds.
 function crTimerCustomSeconds(el) {
     const num = (sel) => {
         const v = parseInt((el.querySelector(sel) || {}).value, 10);
@@ -8942,7 +7941,6 @@ function crTimerCustomSeconds(el) {
         + Math.min(59, num(".cr-tf-m")) * 60
         + Math.min(59, num(".cr-tf-s"));
 }
-// Seed the compact fields from the current timer length, two digits each.
 function crTimerFillCustom(el, totalSec) {
     const secs = Math.max(0, Math.round(totalSec || 0));
     const put = (sel, v) => {
@@ -8963,8 +7961,6 @@ function crTimerWireControls(id, el) {
         });
     });
 
-    // Custom: a compact h:mm:ss entry. Click a segment to edit it, Tab / arrows
-    // move between segments, typing a second digit auto-advances, Enter sets.
     const customBtn = el.querySelector(".cr-timer-custom");
     const row = el.querySelector(".cr-timer-custom-row");
     const fields = [...el.querySelectorAll(".cr-timer-custom-row .cr-tf")];
@@ -8984,7 +7980,6 @@ function crTimerWireControls(id, el) {
     const openCustom = () => {
         crTimerFillCustom(el, crTimer(id).total);
         row.hidden = false;
-        // Start on minutes when present, otherwise the first field.
         const mi = fields.findIndex(f => f.classList.contains("cr-tf-m"));
         focusField(mi === -1 ? 0 : mi);
     };
@@ -9023,8 +8018,7 @@ function crTimerInitial(id, el, cfg) {
     if (!st.total) { st.total = cfg.presets[1]; st.remaining = st.total; }
     crTimerRender(id, el);
 }
-// Presets now store {h,m,s}; legacy values were plain minutes, so a number is
-// read as minutes. `fallback` is in seconds.
+// Presets store {h,m,s}; a plain number is legacy minutes. `fallback` is seconds.
 function crTimerReadSlots(prefix, fallback) {
     return [1, 2, 3].map(i => {
         const v = options[prefix + "_preset_" + i];
@@ -9184,16 +8178,14 @@ function renderDailyQuote(el, data) {
     if (authorEl) authorEl.textContent = author ? "\u2014 " + author : "";
 }
 
-// Ask the background worker to refresh (it caches per calendar day, so this is
-// a no-op after the first successful fetch of the day).
+// Ask the background worker to refresh; it caches per calendar day.
 let dailyQuoteRequested = false;
 function ensureDailyQuote() {
     if (dailyQuoteRequested) return;
     dailyQuoteRequested = true;
     try {
         chrome.runtime.sendMessage({ type: "getDailyQuote" }, () => {
-            // Reading lastError suppresses the unchecked-error warning; on
-            // failure allow a retry from a later pass.
+            // Reading lastError suppresses the warning; a later pass retries on failure.
             if (chrome.runtime.lastError) dailyQuoteRequested = false;
         });
     } catch (e) {
@@ -9228,21 +8220,13 @@ function loadAllSimpleWidgets() {
 Custom font
 */
 
-// "Keep original assignment font": Canvas sets its font (Lato) on <body>
-// via author CSS, and the custom-font rule's `*` selector overrides it. To
-// keep <p> original we (a) carve p + its descendants out of the custom rule
-// and (b) pin them back to the font body had BEFORE the custom rule landed —
-// plain `inherit` wouldn't work because p's ancestors still carry the custom
-// font via `*`. The pre-custom font is captured once from body's computed
-// style (before our <style> is first injected), with Canvas's default Lato
-// stack as fallback.
+// "Keep original assignment font": the custom rule's `*` selector hits <p> too, so
+// carve <p> out and pin it to body's pre-custom font (`inherit` would still inherit).
 let originalPageFontFamily = null;
 const CANVAS_DEFAULT_FONT_STACK = '"Lato Extended", Lato, "Helvetica Neue", Helvetica, Arial, sans-serif';
 
 function captureOriginalPageFont() {
     if (originalPageFontFamily) return;
-    // Too late to capture once our rule is live: body's computed style would
-    // already be the custom font.
     if (document.querySelector("#custom_font")) return;
     try {
         const family = getComputedStyle(document.body || document.documentElement).fontFamily;
@@ -9262,9 +8246,6 @@ function customFontRules() {
         + `p, p * {font-family: ${originalPageFontOrFallback()}!important}`;
 }
 
-// Selector for the custom font rule. With "Keep original assignment font"
-// on, <p> (and everything inside one) is carved out with :not() so the
-// paragraph override rule below is the only thing styling them.
 function customFontSelector() {
     return options.custom_font_skip_p === true
         ? "*:not(p):not(p *), input, a, button, h1, h2, h3, h4, h5, h6, span"
@@ -9279,7 +8260,6 @@ function loadCustomFont() {
 
     let load = () => {
         if (options.custom_font.link !== "") {
-            // Capture the original font before the custom rule is injected.
             captureOriginalPageFont();
             document.head.appendChild(style);
             link.href = `https://fonts.googleapis.com/css2?family=${options.custom_font.link}&display=swap`;
@@ -9315,9 +8295,6 @@ function loadCustomFont() {
 Smaller features
 */
 
-// Debounced wrapper around applyAestheticChanges for card-style options that
-// can fire many storage onChanged events in quick succession (number inputs).
-// See the "cardPadding"/"imageSize"/etc. cases in applyOptionsChanges.
 let aestheticDebounceTimer = null;
 function debouncedApplyAestheticChanges(delay = 150) {
     if (aestheticDebounceTimer) clearTimeout(aestheticDebounceTimer);
@@ -9328,7 +8305,6 @@ function debouncedApplyAestheticChanges(delay = 150) {
 }
 
 function applyAestheticChanges() {
-    // Quiz safe mode: don't inject custom layout/aesthetic CSS on quiz pages.
     if (quizSafeModeActive()) return;
     let style = document.querySelector("#canvasrefined-aesthetics") || document.createElement('style');
     style.id = "canvasrefined-aesthetics";
@@ -9338,46 +8314,16 @@ function applyAestheticChanges() {
     if (options.disable_color_overlay === true) style.textContent += ".ic-DashboardCard__header_hero{opacity: 0!important} .ic-DashboardCard__header-button-bg{opacity: 1!important}";
     if (options.full_width === true) style.textContent += "#wrapper,.ic-Layout-wrapper{max-width:100%!important}";
     if (options.center_cards === true) style.textContent += ".ic-DashboardCard__box__container{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:flex-start!important}";
-    // Card Grid: lay the dashboard card container out as a strict columns x
-    // rows grid chosen in the popup, with separate column/row spacing.
-    // Added after center_cards so it wins the !important tie-break if both
-    // are on. Hidden cards are display:none, so they don't take up grid
-    // cells. Cards beyond the chosen cells fall into zero-height implicit
-    // rows that overflow-hidden clips away — hence the "cards may be cut
-    // off" warning in the popup. When Center Cards is also on, columns size
-    // to the cards' natural width (they have a fixed width anyway) and the
-    // whole grid is centered horizontally, mirroring what Center Cards does
-    // in flex mode.
-    //
-    // Columns are doubled into "sub-columns" (each card spans 2 of them) so
-    // "Center uneven rows" can shift a partial last row by half a card —
-    // e.g. 3 cards under a 4-card row has exactly one column of leftover
-    // space, which needs a half-column offset to look centered. Empty
-    // sub-columns just make the odd case possible; full rows are unaffected.
-    // Tracks are always max-content (Canvas cards have a fixed width, so the
-    // tracks hug them exactly): spacing stays identical whether Center Cards
-    // is on or off, instead of 1fr stretching cells and widening the visual
-    // gaps. Center Cards then just centers the whole grid with
-    // justify-content:center.
-    //
-    // The GPA calculator elements live in this same container (appended by
-    // setupGPACalc). Two spare auto-height template rows are reserved so the
-    // GPA card and its expanded calculator still get real rows when the
-    // course cards fill the whole card area (otherwise they'd land in the
-    // zero-height implicit rows that overflow-hidden clips away). When the
-    // GPA card instead flows into an open slot inside the card area, the
-    // spare rows stay empty and collapse to 0.
+    // Card Grid: strict columns x rows layout, emitted after center_cards to win the
+    // !important tie-break. Columns are doubled into sub-columns (each card spans 2) so
+    // "center uneven rows" can shift a partial row by half a card; two spare rows keep
+    // the GPA card/calculator out of the clipped implicit rows.
     if (options.card_grid === true) {
         const gridCols = Math.max(1, parseInt(options.card_grid_columns, 10) || 4);
         const gridRows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
         const gridColGap = Math.max(0, !isNaN(parseInt(options.card_grid_column_gap, 10)) ? parseInt(options.card_grid_column_gap, 10) : 12);
         const gridRowGap = Math.max(0, !isNaN(parseInt(options.card_grid_row_gap, 10)) ? parseInt(options.card_grid_row_gap, 10) : 12);
-        // Canvas gives dashboard cards their own natural top/left margins
-        // for the default flow layout. The grid positions everything with
-        // its own row/column gaps, so strip those natural margins top and
-        // left — otherwise every card sits visibly lower and further right
-        // than the grid math says it should. (Card Spacing's right/bottom
-        // margins are untouched.)
+        // strip Canvas' natural top/left card margins; the grid supplies its own gaps
         style.textContent += `.ic-DashboardCard__box__container{margin-top:0!important;margin-left:0!important}`;
         style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{margin-top:0!important;margin-left:0!important}`;
         const centerGrid = options.center_cards === true;
@@ -9387,46 +8333,27 @@ function applyAestheticChanges() {
         const gpaFirst = gpaPos === "cards_start";
         const flexGrid = options.card_grid_flex === true;
         if (flexGrid) {
-            // Flexible grid: fixed-width tracks (cards keep their natural
-            // width — no stretching). While the container is wide it lays out
-            // exactly the user's column count; as it narrows, @container
-            // queries — measured against the card container's REAL width, so
-            // there's no window/chrome-width guessing — step the count down
-            // precisely when the next column would no longer fit. Tracks are
-            // always a full card wide, so cards can't overlap; extra cards
-            // wrap into auto-height rows instead of being clipped.
+            // flexible grid: fixed-width tracks; @container queries step the column count
+            // down when the next column stops fitting (no window-width guessing)
             const cardW = options.customCardStyles === true && parseInt(options.cardWidth, 10) > 0
                 ? parseInt(options.cardWidth, 10)
                 : 262;
-            // Container queries need an ancestor size container; the card
-            // section wrapper is a plain full-width block, so inline-size
-            // containment is safe there.
+            // container queries need a size container; the card wrapper is full-width
             style.textContent += `#DashboardCard_Container{container-type:inline-size}`;
-            // Full fit (m = gridCols columns): applies whenever no narrower
-            // breakpoint matches, i.e. only when all columns truly fit.
             style.textContent += `.ic-DashboardCard__box__container{display:grid!important;grid-template-columns:repeat(${gridCols},${cardW}px)!important;grid-auto-rows:auto!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important${centerGrid ? ";justify-content:center!important" : ""}}`;
-            // Grid gaps alone control spacing (beats the customCardStyles
-            // margin rules emitted later via higher specificity).
+            // grid gaps alone control spacing (beats the later customCardStyles margins)
             style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{margin-right:0!important;margin-bottom:0!important}`;
             if (gpaOn && gpaInsideGrid) {
                 if (gpaFirst) {
-                    // "Before cards": definite first-row placement, one track
-                    // wide; the expanded calculator takes the full second row.
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1!important}`;
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
                 } else {
-                    // "After cards": the GPA card auto-places in DOM order, so
-                    // it flows right after the last course card — filling the
-                    // next open slot instead of stranding below the grid — and
-                    // the expanded calculator follows on a full-width row.
+                    // auto-placed: flows into the next open slot after the last card
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-column:1/-1!important}`;
                 }
             }
-            // Step the column count down: m columns apply once m+1 no longer
-            // fit (full fit for m columns = m*cardW + (m-1)*colGap). Emitted
-            // widest-first so the narrowest matching rule wins the cascade.
-            // The last step (1 column) also lets the lone card shrink with
-            // the window instead of overflowing it.
+            // step down to m columns once m+1 no longer fit; widest-first so the
+            // narrowest matching rule wins the cascade
             for (let m = gridCols - 1; m >= 1; m--) {
                 const tooWideFor = (m + 1) * cardW + m * gridColGap;
                 if (m === 1) {
@@ -9440,19 +8367,8 @@ function applyAestheticChanges() {
             style.textContent += `.ic-DashboardCard__box__container{display:grid!important;grid-template-columns:repeat(${gridCols * 2},minmax(0,max-content))!important;grid-template-rows:repeat(${totalRows},minmax(0,auto))!important;grid-auto-rows:0!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important;overflow:hidden!important${centerGrid ? ";justify-content:center!important" : ""}}`;
             style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-column:span 2!important}`;
             if (gpaOn && gpaInsideGrid) {
-                // The Widgets position dropdown decides where the GPA card
-                // sits: "Start of cards" -> pinned to the first slot (the
-                // expanded calculator takes the full second row, and cards
-                // auto-place around both); "End of cards" -> the GPA card is a
-                // regular auto-placed item (one card slot wide via the span
-                // rule above), so it flows into the next open slot after the
-                // course cards — filling the leftover spaces of a partial last
-                // row instead of squatting alone in a dedicated row below the
-                // grid. The expanded calculator always takes a full-width row:
-                // auto-placed right after the GPA card in end mode, and
-                // display:none while collapsed so it consumes no cells.
-                // "Top of page"/"Below cards" place the GPA elements outside
-                // the grid container entirely, so no grid rules are needed.
+                // GPA card pinned to the first slot, or auto-placed after the cards; the
+                // expanded calculator always takes a full-width row
                 if (gpaFirst) {
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1/span 2!important}`;
                     style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
@@ -9465,53 +8381,29 @@ function applyAestheticChanges() {
     if (options.customCardStyles === true) {
         if (options.imageSize !== undefined && options.imageSize !== 100) style.textContent += `.ic-DashboardCard__header_image {transform: scale(${options.imageSize / 100})!important; }`;
         if (options.cardRoundness !== undefined && options.cardRoundness !== 5) style.textContent += `.ic-DashboardCard {border-radius: ${options.cardRoundness}px!important;}`;
-        // Rounds the header image band. The photo is the background of
-        // .ic-DashboardCard__header_image, and .ic-DashboardCard__header_hero (a
-        // child that covers the full photo with its colored overlay + 1px
-        // border) sits on top of it. border-radius only clips the element it's
-        // on — rounding the parent alone leaves the hero's square overlay
-        // covering the corners, and rounding the hero alone leaves the photo's
-        // square corners behind it — so both elements need the same radius.
-        // Default 0; guard skips the default so stock cards keep square corners.
+        // the hero overlay sits on top of the photo, so both need the radius — rounding
+        // one alone leaves the other's square corners showing
         if (options.imageRoundness !== undefined && options.imageRoundness !== 0) style.textContent += `.ic-DashboardCard__header_image, .ic-DashboardCard__header_hero {border-radius: ${options.imageRoundness}px!important;}`;
         if (options.cardSpacing !== undefined && options.cardSpacing !== 0) style.textContent += `.ic-DashboardCard {margin-right: ${options.cardSpacing / 2}px!important; margin-bottom: ${options.cardSpacing / 2}px!important;}`;
         if (options.cardWidth !== undefined && options.cardWidth !== 262) style.textContent += `.ic-DashboardCard {width: ${options.cardWidth}px!important;}`;
-        // Card height sizes the image band via .ic-DashboardCard__header_hero —
-        // the element Canvas pins at 146px that actually drives the header image
-        // height (both .ic-DashboardCard and .ic-DashboardCard__header are
-        // content-sized, so a height on either just clips or adds dead space).
-        // Everything else — title, actions, and the appended
-        // .canvasrefined-card-assignment rows — flows below the hero, so the card
-        // grows with the assignment list and nothing gets clipped. Skipped when
-        // condensed cards is on, since that mode pins the hero at 60px.
+        // card height goes on the hero band (146px stock): the card and header are
+        // content-sized, so a height on either just clips or adds dead space
         if (options.condensed_cards !== true && options.cardHeight !== undefined && options.cardHeight !== null && options.cardHeight !== "") {
             style.textContent += `.ic-DashboardCard__header_hero {height: ${options.cardHeight}px!important;}`;
         }
-        // Inner card padding. Applied to the whole .ic-DashboardCard box so the
-        // hero header, title, and action buttons all get breathing room from the
-        // card's edges. Canvas sizes the card with border-box + a fixed width,
-        // so padding alone squishes the content area (narrower image/rows)
-        // instead of expanding the card — switch to content-box so the padding
-        // grows the card outward and the content keeps its full width.
-        // Guarded by > 0 (default).
+        // padding on the card box; content-box so it grows the card instead of squishing
+        // the content (Canvas cards are border-box with a fixed width)
         if (options.cardPadding !== undefined && Number(options.cardPadding) > 0) {
             style.textContent += `.ic-DashboardCard {padding: ${options.cardPadding}px!important; box-sizing: content-box!important;}`;
         }
     }
 
-    // Hiding the nav-toggle + breadcrumbs bar used to be hardcoded always-on;
-    // it is now opt-in via the popup toggle (off by default). Its left/right
-    // margins are always removed so the bar lines up with the content column
-    // edges (cosmetic, light and dark mode).
+    // margins always cleared so the bar lines up with the content column; hiding it is opt-in
     style.textContent += ".ic-app-nav-toggle-and-crumbs{margin-left:0!important;margin-right:0!important}";
     if (options.hide_navbar === true) style.textContent += ".ic-app-nav-toggle-and-crumbs{display:none!important}";
     if (options.custom_styles !== "") style.textContent += options.custom_styles;
     document.documentElement.appendChild(style);
-    // Uneven-row centering needs the real cards (it offsets the first card of
-    // the last partial row), so schedule it just after the style lands. Run
-    // unconditionally while any grid setting changes: the function clears
-    // stale offsets first, which is what makes turning the option (or the
-    // whole grid) OFF take effect without a page refresh.
+    // after the style lands; clears stale offsets so turning the grid off needs no refresh
     requestAnimationFrame(centerUnevenGridRows);
 }
 
@@ -9538,26 +8430,17 @@ hidden/unhidden, dashboard re-render, setting changes) start clean.
 function centerUnevenGridRows() {
     const container = document.querySelector(".ic-DashboardCard__box__container");
     if (!container) return;
-    // Flow items: course cards plus the GPA card (it occupies a regular card
-    // slot — pinned first by "Move to top", otherwise auto-placed after the
-    // cards). DOM order matches auto-placement order, so chunking this list
-    // into rows of `cols` matches the real grid rows — including when the
-    // expanded calculator (a full-width row between chunks) is open.
+    // DOM order matches auto-placement order, so chunking this list matches the real rows
     const items = Array.from(container.children).filter(el => el.classList && (el.classList.contains("ic-DashboardCard") || el.classList.contains("canvasrefined-gpa-card")));
     items.forEach(el => el.style.removeProperty("grid-column"));
     if (options.card_grid !== true || options.card_grid_center_rows !== true) return;
-    // Flexible grid: the live column count changes with the window width, so
-    // fixed sub-column offsets computed here would be wrong — skip centering.
+    // flexible grid changes the column count live, so fixed offsets would be wrong
     if (options.card_grid_flex === true) return;
     const cols = Math.max(1, parseInt(options.card_grid_columns, 10) || 4);
     const rows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
     const visible = items.filter(el => getComputedStyle(el).display !== "none");
     const count = visible.length;
-    // Capacity: the explicit template rows (cards + the two GPA spare rows),
-    // minus a full row while the expanded calculator is open (it claims one
-    // for itself). Overflowing the template: extra items land in clipped
-    // implicit rows and the last explicit row is full, so there's nothing to
-    // center.
+    // overflow past the template is clipped and the last visible row is full — nothing to center
     const gpaExpanded = options.gpa_calc === true && (() => {
         const expanded = container.querySelector(":scope > .canvasrefined-gpa");
         return !!expanded && getComputedStyle(expanded).display !== "none";
@@ -9567,13 +8450,8 @@ function centerUnevenGridRows() {
     const lastRowStart = Math.floor((count - 1) / cols) * cols;
     const inLastRow = count - lastRowStart;
     if (inLastRow >= cols) return;
-    // Offset in sub-columns: each card spans 2 sub-columns, so the leftover
-    // space is 2 * (cols - inLastRow) sub-columns and centering shifts by
-    // half of it. The explicit start must be paired with an explicit span,
-    // or the card would collapse to a single sub-column. Both are set with
-    // "important" priority because the stylesheet span rule is !important
-    // too — plain inline styles would lose to it and the offset would never
-    // take effect.
+    // half the leftover, in sub-columns, paired with an explicit span; !important because
+    // the stylesheet span rule is !important too
     const offset = cols - inLastRow;
     if (offset > 0) visible[lastRowStart].style.setProperty("grid-column", `${offset + 1} / span 2`, "important");
 }
@@ -9597,8 +8475,7 @@ function setupQuizSafeModeBanner() {
 }
 
 function injectQuizSafeModeBanner(safeModeOn) {
-    // Only inject into a real Canvas content container — never <body>, which
-    // would place the banner outside the content area if it renders too early.
+    // never inject into <body>: it would land outside the content area
     const findContainer = () =>
         document.querySelector(".ic-Layout-contentMain") ||
         document.querySelector("#content") ||
@@ -9652,7 +8529,6 @@ function injectQuizSafeModeBanner(safeModeOn) {
 
     if (insertInto(findContainer())) return;
 
-    // Content container not ready yet; wait for it (never fall back to <body>).
     const obs = new MutationObserver(() => {
         if (insertInto(findContainer())) obs.disconnect();
     });
@@ -9662,12 +8538,8 @@ function injectQuizSafeModeBanner(safeModeOn) {
 
 
 
-// =============================================================================
-// Global Canvas Search
-// Search across all of the user's courses for modules, module items, and
-// assignments, then jump straight to them. Triggered by a floating search
-// button (bottom-right) or Ctrl/Cmd+K.
-// =============================================================================
+// Global Canvas Search: search every course's modules, items and assignments, then jump
+// to them. Triggered by the floating button or Ctrl/Cmd+K.
 
 let globalSearchIndex = null;            // [{type,title,course,courseId,url}]
 let globalSearchIndexPromise = null;     // in-flight build so concurrent opens share one fetch
@@ -9678,8 +8550,6 @@ let _gsShortcutBound = false;
 
 function setupGlobalSearch() {
     if (options.global_search !== true) return;
-    // Rebuild the index fresh on every page load so newly-concluded/hidden
-    // courses never linger from a previous session's cache.
     invalidateGlobalSearchIndex();
     ensureGlobalSearchButton();
     ensureGlobalSearchShortcut();
@@ -9697,14 +8567,10 @@ function removeGlobalSearch() {
     }
 }
 
-// Shared search icon used by the sidebar + header triggers.
 const GLOBAL_SEARCH_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20px" height="20px"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><circle cx="11" cy="11" r="7" stroke="var(--bcsidebar-text)" stroke-width="2" fill="none"/><path d="m20 20-3.2-3.2" stroke="var(--bcsidebar-text)" stroke-width="2" stroke-linecap="round"/></g></svg>`;
 
-// Placement: a search trigger is injected into whichever left sidebar is
-// active — the Better Sidebar (when enabled) or Canvas' native global nav —
-// and, on the dashboard, a button is also placed in the header actions row.
-// There is no floating button. A rAF-debounced MutationObserver re-evaluates
-// placement as Canvas renders/SPA-navigates/rebuilds the sidebar.
+// One trigger per active left sidebar (Better Sidebar or native nav), plus a
+// dashboard header button; a rAF-debounced observer re-places them.
 let _gsPlacementObserver = null;
 let _gsPlacementScheduled = false;
 function ensureGlobalSearchButton() {
@@ -9724,10 +8590,8 @@ function ensureGlobalSearchButton() {
 function placeGlobalSearchTrigger() {
     if (options.global_search !== true) return;
 
-    // Native global nav (the slim icon bar) — always present, so always add.
     ensureGlobalSearchNativeSidebarButton();
 
-    // Better Sidebar (extra column when the option is enabled) — add when present.
     const betterSidebar = document.getElementById("better-sidebar-container");
     if (betterSidebar) {
         ensureGlobalSearchBetterSidebarButton(betterSidebar);
@@ -9735,7 +8599,6 @@ function placeGlobalSearchTrigger() {
         removeGlobalSearchBetterSidebarButton();
     }
 
-    // Dashboard header button (in addition to the sidebar triggers).
     const headerActions = document.querySelector(".ic-Dashboard-header__actions");
     if (isDashboardPage() && headerActions) {
         ensureGlobalSearchHeaderButton(headerActions);
@@ -9744,10 +8607,8 @@ function placeGlobalSearchTrigger() {
     }
 }
 
-// --- Better Sidebar trigger --------------------------------------------------
 
 function ensureGlobalSearchBetterSidebarButton(betterSidebar) {
-    // The first child of #better-sidebar-container is the button list.
     const sidebarContent = betterSidebar.querySelector("div");
     if (!sidebarContent) return;
     if (sidebarContent.querySelector("#canvasrefined-gs-sidebar-btn")) return;
@@ -9761,11 +8622,9 @@ function ensureGlobalSearchBetterSidebarButton(betterSidebar) {
     btn.style.cssText = "width:40%;height:var(--bc-sidebar-btn-height,30px);cursor:pointer;text-align:center;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:var(--bc-sidebar-btn-gap,8px);color:var(--bcsidebar-text) !important;font-weight:bold;position:relative;";
     btn.innerHTML = `${GLOBAL_SEARCH_ICON_SVG}<span class="better-sidebar-label" style="font-size:var(--bc-sidebar-label-size,14px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">Search</span>`;
     btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openGlobalSearchModal(); });
-    // Append so it sits at the bottom of the sidebar item list.
     sidebarContent.appendChild(btn);
-    // Match the sidebar's current expanded/collapsed mode immediately so the
-    // button doesn't briefly render in the wrong state (e.g. label visible while
-    // collapsed) until the next toggle calls updateSidebar().
+    // Match the sidebar's current state now so the button doesn't render wrong
+    // until the next updateSidebar().
     applyGlobalSearchSidebarButtonMode(btn, betterSidebar.dataset.expanded === "true");
 }
 
@@ -9773,9 +8632,6 @@ function removeGlobalSearchBetterSidebarButton() {
     document.getElementById("canvasrefined-gs-sidebar-btn")?.remove();
 }
 
-// Apply the Better Sidebar's current expanded/collapsed styling to the search
-// button, mirroring updateSidebar()'s button/label/svg rules so the button is
-// correct the moment it's inserted (and whenever the sidebar re-renders).
 function applyGlobalSearchSidebarButtonMode(btn, expanded) {
     if (!btn) return;
     btn.style.width = expanded ? "80%" : "40%";
@@ -9787,7 +8643,6 @@ function applyGlobalSearchSidebarButtonMode(btn, expanded) {
     });
 }
 
-// --- Native global-nav trigger ----------------------------------------------
 
 function ensureGlobalSearchNativeSidebarButton() {
     const navMenu = document.getElementById("menu");
@@ -9805,7 +8660,6 @@ function ensureGlobalSearchNativeSidebarButton() {
     link.innerHTML = `<span class="menu-item-icon-container" aria-hidden="true">${GLOBAL_SEARCH_ICON_SVG}</span><span class="menu-item__text">Search</span>`;
     link.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openGlobalSearchModal(); });
     li.appendChild(link);
-    // Append so the search item appears at the bottom of the global nav.
     navMenu.appendChild(li);
 }
 
@@ -9813,7 +8667,6 @@ function removeGlobalSearchNativeSidebarButton() {
     document.getElementById("canvasrefined-gs-nav-item")?.remove();
 }
 
-// --- Dashboard header trigger -----------------------------------------------
 
 function ensureGlobalSearchHeaderButton(headerActions) {
     if (headerActions.querySelector("#canvasrefined-global-search-header-btn")) return;
@@ -9825,8 +8678,7 @@ function ensureGlobalSearchHeaderButton(headerActions) {
     btn.setAttribute("aria-label", "Search Canvas");
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="canvasrefined-gs-header-btn-label">Search</span>`;
     btn.addEventListener("click", openGlobalSearchModal);
-    // Insert as the first child of the actions row so it sits just to the left
-    // of the "Dashboard Options" (⋯) button, right-aligned with it.
+    // First child of the actions row, just left of the ⋯ button.
     headerActions.insertBefore(btn, headerActions.firstChild);
 }
 
@@ -9837,13 +8689,11 @@ function ensureGlobalSearchShortcut() {
 }
 
 function onGlobalSearchShortcut(e) {
-    // Ctrl/Cmd+K toggles the search modal. Ignore when a modal is already open
-    // and the user is typing in its input (handled by the modal's own listener).
+    // Ctrl/Cmd+K toggles the modal.
     if (!(e.ctrlKey || e.metaKey) || !(e.key === "k" || e.key === "K")) return;
 
-    // Never activate on quiz pages (intro or take) so we don't interfere with
-    // the quiz experience or the browser's native Ctrl+K. Read the URL live
-    // because current_page can be stale after Canvas' client-side navigation.
+    // Not on quiz pages. Read the URL live: current_page can be stale after
+    // Canvas' client-side navigation.
     if (/^\/courses\/\d+\/quizzes\/\d+(?:\/|$)/.test(window.location.pathname)) return;
 
     const modal = document.getElementById("canvasrefined-global-search-modal");
@@ -9858,7 +8708,6 @@ function onGlobalSearchShortcut(e) {
 function openGlobalSearchModal() {
     if (document.getElementById("canvasrefined-global-search-modal")) return;
 
-    // Show the platform-appropriate modifier in keybind hints (⌘ on Mac).
     const modKey = /Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl";
     const modal = document.createElement("div");
     modal.id = "canvasrefined-global-search-modal";
@@ -9891,8 +8740,7 @@ function openGlobalSearchModal() {
     closeBtn.addEventListener("click", closeGlobalSearchModal);
     modal.addEventListener("mousedown", (e) => { if (e.target === modal) closeGlobalSearchModal(); });
 
-    // Escape closes; arrows + enter navigate. Bound on capture so we win over
-    // the global Ctrl+K toggle.
+    // Capture phase so we win over the global Ctrl+K handler.
     modal.addEventListener("keydown", (e) => {
         if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeGlobalSearchModal(); return; }
         if (e.key === "ArrowDown") {
@@ -9909,7 +8757,6 @@ function openGlobalSearchModal() {
             if (item) openGlobalSearchResult(item, e.ctrlKey || e.metaKey);
         }
     });
-    // Stop the global Ctrl+K handler from closing the modal while typing.
     input.addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) e.stopPropagation();
     });
@@ -9925,9 +8772,7 @@ function openGlobalSearchModal() {
     });
 
     requestAnimationFrame(() => input.focus());
-    // Kick off indexing immediately so the first keystroke is fast.
     ensureGlobalSearchIndex();
-    // Render an initial hint.
     resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.</div>`;
 }
 
@@ -9940,8 +8785,6 @@ function closeGlobalSearchModal() {
 function openGlobalSearchResult(item, newTab) {
     if (!item || !item.url) return;
     if (newTab) {
-        // Opening in a new tab keeps the search menu open so the user can keep
-        // searching. Refocus the input for the next keystroke.
         window.open(item.url, "_blank", "noopener");
         const input = document.getElementById("canvasrefined-gs-input");
         if (input) input.focus();
@@ -9959,10 +8802,7 @@ function renderGlobalSearchSelection(resultsEl, selected) {
     });
 }
 
-// --- Indexing ---------------------------------------------------------------
 
-// Drop any cached index so the next access rebuilds it from the API. Called
-// at setup time so every page load starts fresh.
 function invalidateGlobalSearchIndex() {
     globalSearchIndex = null;
     globalSearchIndexAt = 0;
@@ -9971,8 +8811,7 @@ function invalidateGlobalSearchIndex() {
 }
 
 async function ensureGlobalSearchIndex() {
-    // A per-session in-memory build is shared across opens so we don't refetch
-    // on every keystroke, but we never serve a persisted cache across reloads.
+    // In-memory only: never served across reloads.
     if (globalSearchIndex && (Date.now() - globalSearchIndexAt) < GLOBAL_SEARCH_INDEX_TTL) {
         return globalSearchIndex;
     }
@@ -9995,8 +8834,7 @@ async function ensureGlobalSearchIndex() {
 async function buildGlobalSearchIndex() {
     let courses = [];
     try {
-        // enrollment_state=active excludes concluded/inactive enrollments at the
-        // source so we never index (or waste requests on) past-term courses.
+        // enrollment_state=active filters past-term courses at the source.
         courses = await getData(`${domain}/api/v1/courses?enrollment_state=active&per_page=100`);
     } catch (e) {
         console.warn("[CanvasRefined] global search: failed to load courses", e);
@@ -10004,19 +8842,12 @@ async function buildGlobalSearchIndex() {
     }
     if (!Array.isArray(courses) || !courses.length) return [];
 
-    // Skip inactive/concluded/hidden courses. `enrollment_state=active`
-    // already filters at the source, but some institutions return past-term
-    // courses as "active", so we double-check here:
-    //   - access_restricted_by_date (locked courses)
-    //   - concluded === true (Canvas marks concluded courses)
-    //   - term end_date in the past (when the API exposes it)
-    //   - courses the user hid from their dashboard (custom_cards.hidden)
+    // Some institutions report past-term courses as active — double-check here too.
     const now = Date.now();
     courses = courses.filter(c => {
         if (!c || !c.name) return false;
         if (c.access_restricted_by_date === true) return false;
         if (c.concluded === true) return false;
-        // term end date check (API may return term.end_at)
         const endAt = c?.term?.end_at || c?.end_at;
         if (endAt) {
             const end = new Date(endAt).getTime();
@@ -10025,11 +8856,9 @@ async function buildGlobalSearchIndex() {
         if (isCourseHidden(c.id)) return false;
         return true;
     });
-    // Cap to keep request volume sane.
     courses = courses.slice(0, 60);
 
-    // Canvas can return the same course more than once (multi-role enrollments,
-    // cross-listed sections). Dedupe by id so we don't double-index or double-fetch.
+    // Canvas can repeat a course (multi-role, cross-listed) — dedupe by id.
     const seenCourseIds = new Set();
     courses = courses.filter(c => {
         if (seenCourseIds.has(c.id)) return false;
@@ -10038,16 +8867,9 @@ async function buildGlobalSearchIndex() {
     });
 
     const index = [];
-    // Shared dedup state. Keys identify a piece of *content* regardless of where
-    // it surfaced, so the same assignment (which Canvas exposes both as a module
-    // item AND a standalone assignment) collapses to a single result.
-    //   - standalone assignment:  `asn:<courseId>:<assignmentId>`
-    //   - module item with content_id: `<type>:<courseId>:<contentId>`
-    //       (for type "assignment" this becomes `asn:<courseId>:<contentId>` —
-    //        the SAME key as the standalone assignment, so whichever is added
-    //        first wins; we add assignments first to keep the direct URL)
-    //   - module item without content_id (external url/tool): `url:<normalizedUrl>`
-    //   - module itself: `module:<courseId>:<moduleId>`
+    // Content-identity keys so an item surfaced twice (e.g. a module item that is
+    // also a standalone assignment) collapses to one result; assignments go first
+    // so their direct URL wins.
     const seenContent = new Set();
 
     await Promise.all(courses.map(async (course) => {
@@ -10055,8 +8877,6 @@ async function buildGlobalSearchIndex() {
         const courseName = course.name;
         const courseCode = course.course_code || courseName;
 
-        // The course itself, so class-name queries surface its homepage and
-        // the @course filter has something to match against.
         const courseKey = `course:${courseId}`;
         if (!seenContent.has(courseKey)) {
             seenContent.add(courseKey);
@@ -10070,8 +8890,7 @@ async function buildGlobalSearchIndex() {
             });
         }
 
-        // Assignments first so their direct URLs win over the module-item
-        // versions of the same assignment.
+        // Assignments first so their direct URLs win over module-item copies.
         try {
             const assignments = await getData(`${domain}/api/v1/courses/${courseId}/assignments?per_page=100`);
             if (Array.isArray(assignments)) {
@@ -10092,7 +8911,6 @@ async function buildGlobalSearchIndex() {
             }
         } catch (_) { /* non-fatal */ }
 
-        // Modules + their items.
         try {
             const modules = await getData(`${domain}/api/v1/courses/${courseId}/modules?per_page=100`);
             if (Array.isArray(modules)) {
@@ -10115,18 +8933,12 @@ async function buildGlobalSearchIndex() {
                         if (Array.isArray(items)) {
                             for (const it of items) {
                                 if (!it || !it.title) continue;
-                                // Skip text headers / dividers — no destination page.
                                 const itype = (it.type || "").toLowerCase();
                                 if (itype === "subheader") continue;
-                                // Prefer the real page link (html_url). External
-                                // URL items expose external_url instead; the bare
-                                // `url` field is the API endpoint, never use it.
+                                // Prefer html_url/external_url; bare `url` is the API endpoint.
                                 const url = it.html_url || it.external_url;
                                 if (!url) continue;
 
-                                // Build a content-identity key so the same item
-                                // appearing in multiple modules (or mirroring a
-                                // standalone assignment) only produces one result.
                                 let key;
                                 if (itype === "assignment" && it.content_id) {
                                     key = `asn:${courseId}:${it.content_id}`;
@@ -10154,8 +8966,7 @@ async function buildGlobalSearchIndex() {
         } catch (_) { /* per-course failure is non-fatal */ }
     }));
 
-    // Final safety net: collapse any remaining normalized-URL duplicates (e.g.
-    // external links whose content_id differed but resolve to the same page).
+    // Collapse anything left that resolves to the same page.
     const seen = new Set();
     return index.filter(item => {
         const key = normalizeGlobalSearchUrl(item.url);
@@ -10170,10 +8981,8 @@ function normalizeGlobalSearchUrl(url) {
     try {
         const u = new URL(url, domain);
         let path = u.pathname.replace(/\/+$/, ""); // strip trailing slashes
-        // Ignore case + fragment/query for matching purposes.
         return (u.host.toLowerCase() + path).toLowerCase();
     } catch (_) {
-        // Non-absolute (shouldn't happen, but be safe) — normalize as-is.
         return String(url).replace(/\/+$/, "").toLowerCase();
     }
 }
@@ -10192,11 +9001,8 @@ function prettyModuleItemType(type) {
     }
 }
 
-// --- Searching --------------------------------------------------------------
 
-// Course-name matching used by the @course filter (case-insensitive, matches
-// anywhere in the full name or the course code, e.g. "101" or "calc"). An
-// empty filter (a bare "@") matches every course.
+// Case-insensitive match on full name or course code; empty filter matches all.
 function globalSearchCourseMatches(courseEntry, filter) {
     const f = (filter || "").toLowerCase();
     if (!f) return true;
@@ -10204,20 +9010,16 @@ function globalSearchCourseMatches(courseEntry, filter) {
         (courseEntry.courseCode || "").toLowerCase().includes(f);
 }
 
-// Splits "@Math 101 homework 5" into { courseFilter, content }. The filter is
-// the longest prefix after the last "@" that still matches at least one
-// course, so course names with spaces work: whatever remains becomes the
-// content query. Returns null when there is no @token at all (plain search).
+// Splits "@Math 101 homework 5" into { courseFilter, content }: the filter is the
+// longest prefix that matches a course. Null when there is no @token.
 function parseGlobalSearchCourseFilter(query, courseEntries) {
     const at = query.lastIndexOf("@");
     if (at < 0) return null;
-    // '@' must start the query or follow whitespace, so email addresses and
-    // URLs the user pastes in aren't split apart.
+    // '@' must start the query or follow whitespace, so emails aren't split.
     if (at > 0 && !/\s/.test(query[at - 1])) return null;
     const before = query.slice(0, at).trim();
     const rest = query.slice(at + 1);
-    // Longest matching prefix; must end at a word boundary (or the end of the
-    // query) so "@mathh" doesn't silently become course "math" + query "h".
+    // Longest match, ending on a word boundary ("@mathh" is not math + h).
     for (let len = rest.length; len > 0; len--) {
         if (len < rest.length && rest[len] !== " ") continue;
         const candidate = rest.slice(0, len).trim().toLowerCase();
@@ -10243,13 +9045,11 @@ function globalSearchRowHtml(item, i) {
 
 function bindGlobalSearchRows(resultsEl, top) {
     resultsEl.querySelectorAll(".canvasrefined-gs-row").forEach((row) => {
-        // Plain click / Ctrl+click: honor modifier for new-tab behavior.
         row.addEventListener("click", (e) => {
             const url = row.getAttribute("data-url");
             const item = top.find(x => x.url === url);
             if (item) openGlobalSearchResult(item, e.ctrlKey || e.metaKey || (e.button === 1));
         });
-        // Middle-click opens in a new tab without closing the search.
         row.addEventListener("auxclick", (e) => {
             if (e.button !== 1) return;
             e.preventDefault();
@@ -10274,11 +9074,8 @@ async function runGlobalSearch(query, resultsEl) {
         return [];
     }
 
-    // "@grades [course filter]" lists course grade pages instead of content.
-    // A bare "@grades" lists every course; "@grades calc" narrows to courses
-    // matching "calc" (same matching as the @course filter). Checked before
-    // the generic @course parse so "@grades" never gets eaten as a course
-    // name (e.g. a course actually called "Grades").
+    // "@grades [filter]" lists grade pages instead. Checked before the @course
+    // parse so a course actually named "Grades" isn't eaten.
     const gradesMatch = query.match(/(?:^|\s)@grades(?:\s+(.+))?$/i);
     if (gradesMatch) {
         const courseEntries = index.filter(i => i.type === "Course");
@@ -10300,8 +9097,7 @@ async function runGlobalSearch(query, resultsEl) {
         return gradeRows;
     }
 
-    // "@course name" narrows the search to one course. With no other words
-    // after the filter (or a bare "@"), list the matching courses' homepages.
+    // "@course name" narrows the search; a bare filter lists course homepages.
     const courseEntries = index.filter(i => i.type === "Course");
     const parsed = parseGlobalSearchCourseFilter(query, courseEntries);
     let effectiveQuery = query;
@@ -10324,10 +9120,8 @@ async function runGlobalSearch(query, resultsEl) {
     const q = effectiveQuery.toLowerCase();
     const matches = [];
     for (const item of index) {
-        // Re-check hidden status at search time so a card hidden after the index
-        // was cached (10-min TTL) never surfaces in results.
+        // Re-check hidden status: the cached index is up to 10 min old.
         if (isCourseHidden(item.courseId)) continue;
-        // An @course filter restricts results to that course's entries.
         if (allowedCourseIds && !allowedCourseIds.has(String(item.courseId))) continue;
         const t = (item.title || "").toLowerCase();
         const c = (item.course || "").toLowerCase();
@@ -10335,7 +9129,6 @@ async function runGlobalSearch(query, resultsEl) {
         if (t.startsWith(q)) score = 100 - t.indexOf(q);
         else if (t.includes(q)) score = 60 - t.indexOf(q);
         else if (c.includes(q)) score = 20;
-        // Course homepages float above item matches for class-name queries.
         if (score >= 0) {
             if (item.type === "Course" && t.startsWith(q)) score += 40;
             item._score = score + (t === q ? 50 : 0);
@@ -10363,13 +9156,8 @@ function escapeGlobalSearchAttr(s) {
 }
 
 function changeGradientCards() {
-    // Apply the gradient INLINE on each hero instead of via index-based CSS
-    // rules: the gradient is always computed from that hero's actual current
-    // course color, so it stays in sync even when cards are reordered,
-    // re-rendered, or recolored after this pass (the old #gradientcss
-    // "card N" selectors silently drifted onto the wrong cards).
-    // Only background-image is set inline — background-color (the course
-    // color) is left untouched so it can still be read/recolord later.
+    // Inline per-hero gradient rather than index-based CSS: it always uses that
+    // hero's current color, so it survives reordering and recoloring.
     const heroes = document.querySelectorAll('.ic-DashboardCard__header_hero');
     heroes.forEach(hero => {
         if (options.gradient_cards !== true) {
@@ -10378,8 +9166,6 @@ function changeGradientCards() {
         }
         const rgb = hero.style.backgroundColor;
         const parts = rgb.match(/\d+(\.\d+)?/g);
-        // No inline course color (e.g. hero not painted yet): leave untouched
-        // rather than guessing NaN colors.
         if (!parts || parts.length < 3) return;
         const [r, g, b] = [parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2])];
         let [h, s, l] = rgbToHsl(r, g, b);
@@ -10388,17 +9174,14 @@ function changeGradientCards() {
         hero.style.backgroundImage = `linear-gradient(115deg, hsl(${h}deg,${s}%,${l}%) 5%, hsl(${newh}deg,${s}%,${l}%) 100%)`;
     });
 
-    // Clean up the legacy index-based stylesheet from older versions.
     const legacy = document.querySelector("#gradientcss");
     if (legacy) legacy.remove();
 }
 
 function showUpdateMsg() {
-    // dont run if not on dashboard
     const el = document.getElementById("announcementWrapper");
     if (!el) return;
 
-    // option off or div already created
     let div = document.getElementById("canvasrefined-update-msg");
     if (options.show_updates !== true || options.update_msg === "") {
         if (div) div.style.display = "none";
@@ -10408,7 +9191,6 @@ function showUpdateMsg() {
         return;
     }
 
-    // first creation
     div = makeElement("div", el, { "id": "canvasrefined-update-msg" });
     makeElement("p", div, { "textContent": options.update_msg });
     const close = makeElement("button", div, { "id": "canvasrefined-update-close", "textContent": "Close" });
@@ -10422,9 +9204,6 @@ function readUpdate() {
     chrome.storage.sync.set({ "update_msg": "" });
 }
 
-/*
-Other functions 
-*/
 
 function combineAssignments(data) {
     let combined = data;
@@ -10435,11 +9214,8 @@ function combineAssignments(data) {
     } catch (e) {
         logError(e);
     }
-    // Dedupe by planner item identity (same key the cache merge uses), keeping
-    // the LAST occurrence so locally-stored overflow entries win over fetched
-    // ones. Without this, an item present in both the planner data and an
-    // overflow array rendered twice — once on the dashboard cards and once per
-    // copy in the todo list.
+    // Dedupe by planner item identity, keeping the LAST occurrence so locally
+    // stored overflow entries win over fetched ones.
     if (Array.isArray(combined)) {
         const seen = new Set();
         const deduped = [];
@@ -10481,8 +9257,6 @@ function cleanCustomAssignments() {
 function getGrades() {
     if (options.gpa_calc === true || options.dashboard_grades === true) {
         grades = getData(`${domain}/api/v1/courses?${/*enrollment_state=active&*/""}include[]=concluded&include[]=total_scores&include[]=computed_current_score&include[]=current_grading_period_scores&per_page=100`);
-        // Render the GPA card the moment grade data arrives, rather than waiting
-        // for the next dashboard mutation pass to call setupGPACalc().
         if (options.gpa_calc === true) {
             grades.then(() => setupGPACalc()).catch(() => {});
         }
@@ -10499,8 +9273,7 @@ function getColors() {
             chrome.storage.sync.set({ "custom_cards_3": cards });
             return cards;
         }).catch(e => {
-            // A failed colors fetch (e.g. an expired session) must not throw an
-            // unhandled rejection or wipe the stored colors — keep the old ones.
+            // Keep the stored colors on failure; don't leak an unhandled rejection.
             console.warn("Canvas Refined - could not load course colors", e);
             return options.custom_cards_3;
         });
@@ -10520,63 +9293,37 @@ function getAssignments() {
     if (options.assignments_due === true || options.better_todo === true) {
         assignments = loadPlannerItems();
         cardAssignments = preloadAssignmentEls();
-        // setupBetterTodo bails (instead of mounting a permanently-empty
-        // shell) when the data promise isn't ready yet — the common case on
-        // first run or after an expired session, when the initial fetch takes
-        // seconds. Once data resolves, try mounting the sidebar in case the
-        // dashboard has gone quiet since the last MutationObserver burst;
-        // setupBetterTodo's own guards make this a no-op everywhere it
-        // shouldn't run (wrong page, quiz, already mounted).
+        // setupBetterTodo bails rather than mounting a permanent empty shell while
+        // data loads, so retry once it resolves (the dashboard may have gone quiet).
         assignments.then(() => setupBetterTodo());
     }
 }
 
 // ===================== Planner items (cached) =====================
-// The planner list powers the to-do list, dashboard cards, reminders, and
-// progress rings. It used to be re-fetched from 2000-01-01 on every page
-// load — dozens of sequential requests for students with long histories,
-// which was the main cause of the 1.0.0 slow-load reports. Now:
-//   - items are cached in chrome.storage.local and served instantly,
-//   - each page load only fetches a small recent window (14 days),
-//   - a full lookback walk (max 1 year) runs at most once a week, and only
-//     while the tab is idle, and
-//   - items are limited to courses the student is currently enrolled in.
-// Canvas returns planner items oldest-first, so any fetch that starts far
-// in the past must page through everything newer; capping the lookback at
-// one year bounds both the request count and the cache size. Overdue items
-// older than a year are intentionally dropped. (Concluded courses are
-// excluded by the planner API by default, so this is history from the
-// user's active courses only.)
+// Cached in chrome.storage.local: instant load, a 14-day refresh window per page
+// load, and a full 1-year lookback at most weekly while the tab is idle.
 const PLANNER_CACHE_KEY = "planner_cache_v1";
 const PLANNER_LOOKBACK_DAYS = 365;   // max history fetched from Canvas
 const PLANNER_WINDOW_DAYS = 14;     // per-load "what changed" refresh window
 const PLANNER_FULL_REFRESH_DAYS = 7; // min time between full lookback walks
-// Hard cap on pages fetched (50 pages * 100 items = 5000 items) as a safety
-// net against a malformed/misbehaving next link.
+// 50 pages × 100 items — a safety net against a malformed next link.
 const PLANNER_MAX_PAGES = 50;
 
 function plannerDateDaysAgo(days) {
     return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 }
 
-// Stable identity for a planner item (same pair the complete-toggle uses).
 function plannerItemKey(item) {
     return `${item.plannable_type}|${item.plannable_id}`;
 }
 
 // ===================== Active-enrollment filter =====================
-// Reported bug: the to-do list showed assignments/announcements from old,
-// concluded classes. The planner API excludes concluded *courses*, but not
-// courses where only the student's *enrollment* has concluded (common at
-// term boundaries), so those items still leak through. This fetches the ids
-// of the user's currently-active course enrollments so planner items can be
-// filtered to real, current classes. Returns null on failure so callers
-// skip filtering instead of hiding everything.
+// The planner API excludes concluded *courses* but not items whose enrollment
+// concluded (common at term boundaries), so filter by active enrollment ids.
+// Returns null on failure so callers skip filtering instead of hiding everything.
 async function fetchActiveCourseIds() {
     const ids = new Set();
     let url = `${domain}/api/v1/courses?enrollment_state=active&per_page=100`;
-    // 10 pages * 100 courses is far beyond any real enrollment count; just a
-    // safety net against a malformed next link.
     for (let page = 0; page < 10 && url; page++) {
         let response;
         let data;
@@ -10601,10 +9348,8 @@ async function fetchActiveCourseIds() {
     return ids;
 }
 
-// Keeps only items belonging to courses in `courseIds` (Set or array).
-// null/undefined means "unknown" (the enrollment fetch failed), so no
-// filtering is applied. Personal items with no course context (planner
-// notes, non-course contexts like groups) are always kept.
+// null courseIds = unknown (fetch failed), so no filtering; items with no course
+// context (planner notes, groups) are always kept.
 function filterPlannerItemsByActiveCourses(items, courseIds) {
     if (!courseIds) return items;
     const active = (courseIds instanceof Set) ? courseIds : new Set(courseIds.map(String));
@@ -10625,11 +9370,7 @@ async function readPlannerCache() {
 
 function writePlannerCache(items, lastFullRefresh, activeCourseIds, minRefreshedAt = 0) {
     try {
-        // Cross-tab last-writer-wins guard: several Canvas tabs can refresh the
-        // shared cache concurrently, and a slower tab merging from an older
-        // snapshot must not overwrite a newer write. Skip when storage already
-        // holds a cache refreshed after our snapshot was taken. Losing the
-        // write is non-fatal — the other tab's data is fresher.
+        // Cross-tab guard: never overwrite a cache newer than our snapshot.
         chrome.storage.local.get(PLANNER_CACHE_KEY, result => {
             try {
                 const current = result && result[PLANNER_CACHE_KEY];
@@ -10641,14 +9382,8 @@ function writePlannerCache(items, lastFullRefresh, activeCourseIds, minRefreshed
     } catch (e) { /* cache write failure is non-fatal */ }
 }
 
-// Fetches every page of /api/v1/planner/items with a due date on/after
-// `startDate`, following the Link "next" headers until exhausted. Uses the
-// same session/headers as getData.
-// Returns null when the fetch failed (network error, non-OK response such as
-// a 401 from an expired session, or a redirect to the login page). Callers
-// MUST treat null as "unknown", never as "no items" — writing a failed fetch
-// into the cache used to wipe real data whenever the Canvas session had
-// expired (the reported "reload after SSO login breaks everything" bug).
+// Pages through /api/v1/planner/items from `startDate`. Returns null when the
+// fetch failed — callers must treat null as "unknown", never as "no items".
 async function fetchPlannerItemsSince(startDate) {
     const allItems = [];
     let url = `${domain}/api/v1/planner/items?start_date=${startDate}&per_page=100`;
@@ -10668,8 +9403,6 @@ async function fetchPlannerItemsSince(startDate) {
             return null;
         }
         if (!response.ok || !Array.isArray(data)) return null;
-        // Deep-clone via JSON to unwrap Firefox Xray objects so nested props
-        // are mutable (same as getData).
         try {
             allItems.push(...JSON.parse(JSON.stringify(data)));
         } catch (_) {
@@ -10680,9 +9413,7 @@ async function fetchPlannerItemsSince(startDate) {
     return allItems;
 }
 
-// Merges a fresh window fetch into the cached list. Cached items whose due
-// date falls inside the fetched window are replaced wholesale (catches new,
-// changed, and removed items); older cached items are kept as-is.
+// Cached items inside the window are replaced wholesale; older ones are kept.
 function mergePlannerItems(cached, fetched, windowStartMs) {
     const byKey = new Map();
     for (const item of cached) {
@@ -10694,19 +9425,11 @@ function mergePlannerItems(cached, fetched, windowStartMs) {
     return sortAndTrimPlannerItems([...byKey.values()]);
 }
 
-// Drops items older than the lookback window, dedupes them by planner item
-// identity, and returns the list sorted by due date ascending (the order the
-// rest of the extension expects). Dedupe happens here so EVERY cache-write
-// path is idempotent — previously only mergePlannerItems deduped, so a
-// duplicated page from the API (or any other double-insert) could be
-// persisted verbatim and render the same assignment twice on cards and in
-// the todo list until the next successful window merge happened to clean it.
+// Trim to the lookback, dedupe by item identity and sort by due date, so every
+// cache-write path is idempotent.
 function sortAndTrimPlannerItems(items) {
     const cutoff = Date.now() - PLANNER_LOOKBACK_DAYS * 86400000;
-    // Map insertion keeps the LAST occurrence per key: Canvas returns items
-    // oldest-first, so within a single (possibly self-overlapping) fetch the
-    // later copy is the newer data. (mergePlannerItems additionally layers the
-    // fresh fetch over the cache, so fetched data still wins there.)
+    // Last occurrence per key wins: Canvas returns items oldest-first.
     const byKey = new Map();
     for (const item of items) {
         if (new Date(item.plannable_date).getTime() < cutoff) continue;
@@ -10717,31 +9440,23 @@ function sortAndTrimPlannerItems(items) {
     return trimmed;
 }
 
-// Cheap change signature so consumers only re-render when something they
-// display actually moved: due date, submitted/graded/complete state, or an
-// announcement's read state.
+// Cheap change signature so consumers only re-render on real changes.
 function plannerFingerprint(items) {
     return items.map(item =>
         `${plannerItemKey(item)}:${item.plannable_date}:${item.submissions?.submitted ? 1 : 0}:${item.submissions?.graded ? 1 : 0}:${item.planner_override?.marked_complete ? 1 : 0}:${item.plannable?.read_state ?? ""}`
     ).join("|");
 }
 
-// Entry point for the planner data. Resolves instantly from cache when
-// present; otherwise does one bounded (1-year) fetch on the critical path so
-// the to-do list isn't empty on first run, then caches the result. In both
-// cases items are limited to the student's currently-active courses.
+// Cache first; on first run a single bounded (1-year) fetch is on the critical
+// path. Items are always limited to the active courses.
 async function loadPlannerItems() {
     const cache = await readPlannerCache();
     if (cache) {
         schedulePlannerRefresh(cache);
-        // Serve instantly, filtered with the last known enrollment list;
-        // the background refresh below brings that list up to date.
         return filterPlannerItemsByActiveCourses(cache.items, cache.activeCourseIds);
     }
-    // First run (no cache yet): fetch the bounded lookback and the active
-    // enrollment list in parallel, then cache the filtered result. A failed
-    // fetch (e.g. expired session) must NOT be cached: cache nothing so the
-    // next load retries the full fetch instead of serving an empty list.
+    // First run: fetch the lookback and the enrollment list in parallel, then
+    // cache. A failed fetch caches nothing, so the next load retries.
     const [items, courseIds] = await Promise.all([
         fetchPlannerItemsSince(plannerDateDaysAgo(PLANNER_LOOKBACK_DAYS)),
         fetchActiveCourseIds(),
@@ -10754,20 +9469,13 @@ async function loadPlannerItems() {
     return filtered;
 }
 
-// Background cache refresh: a small recent window on every load (catches new
-// items and recent changes), plus a full lookback walk at most once every
-// PLANNER_FULL_REFRESH_DAYS (catches state changes on older items, e.g. a
-// months-old assignment finally being submitted). The active-enrollment list
-// is refreshed on every pass so concluded classes drop out promptly rather
-// than waiting for the weekly walk. Runs while the tab is idle so it never
-// competes with page load.
+// Recent-window refresh on every load, a full lookback walk at most weekly, and
+// the enrollment list refreshed each pass. Runs while the tab is idle.
 function schedulePlannerRefresh(cache) {
     const fullRefreshDue = !cache.lastFullRefresh ||
         (Date.now() - cache.lastFullRefresh > PLANNER_FULL_REFRESH_DAYS * 86400000);
-    // Only one refresh may run at a time. loadPlannerItems schedules a refresh
-    // on every cache hit (including Add-Task's re-fetch), and every open Canvas
-    // tab runs its own; concurrent runs could interleave so a slow stale run
-    // overwrites a newer incremental write in storage.
+    // One refresh at a time: concurrent runs (other tabs, Add-Task) could let a
+    // slow stale run overwrite a newer write.
     if (plannerRefreshRunning) return;
     const run = async () => {
         if (plannerRefreshRunning) return;
@@ -10777,16 +9485,12 @@ function schedulePlannerRefresh(cache) {
                 filterPlannerItemsByActiveCourses(cache.items, cache.activeCourseIds)
             );
             const courseIds = await fetchActiveCourseIds();
-            // On enrollment-fetch failure, fall back to the cached list.
             const active = courseIds ?? (cache.activeCourseIds ?? null);
             const idsToStore = courseIds ? [...courseIds] : (cache.activeCourseIds ?? null);
             let merged;
             if (fullRefreshDue) {
                 const fetched = await fetchPlannerItemsSince(plannerDateDaysAgo(PLANNER_LOOKBACK_DAYS));
-                // Fetch failed (e.g. expired session): keep the existing cache
-                // untouched and retry on the next load. Writing the empty
-                // result used to wipe the cache AND stamp lastFullRefresh,
-                // locking in the data loss for a week.
+                // Fetch failed: keep the cache untouched and retry next load.
                 if (fetched === null) return;
                 merged = filterPlannerItemsByActiveCourses(
                     sortAndTrimPlannerItems(fetched),
@@ -10796,23 +9500,11 @@ function schedulePlannerRefresh(cache) {
             } else {
                 const windowStart = plannerDateDaysAgo(PLANNER_WINDOW_DAYS);
                 const fetched = await fetchPlannerItemsSince(windowStart);
-                // Fetch failed: skip the merge entirely. mergePlannerItems
-                // drops cached items inside the window before adding the fresh
-                // ones, so merging an empty/failed fetch would silently delete
-                // the most recent two weeks from the persisted cache.
+                // Fetch failed: merging would delete the last two weeks from the cache.
                 if (fetched === null) return;
                 merged = filterPlannerItemsByActiveCourses(
-                    // Drop threshold = the window start's LOCAL midnight, not
-                    // UTC midnight. The window start is a date-only string
-                    // (Date.parse → UTC midnight) while Canvas evaluates
-                    // start_date in the user's timezone: for a user west of
-                    // UTC, an item due between UTC midnight and local midnight
-                    // counts as "inside the window" by UTC but is NOT returned
-                    // by a fetch filtered from local midnight — dropping it at
-                    // the UTC threshold silently deleted it until the weekly
-                    // full walk. Thresholding at local midnight keeps exactly
-                    // the items the fetch may not return; any harmless overlap
-                    // is removed by mergePlannerItems' key dedupe (fresh wins).
+                    // Threshold at the window start's LOCAL midnight: Canvas reads
+                    // start_date in the user's timezone, so a UTC threshold deleted items.
                     mergePlannerItems(cache.items, fetched, Date.parse(windowStart + "T00:00:00")),
                     active
                 );
@@ -10832,9 +9524,7 @@ function schedulePlannerRefresh(cache) {
     }
 }
 
-// Re-renders everything that displays planner items after the background
-// refresh produced new data. Mirrors the option-change handlers so all the
-// existing consumers re-attach to the updated promise.
+// Re-render every planner consumer after a background refresh.
 function refreshPlannerConsumers(items) {
     assignments = Promise.resolve(items);
     updateReminders();
@@ -10851,8 +9541,6 @@ function refreshPlannerConsumers(items) {
     }
 }
 
-// Extracts the rel="next" URL from a Canvas pagination Link header, or
-// returns null when on the last page.
 function getNextPageUrl(linkHeader) {
     if (!linkHeader) return null;
     const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
@@ -10860,13 +9548,8 @@ function getNextPageUrl(linkHeader) {
 }
 
 // ===================== Grade Analytics =====================
-// On course grades pages, adds an "Analytics" toggle on the left side (in the
-// Better Sidebar when enabled, otherwise in the native course nav) that shows
-// a panel with a score-distribution doughnut, an overall-grade-over-time
-// line chart, a GitHub-style grade heatmap, and a final-grade calculator.
-// Data comes from the Canvas API with the user's session, so it
-// matches the numbers on the page. Charts are hand-drawn on <canvas> so the
-// extension needs no CDN/library and no chart library dependency.
+// Grades-page panel: score doughnut, grade-over-time line, GitHub-style heatmap
+// and a final-grade calculator, all hand-drawn on <canvas> from the page's data.
 
 const GA_BUCKETS = [
     { label: "90+",   min: 90, max: Infinity, color: "#16a34a" },
@@ -10881,17 +9564,14 @@ const GA_BUCKETS = [
     { label: "0-9",   min: 0,  max: 10,       color: "#7f1d1d" },
 ];
 const GA_UNGRADED_COLOR = "#6b7280";
-// 5%-wide zone colors for the line chart background: the doughnut's bucket
-// colors interpolated at 5% steps (dark red at 0 → green at 100), so every
-// 5% band gets its own shade. Each band is sampled at its LOWER edge so
-// every decade starts on its pure bucket color — a 70 is exactly yellow,
-// not a yellow-green blend.
+// 20 five-percent bands sampled at their lower edge, so each decade starts on its
+// pure bucket color (a 70 is exactly yellow).
 const GA_ZONE_COLORS = (() => {
     const stops = GA_BUCKETS.slice().reverse(); // 0-9 (dark red) → 90+ (green)
     const rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
     const lerp = (a, b, t) => Math.round(a + (b - a) * t);
     return Array.from({ length: 20 }, (_, i) => {
-        const m = i * 5; // band's lower edge (70, 75, …) — see comment above
+        const m = i * 5; // band's lower edge, e.g. 70
         const k = Math.min(stops.length - 1, Math.floor(m / 10));
         if (k >= stops.length - 1) return stops[stops.length - 1].color;
         const t = (m - k * 10) / 10;
@@ -10921,10 +9601,8 @@ function setGradeAnalyticsFitY(fit) {
     chrome.storage.local.set({ [GA_FIT_Y_KEY]: fit });
 }
 
-// Final-grade calculator settings, stored per course so each course's final
-// weight and goal survive reloads: { weight, target, show }. The needed
-// score itself is never stored — it's always recomputed against the live
-// current grade.
+// Final-grade calculator settings per course: { weight, target, show }. The needed
+// score is always recomputed, never stored.
 const GA_CALC_PREFIX = "grade_analytics_final_";
 
 function gaCalcStorageKey(courseId) {
@@ -10949,7 +9627,7 @@ function saveGaCalcSettings() {
 let gaObserver = null;
 let gaOpen = false;          // panel open on this page view
 let gaFitY = false;         // scale the line chart Y axis to fit the data
-let gaImagineIf = false;    // "Imagine-If mode" enabled on this page view (never persisted — always off on load)
+let gaImagineIf = false;    // per page view only
 let gaScenario = null;      // imagine-if working copy of groups + assignments
 let gaIfCounter = 0;         // unique ids for user-added groups/assignments
 let gaOriginalFinalHtml = null; // Total row's original grade span innerHTML, for restore
@@ -10958,17 +9636,14 @@ let gaCalc = null;           // final-grade calculator settings for this course
 let gaCourseId = null;       // course whose data is cached
 let gaData = null;           // computed data for the current course
 let gaLoading = false;
-let gaChartObserver = null;  // ResizeObserver: redraws charts once their boxes gain a real size
+let gaChartObserver = null;  // ResizeObserver: redraw once the charts have a size
 
 function gradeAnalyticsActive() {
     return options.grade_analytics === true && isGradesPage() && !quizSafeModeActive();
 }
 
-// Grades data is read straight from the #grades_summary table the page
-// already rendered — no API round trips, so even courses with hundreds of
-// assignments populate instantly, and the numbers always match what the user
-// sees (grading periods, unposted grades, etc.). Waits briefly for the table
-// to appear on SPA navigations.
+// Data is read from the #grades_summary table the page already rendered: instant
+// even for huge courses, and always matching what the user sees.
 function gaWaitForGradesTable(timeoutMs = 15000) {
     return new Promise((resolve, reject) => {
         const ready = () => {
@@ -10989,15 +9664,13 @@ function gaWaitForGradesTable(timeoutMs = 15000) {
     });
 }
 
-// Entry point: called at init, on SPA navigation, and when the option changes.
 function watchGradeAnalytics() {
     if (!gradeAnalyticsActive()) {
         removeGradeAnalyticsPanel();
         if (gaObserver) { gaObserver.disconnect(); gaObserver = null; }
         return;
     }
-    // SPA navigation between courses: drop cached data so the panel never
-    // shows the previous course's charts.
+    // SPA navigation to another course: drop the previous course's data.
     const courseId = getCurrentCourseId();
     if (gaCourseId !== null && gaCourseId !== courseId) {
         gaData = null;
@@ -11006,14 +9679,12 @@ function watchGradeAnalytics() {
         removeGradeAnalyticsPanel();
     }
     if (!gaObserver) {
-        // Canvas re-renders the left nav and content area during SPA
-        // navigation; the observer keeps the panel placed.
+        // Canvas re-renders the nav and content on SPA navigation; keep the panel placed.
         gaObserver = new MutationObserver(() => scheduleGradeAnalyticsSync());
         gaObserver.observe(document.documentElement, { childList: true, subtree: true });
     }
     scheduleGradeAnalyticsSync();
-    // Restore the open/closed state and Y-axis preference the user last
-    // chose, then inject the panel below the Print Grades header.
+    // Restore the stored open/Y-axis/calculator state, then place the panel.
     Promise.all([getGradeAnalyticsOpenState(), getGradeAnalyticsFitY(), getGaCalcSettings(courseId)]).then(([open, fit, calc]) => {
         gaOpen = open;
         gaFitY = fit;
@@ -11038,18 +9709,13 @@ function syncGradeAnalyticsUI() {
     if (!gradeAnalyticsActive()) return;
     const panel = ensureGradeAnalyticsPanel();
     if (!panel) return;
-    // Imagine-If: Canvas re-renders can wipe the overwritten Total block or
-    // swap in a new grades table (grading-period switch) — reapply, and
-    // rebuild the scenario when the table's rows changed.
+    // Canvas re-renders can wipe the overwritten Total — reapply it.
     if (gaImagineIf) {
         gaRenderImagineIf();
         gaApplyImagineTotal();
     }
-    // Self-heal: the one-shot render after data loads can be a no-op when the
-    // panel was created before Canvas finished laying out the page (zero-size
-    // canvases) or while the body was still hidden. gaSetupCanvas leaves the
-    // canvas backing store at width 0 in that case, so a 0-width canvas means
-    // "never drawn" — redraw now that layout is real.
+    // A 0-width canvas means "never drawn" (panel was hidden or unsized), so
+    // redraw now that layout is real.
     if (gaOpen && gaData) {
         const pie = panel.querySelector("#canvasrefined-ga-pie");
         const line = panel.querySelector("#canvasrefined-ga-line");
@@ -11062,17 +9728,12 @@ function syncGradeAnalyticsUI() {
 function removeGradeAnalyticsPanel() {
     gaOpen = false;
     if (gaChartObserver) { gaChartObserver.disconnect(); gaChartObserver = null; }
-    // Never leave a hypothetical Total or inline editors behind when the
-    // panel goes away.
     gaClearImagineUI();
     gaRestoreImagineTotal();
     document.getElementById("canvasrefined-grade-analytics")?.remove();
 }
 
-// Applies the in-memory open/closed state (restored from storage) to the panel
-// DOM. Called both at panel creation and whenever an already-attached panel
-// is reused, so a stored preference is never lost to a creation race (the DOM
-// observer can build the panel before the storage read resolves).
+// Applies the in-memory open state; creation can beat the storage read.
 function applyGradeAnalyticsOpenState(panel) {
     const body = panel.querySelector("#canvasrefined-ga-body");
     const btn = panel.querySelector("#canvasrefined-ga-toggle");
@@ -11083,9 +9744,6 @@ function applyGradeAnalyticsOpenState(panel) {
     btn.setAttribute("aria-expanded", String(gaOpen));
 }
 
-// Syncs the "Imagine-If mode" button's DOM to the in-memory state.
-// Called at panel creation and whenever an already-attached panel is
-// reused, mirroring applyGradeAnalyticsOpenState.
 function applyGradeAnalyticsImagineState(panel) {
     const btn = panel.querySelector("#canvasrefined-ga-imagine");
     if (!btn) return;
@@ -11095,20 +9753,15 @@ function applyGradeAnalyticsImagineState(panel) {
     btn.style.fontWeight = gaImagineIf ? "600" : "";
 }
 
-// Panel is injected directly below the "Print Grades" action header on the
-// grades page. Returns null (and retries via the DOM observer) if the anchor
-// hasn't rendered yet.
+// Injected right below the "Print Grades" header; null until that anchor renders.
 function ensureGradeAnalyticsPanel() {
     let panel = document.getElementById("canvasrefined-grade-analytics");
     const anchor = document.getElementById("print-grades-container");
     if (panel && panel.isConnected) {
-        // Canvas re-renders can shift the anchor or our position; keep the
-        // panel directly after #print-grades-container at all times.
+        // Canvas re-renders can move the anchor — keep the panel right after it.
         if (anchor && panel.previousElementSibling !== anchor) {
             anchor.insertAdjacentElement("afterend", panel);
         }
-        // Re-apply the open/closed state in case it was restored from storage
-        // after this panel was first created.
         applyGradeAnalyticsOpenState(panel);
         applyGradeAnalyticsImagineState(panel);
         return panel;
@@ -11120,7 +9773,6 @@ function ensureGradeAnalyticsPanel() {
     if (anchor) {
         anchor.insertAdjacentElement("afterend", panel);
     } else {
-        // Fallback: top of the content container until the anchor renders.
         container.insertBefore(panel, container.firstChild);
     }
     panel.style.cssText = `margin:18px 0;padding:16px;border:1px solid color-mix(in srgb, var(--bcborders) 75%, transparent);border-radius:10px;background-color:var(--bcbackground-0);color:var(--bctext-0);font-family:"Lato","Helvetica Neue",Helvetica,Arial,sans-serif;box-sizing:border-box;`;
@@ -11198,17 +9850,14 @@ function ensureGradeAnalyticsPanel() {
         applyOpenState();
         if (gaOpen && gaData) renderGradeAnalytics();
     });
-    // "Imagine-If mode" button on the right side of the panel header. The
-    // toggle is per-page-view only (always off on load); the active style
-    // highlights the button while the mode is on.
+    // Imagine-If toggle: per page view only, never persisted.
     imagineBtn.addEventListener("click", () => {
         gaImagineIf = !gaImagineIf;
         applyGradeAnalyticsImagineState(panel);
         if (gaImagineIf) gaEnterImagineIf();
         else gaExitImagineIf();
     });
-    // "Fit Y axis" scales the line chart's Y axis to the data instead of a
-    // fixed 0-100; the choice is remembered across pages via chrome.storage.
+    // Fit Y axis: remembered across pages via chrome.storage.
     fitYCheckbox.checked = gaFitY;
     fitYCheckbox.addEventListener("change", () => {
         gaFitY = fitYCheckbox.checked;
@@ -11217,12 +9866,10 @@ function ensureGradeAnalyticsPanel() {
             gaDrawLine(panel.querySelector("#canvasrefined-ga-line"), panel.querySelector("#canvasrefined-ga-line-tip"));
         }
     });
-    // Tab switching between the charts overview and the final calculator.
     panel.querySelectorAll("[data-ga-tab]").forEach(btn => {
         btn.addEventListener("click", () => gaSetTab(btn.dataset.gaTab));
     });
-    // Final-grade calculator inputs persist per course; every change re-saves
-    // and recomputes the result against the live current grade.
+    // Calculator inputs persist per course and recompute on every change.
     const calcWeight = panel.querySelector("#canvasrefined-ga-calc-weight");
     const calcTarget = panel.querySelector("#canvasrefined-ga-calc-target");
     const calcShow = panel.querySelector("#canvasrefined-ga-calc-show");
@@ -11243,14 +9890,8 @@ function ensureGradeAnalyticsPanel() {
     applyGaCalcState(panel);
     applyGradeAnalyticsImagineState(panel);
     applyOpenState();
-    // If the data finished loading before this panel was created (or before
-    // the stored open state was restored), the earlier render call found no
-    // panel — draw the charts now that it exists.
     if (gaOpen && gaData) renderGradeAnalytics();
-    // A chart skipped because its box had no size (page still laying out,
-    // tab/panel hidden) is left at width 0; this observer redraws the moment
-    // the boxes get real dimensions, even when no DOM mutation or window
-    // resize follows.
+    // Redraw charts whose boxes had no size when the render ran.
     if (gaChartObserver) gaChartObserver.disconnect();
     gaChartObserver = new ResizeObserver(() => {
         if (!gaOpen || !gaData) return;
@@ -11270,16 +9911,10 @@ async function loadGradeAnalytics() {
     const status = document.getElementById("canvasrefined-ga-status");
     if (status) status.textContent = "Reading grade data…";
     try {
-        // Parse the grades table the page already rendered instead of hitting
-        // the paginated API — instant even for courses with hundreds of
-        // assignments, and always in sync with what the page shows.
         const table = await gaWaitForGradesTable();
         gaCourseId = courseId;
         gaData = computeGradeAnalyticsFromPage(table);
         gaLoading = false;
-        // renderGradeAnalytics self-guards on panel existence and canvas
-        // size; if the panel isn't ready yet, the retry in
-        // ensureGradeAnalyticsPanel / syncGradeAnalyticsUI draws once it is.
         renderGradeAnalytics();
     } catch (err) {
         logError(err);
@@ -11290,16 +9925,11 @@ async function loadGradeAnalytics() {
     }
 }
 
-// Parses one assignment row of #grades_summary into a plain record. The row
-// stashes the original posted score in a hidden "original_score" span (the
-// "original_points" span holds points EARNED, not possible), while points
-// possible is only in the "/ 15" span displayed after the grade.
-// Month abbreviations for parsing the grades table's due-date strings.
+// One assignment row of #grades_summary. The hidden original_score span holds the
+// posted score; points possible only appears in the "/ 15" span after the grade.
 const GA_MONTH_NAMES = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
-// Parse a due-date string from the grades table into sortable parts.
-// Handles "Sep 12", "Sep 12 at 11:59pm", "Sep 12 by 23:59" and
-// "Sep 12, 2024 at 11:59pm". Returns { mon, day, minutes } or null.
+// Parses "Sep 12", "Sep 12 at 11:59pm" or "Sep 12, 2024 …" → { mon, day, minutes }.
 function gaParseDueDate(due) {
     const m = String(due || "").toLowerCase().match(/([a-z]{3})[a-z]*\.?\s+(\d{1,2})(?:[^\d]+\d{4})?(?:[^\d]{0,8}?(\d{1,2}):(\d{2})\s*(am|pm)?)?/);
     if (!m) return null;
@@ -11321,7 +9951,6 @@ function gaParseNum(t) {
     if (!t) return null;
     let s = String(t).replace(/\s+/g, "");
     if (s === "" || !/\d/.test(s)) return null;
-    // Normalize "1,234.5" (thousands grouping) and "9,5" (comma decimal).
     if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, "");
     else if (/^-?\d+,\d+$/.test(s)) s = s.replace(",", ".");
     const v = parseFloat(s);
@@ -11336,20 +9965,15 @@ function gaParseAssignmentRow(tr) {
         title: (titleLink ? titleLink.textContent : (q("th.title")?.textContent || "")).trim(),
         score: gaParseNum(q(".original_score")?.textContent),
         points: gaParseNum(possibleText.replace(/^.*\//, "")),
-        // Rows the page lists as unsubmitted/unposted carry no score; only
-        // "graded" rows have one.
         status: (q(".submission_status")?.textContent || "").trim(),
         gid: (q(".assignment_group_id")?.textContent || "").trim(),
         due: (q("td.due")?.textContent || "").replace(/\s+/g, " ").trim(),
-        // Full hover tooltip date when present — a better parse source than
-        // the abbreviated cell text.
         dueTitle: q("td.due [title]")?.getAttribute("title") || q("td.due")?.getAttribute("title") || "",
     };
 }
 
 function computeGradeAnalyticsFromPage(table) {
-    // Assignment group weights come from the "group total" summary rows
-    // (e.g. "Summative Assessment — 86.67%, weight 85").
+    // Group weights come from the "group total" summary rows.
     const groupWeight = {};
     for (const tr of table.querySelectorAll("tr.group_total")) {
         const gid = tr.querySelector(".assignment_group_id")?.textContent.trim();
@@ -11358,15 +9982,12 @@ function computeGradeAnalyticsFromPage(table) {
     }
     const totalWeight = Object.values(groupWeight).reduce((s, w) => s + w, 0);
 
-    // The page's own computed Total (e.g. "91.1%") — use it directly so the
-    // "Overall grade" stat always matches the page.
+    // Use the page's own Total so the stat always matches.
     let pageTotal = null;
     const totalText = table.querySelector("tr.final_grade .grade")?.textContent || "";
     const totalMatch = totalText.match(/-?\d+(?:\.\d+)?/);
     if (totalMatch) pageTotal = parseFloat(totalMatch[0]);
 
-    // Rows are already listed in due-date order; skip the summary rows (they
-    // carry the student_assignment class too).
     const rows = [...table.querySelectorAll("tr.student_assignment")]
         .filter(tr => !tr.classList.contains("group_total") && !tr.classList.contains("final_grade"))
         .map(gaParseAssignmentRow);
@@ -11383,29 +10004,10 @@ function computeGradeAnalyticsFromPage(table) {
         counts[idx >= 0 ? idx : GA_BUCKETS.length - 1]++;
     }
 
-    // Sort graded work chronologically by due date before building the
-    // running-grade timeline. The chart and trend assume row order is
-    // chronological, but the grades table isn't guaranteed to be (it follows
-    // the course's assignment ordering, and users can re-sort it), which left
-    // the grade-history line jumping back and forth in time.
-    //
-    // Due strings have no year, so months are cyclic: a school-year course
-    // (Sep → May) and a calendar-year course (Jan → Dec) both count upward,
-    // just from different "year starts". Each candidate rotation r (month
-    // the year window starts at) maps a due month to (mon - r) mod 12; the
-    // rotation whose keys produce the least total backward drift in the
-    // table's row order wins, with ties going to the first dated row's
-    // month (which reproduces the chart's walking-month behavior on
-    // already-ordered data). This stays correct whether rows come in
-    // due-date order, a different sort order, or shuffled. Day-of-month and
-    // time break ties within a month; undated rows inherit their nearest
-    // dated neighbour's key (forward, then backward fill); equal keys keep
-    // their original relative order (stable sort).
+    // Sort graded work by due date for the timeline. Due strings have no year, so
+    // each rotation r maps a month to (mon - r) mod 12; the rotation with the least
+    // backward drift in row order wins, and undated rows inherit a neighbour's key.
     const parsed = graded.map(a => gaParseDueDate(a.dueTitle || a.due));
-    // Cost of a rotation = total backward drift it forces on the row order
-    // (sum of positive key drops between consecutive dated rows). Magnitude
-    // beats counting steps: a shuffle costs real months, a year-wrap costs
-    // ~11/12 of a cycle only if it's the wrong rotation.
     const rotationCost = (r) => {
         let cost = 0, prev = null;
         for (const d of parsed) {
@@ -11424,7 +10026,6 @@ function computeGradeAnalyticsFromPage(table) {
     const firstDated = parsed.find(d => d);
     if (firstDated) {
         const pref = firstDated.mon;
-        // Re-scan for the preferred rotation on a cost tie.
         for (let r = 0; r < 12; r++) {
             if (rotationCost(r) === bestCost && r === pref) { bestRotation = r; break; }
         }
@@ -11444,13 +10045,9 @@ function computeGradeAnalyticsFromPage(table) {
     graded.length = 0;
     graded.push(...sortedGraded);
 
-    // Running overall grade, in the page's row order, using Canvas's own
-    // weighting algorithm (GradeCalculator): sum each group's pct × weight
-    // over groups that have graded work, then scale up to 100% only when
-    // those weights total less than 100 (weights over 100 are used raw and
-    // can push the grade past 100). Verified to reproduce the Total shown
-    // on the page. Point-based courses (no group weights) use points
-    // earned / points possible.
+    // Running grade per Canvas's GradeCalculator: Σ(group pct × weight) over graded
+    // groups, scaled to 100% when those weights total < 100. Points-based courses
+    // use earned / possible.
     const running = {};
     const pointsGrade = () => {
         let s = 0, p = 0;
@@ -11471,8 +10068,7 @@ function computeGradeAnalyticsFromPage(table) {
                 weighted += (g.score / g.pts) * w;
                 fullWeight += w;
             }
-            // Only zero-weighted groups have graded work — fall back to
-            // points so the chart still has a line.
+            // Only zero-weighted groups have work — fall back to points.
             grade = fullWeight > 0 ? (fullWeight < 100 ? (weighted / fullWeight) * 100 : weighted) : pointsGrade();
         } else {
             grade = pointsGrade();
@@ -11488,8 +10084,7 @@ function computeGradeAnalyticsFromPage(table) {
     });
 
     const pcts = graded.map(a => (a.score / a.points) * 100);
-    // Trend: change in the running overall grade over the last 5 graded
-    // assignments (or since the first, if fewer). Positive = climbing.
+    // Change in the running grade over the last 5 graded assignments.
     let trend = null;
     if (points.length >= 2) {
         const from = points[Math.max(0, points.length - 1 - 5)].grade;
@@ -11507,9 +10102,7 @@ function computeGradeAnalyticsFromPage(table) {
     };
 }
 
-// Stat cards row on the Overview tab. The optional "Grade goal" card appears
-// when the final calculator's "show" checkbox is on; it recomputes against
-// the live current grade so it stays accurate as new grades come in.
+// Overview stat cards; the "Grade goal" card follows the calculator's show flag.
 function renderGaStats() {
     const panel = document.getElementById("canvasrefined-grade-analytics");
     if (!panel || !gaData) return;
@@ -11518,16 +10111,12 @@ function renderGaStats() {
     stats.style.display = "flex";
     const stat = (cap, val, color) =>
         `<div style="padding:8px 14px;border-radius:8px;background:var(--bcbackground-1);"><div style="font-size:18px;font-weight:700;color:${color || "var(--bctext-0)"};">${val}</div><div style="font-size:11px;text-transform:uppercase;color:var(--bctext-1);">${cap}</div></div>`;
-    // Trend card: arrow + colored delta of the overall grade over the last 5
-    // graded assignments (green climbing, red falling, grey steady).
     let trendVal = "-", trendColor = "var(--bctext-0)";
     if (gaData.trend != null) {
         if (gaData.trend > 0.05) { trendVal = "\u25B2 +" + gaData.trend.toFixed(2) + "%"; trendColor = "#16a34a"; }
         else if (gaData.trend < -0.05) { trendVal = "\u25BC " + gaData.trend.toFixed(2) + "%"; trendColor = "#dc2626"; }
         else { trendVal = "\u25BA " + gaData.trend.toFixed(2) + "%"; trendColor = "var(--bctext-1)"; }
     }
-    // Grade goal card from the Final Calculator tab: the score needed on the
-    // final to hit the stored target grade.
     let goalStat = "";
     if (gaCalc && gaCalc.show && gaCalc.weight > 0 && gaCalc.target != null && gaData.current != null) {
         const w = gaCalc.weight / 100;
@@ -11565,10 +10154,7 @@ function renderGradeAnalytics() {
     renderGaCalculator();
 }
 
-// --- Final Calculator tab --------------------------------------------------
 
-// Inline style for one panel tab button; the active tab gets the accent
-// underline, matching how the rest of the panel is styled inline.
 function gaTabStyle(active) {
     return `background:transparent;border:none;padding:6px 14px;font-size:14px;font-weight:600;cursor:pointer;color:${active ? "var(--bctext-0)" : "var(--bctext-1)"};border-bottom:2px solid ${active ? "#2563eb" : "transparent"};`;
 }
@@ -11587,8 +10173,7 @@ function gaSetTab(tab) {
         btn.style.borderBottomColor = active ? "#2563eb" : "transparent";
     });
     if (tab === "overview") {
-        // The canvases were zero-size while the tab was hidden; redraw now
-        // that it's visible again.
+        // The canvases were zero-size while the tab was hidden — redraw.
         if (gaOpen && gaData) renderGradeAnalytics();
     } else if (tab === "heatmap") {
         renderGaHeatmap();
@@ -11597,18 +10182,15 @@ function gaSetTab(tab) {
     }
 }
 
-// Severity color for an arbitrary score percentage — the same palette the
-// doughnut / zone charts use, so a 70 renders yellow, an 85 green, etc.
+// Palette-matched color for an arbitrary score percentage.
 function gaSeverityColor(pct) {
     if (pct == null || !isFinite(pct)) return "var(--bctext-0)";
     const b = GA_BUCKETS.find(b => pct >= b.min && pct < b.max);
     return (b || GA_BUCKETS[GA_BUCKETS.length - 1]).color;
 }
 
-// Inverted severity for the final calculator: a LOW required score is good
-// (needing only 10% on the final is comfortably green), a high one is bad.
-// Own scale, independent of the grade chart palette: needing ≥95% on the
-// final is red, 75–94% yellow, and ≤74% green.
+// Inverted scale for the calculator: a low required score is good (≥95% red,
+// 75–94% yellow, ≤74% green).
 const GA_NEEDED_COLORS = [
     { min: 95, color: "#dc2626" },
     { min: 75, color: "#facc15" },
@@ -11621,8 +10203,6 @@ function gaNeededColor(needed) {
     return (b || GA_NEEDED_COLORS[GA_NEEDED_COLORS.length - 1]).color;
 }
 
-// Pushes the stored calculator settings into the tab's inputs without
-// clobbering a field the user is actively typing in.
 function applyGaCalcState(panel) {
     const w = panel.querySelector("#canvasrefined-ga-calc-weight");
     const t = panel.querySelector("#canvasrefined-ga-calc-target");
@@ -11634,9 +10214,7 @@ function applyGaCalcState(panel) {
     renderGaCalculator();
 }
 
-// Renders the calculator result: needed = (target − current·(1−w)) / w, where
-// w is the final's weight. Always recomputed from the live current grade so
-// stored goals stay accurate after reloads and as new grades post.
+// needed = (target − current·(1−w)) / w, always recomputed from the live grade.
 function renderGaCalculator() {
     const panel = document.getElementById("canvasrefined-grade-analytics");
     if (!panel) return;
@@ -11670,35 +10248,24 @@ function renderGaCalculator() {
     box.innerHTML = head + `<div style="margin-top:6px;color:var(--bctext-1);font-size:13px;">${sub}</div>`;
 }
 
-// --- Heatmap tab ----------------------------------------------------------
 
-// One week cell in the heatmap strip: one square per Sunday–Saturday week,
-// laid out left to right — 16px squares with 4px gaps. Weekly (not daily)
-// buckets keep a whole semester compact instead of a sparse daily grid.
-// One day cell in the calendar heatmap: 13px squares with 3px gaps,
-// GitHub-style columns of Sunday–Saturday weeks.
+// Day cells: 13px squares, 3px gaps, GitHub-style Sunday–Saturday columns.
 const GA_HM_CELL = 13;
 const GA_HM_GAP = 3;
 const GA_HM_MONTH_H = 16; // vertical room for the month labels above the grid
 let gaHeatmapToken = null; // identifies the data the grid was last built from
 
-// Color for a day's average score — the same 5%-banded red→green palette
-// the line chart's zones use, so an 84% day matches an 84% zone.
+// Same 5%-banded red→green palette as the line chart's zones.
 function gaHeatmapColor(avg) {
     return GA_ZONE_COLORS[Math.max(0, Math.min(GA_ZONE_COLORS.length - 1, Math.floor(avg / 5)))];
 }
 
-// Minimal HTML escaping for assignment titles that go into tooltips.
 function gaEscHtml(s) {
     return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-// Groups the graded assignments by due DATE. The grades table only renders
-// "Sep 23"-style due dates (no year), so years are reconstructed: the table
-// rows are in chronological order, so a month that steps backwards means the
-// calendar wrapped into a new year; the base year is then chosen so the last
-// due date isn't more than ~6 weeks in the future. Returns null when no
-// graded assignment has a parseable due date.
+// Buckets graded work by due date. The table's dates carry no year, so the year is
+// reconstructed below.
 function gaBuildHeatmapData() {
     if (!gaData || !Array.isArray(gaData.points) || !gaData.points.length) return null;
     const parsed = [];
@@ -11711,15 +10278,9 @@ function gaBuildHeatmapData() {
         parsed.push({ p, mo, day });
     }
     if (!parsed.length) return null;
-    // Reconstruct years WITHOUT assuming the rows are in due-date order —
-    // the table isn't sorted by date when Canvas arranges it by assignment
-    // group, and the old "month stepped backwards ⇒ new year" detection
-    // snowballed on that, landing dates decades off. A course spans at most
-    // ~12 months, so instead: find the month rotation that packs every due
-    // month into the shortest window (months before the rotation wrap into
-    // the following year), then pick the base year whose window actually
-    // contains today — or, failing that, the latest window entirely in the
-    // past.
+    // Rows aren't necessarily in due-date order (Canvas groups them), so pick the
+    // rotation packing every due month into the shortest window, then the base year
+    // whose window contains today.
     const present = [...new Set(parsed.map(e => e.mo))];
     let rho = 0, bestSpan = 12;
     for (let r = 0; r < 12; r++) {
@@ -11746,8 +10307,7 @@ function gaBuildHeatmapData() {
     }
     if (base == null) base = thisYear;
     const abs = (e) => mkDate(e, base);
-    // Bucket by calendar day; multiple assignments due the same day pool into
-    // one cell colored by their average score.
+    // Same-day assignments pool into one cell, colored by their average score.
     const byDay = new Map();
     let min = null, max = null;
     for (const e of parsed) {
@@ -11766,11 +10326,8 @@ function gaBuildHeatmapData() {
     return { byDay, min, max, undated: gaData.points.length - parsed.length };
 }
 
-// Tooltip anchored beside the hovered day cell. Positioning is relative to
-// the heatmap tab (the tip's offsetParent), NOT the viewport: position:fixed
-// is unreliable here because ancestors with transforms/backdrop-filters
-// (Better Sidebar's glass panels, Canvas layout) redefine the containing
-// block, which sent a fixed-position tooltip to the wrong part of the page.
+// Positioned relative to the heatmap tab, not the viewport: transformed or
+// filtered ancestors break position:fixed.
 function gaHeatmapShowTip(tip, e, cell, avg) {
     const d = cell.date;
     const rows = cell.items.map(p =>
@@ -11781,8 +10338,6 @@ function gaHeatmapShowTip(tip, e, cell, avg) {
     const hostRect = host.getBoundingClientRect();
     const cellRect = e.target.getBoundingClientRect();
     const tw = tip.offsetWidth, th = tip.offsetHeight;
-    // Beside the cell, vertically centered on it; flip to the left when the
-    // right edge is tight, and clamp inside the tab's box.
     let left = cellRect.right - hostRect.left + 6;
     if (left + tw > host.clientWidth - 4) left = Math.max(4, cellRect.left - hostRect.left - tw - 6);
     let top = cellRect.top - hostRect.top + (cellRect.height - th) / 2;
@@ -11791,11 +10346,7 @@ function gaHeatmapShowTip(tip, e, cell, avg) {
     tip.style.top = top + "px";
 }
 
-// Builds the GitHub-style calendar: weekday labels down the left (Mon/Wed/
-// Fri only), one column per Sunday–Saturday week, month labels across the
-// top, one colored square per day (that day's average score). Pure DOM (no
-// canvas) so it needs no redraw on resize; a token guards against rebuilds
-// when renderGradeAnalytics re-fires for the same data.
+// GitHub-style calendar, pure DOM; the token skips rebuilding for the same data.
 function renderGaHeatmap() {
     const panel = document.getElementById("canvasrefined-grade-analytics");
     if (!panel) return;
@@ -11815,13 +10366,10 @@ function renderGaHeatmap() {
     note.textContent = data.undated > 0
         ? `${data.undated} graded assignment${data.undated === 1 ? "" : "s"} without a due date not shown.`
         : "";
-    // Align the range out to full Sunday–Saturday weeks so columns never
-    // start mid-week.
     const start = new Date(data.min);
     start.setDate(start.getDate() - start.getDay());
     const end = new Date(data.max);
     end.setDate(end.getDate() + (6 - end.getDay()));
-    // Left weekday labels — sparse like GitHub's (Mon/Wed/Fri).
     const labels = document.createElement("div");
     labels.style.cssText = `display:flex;flex-direction:column;gap:${GA_HM_GAP}px;padding-top:${GA_HM_MONTH_H}px;`;
     ["", "Mon", "", "Wed", "", "Fri", ""].forEach(t => {
@@ -11842,9 +10390,7 @@ function renderGaHeatmap() {
     while (cursor.getTime() <= end.getTime()) {
         const col = document.createElement("div");
         col.style.cssText = `display:flex;flex-direction:column;gap:${GA_HM_GAP}px;`;
-        // Month label across the top when this week's Thursday enters a new
-        // month (every month owns at least one Thursday, so none are
-        // skipped).
+        // Month label once the week's Thursday enters a new month.
         const thursday = new Date(cursor);
         thursday.setDate(thursday.getDate() + 4);
         if (prevMonth == null || thursday.getMonth() !== prevMonth) {
@@ -11872,17 +10418,12 @@ function renderGaHeatmap() {
     }
 }
 
-// --- Canvas-drawn charts --------------------------------------------------
 
 function gaSetupCanvas(canvas) {
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.parentNode.clientWidth, h = canvas.parentNode.clientHeight;
-    // Zero size means the panel isn't visible/attached yet, so skip drawing —
-    // but mark the canvas "never drawn" (width 0) so the self-heal paths
-    // (syncGradeAnalyticsUI and the chart ResizeObserver) know to retry once
-    // it has real dimensions. A canvas that was never drawn defaults to
-    // width 300, so without this the zero-width "never drawn" check never
-    // matches and charts stay blank until a tab switch or panel toggle.
+    // Zero size means the panel isn't laid out yet: leave width 0 as the "never
+    // drawn" marker so the self-heal paths retry.
     if (w <= 0 || h <= 0) {
         canvas.width = 0;
         canvas.height = 0;
@@ -11903,8 +10444,6 @@ function gaShowTooltip(el, x, y, html) {
     el.style.display = "block";
     const parent = el.parentNode;
     const tw = el.offsetWidth, th = el.offsetHeight;
-    // Place the tooltip beside the cursor/point so it never covers the chart
-    // underneath; flip to the left side when the right edge is tight.
     let left = x + 14;
     if (left + tw > parent.clientWidth) left = Math.max(0, x - tw - 14);
     let top = y - th / 2;
@@ -11978,8 +10517,7 @@ function gaDrawLine(canvas, tooltip) {
     const pad = { l: 38, r: 12, t: 12, b: 26 };
     const text = getComputedStyle(document.body).color || "#666";
     ctx.font = "11px Lato, sans-serif";
-    // Y axis: fixed 0-100 by default, or scaled to fit the data when the user
-    // toggled "Fit Y axis" (persisted in chrome.storage.local).
+    // Fixed 0-100, or scaled to the data when "Fit Y axis" is on.
     let yMin = 0, yMax = 100;
     if (gaFitY) {
         const vals = pts.map(p => p.grade).filter(v => v != null);
@@ -11996,7 +10534,6 @@ function gaDrawLine(canvas, tooltip) {
             if (yMax - yMin < 1) yMax = yMin + 1;
         }
     }
-    // Y grid: 5 evenly spaced lines across the current range.
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
     const decimals = (yMax - yMin) <= 1 ? 2 : (yMax - yMin) <= 10 ? 1 : 0;
     for (let i = 0; i <= 5; i++) {
@@ -12015,13 +10552,10 @@ function gaDrawLine(canvas, tooltip) {
     }
     const X = (i) => pad.l + (pts.length === 1 ? (w - pad.l - pad.r) / 2 : (i / (pts.length - 1)) * (w - pad.l - pad.r));
     const Y = (v) => pad.t + (1 - (Math.max(yMin, Math.min(yMax, v)) - yMin) / (yMax - yMin)) * (h - pad.t - pad.b);
-    // Full chart draw, parameterized by the hovered point index so mousemove
-    // can cheaply redraw with a highlight on the active dot.
+    // Full redraw, parameterized by the hovered point index.
     const draw = (hover) => {
         ctx.clearRect(0, 0, w, h);
-        // Optional colored 5% zones behind the plot ("Colored grade zones"
-        // popup option), tinted red→green. With Fit Y axis on, bands are
-        // clipped to the visible range.
+        // Optional 5% color zones behind the plot ("Colored grade zones").
         if (options.grade_analytics_zones) {
             GA_ZONE_COLORS.forEach((color, i) => {
                 const top = Math.min(yMax, (i + 1) * 5);
@@ -12035,7 +10569,6 @@ function gaDrawLine(canvas, tooltip) {
                 ctx.globalAlpha = 1;
             });
         }
-        // Y grid: 5 evenly spaced lines across the current range.
         ctx.font = "11px Lato, sans-serif";
         ctx.textAlign = "right"; ctx.textBaseline = "middle";
         for (let i = 0; i <= 5; i++) {
@@ -12047,33 +10580,24 @@ function gaDrawLine(canvas, tooltip) {
             ctx.fillStyle = text;
             ctx.fillText(v.toFixed(decimals) + "%", pad.l - 6, y);
         }
-        // Line + area fill.
         ctx.beginPath();
         pts.forEach((p, i) => { const x = X(i), y = Y(p.grade); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
         ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
         ctx.lineTo(X(pts.length - 1), h - pad.b); ctx.lineTo(X(0), h - pad.b); ctx.closePath();
         ctx.fillStyle = "rgba(37,99,235,0.12)"; ctx.fill();
-        // Points.
         pts.forEach((p, i) => {
             ctx.beginPath(); ctx.arc(X(i), Y(p.grade), 3, 0, Math.PI * 2);
             ctx.fillStyle = "#2563eb"; ctx.fill();
             ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
         });
-        // X axis: tick marks plus one label per calendar month. Points are
-        // already in chronological order, so a walking month counter (wrapping
-        // across Dec -> Jan) maps each point to an absolute month; the first
-        // point of each month gets the tick + label.
+        // X axis: a tick and label at the first point of each calendar month.
         ctx.textAlign = "center"; ctx.textBaseline = "top";
         ctx.strokeStyle = "rgba(128,128,128,0.55)";
         ctx.lineWidth = 1;
         const tick = (x) => {
             ctx.beginPath(); ctx.moveTo(x, h - pad.b); ctx.lineTo(x, h - pad.b + 4); ctx.stroke();
         };
-        // Subtle tick under every data point on sparse charts.
         if (pts.length <= 25) pts.forEach((_, i) => tick(X(i)));
-        // Month boundaries: the first point of each calendar month. Points are
-        // already in chronological order, so a walking month counter (wrapping
-        // across Dec → Jan) maps each point to an absolute month.
         const boundaries = [];
         let prevM = null, absM = null;
         pts.forEach((p, i) => {
@@ -12089,11 +10613,7 @@ function gaDrawLine(canvas, tooltip) {
             }
         });
         boundaries.forEach(b => tick(X(b.i)));
-        // Collision-aware labels: greedily keep a month label only if it fits
-        // after the previous kept one (labels are centered, so compare against
-        // half-widths plus a 6px gap). The first boundary always gets a label;
-        // so does the last — if it doesn't fit, earlier labels are dropped to
-        // make room, so the axis ends on a real month instead of mid-run.
+        // Drop colliding month labels; the first and last always keep theirs.
         const GAP = 6;
         const kept = [];
         boundaries.forEach((b, idx) => {
@@ -12111,13 +10631,11 @@ function gaDrawLine(canvas, tooltip) {
             kept.push({ ...lastB, x, right: x + w / 2 });
         }
         kept.forEach((b, k) => {
-            // Anchor the edge labels inward so they don't clip.
             ctx.textAlign = k === 0 ? "left" : (b.i === pts.length - 1 ? "right" : "center");
             ctx.fillStyle = text;
             ctx.fillText(b.label, b.x, h - pad.b + 6);
         });
-        // Hover indicator: dashed vertical guide plus a halo ring around the
-        // hovered dot so it's obvious which point the tooltip describes.
+        // Dashed guide plus a halo ring on the hovered dot.
         if (hover != null && pts[hover]) {
             const hx = X(hover), hy = Y(pts[hover].grade);
             ctx.save();
@@ -12162,30 +10680,16 @@ function gaDrawLine(canvas, tooltip) {
     canvas.addEventListener("mouseleave", canvas._gaLeave);
 }
 
-// Redraw open charts when the window is resized.
 window.addEventListener("resize", () => {
     const panel = document.getElementById("canvasrefined-grade-analytics");
     if (panel && gaOpen && gaData) renderGradeAnalytics();
 });
 
 // --- Imagine-If mode ---------------------------------------------------------
-//
-// A hypothetical-grade sandbox rendered directly on the grades table (never
-// inside the Grade Analytics panel): each assignment row gets inline
-// score / points-possible inputs plus a group selector and remove button,
-// each group-total row gets a weight input and remove button, the "+ Add
-// assignment" button sits at the top of the table (above the first
-// assignment), and the "+ Add group" button sits above the Total row. The
-// hypothetical total is computed here — Canvas's weighting algorithm
-// (groups with counted work contribute pct × weight, scaled up to 100% when
-// the used weights total less than 100; point-based totals when no group has
-// weight) — and previewed by overwriting the table's Total row (the
-// tr.final_grade percentage span) with an obvious Imagine-If badge. Nothing is ever sent to Canvas; the page is
-// restored to the pixel the moment the mode is turned off.
+// A hypothetical-grade sandbox drawn on the grades table itself (never in the
+// panel). Nothing is sent to Canvas; turning it off restores the table.
 
-// Standard grading scheme for the hypothetical letter grade (a course's
-// actual scheme isn't exposed on this page). 80.5% → B− matches Canvas's
-// default cutoffs.
+// Standard scheme for the hypothetical letter grade (Canvas's default cutoffs).
 const GA_LETTER_SCALE = [
     ["A", 93], ["A−", 90], ["B+", 87], ["B", 83], ["B−", 80],
     ["C+", 77], ["C", 73], ["C−", 70], ["D+", 67], ["D", 63], ["D−", 60],
@@ -12197,8 +10701,7 @@ function gaLetterFor(pct) {
     return "F";
 }
 
-// The table's Total row (tr.final_grade) — the recalculated grade
-// overwrites its percentage span while Imagine-If mode is on.
+// The recalculated grade overwrites this row's percentage span.
 function gaFindTotalGradeSpan() {
     const row = document.querySelector("#grades_summary tr.final_grade");
     return row ? row.querySelector("td.assignment_score .tooltip .grade") : null;
@@ -12209,17 +10712,14 @@ function gaFindTotalTitleCell() {
     return row ? row.querySelector("th.title") : null;
 }
 
-// Signature of the page's grades table (row ids). When it changes (grading
-// period switch, SPA navigation) the scenario is rebuilt from the new table.
+// Row-id signature: a change (grading period, SPA navigation) rebuilds the scenario.
 function gaImagineTableSig() {
     const table = document.querySelector("#grades_summary");
     return table ? [...table.querySelectorAll("tr.student_assignment")].map(tr => tr.id).join(",") : "";
 }
 
-// Snapshot of the page's groups and assignments the scenario starts from.
-// Scores come from the hidden "original_score" spans (immune to Canvas's own
-// What-If edits); ungraded rows keep score: null so they only count once the
-// user types a score for them.
+// Snapshot of the page's groups and assignments. Scores come from the hidden
+// original_score spans; ungraded rows stay null until the user types a score.
 function gaBuildImagineScenario() {
     const table = document.querySelector("#grades_summary");
     if (!table) return null;
@@ -12246,12 +10746,8 @@ function gaBuildImagineScenario() {
     return { groups, assignments };
 }
 
-// Hypothetical total for the scenario, computed from scratch (never read
-// from the page's Total). Only assignments with a score, a positive
-// denominator, and a group that still exists count. Weighted when any
-// group has weight (Canvas's GradeCalculator: sum pct × weight over groups
-// with counted work, scale up to 100% when the used weights total < 100,
-// use raw when ≥ 100), otherwise points earned / points possible.
+// Scenario total, computed from scratch (never read from the page): only rows with
+// a score, positive points possible and a live group count.
 function gaComputeImagineTotal() {
     if (!gaScenario) return null;
     const groups = new Map();
@@ -12262,10 +10758,8 @@ function gaComputeImagineTotal() {
         groups.set(String(g.gid), w);
         totalWeightAll += w;
     }
-    // With every group removed the total falls back to plain points, so all
-    // assignments count regardless of their (dangling) group id.
     const noGroups = groups.size === 0;
-    const stats = new Map(); // gid -> {score, pts}
+    const stats = new Map(); // gid -> { score, pts }
     for (const a of gaScenario.assignments) {
         if (a.deleted || a.score == null || !(a.points > 0)) continue;
         const gid = String(a.gid ?? "");
@@ -12284,23 +10778,17 @@ function gaComputeImagineTotal() {
             used += w;
         }
         if (used > 0) return used < 100 ? (weighted / used) * 100 : weighted;
-        // Only zero-weighted groups have counted work — fall back to points.
     }
     let score = 0, pts = 0;
     for (const s of stats.values()) { score += s.score; pts += s.pts; }
     return pts > 0 ? (score / pts) * 100 : null;
 }
 
-// Total-row content for the hypothetical grade — clearly not the real
-// grade: a purple Imagine-If badge and the hypothetical total (with letter)
-// replace the percentage span, and an italic note under the "Total" label
-// restates the real grade.
+// Total-row content with an explicit Imagine-If badge so it can't be mistaken for
+// the real grade.
 function gaImagineTotalHtml(pct) {
     const letter = gaLetterFor(pct);
     const pctText = pct == null || !isFinite(pct) ? "—" : pct.toFixed(2) + "%";
-    // The wrapper is an inline-flex row with align-items:center so the
-    // badge pill sits vertically centered with the grade text. No
-    // flex-wrap: the narrow score cell would stack the items instead.
     return `<span style="display:inline-flex;align-items:center;gap:6px;">`
         + `<span style="background:#7c3aed;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:1px 6px;border-radius:999px;text-transform:uppercase;white-space:nowrap;">Imagine-If</span>`
         + `<span style="font-weight:700;color:#7c3aed;">${pctText}</span>`
@@ -12309,9 +10797,7 @@ function gaImagineTotalHtml(pct) {
 }
 
 
-// Overwrites (or restores) the table's Total row. Writes are guarded so the
-// GA DOM observer never loops: the last written HTML is cached on the
-// element and identical writes are skipped.
+// Cached on the span so identical writes are skipped and the DOM observer can't loop.
 function gaApplyImagineTotal() {
     if (!gaImagineIf) { gaRestoreImagineTotal(); return; }
     gaIfUpdateGroupPcts();
@@ -12324,7 +10810,6 @@ function gaApplyImagineTotal() {
         span._gaImagineHtml = html;
         span.innerHTML = html;
     }
-    // Italic note under the "Total" label restating the real grade.
     const th = gaFindTotalTitleCell();
     if (th) {
         let note = th.querySelector(".canvasrefined-ga-if-note");
@@ -12351,18 +10836,14 @@ function gaRestoreImagineTotal() {
     document.querySelectorAll("#grades_summary tr.final_grade .canvasrefined-ga-if-note").forEach(n => n.remove());
 }
 
-// Compact inline styles for controls injected into the grades table.
-// Canvas's table CSS gives selects/inputs an 11px bottom margin and a tall
-// native select box, which made our rows taller than the page's own —
-// margin:0 and a fixed select height keep the rows even.
+// Canvas gives selects a tall box and an 11px bottom margin, which made our rows
+// taller than the page's; margin:0 and a fixed height keep them even.
 const GA_IF_TD_INPUT = "box-sizing:border-box;padding:3px 6px;border-radius:5px;border:1px solid var(--bcborders);background:var(--bcbackground-1);color:var(--bctext-0);font-size:12px;margin:0;";
 const GA_IF_TD_NUM = GA_IF_TD_INPUT + "width:58px;";
 const GA_IF_TD_SEL = GA_IF_TD_INPUT + "max-width:170px;height:26px;padding:2px 4px;";
 const GA_IF_TD_BTN = GA_IF_TD_INPUT + "cursor:pointer;white-space:nowrap;";
 
-// <select> of the scenario's live groups for one assignment row. A group
-// that was removed leaves its assignments on "— not counted —" until the
-// user reassigns them.
+// Group picker for one assignment; a removed group leaves it on "not counted".
 function gaIfSelectHtml(gid) {
     const groups = gaScenario ? gaScenario.groups.filter(g => !g.deleted) : [];
     return `<select data-ga-if-groupsel title="Imagine-If assignment group" style="${GA_IF_TD_SEL}">`
@@ -12371,9 +10852,7 @@ function gaIfSelectHtml(gid) {
         + `</select>`;
 }
 
-// Re-renders every group <select>'s options (e.g. after a group was added or
-// removed), preserving the current selection when it still exists. Skips the
-// select the user is interacting with.
+// Refresh the options, keeping the current choice; skips the focused select.
 function gaIfRefreshSelects(table) {
     for (const sel of table.querySelectorAll("select[data-ga-if-groupsel]")) {
         if (document.activeElement === sel) continue;
@@ -12385,7 +10864,6 @@ function gaIfRefreshSelects(table) {
     }
 }
 
-// Icon-only remove button (✕) for a row's last cell.
 function gaIfDelButton(attr, title) {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -12396,11 +10874,8 @@ function gaIfDelButton(attr, title) {
     return btn;
 }
 
-// Injects the scenario controls into one assignment row: score (numerator)
-// and points possible (denominator) inputs replace the read-only "5 / 5"
-// display in the score cell, a group <select> replaces the group-name
-// context line under the title, and an icon-only remove button goes in the
-// row's last cell.
+// Scenario controls for one assignment row: score/points inputs in the score cell,
+// a group select under the title, and a remove button in the last cell.
 function gaIfBuildAssignmentControls(tr, a) {
     if (tr.querySelector(".canvasrefined-ga-if-edit")) return;
     const scoreTd = tr.querySelector("td.assignment_score");
@@ -12422,17 +10897,12 @@ function gaIfBuildAssignmentControls(tr, a) {
     ctl.style.cssText = "display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;";
     ctl.innerHTML = gaIfSelectHtml(a.gid);
     (th || tr).appendChild(ctl);
-    // Icon-only remove button in the row's last cell.
     const lastTd = tr.cells[tr.cells.length - 1];
     if (lastTd && !lastTd.querySelector("[data-ga-if-adel]")) {
         lastTd.appendChild(gaIfDelButton("data-ga-if-adel", "Remove this assignment from the scenario"));
     }
 }
 
-// Injects the scenario controls into one group-total row: a weight input in
-// the score cell (next to the group percentage, which shows the hypothetical
-// value — see gaIfUpdateGroupPcts) and an icon-only remove button in the
-// row's last cell.
 function gaIfBuildGroupControls(tr, g) {
     if (tr.querySelector(".canvasrefined-ga-if-edit")) return;
     const scoreTd = tr.querySelector("td.assignment_score");
@@ -12443,17 +10913,14 @@ function gaIfBuildGroupControls(tr, g) {
     edit.innerHTML = `<input data-ga-if-gweight type="number" min="0" max="100" step="0.1" value="${g.weight}" title="Imagine-If group weight (% of grade)" style="${GA_IF_TD_NUM}">`
         + ` <span style="color:var(--bctext-1);">%</span>`;
     (scoreTd.querySelector(".score_holder") || scoreTd).appendChild(edit);
-    // Icon-only remove button in the row's last cell.
     const lastTd = tr.cells[tr.cells.length - 1];
     if (lastTd && !lastTd.querySelector("[data-ga-if-gdel]")) {
         lastTd.appendChild(gaIfDelButton("data-ga-if-gdel", "Remove this group from the scenario (its assignments stop counting until reassigned)"));
     }
 }
 
-// A brand-new assignment row (user-added): same 8-cell shape as the page's
-// own rows, with an editable title. Custom class only — never
-// "student_assignment", so the table signature and the page parsers ignore
-// our rows.
+// User-added assignment row: the page's 8-cell shape, but a custom class so the
+// page's own parsers ignore it.
 function gaIfMakeAssignmentRow(a) {
     const tr = document.createElement("tr");
     tr.className = "canvasrefined-ga-if-newrow";
@@ -12462,13 +10929,8 @@ function gaIfMakeAssignmentRow(a) {
         <td class="due"></td><td class="submitted"></td><td class="status"></td>
         <td class="assignment_score"><div class="score_holder" style="position:relative;"></div></td>
         <td class="asset_processors_cell"></td><td class="details"></td><td></td>`;
-    // Row separators matching the page's own rows. Two things make this
-    // subtle: the dark-mode CSS paints every .ic-Table td border dark with
-    // !important (which beats a normal inline style), and in the
-    // collapsed-borders model CELL borders beat ROW borders — so the
-    // separator must be set on the cells, with !important (an inline
-    // !important beats the stylesheet's), to win the edge conflicts and
-    // paint the white line the custom background shows on real rows.
+    // Cell-level !important borders: dark mode's .ic-Table td rule beats inline styles
+    // and, with collapsed borders, cell borders win over row borders.
     for (const cell of tr.cells) {
         cell.style.setProperty("border-top", "1px solid var(--bctext-1,#e2e2e2)", "important");
         cell.style.setProperty("border-bottom", "1px solid var(--bctext-1,#e2e2e2)", "important");
@@ -12476,7 +10938,6 @@ function gaIfMakeAssignmentRow(a) {
     return tr;
 }
 
-// A brand-new group-total row (user-added), with an editable name.
 function gaIfMakeGroupRow(g) {
     const tr = document.createElement("tr");
     tr.className = "canvasrefined-ga-if-newrow";
@@ -12485,7 +10946,6 @@ function gaIfMakeGroupRow(g) {
         <td class="due"></td><td class="submitted"></td><td class="status"></td>
         <td class="assignment_score"><div class="score_holder" style="position:relative;"><span class="tooltip"><span class="grade">—</span></span></div></td>
         <td class="asset_processors_cell"></td><td class="details"></td><td></td>`;
-    // Same cell-level separators as gaIfMakeAssignmentRow.
     for (const cell of tr.cells) {
         cell.style.setProperty("border-top", "1px solid var(--bctext-1,#e2e2e2)", "important");
         cell.style.setProperty("border-bottom", "1px solid var(--bctext-1,#e2e2e2)", "important");
@@ -12493,8 +10953,6 @@ function gaIfMakeGroupRow(g) {
     return tr;
 }
 
-// New assignments go right below the table header, above the first real
-// assignment (stacking in add order).
 function gaIfInsertAssignmentRow(table, tr) {
     const lastNew = [...table.querySelectorAll("tr.canvasrefined-ga-if-newrow[data-ga-if-key]")].pop();
     if (lastNew) { lastNew.after(tr); return; }
@@ -12510,9 +10968,7 @@ function gaIfInsertGroupRow(table, tr) {
     (lastNew || lastReal || table.querySelector("tr.final_grade") || table.lastElementChild).after(tr);
 }
 
-// The "+ Add assignment" button sits on its own row at the top of the
-// table — right below the header, above the first (or first user-added)
-// assignment — so new assignments are created right where they appear.
+// "+ Add assignment" sits on its own row at the top of the table.
 function gaIfEnsureAddAssignmentRow(table) {
     if (table.querySelector("#canvasrefined-ga-if-add-asg")) return;
     const tr = document.createElement("tr");
@@ -12528,8 +10984,7 @@ function gaIfEnsureAddAssignmentRow(table) {
     else (table.querySelector("tr.group_total") || table.querySelector("tr.final_grade") || table.lastElementChild).before(tr);
 }
 
-// The "+ Add group" button sits on its own row right above the table's
-// Total row, where the group totals live.
+// "+ Add group" sits on its own row right above the Total row.
 function gaIfEnsureAddGroupRow(table) {
     if (table.querySelector("#canvasrefined-ga-if-add-group")) return;
     const tr = document.createElement("tr");
@@ -12540,9 +10995,7 @@ function gaIfEnsureAddGroupRow(table) {
     (table.querySelector("tr.final_grade") || table.lastElementChild).before(tr);
 }
 
-// Rewrites each group row's percentage to the hypothetical value for the
-// current scenario (original text is stashed for restore). A dash means the
-// group has no counted work.
+// Rewrite group percentages to the scenario's values (originals stashed).
 function gaIfUpdateGroupPcts() {
     const table = document.querySelector("#grades_summary");
     if (!table || !gaScenario) return;
@@ -12565,8 +11018,6 @@ function gaIfUpdateGroupPcts() {
     }
 }
 
-// Removes every trace of the inline UI: injected controls and rows, hidden
-// originals, hidden deleted rows, and the rewritten group percentages.
 function gaClearImagineUI(table) {
     table = table || document.querySelector("#grades_summary");
     if (!table) return;
@@ -12579,8 +11030,7 @@ function gaClearImagineUI(table) {
     table.querySelectorAll("tr[data-ga-if-key], tr[data-ga-if-gid]").forEach(tr => { delete tr.dataset.gaIfKey; delete tr.dataset.gaIfGid; });
 }
 
-// One delegated listener set on the grades table handles every scenario
-// edit, so rows can be injected/rebuilt freely without detaching handlers.
+// One delegated listener set, so rows can be rebuilt freely.
 function gaIfBindTable(table) {
     if (table.dataset.gaIfBound) return;
     table.dataset.gaIfBound = "1";
@@ -12660,11 +11110,8 @@ function gaIfBindTable(table) {
     });
 }
 
-// Builds the inline UI on the grades table itself. The scenario is rebuilt
-// from the page when the table's rows change (grading-period switch, SPA
-// navigation); otherwise the already-built UI is left alone so typing is
-// never clobbered. If Canvas wiped our controls (row re-render), the built
-// count no longer matches and the UI is rebuilt from the scenario.
+// Builds the inline UI on the table. Rebuilds when the row signature changes or
+// Canvas wiped our controls; otherwise typing is never clobbered.
 function gaRenderImagineIf(force) {
     if (!gaImagineIf) return;
     const table = document.querySelector("#grades_summary");
@@ -12730,8 +11177,6 @@ function gaRenderImagineIf(force) {
     gaApplyImagineTotal();
 }
 
-// Enters/leaves the mode: builds/removes the inline table UI and
-// overwrites/restores the sidebar Total block.
 function gaEnterImagineIf() {
     gaRenderImagineIf();
     gaApplyImagineTotal();
@@ -12774,15 +11219,12 @@ async function getData(url) {
             'Accept': 'application/json'
         }
     });
-    // Fail loudly on HTTP errors (e.g. an expired session returning 401 or a
-    // redirect to the login page). Previously non-OK responses were returned
-    // as-is, so callers received an error object/HTML and crashed later in
-    // confusing ways (or silently rendered wrong data).
+    // Fail loudly on non-OK responses (expired session → 401 or a login redirect);
+    // callers used to get HTML back and crash somewhere else.
     if (!response.ok) {
         throw new Error(`Canvas API request failed (${response.status})`);
     }
     let data = await response.json();
-    // Deep-clone via JSON to unwrap Firefox Xray objects so nested props are mutable.
     try {
         return JSON.parse(JSON.stringify(data));
     } catch (_) {

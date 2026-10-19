@@ -16,7 +16,6 @@ const syncedSubOptions = [
 	"card_overdues",
 	"hide_completed_cards",
 	"equal_height_cards",
-	// "todo_overdues",
 	"gpa_calc_prepend",
 	"gpa_calc_cumulative",
 	"gpa_calc_weighted",
@@ -50,7 +49,6 @@ const syncedSubOptions = [
 	"grade_hover",
 	"card_letter",
 	"auto_detect_disabled",
-	// "hide_completed",
 	"num_todo_items",
 	"hover_preview",
 	"customCardStyles",
@@ -61,9 +59,7 @@ const syncedSubOptions = [
 	"cardWidth",
 	"cardHeight",
 	"cardPadding",
-	// Card Grid settings — included here so theme exports, saved themes and
-	// previous-theme snapshots actually read them from storage (getExport
-	// drops keys it wasn't given).
+	// Card Grid settings: included so theme exports/snapshots pick them up.
 	"card_grid",
 	"card_grid_columns",
 	"card_grid_rows",
@@ -86,7 +82,7 @@ const syncedSubOptions = [
 ];
 const localSwitches = [];
 
-// Theme export only carries visual settings, never personal productivity data.
+// Theme export carries visual settings only, never productivity data.
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding", "card_grid", "card_grid_columns", "card_grid_rows", "card_grid_column_gap", "card_grid_row_gap", "card_grid_center_rows", "card_grid_flex"];
@@ -95,9 +91,7 @@ const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
-// Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
-// no personal productivity features). Includes the former separate Layout and
-// Sidebar groups, plus Grade Analytics and its colored-zones sub-toggle.
+// Master "On/off toggles": every visual toggle, minus GPA/schedule/productivity.
 const exportToggles = ["dark_mode", "quiz_safe_mode", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
 const fontsDropdownStateKey = "fonts_dropdown_open";
 
@@ -157,8 +151,7 @@ const defaultOptions = {
         "breathing_preset_3": { "h": 0, "m": 10, "s": 0 },
         "daily_quotes": false,
         "daily_quotes_position": "top",
-        // Height settings (px; 0 = auto). widget_row_height applies to the
-        // shared Top/Bottom row; *_height applies to a widget in Before/After.
+        // Height in px (0 = auto); widget_row_height is the shared Top/Bottom row.
         "widget_row_height": 0,
         "dashboard_notes_height": 0,
         "gpa_calc_height": 0,
@@ -198,7 +191,6 @@ const defaultOptions = {
         "custom_assignments_overflow": ["custom_assignments"],
         "grade_hover": false,
         "card_letter": true,
-        // "hide_completed": false,
         "num_todo_items": 10,
         "custom_font": { "link": "", "family": "" },
         "custom_font_skip_p": false,
@@ -220,7 +212,6 @@ const defaultOptions = {
             "D-": { "cutoff": 60, "gpa": .7 },
             "F": { "cutoff": 0, "gpa": 0 }
         },
-        // "todo_overdues": false,
         "card_overdues": false,
         "hide_completed_cards": false,
         "relative_dues": false,
@@ -245,7 +236,6 @@ const defaultOptions = {
 		"todo_celebration_amount": "normal",
         "device_dark": false,
         "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
-        // "show_updates": false,
         "card_method_date": false,
         "card_method_dashboard": true,
         "card_limit": 25,
@@ -275,23 +265,18 @@ const defaultOptions = {
 
 sendFromPopup("getCards");
 
-// refresh the cards if new ones were just recieved
 chrome.storage.onChanged.addListener((changes) => {
     if (changes["custom_cards"]) {
         if (Object.keys(changes["custom_cards"].oldValue || {}).length !== Object.keys(changes["custom_cards"].newValue || {}).length) {
             displayAdvancedCards();
         }
-        // Hidden-card edits from the card menu change how many cells the
-        // grid preview should mark as filled.
         updateCardGridPreview();
         scheduleGridPreviewFollowUp();
     }
 });
 
-// The live card count is read from the dashboard tab's DOM, which applies
-// display:none for a newly hidden card in its own storage listener — a race
-// against the popup's. One debounced follow-up render re-syncs the preview
-// (and the cut-off warning) right after a card edit settles.
+// Live count comes from the dashboard DOM, which races the popup's storage
+// listener; one debounced follow-up render re-syncs the preview.
 let gridPreviewFollowUpTimer = null;
 function scheduleGridPreviewFollowUp() {
     if (gridPreviewFollowUpTimer) clearTimeout(gridPreviewFollowUpTimer);
@@ -314,7 +299,6 @@ function displayDarkModeFixUrls() {
     output.textContent = "";
     chrome.storage.sync.get("dark_mode_fix", sync => {
         sync["dark_mode_fix"].forEach(url => {
-            //let div = makeElement("div", "customization-button", output, url);
             let div = makeElement("div", output, { "className": "customization-button", "textContent": url });
             div.classList.add("fixed-url");
             let btn = makeElement("button", div, { "className": "dd", "textContent": "x" });
@@ -334,7 +318,6 @@ function displayDarkModeFixUrls() {
 
 document.addEventListener("DOMContentLoaded", setup);
 
-// toggle visibility of the Discord/GitHub social links (persists locally)
 document.addEventListener("DOMContentLoaded", () => {
     const toggle = document.getElementById("social-toggle");
     const buttons = document.querySelector(".social-buttons");
@@ -387,9 +370,7 @@ function setupSidebarScaleSlider(initial) {
     });
 }
 
-// Generic range slider (0..max). `key` is the storage id, `valueId` is the
-// <span> that shows the live value, `resetId` is the small reset button that
-// restores `defaultValue`. `unit` is appended to the displayed value ("%" or "px").
+// Slider 0..max; `unit` is appended to the displayed value ("%" / "px").
 function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, unit, initial) {
     const el = document.querySelector("#" + sliderId);
     const out = document.querySelector("#" + valueId);
@@ -413,8 +394,7 @@ function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, un
     }
 }
 
-// Progress display dropdown. Normalizes legacy boolean values:
-// true -> rings, false/undefined -> none.
+// Legacy booleans: true -> rings, false/undefined -> none.
 function setupProgressRingsSelect(initial) {
     const el = document.querySelector("#todo_progress_rings");
     if (!el) return;
@@ -429,10 +409,8 @@ function setupProgressRingsSelect(initial) {
     });
 }
 
-// Celebration effects for task completion. `todo_celebrations` holds the
-// selected effect ids (multi-select); a random one runs each time a task is
-// marked complete. `todo_celebration_amount` scales intensity ("normal" only
-// for now, kept as a string so more tiers can be added later).
+// `todo_celebrations`: multi-select effect ids, one picked at random per
+// completion. `todo_celebration_amount` scales intensity.
 const CELEBRATION_TYPES = [
     { id: "confetti", label: "Confetti" },
     { id: "fireworks", label: "Fireworks" },
@@ -441,9 +419,7 @@ const CELEBRATION_TYPES = [
     { id: "rocket", label: "Rocket" },
 ];
 
-// Resolves the stored celebrations value to a list of valid effect ids.
-// Handles the legacy single "show confetti on complete" checkbox
-// (todo_confetti false meant "off") and drops unknown/legacy ids.
+// Accepts the legacy todo_confetti boolean and drops unknown ids.
 function resolveCelebrations(raw, legacyConfetti) {
     if (Array.isArray(raw)) {
         return [...new Set(raw.filter(id => CELEBRATION_TYPES.some(t => t.id === id)))];
@@ -484,8 +460,7 @@ function setupCelebrationsSelect(initial) {
         else label.textContent = `${selected.length} selected`;
     };
 
-    // Read the legacy key so users upgrading from the old "show confetti"
-    // toggle keep their setting (the special handler only passes the new key).
+    // Legacy key: the special handler only passes the new one.
     chrome.storage.sync.get("todo_confetti", legacy => {
         selected = resolveCelebrations(initial, legacy && legacy["todo_confetti"]);
         renderMenu();
@@ -496,8 +471,7 @@ function setupCelebrationsSelect(initial) {
         e.stopPropagation();
         const open = wrap.classList.toggle("open");
         btn.setAttribute("aria-expanded", open ? "true" : "false");
-        // The box sits low in the popup, so the menu often has more room
-        // above it — flip upward whenever opening downward would overflow.
+        // The box sits low in the popup; flip the menu up when it would overflow.
         if (open) {
             const mr = menu.getBoundingClientRect();
             if (mr.bottom > window.innerHeight - 8) wrap.classList.add("flip-up");
@@ -523,9 +497,7 @@ function setupCelebrationAmount(initial) {
     });
 }
 
-// "Preview celebration": asks Canvas tabs to run the current effect + amount
-// against a disposable fake task. Only enabled rows respond; if none respond
-// (no Canvas tab open) tell the user instead of failing silently.
+// Asks Canvas tabs to run the effect on a fake task; no reply means no tab open.
 function setupCelebrationPreview() {
     const btn = document.getElementById("celebration-preview-btn");
     if (!btn) return;
@@ -537,22 +509,18 @@ function setupCelebrationPreview() {
     });
 }
 
-// The Celebrations master toggle hides the type/amount rows when off.
 function toggleCelebrationOptionsVisibility(enabled) {
     document.querySelectorAll("#celebrations-container .celebration-sub").forEach(row => {
         row.style.display = enabled ? "" : "none";
     });
 }
 
-// The Celebrations box only makes sense with the Better Todo List, since
-// celebrations fire when its tasks are marked complete.
 function toggleCelebrationsVisibility(betterTodoOn) {
     const el = document.getElementById("celebrations-container");
     if (el) el.style.display = betterTodoOn ? "" : "none";
 }
 
-// Collapsible "More options" section for the Better Todo List sub-options.
-// Persists whether it's expanded so the popup reopens in the same state.
+// Expanded state is persisted so the popup reopens the same way.
 function setupTodoMoreOptions(initial) {
     const wrap = document.getElementById("todo-more-options");
     const toggle = document.getElementById("todo-more-toggle");
@@ -576,9 +544,7 @@ function setupTodoMoreOptions(initial) {
     });
 }
 
-// Timeframe dropdown for the upcoming Tasks tab. Persisted so the Better Todo
-// List remembers the selected range across sessions. The "custom" option
-// reveals two number inputs (days ago / days from now) below the dropdown.
+// Persisted across sessions; "custom" reveals the two day inputs.
 function setTimeframeCustomVisibility(value) {
     const wrap = document.getElementById("todo_timeframe_custom");
     if (wrap) wrap.classList.toggle("visible", value === "custom");
@@ -597,9 +563,7 @@ function setupTimeframeSelect(initial) {
     });
 }
 
-// Custom timeframe bounds (shown when Time frame is "custom"): the todo list
-// window runs from X days ago to Y days in the future. Clamped to 0-365 so a
-// typo can't hide every task.
+// Clamped to 0-365 so a typo can't hide every task.
 function setupCustomTimeframeInput(key, initial, fallback) {
     const el = document.querySelector("#" + key);
     if (!el) return;
@@ -613,8 +577,6 @@ function setupCustomTimeframeInput(key, initial, fallback) {
     });
 }
 
-// "Fake grade level" dropdown (Hide personal details). Controls the band the
-// generated fake grades fall into, so a screenshot can show all As, all Bs, etc.
 function setupAnonGradeSelect(initial) {
     const el = document.querySelector("#anon_grade_preset");
     if (!el) return;
@@ -625,9 +587,6 @@ function setupAnonGradeSelect(initial) {
     });
 }
 
-// "Fake tasks completed" spinner (Hide personal details → fake todo list).
-// Sets how many of the 7 fake tasks show as done, which drives the x/y in
-// the progress rings' "x/y done" readout.
 function setupAnonFakeCompleted(initial) {
     const el = document.querySelector("#anon_fake_completed");
     if (!el) return;
@@ -641,16 +600,11 @@ function setupAnonFakeCompleted(initial) {
     });
 }
 
-// The spinner only means something while "Fill the todo list with fake
-// courses" is on, so show/hide it with that checkbox.
 function toggleAnonFakeCompletedVisibility(show) {
     const wrap = document.getElementById("anon_fake_completed_wrap");
     if (wrap) wrap.style.display = show ? "flex" : "none";
 }
 
-// "Fake progress display" x/y inputs (Hide personal details). While enabled,
-// the todo list's progress readout reports exactly this many completed out
-// of this many total, regardless of the real counts.
 function setupAnonProgressInput(key, initial, isDone) {
     const el = document.querySelector("#" + key);
     if (!el) return;
@@ -701,13 +655,8 @@ function setupDashboardMethod(initial) {
     });
 }
 
-// Custom card style inputs (image size, roundness, spacing, width, height,
-// padding) fire `chrome.storage.sync.set` on every keystroke/arrow press.
-// chrome.storage.sync caps writes at MAX_WRITE_OPERATIONS_PER_MINUTE (120/min),
-// so rapidly adjusting these number inputs used to hit the quota and surface
-// a "quota exceeded" error. Coalesce rapid edits into a single write with a
-// short (200ms) debounce — barely noticeable to the user, but stays well
-// under the write quota even when dragging arrows or typing fast.
+// Debounced 200ms: storage.sync allows only 120 writes/min per key set.
+// Applied to every card-style number input.
 const cardStyleSetTimers = {};
 function debouncedCardStyleSet(key, value, delay = 200) {
     if (cardStyleSetTimers[key]) clearTimeout(cardStyleSetTimers[key]);
@@ -772,38 +721,28 @@ function setupCardPaddingInput(initial) {
     });
 }
 
-// Card Grid (dashboard card layout). The toggle lives in menu.checkboxes;
-// this wires the reveal of the options panel plus the squares preview and
-// the "some cards may be cut off" warning.
+// Wires the options panel reveal, squares preview and cut-off warning.
 function setupCardGrid(initial) {
     const panel = document.getElementById("card-grid-options");
     if (!panel) return;
     panel.style.display = initial === true ? "" : "none";
-    // Defer the first render: setupCardGrid runs inside the special-options
-    // loop BEFORE the column/row/gap inputs get their stored values
-    // (setupCardGridCountInput), so an immediate render would use the HTML
-    // defaults and look wrong until a value changes. A 0ms timeout runs once
-    // the whole synchronous setup pass is done.
+    // Deferred: a synchronous render would run before the count inputs get their
+    // stored values and would preview the HTML defaults.
     setTimeout(() => updateCardGridPreview(), 0);
     document.getElementById("card_grid").addEventListener("change", (e) => {
         panel.style.display = e.target.checked ? "" : "none";
         if (e.target.checked) updateCardGridPreview();
     });
-    // Row-centering only affects the preview's last-row offset.
     document.getElementById("card_grid_center_rows").addEventListener("change", () => {
         updateCardGridPreview();
     });
-    // Flexible grid changes what the warning means (cards wrap instead of
-    // being cut off), so re-render it on toggle.
     document.getElementById("card_grid_flex")?.addEventListener("change", () => {
         updateCardGridPreview();
     });
 }
 
-// Grid count/spacing inputs for the card grid. Update the preview
-// immediately on every keystroke, but debounce the storage write like the
-// other card style number inputs. `fallback` is used when the field is
-// cleared/invalid — 1 for counts, 0 for spacings.
+// Preview updates on every keystroke, the storage write is debounced.
+// `fallback` applies when the field is cleared or invalid.
 function setupCardGridCountInput(id, initial, fallback = 1) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -815,18 +754,12 @@ function setupCardGridCountInput(id, initial, fallback = 1) {
     });
 }
 
-// Fallback count of dashboard cards that will occupy grid cells, used only
-// when no dashboard tab answered the live "getGridCardCount" query (e.g. the
-// options page was opened outside a Canvas window). Every stored card that
-// isn't hidden via the card menu would be shown, so it doesn't take up a
-// grid slot. Treated as truthy so legacy string values ("true") count too.
+// Used when no dashboard tab answered "getGridCardCount" (popup opened
+// outside Canvas). Treated as truthy so legacy "true" strings count.
 function countActiveDashboardCards(cards) {
     return Object.values(cards || {}).filter(c => c && typeof c === "object" && !c.hidden && !c.hide).length;
 }
 
-// Squares preview: one square per grid cell. Filled squares = cells covered
-// by an active (non-hidden) card; dim squares = empty cells. Warns when the
-// grid can't fit every active card.
 function updateCardGridPreview() {
     const panel = document.getElementById("card-grid-options");
     const preview = document.getElementById("card-grid-preview");
@@ -837,30 +770,19 @@ function updateCardGridPreview() {
     const colGap = Math.max(0, Math.min(10, isNaN(colGapRaw) ? 12 : colGapRaw));
     const total = cols * rows;
     preview.style.gridTemplateColumns = `repeat(${cols}, 18px)`;
-    // Echo the chosen column spacing in the preview (clamped so extreme
-    // values don't blow the layout out).
+    // Clamped so extreme values don't blow the layout out.
     preview.style.columnGap = `${colGap}px`;
     preview.style.rowGap = "4px";
     preview.innerHTML = "";
     chrome.storage.sync.get(["custom_cards", "gpa_calc"], async s => {
-        // Grid may have been toggled off while the storage read was pending.
         if (document.getElementById("card-grid-options").style.display === "none") return;
-        // Prefer the live count from an open dashboard tab: the page itself
-        // knows exactly which cards are rendered and not display:none (hidden
-        // via the card menu), so the preview/warning can't drift out of sync
-        // with stored data (stale entries, other-domain cards, legacy values).
-        // Fall back to the storage-derived count when no dashboard answers.
+        // Prefer the live count from a dashboard tab; it knows which cards are
+        // actually rendered. Falls back to the storage-derived count.
         const live = await sendFromPopup("getGridCardCount");
         let active = (live && typeof live.count === "number" && live.count >= 0)
             ? live.count
             : countActiveDashboardCards(s.custom_cards);
-        // The GPA calculator card occupies one card slot in the grid too.
         if (s.gpa_calc === true) active += 1;
-        // Uneven-row centering: the real grid shifts the last partial row in
-        // half-card steps (double sub-columns — see centerUnevenGridRows).
-        // In the preview that's a margin on every square of that row; since
-        // the squares shift into space where no neighbor sits, nothing
-        // overlaps.
         let lastRowStart = -1, offset = 0;
         if (document.getElementById("card_grid_center_rows")?.checked === true && active > 0 && active < total) {
             lastRowStart = Math.floor((active - 1) / cols) * cols;
@@ -869,8 +791,6 @@ function updateCardGridPreview() {
         }
         for (let i = 0; i < total; i++) {
             const inShiftedRow = lastRowStart !== -1 && i >= lastRowStart;
-            // The shifted row's empty cells aren't rendered — the row's filled
-            // squares carry the offset, so the empties would misrepresent it.
             if (inShiftedRow && i >= active) continue;
             const square = document.createElement("div");
             square.style.cssText = "width:18px;height:18px;border-radius:4px;box-sizing:border-box;";
@@ -883,8 +803,6 @@ function updateCardGridPreview() {
         const warning = document.getElementById("card-grid-warning");
         if (warning) {
             if (s.card_grid_flex === true) {
-                // Flexible grid never clips: cards wrap into new rows as the
-                // window narrows, so the cut-off warning doesn't apply.
                 warning.textContent = "Flexible grid is on - cards wrap to fit narrow windows instead of being cut off.";
                 warning.style.display = "block";
             } else if (active > total) {
@@ -1005,9 +923,6 @@ function toggleBetterSidebarSubOptions(betterSidebarOn) {
     }
 }
 
-// The opacity sliders live under "Edit dark mode" but only make sense (and
-// only show) when a custom background is active, since transparency without a
-// background image behind these surfaces would just expose the dark body.
 function customBackgroundActive() {
     const link = document.querySelector("#customBackgroundLink");
     const daily = document.querySelector("#customBackgroundDaily");
@@ -1021,8 +936,6 @@ function toggleOpacityOptions() {
     toggleCardTransparencyOptions();
 }
 
-// Card opacity/blur sliders only show when both a custom background is active
-// (so #opacity-options is visible) and the "Card transparency" checkbox is on.
 function toggleCardTransparencyOptions() {
     const on = document.getElementById("card_transparency")?.checked === true;
     const opacityRow = document.getElementById("card-transparency-options");
@@ -1031,14 +944,11 @@ function toggleCardTransparencyOptions() {
     if (blurRow) blurRow.style.display = on ? "" : "none";
 }
 
-// "Alternate colors" (Better Todo List sub-option) only makes sense in light
-// mode, so hide its checkbox whenever dark mode is on.
 function toggleAlternateColorsVisibility(darkModeOn) {
     const wrap = document.getElementById("todo_alternate_colors_wrap");
     if (wrap) wrap.style.display = darkModeOn ? "none" : "";
 }
 
-// Widgets tab: position dropdowns for widgets that support placement.
 const WIDGET_LIST = [
     { id: "dashboard_notes", nameKey: "dashboard_notes", shortKey: "widget_short_notes" },
     { id: "gpa_calc", nameKey: "gpa_calculator", shortKey: "widget_short_gpa" },
@@ -1059,8 +969,7 @@ function widgetPosFromSync(id, sync) {
 const WIDGET_ORDER_MIN_PCT = 15;
 const WIDGET_ORDER_SNAP_PCT = 4;
 
-// widget_order entries: [{id, size}] where size is the widget's % width of
-// the shared container. Legacy plain-id arrays are treated as equal sizes.
+// {id, size} entries; legacy plain-id arrays mean equal sizes.
 function parseWidgetOrderEntries(raw) {
     if (!Array.isArray(raw)) return [];
     return raw.map(e => {
@@ -1077,15 +986,9 @@ function widgetDisplayName(id) {
     const info = WIDGET_LIST.find(w => w.id === id);
     const msg = info && chrome.i18n.getMessage(info.shortKey || info.nameKey);
     if (msg) return msg;
-    // Locales that predate a widget have no message: show a friendly label
-    // instead of the raw storage id.
     return id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
-// Live-refresh hook for the widget-order UI, set by setupWidgetOrder and
-// called directly after the popup itself changes a widget's position or
-// enabled state — so the order box updates instantly without waiting for
-// the storage.onChanged round-trip.
 let refreshWidgetOrder = null;
 
 function setupWidgetOrder() {
@@ -1112,17 +1015,13 @@ function setupWidgetOrder() {
             if (!strip || !wrapEl) return;
             strip.dataset.area = area;
             const ids = areas[area];
-            // A section only makes sense once 2+ widgets share the same
-            // position — with a single widget there is nothing to order.
             if (ids.length < 2) {
                 wrapEl.style.display = "none";
                 return;
             }
             any = true;
             wrapEl.style.display = "";
-            // Saved entries first (order + widths), then any newcomers. The
-            // before/after groups share the single "cards" saved order; each
-            // strip only shows the widgets actually in its group.
+            // Saved order first, then newcomers; before/after share one "cards" order.
             const saved = (sync.widget_order || {})[area.startsWith("cards") ? "cards" : area];
             const entries = parseWidgetOrderEntries(saved).filter(e => ids.includes(e.id));
             ids.forEach(id => { if (!entries.some(e => e.id === id)) entries.push({ id, size: null }); });
@@ -1131,7 +1030,6 @@ function setupWidgetOrder() {
         wrap.style.display = any ? "" : "none";
     };
 
-    // Reordering: drag a box horizontally past a neighbor.
     AREAS.forEach(area => {
         const strip = document.getElementById("widget-order-" + area);
         if (!strip) return;
@@ -1162,11 +1060,9 @@ function setupWidgetOrder() {
 
 function renderWidgetOrderStrip(strip, entries) {
     strip.textContent = "";
-    // Before/after strips are sequence only — no width resizing, no dividers.
     const resizable = !strip.dataset.area.startsWith("cards");
-    // Normalize widths to exactly 100%: a widget with no saved size borrows
-    // the average of the sized ones. Without this, adding a third widget to a
-    // previously 50/50 pair produced 50+50+33 = 133% and the strip overflowed.
+    // Normalized to exactly 100%: an unsized widget borrows the average, which
+    // otherwise made 50/50 + a third widget overflow the strip.
     let sizes = entries.map(e => (Number.isFinite(e.size) && e.size > 0) ? e.size : null);
     const known = sizes.filter(v => v !== null);
     const fallback = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 100 / Math.max(1, entries.length);
@@ -1202,8 +1098,6 @@ function renderWidgetOrderStrip(strip, entries) {
     });
 }
 
-// Dragging a divider resizes its two neighboring boxes; the divider position
-// is exactly the % split between them.
 function wireWidgetOrderDivider(strip, divider) {
     divider.addEventListener("pointerdown", e => {
         e.preventDefault();
@@ -1220,8 +1114,6 @@ function wireWidgetOrderDivider(strip, divider) {
             const dx = (ev.clientX - startX) / stripWidth * 100;
             let p = p0 + dx;
             p = Math.max(WIDGET_ORDER_MIN_PCT, Math.min(p, p0 + n0 - WIDGET_ORDER_MIN_PCT));
-            // Snap to even fractions of the widget count: with 2 widgets the
-            // bar snaps to 50/50, with 3 to the 1/3 and 2/3 marks, etc.
             const count = strip.querySelectorAll(".wos-item").length;
             for (let k = 1; k < count; k++) {
                 const mark = k / count * 100;
@@ -1249,8 +1141,6 @@ function saveWidgetStrip(area, strip) {
     const items = [...strip.querySelectorAll(".wos-item")];
     if (items.length < 2) return;
     const order = items.map(el => ({ id: el.dataset.id }));
-    // Before/after strips both save into the shared "cards" order, merged
-    // with the entries of the other group so nothing is lost.
     const storageArea = area.startsWith("cards") ? "cards" : area;
     chrome.storage.sync.get(["widget_order"], sync => {
         const wo = Object.assign({}, sync.widget_order || {});
@@ -1260,7 +1150,6 @@ function saveWidgetStrip(area, strip) {
                 .filter(e => e && !ids.has(e.id));
             wo.cards = other.concat(order);
         } else {
-            // Container rows still carry each widget's % width.
             let sizes = items.map(el => parseFloat(el.dataset.size) || 100 / items.length);
             const total = sizes.reduce((a, b) => a + b, 0) || 100;
             sizes = sizes.map(v => v / total * 100);
@@ -1285,7 +1174,6 @@ function setupWidgetPosition() {
         chrome.storage.sync.get([key, "gpa_calc_prepend"], sync => {
             let value = sync[key];
             if (value === undefined && key === "gpa_calc_position") {
-                // Legacy "Move to top" checkbox -> equivalent dropdown position.
                 value = sync["gpa_calc_prepend"] === true ? "cards_start" : "cards_end";
                 chrome.storage.sync.set({ [key]: value });
             }
@@ -1297,7 +1185,6 @@ function setupWidgetPosition() {
     });
 }
 
-// Widget height settings (px). 0 / blank means auto.
 function setupWidgetHeightInput(id, initial) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1313,10 +1200,8 @@ function setupWidgetHeightInput(id, initial) {
     });
 }
 
-// Hours/minutes/seconds widgets settings (Focus Timer / Breathing presets).
-// The hours field is optional — Breathing only exposes minutes/seconds.
-// Fields are compact h:mm:ss inputs: click to edit a segment, typing a second
-// digit auto-advances, and the value is saved (zero-padded) on blur/change.
+// h:mm:ss fields: click to edit a segment, a second digit auto-advances, and
+// the value is saved zero-padded on blur. The hours field is optional.
 function setupWidgetTimeInput(prefix, initial) {
     const hEl = document.getElementById(prefix + "_h");
     const mEl = document.getElementById(prefix + "_m");
@@ -1324,7 +1209,6 @@ function setupWidgetTimeInput(prefix, initial) {
     if (!mEl || !sEl) return;
     let v = initial;
     if (!v || typeof v !== "object") {
-        // Legacy plain-minutes value.
         const n = parseInt(v, 10);
         v = Number.isFinite(n) && n > 0 ? { h: 0, m: n, s: 0 } : (defaultOptions.sync[prefix] || { h: 0, m: 0, s: 0 });
     }
@@ -1365,8 +1249,6 @@ function setupWidgetTimeInput(prefix, initial) {
     });
 }
 
-// Hide a toggle's sub-options when it's off; auto_dark only hides its time
-// clocks.
 function toggleSubOptionsVisibility(option, isOn) {
     const togglesWithSubOptions = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
     if (!togglesWithSubOptions.includes(option)) return;
@@ -1388,8 +1270,7 @@ function setupFeatureSearch(menu) {
     const headerSearch = document.querySelector("#header-search");
     if (!searchInput || !resultsEl || !headerSearch) return;
 
-    // Map (reference-keyed) each .tab element -> the button id that opens it.
-    // A plain object won't work: DOM elements stringify to the same key.
+    // A Map, not an object: DOM elements stringify to the same key.
     const tabElToBtnId = new Map();
     Object.entries(menu.tabs).forEach(([btnId, info]) => {
         const tabEl = document.querySelector(info.tab);
@@ -1397,9 +1278,7 @@ function setupFeatureSearch(menu) {
     });
 
     function shouldSkip(el) {
-        // Skip overlays / scrapped containers that aren't real features
         if (el.closest('#submit-popup, #browser-settings-popup, #opt-in, #card-edit-menu')) return true;
-        // Skip statically-hidden containers but keep dynamically-hidden sub-options.
         let node = el;
         while (node && node !== document.body) {
             if (node.classList && node.classList.contains('option-container') && node.style.display === 'none') return true;
@@ -1413,7 +1292,7 @@ function setupFeatureSearch(menu) {
         if (label) return label.textContent.trim();
         const st = sub.querySelector(".sub-text");
         if (st) return st.textContent.trim();
-        // Bare <span> label (e.g. Export Settings checkboxes have no label/.sub-text).
+        // Bare <span> label: checkboxes like Export Settings have no .sub-text.
         const span = sub.querySelector("span");
         if (span) return span.textContent.trim();
         return "";
@@ -1458,8 +1337,6 @@ function setupFeatureSearch(menu) {
         if (back) back.click();
     }
 
-    // Reveal any hidden sub-option blocks between el and .main so the target
-    // is visible (purely visual; doesn't change stored settings).
     function revealAncestors(el) {
         const main = document.querySelector(".main");
         let node = el;
@@ -1467,7 +1344,6 @@ function setupFeatureSearch(menu) {
             if (node.style && node.style.display === "none") node.style.display = "";
             node = node.parentElement;
         }
-        // Expand the Better Todo "More options" collapsible if the target lives inside it.
         const moreWrap = el.closest ? el.closest("#todo-more-options") : null;
         if (moreWrap && !moreWrap.classList.contains("expanded")) {
             const toggle = document.getElementById("todo-more-toggle");
@@ -1512,13 +1388,11 @@ function setupFeatureSearch(menu) {
             index.push(entry);
         }
 
-        // Big section buttons (Edit Dark Mode, Cards, Themes, Styles, GPA Settings, Report issue)
         document.querySelectorAll(".more-options-container .tab-btn").forEach(btn => {
             const span = btn.querySelector("span");
             add({ key: "tab:" + btn.id, text: span ? span.textContent.trim() : "", el: btn, action: () => openTab(btn.id) });
         });
 
-        // Home: option toggles
         document.querySelectorAll(".options .option").forEach(opt => {
             if (!opt.id) return;
             const name = opt.querySelector(".option-name");
@@ -1527,7 +1401,6 @@ function setupFeatureSearch(menu) {
             add({ key: "option:" + opt.id, text: name.textContent.trim(), el: opt, action: () => goToMainElement(opt) });
         });
 
-        // Tabs: option toggles that live inside a tab (e.g. Dashboard Notes in Widgets)
         document.querySelectorAll(".tab .option").forEach(opt => {
             if (!opt.id) return;
             const name = opt.querySelector(".option-name");
@@ -1536,17 +1409,14 @@ function setupFeatureSearch(menu) {
             add({ key: "option:" + opt.id, text: name.textContent.trim(), el: opt, action: () => goToTabElement(opt) });
         });
 
-        // Home: sub-options / timesets / labelled rows (e.g. "Use dd/mm", "Start time", max-items)
         document.querySelectorAll(".options .sub-option, .options .timeset, .options .sub-options > div").forEach(sub => {
             if (shouldSkip(sub)) return;
-            // Skip statically-hidden sub-options; dynamically-hidden ones stay indexed.
             if (sub.classList.contains("sub-option") && sub.style.display === "none") return;
             const text = labelOf(sub);
             if (!text) return;
             add({ key: "sub:" + keyIdOf(sub), text, el: sub, action: () => goToMainElement(sub) });
         });
 
-        // Home: custom Canvas URLs
         const customDomain = document.querySelector(".customDomain");
         if (customDomain && !shouldSkip(customDomain)) {
             const wrap = customDomain.closest(".customDomain");
@@ -1554,7 +1424,6 @@ function setupFeatureSearch(menu) {
             add({ key: "custom:customDomain", text: label ? label.textContent.trim() : "Canvas URL", el: wrap || customDomain, action: () => goToMainElement(wrap || customDomain) });
         }
 
-        // Tabs: section headings (e.g. "Presets", "Custom styles", "Popular Palettes", "Custom Background")
         document.querySelectorAll(".tab .header-small").forEach(h => {
             if (shouldSkip(h)) return;
             const text = h.textContent.trim();
@@ -1563,7 +1432,6 @@ function setupFeatureSearch(menu) {
             add({ key: "heading:" + (btnId || "?") + ":" + text, text, el: h, action: () => goToTabElement(h) });
         });
 
-        // Tabs: checkbox sub-options (e.g. "Daily Random Image", "Custom Card Styles")
         document.querySelectorAll(".tab .sub-option").forEach(sub => {
             if (shouldSkip(sub)) return;
             const text = labelOf(sub);
@@ -1572,7 +1440,6 @@ function setupFeatureSearch(menu) {
             add({ key: "tabsub:" + (btnId || "?") + ":" + keyIdOf(sub), text, el: sub, action: () => goToTabElement(sub) });
         });
 
-        // Dark mode color fields (e.g. "Sidebar Text", "Background Main")
         document.querySelectorAll(".tab .color-type-header").forEach(h => {
             if (shouldSkip(h)) return;
             const text = h.textContent.trim();
@@ -1581,8 +1448,6 @@ function setupFeatureSearch(menu) {
             add({ key: "color:" + (btnId || "?") + ":" + text, text, el: h, action: () => goToTabElement(h) });
         });
 
-        // Tab: range sliders that live in dedicated rows (Opacity & Blur, Image scale).
-        // These aren't .sub-option, so the generic blocks above miss them.
         document.querySelectorAll(".tab .opacity-slider-row, .tab .background-scale-row").forEach(row => {
             if (shouldSkip(row)) return;
             const label = row.querySelector(".sub-text");
@@ -1594,7 +1459,6 @@ function setupFeatureSearch(menu) {
             add({ key: "slider:" + (btnId || "?") + ":" + (input.id || text), text, el: row, action: () => goToTabElement(row) });
         });
 
-        // Tab: preset buttons (dark mode presets + popular color palettes).
         document.querySelectorAll(".tab .preset-button").forEach(btn => {
             if (shouldSkip(btn)) return;
             const text = btn.textContent.trim().replace(/\s+/g, " ");
@@ -1603,7 +1467,6 @@ function setupFeatureSearch(menu) {
             add({ key: "preset:" + (btnId || "?") + ":" + (btn.id || text), text, el: btn, action: () => goToTabElement(btn) });
         });
 
-        // Tab: standalone action buttons with distinct labels (GPA scale presets, revert colors).
         ["revert-colors", "clearCustomBackground"].forEach(id => {
             const btn = document.getElementById(id);
             if (!btn || shouldSkip(btn)) return;
@@ -1612,9 +1475,6 @@ function setupFeatureSearch(menu) {
             add({ key: "action:" + id, text, el: btn, action: () => goToTabElement(btn) });
         });
 
-        // Tab: checkbox/radio controls whose label is a bare sibling span and that
-        // aren't wrapped in .sub-option (e.g. "Get Active Cards From Dashboard",
-        // sidebar background "Solid/Gradient/Image").
         document.querySelectorAll(".tab input[type='checkbox'], .tab input[type='radio']").forEach(input => {
             if (!input.id) return;
             if (input.closest(".sub-option") || input.closest(".option")) return;
@@ -1742,7 +1602,6 @@ function setup() {
 			"browser_show_likes",
 			"gpa_calc_weighted",
 			"gpa_calc_cumulative",
-			// /*'card_method_date',*/ "show_updates",
             "todo_hide_feedback",
             "todo_hide_read",
 			"todo_full_height",
@@ -1751,7 +1610,6 @@ function setup() {
 			"card_overdues",
 			"hide_completed_cards",
 			"equal_height_cards",
-			// "todo_overdues",
 			"auto_dark",
 			"assignment_date_format",
 			"custom_font_skip_p",
@@ -1767,7 +1625,6 @@ function setup() {
 			"hide_course_images",
 			"anon_fake_todo",
 			"anon_progress_enabled",
-			// "hide_completed",
 			"hover_preview",
             "customBackgroundDaily",
             "customBackgroundNasaDaily",
@@ -2051,10 +1908,7 @@ function setup() {
                     toggleAlternateColorsVisibility(status);
                 }
                 if (option === "hide_personal_details" && status === false) {
-                    // "Temporarily remove all course images" is a sub-option of
-                    // the privacy mode: switching the mode off restores the
-                    // images too (the content script listens for this key and
-                    // removes its hiding stylesheet).
+                    // Content script watches this key and drops its hiding stylesheet.
                     const imgCheckbox = document.getElementById("hide_course_images");
                     if (imgCheckbox) imgCheckbox.checked = false;
                     chrome.storage.sync.set({ "hide_course_images": false });
@@ -2122,7 +1976,6 @@ function setup() {
     })
 
 
-    // activate tab buttons
     document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             if (menu.tabs[btn.id].setup !== null) menu.tabs[btn.id].setup();
@@ -2132,7 +1985,6 @@ function setup() {
         });
     });
 
-    // activate the back buttons on each tab
     document.querySelectorAll(".back-btn").forEach(btn => {
         btn.addEventListener("click", function () {
             document.querySelectorAll(".tab").forEach(tab => {
@@ -2142,10 +1994,8 @@ function setup() {
         });
     });
 
-    // give everything the appropirate i18n text
     document.querySelectorAll('[data-i18n]').forEach(text => {
         const msg = chrome.i18n.getMessage(text.dataset.i18n);
-        // keep the in-HTML fallback text when a key is missing instead of blanking it
         if (msg) text.innerText = msg;
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
@@ -2157,15 +2007,12 @@ function setup() {
         if (msg) el.title = msg;
     });
 
-    // header feature search (search bar that jumps to features)
     setupFeatureSearch(menu);
 
-    // activate dark mode inspector button
     document.querySelector("#inspector-btn").addEventListener("click", async function () {
         document.querySelector("#inspector-output").textContent = (await sendFromPopup("inspect"))["selectors"];
     });
 
-    // activate dark mode fixer button
     document.querySelector("#fix-dm-btn").addEventListener("click", async function () {
         let output = await sendFromPopup("fixdm");
         if (output.path === "canvasrefined-none" || output.path === "canvasrefined-darkmode_off") return;
@@ -2183,7 +2030,6 @@ function setup() {
         })
     });
 
-    // activate storage dump button
     document.querySelector("#rk_btn").addEventListener("click", () => {
         chrome.storage.local.get(null, local => {
             chrome.storage.sync.get(null, sync => {
@@ -2192,24 +2038,18 @@ function setup() {
         })
     });
 
-    // activate storage reset button
     document.querySelector("#storage-reset-btn").addEventListener("click", () => {
         chrome.storage.sync.set(defaultOptions["sync"]);
         updateStorageUsage();
     });
 
-    // "Reroll classes" (Report issue tab → Privacy). Bumps the fake-data seed;
-    // content scripts watch the key, so every open Canvas tab re-shuffles its
-    // fake courses/assignments/grades without a refresh.
+    // Bumps the fake-data seed; every open Canvas tab re-shuffles without a reload.
     document.querySelector("#anon-reroll-btn").addEventListener("click", () => {
         chrome.storage.sync.set({ "anon_grade_seed": Math.floor(Math.random() * 1000000) });
         displayAlert(false, "Fake classes rerolled.");
     });
 
-    // activate planner cache clear button (Report issue tab). Clears the
-    // cached planner items locally, then tells any open Canvas tabs to
-    // re-fetch fresh data so the clear takes effect without a refresh.
-    // Keep the key in sync with PLANNER_CACHE_KEY in content.js.
+    // Key must stay in sync with PLANNER_CACHE_KEY in content.js.
     document.querySelector("#planner-cache-clear-btn").addEventListener("click", async () => {
         displayAlert(false, "Planner cache cleared.");
         try {
@@ -2219,9 +2059,6 @@ function setup() {
         updateStorageUsage();
     });
 
-    // ---- Storage usage display (Report issue tab) ----
-    // Shows how much space the extension's settings, planner cache, and
-    // other local data take, plus the storage quota available to it.
     function formatStorageBytes(bytes) {
         if (bytes == null) return "unknown";
         if (bytes < 1024) return bytes + " B";
@@ -2229,8 +2066,7 @@ function setup() {
         return (bytes / 1048576).toFixed(2) + " MB";
     }
 
-    // getBytesInUse is exact but not implemented everywhere (older Firefox),
-    // so fall back to measuring the serialized data as a Blob.
+    // getBytesInUse is missing on older Firefox; measure a serialized Blob instead.
     async function storageBytesInUse(area, keys) {
         try {
             const bytes = await area.getBytesInUse(keys ?? null);
@@ -2250,12 +2086,9 @@ function setup() {
             if (el) el.textContent = text;
         };
 
-        // Sync settings vs the 100 KB chrome.storage.sync quota.
         const syncBytes = await storageBytesInUse(chrome.storage.sync);
         set("#storage-usage-sync", syncBytes == null ? "unknown" : formatStorageBytes(syncBytes) + " of 100 KB quota");
 
-        // Planner cache: size plus item count, so users can see what the
-        // to-do cache actually costs (and that clearing it worked).
         const cacheBytes = await storageBytesInUse(chrome.storage.local, "planner_cache_v1");
         let cacheText = "empty";
         if (cacheBytes) {
@@ -2269,8 +2102,6 @@ function setup() {
         }
         set("#storage-usage-cache", cacheText);
 
-        // Everything else in local storage (settings the extension keeps
-        // locally, state like the analytics toggle, etc.).
         const localBytes = await storageBytesInUse(chrome.storage.local);
         if (localBytes == null) {
             set("#storage-usage-local", "unknown");
@@ -2279,9 +2110,6 @@ function setup() {
             set("#storage-usage-local", other == null ? formatStorageBytes(localBytes) : formatStorageBytes(other));
         }
 
-        // Quota available to the extension. With the unlimitedStorage
-        // permission this is a large slice of free disk space, so it reads
-        // big — that is expected.
         try {
             const est = await navigator.storage.estimate();
             if (est && est.quota) {
@@ -2291,14 +2119,11 @@ function setup() {
     }
     updateStorageUsage();
 
-    // Canvas URL list — each school gets its own text box
     const domainListEl = document.querySelector("#custom-domain-list");
     const addDomainBtn = document.querySelector("#add-domain-btn");
 
-    // Normalize a single entry: a full URL becomes its hostname, anything else
-    // is kept as typed. Idempotent — rows store bare hostnames
-    // ("canvas.school.edu"), which fail new URL() without a scheme, so they're
-    // validated as hostnames instead of re-flagged as invalid on every save.
+    // Idempotent: rows store bare hostnames, which fail new URL() without a
+    // scheme, so they are validated as hostnames instead.
     function sanitizeDomainEntry(val, showAlert = true) {
         let trimmed = val.trim().replace(/ /g, "");
         if (trimmed === "") return "";
@@ -2309,7 +2134,6 @@ function setup() {
                 return host;
             }
         } catch (e) { /* not a full URL — may still be a bare hostname */ }
-        // strip scheme/path if new URL couldn't parse it, then validate as a hostname
         const host = trimmed.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
         if (host && /^[a-z0-9][a-z0-9.-]*$/i.test(host)) {
             clearAlert();
@@ -2325,7 +2149,6 @@ function setup() {
             const val = sanitizeDomainEntry(input.value);
             if (val !== "") domains.push(val);
         });
-        // keep the legacy [""]-when-empty shape the rest of the code expects
         chrome.storage.sync.set({ custom_domain: domains.length ? domains : [""] });
     }
 
@@ -2339,7 +2162,6 @@ function setup() {
         input.spellcheck = false;
         input.addEventListener("input", saveDomainList);
         input.addEventListener("blur", () => {
-            // normalize what's shown and drop rows left empty
             if (input.value.trim() === "") {
                 if (domainListEl.querySelectorAll(".domain-row").length > 1) row.remove();
             } else {
@@ -2356,8 +2178,6 @@ function setup() {
             const val = sanitizeDomainEntry(input.value, false);
             row.remove();
             saveDomainList();
-            // clear any past "no thanks" for this canvas so the detection
-            // prompt can ask again if it's visited later
             if (val) {
                 chrome.storage.sync.get(["custom_domain_denied"], storage => {
                     const denied = (storage.custom_domain_denied || []).filter(d => d !== val);
@@ -2381,13 +2201,11 @@ function setup() {
         rows[rows.length - 1].focus();
     });
 
-    // activate import input box
     document.querySelector("#import-input").addEventListener("input", (e) => {
         const obj = JSON.parse(e.target.value);
         importTheme(obj);
     });
 
-    // copy export output to clipboard
     document.querySelector("#export-copy").addEventListener("click", async () => {
         const output = document.querySelector("#export-output");
         const btn = document.querySelector("#export-copy");
@@ -2404,7 +2222,6 @@ function setup() {
         }
     });
 
-    // activate export checkbox
     document.querySelectorAll(".export-details input").forEach(input => {
         input.addEventListener("change", () => {
             chrome.storage.sync.get(syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "custom_styles"]), async storage => {
@@ -2431,9 +2248,6 @@ function setup() {
                                 final = { ...final, ...(await getExport(storage, exportCardStyles)) };
                                 break;
                             case "export-customStyles": {
-                                // custom_styles is stored in storage.local
-                                // (see setupCustomStyle); fall back to the
-                                // legacy sync value for pre-migration themes.
                                 const localStyles = await chrome.storage.local.get("custom_styles");
                                 const styleSource = localStyles && localStyles["custom_styles"] !== undefined ? localStyles : storage;
                                 final = { ...final, ...(await getExport(styleSource, ["custom_styles"])) };
@@ -2459,7 +2273,6 @@ function setup() {
         });
     });
 
-    // Toggle all export checkboxes and dispatch one change event to refresh output.
     const exportCheckboxes = () => document.querySelectorAll(".export-details input");
     const refreshExport = () => {
         const first = exportCheckboxes()[0];
@@ -2474,7 +2287,6 @@ function setup() {
         refreshExport();
     });
 
-    // activate revert to original button
     document.querySelector("#theme-revert").addEventListener("click", () => {
         chrome.storage.local.get("previous_theme", local => {
             if (local["previous_theme"] !== null) {
@@ -2487,7 +2299,6 @@ function setup() {
     // TODO: maybe fix this at some point, idk what is causing the error here
     document.querySelectorAll(".preset-button.customization-button").forEach(btn => btn.addEventListener("click", changeToPresetCSS));
 
-    // activate card color inputs
     document.querySelector("#singleColorInput").addEventListener("change", e => document.querySelector("#singleColorText").value = e.target.value);
     document.querySelector("#singleColorText").addEventListener("change", e => document.querySelector("#singleColorInput").value = e.target.value);
     document.querySelector("#gradientColorFrom").addEventListener("change", e => document.querySelector("#gradientColorFromText").value = e.target.value);
@@ -2514,19 +2325,15 @@ function setup() {
         });
     });
 
-    // activate revert to original card colors button
     document.querySelector("#revert-colors").addEventListener("click", () => {
         chrome.storage.local.get("previous_colors", local => {
             const prev = local["previous_colors"];
-            // Guard against unset/expired-shape entries and the empty lists
-            // old list-mode runs stored — sending [] would be a silent no-op.
             if (prev && Array.isArray(prev.colors) && prev.colors.length > 0) {
                 sendFromPopup("setcolors", prev.colors);
             }
         })
     })
 
-    // activate every card color palette button
     document.querySelectorAll(".preset-button.colors-button").forEach(btn => {
         const colors = getPalette(btn.querySelector("p").textContent);
         let preview = btn.querySelector(".colors-preview");
@@ -2540,7 +2347,6 @@ function setup() {
     });
 
 
-    // activate sidebar tool radio
     ["#radio-sidebar-image", "#radio-sidebar-gradient", "#radio-sidebar-solid"].forEach(radio => {
         document.querySelector(radio).addEventListener("click", () => {
             chrome.storage.sync.get(["dark_preset"], storage => {
@@ -2550,7 +2356,6 @@ function setup() {
         })
     });
 
-    // theme browser controls
     document.getElementById("premade-themes-left").addEventListener("click", () => changePage(-1));
     document.getElementById("premade-themes-right").addEventListener("click", () => changePage(1));
     document.getElementById("theme-sorts").addEventListener("click", () => {
@@ -2567,7 +2372,6 @@ function setup() {
     document.getElementById("theme-search").addEventListener("change", async (e) => {
         searchFor = e.target.value;
         console.log(searchFor);
-        // linear search
         let themesToShow = [];
         for (let i = 0; i < themes.length; i++) {
             if (themes[i].title.toLowerCase().includes(searchFor.toLowerCase())) {
@@ -2578,10 +2382,8 @@ function setup() {
         displayThemeSearchList(themesToShow);
     });
 
-    // activate theme save button
     document.getElementById("save-theme").addEventListener("click", saveCurrentTheme);
 
-    // activate submit theme button
 
     document.getElementById("submit-theme-btn-1").addEventListener("click", () => {
         document.getElementById("submit-popup").classList.add("open");
@@ -2591,17 +2393,14 @@ function setup() {
         document.getElementById("submit-popup").classList.remove("open");
     })
 
-    // update theme button preview on input
     document.getElementById("submit-title").addEventListener("input", (e) => {
         document.getElementById("theme-button-title-preview").textContent = e.target.value.replaceAll(" ", "");
     });
 
-    // update theme button preview on input
     document.getElementById("submit-credits").addEventListener("input", (e) => {
         document.getElementById("theme-button-creator-preview").textContent = e.target.value;
     });
 
-    // activate the show button to open the theme submission drawer
     document.getElementById("show-submit-form").addEventListener("click",  (e) => {
         const drawer = document.getElementById("submit-drawer");
         if (drawer.style.display === "none") {
@@ -2613,9 +2412,7 @@ function setup() {
         }
     });
 
-    // activate theme browser opt out
 
-    // activate theme browser opt in
 
     document.querySelectorAll(".theme-sort-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -2623,7 +2420,6 @@ function setup() {
         });
     });
 
-    // browser settings buttons
     document.getElementById("browser-settings-btn").addEventListener("click", () => {
         document.getElementById("browser-settings-popup").classList.add("open");
     });
@@ -2636,13 +2432,6 @@ function setup() {
 
     document.getElementById("submit-form-btn").addEventListener("click", displayThemeSubmissionForm);
 
-    // Note: the card-style number inputs (imageSize, cardRoundness,
-    // imageRoundness, cardSpacing, cardWidth, cardHeight, cardPadding) are wired
-    // via their setup*Input
-    // handlers in menu.special above, which debounce the storage writes. The
-    // duplicate listeners that used to live here referenced nonexistent
-    // #*Value spans (threw on every input) and double-wrote to storage, which
-    // is what blew the sync write quota when adjusting card styles quickly.
 
     document.getElementById("clearCustomBackground").addEventListener("click", () => {
                 chrome.storage.sync.set({ "customBackgroundLink": "", "customBackgroundScale": 100 });
@@ -2679,8 +2468,6 @@ function setup() {
         chrome.storage.local.set({ [fontsDropdownStateKey]: nextOpen });
     });
 
-    // The "Keep original assignment font" toggle sits inline in the dropdown
-    // header; clicking it must not also collapse/expand the font dropdown.
     const skipPToggle = document.getElementById("custom_font_skip_p");
     if (skipPToggle) {
         skipPToggle.closest("span").addEventListener("click", (e) => e.stopPropagation());
@@ -2689,10 +2476,8 @@ function setup() {
 
 function setupCustomStyle(initial) {
     const el = document.getElementById("custom-styles");
-    // Custom CSS lives in storage.local (unlimitedStorage) — storage.sync's
-    // 8KB per-item quota silently dropped long stylesheets. `initial` is the
-    // legacy sync value, used until the user saves again (migrated to local
-    // on first save; content.js also self-migrates on page load).
+    // storage.local: storage.sync's 8KB per-item quota dropped long stylesheets.
+    // `initial` is the legacy sync value, used until the user saves again.
     chrome.storage.local.get("custom_styles", local => {
         el.value = local && local["custom_styles"] !== undefined ? local["custom_styles"] : (initial || "");
     });
@@ -2799,7 +2584,6 @@ function themeSortFn(method) {
 
 let cache = {};
 
-// new theme sort button
 function themeSort(sort) {
     current_sort = sort;
     current_page_num = 1;
@@ -2814,7 +2598,7 @@ function clickout() {
     }, 10);
 }
 
-// shuffle function for the score sorting so theres no order bias
+// shuffled so equal scores get no fixed order
 function shuffle (arr) {
     var j, x, index;
     for (index = arr.length - 1; index > 0; index--) {
@@ -2839,8 +2623,6 @@ function saveCurrentTheme() {
     const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
     chrome.storage.local.get(["saved_themes", "custom_styles"], local => {
         chrome.storage.sync.get(allOptions, async sync => {
-            // custom_styles is stored in storage.local (sync's 8KB per-item
-            // quota drops long stylesheets); merge it over the legacy sync one.
             if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
             let current = await getExport(sync, allOptions);
             let trimmed = { 
@@ -2878,8 +2660,6 @@ function saveCurrentTheme() {
 				"cardWidth": current["cardWidth"],
 				"cardHeight": current["cardHeight"],
 				"cardPadding": current["cardPadding"],
-				// Card Grid (part of card styles): layout toggle, counts,
-				// spacing and uneven-row centering.
 				"card_grid": current["card_grid"],
 				"card_grid_columns": current["card_grid_columns"],
 				"card_grid_rows": current["card_grid_rows"],
@@ -2909,7 +2689,6 @@ function saveCurrentTheme() {
 
 
 function displayThemeList(direction = 0) {
-    // Render the sorted theme list, filtered by any active search.
     let themesToShow = allThemes;
     if (searchFor) {
         themesToShow = allThemes.filter(theme => theme.title.toLowerCase().includes(searchFor.toLowerCase()));
@@ -2940,8 +2719,6 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
                 chrome.storage.sync.get(allOptions, sync => {
                     chrome.storage.local.get(["previous_theme", "custom_styles"], async local => {
                         if (local["previous_theme"] === null) {
-                            // custom_styles is stored in storage.local; merge it
-                            // in so saved themes keep the user's CSS.
                             if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
                             let previous = await getExport(sync, allOptions);
                             chrome.storage.local.set({ "previous_theme": previous });
@@ -3004,7 +2781,6 @@ function displaySavedThemes() {
 
 function getTheme(name) {
 
-    // get localThemes from themes.js
     console.log(themes);
 
     if (name === "all") return themes;
@@ -3027,11 +2803,8 @@ function importTheme(theme) {
                         sendFromPopup("setcolors", theme["card_colors"]);
                         break;
                     case "custom_cards": {
-                        // "none" is a legacy placeholder meaning "this theme has
-                        // no custom card images" — treat it as such instead of
-                        // writing the literal string into every card (which hides
-                        // the card image on the dashboard). Fall back to "" so
-                        // cards keep their default Canvas images.
+                        // Legacy "none" placeholder meant "no custom card images"; writing it
+                        // literally would hide the card images.
                         const themeImgs = (theme["custom_cards"] || []).filter(u => u && u !== "none" && u.trim() !== "");
                         if (theme["custom_cards"].length > 0) {
                             let pos = 0;
@@ -3044,8 +2817,6 @@ function importTheme(theme) {
                         break;
                     }
                     case "todo_confetti":
-                        // Legacy setting: map the old confetti toggle onto the
-                        // celebrations list ("false" meant celebrations off).
                         final["todo_celebrations"] = theme["todo_confetti"] === false ? [] : ["confetti"];
                         break;
                     default:
@@ -3053,8 +2824,6 @@ function importTheme(theme) {
                         break;
                 }
             });
-            // custom_styles must go to storage.local — sync's 8KB per-item
-            // quota rejects (or truncates) large stylesheets from themes.
             if (Object.prototype.hasOwnProperty.call(final, "custom_styles")) {
                 localFinal = { "custom_styles": final["custom_styles"] };
                 delete final["custom_styles"];
@@ -3144,9 +2913,7 @@ function setCustomImage(key, val) {
 }
 
 async function displayAdvancedCards() {
-    // Sync from Canvas only when needed: when there are no cards yet (fresh
-    // install) or when older cards predate the stored fullName field. Once
-    // every card has a fullName this is a no-op and the grid renders instantly.
+    // Syncs only on fresh install or when a stored card lacks fullName.
     const needsSync = await new Promise(resolve => {
         chrome.storage.sync.get("custom_cards", s => {
             const c = s.custom_cards || {};
@@ -3194,8 +2961,7 @@ async function displayAdvancedCards() {
             }
         });
 
-        // showCardEditMenu sets an inline display:none on the grid; clear it
-        // so reopening the menu shows the cards again (CSS default = grid).
+        // showCardEditMenu leaves an inline display:none; clear it to show cards.
         cardGrid.style.display = "";
         const editMenu = document.getElementById("card-edit-menu");
         if (editMenu) {
@@ -3398,7 +3164,6 @@ function toggleDarkModeDisable(disabled) {
     }
 }
 
-// customization tab
 
 function getPalette(name) {
     const colors = {

@@ -6,7 +6,7 @@ h1, h2, p, body{margin:0;padding:0}
 h1 {font-size:30px;}
 h2 {font-size:24px;}
 .option input{display:none;}
-/* Knob state for every big toggle (main options AND tab pages like Report issue) */
+/* knob state for every big toggle (main options and tab pages) */
 .option input:nth-of-type(1).checked ~ .slider .sliderknob{background-color:#e1e1e12e;}
 .option input:nth-of-type(2).checked ~ .slider .sliderknob{transform:translate(18px);background-color:#8dd28d;}
 .option{display:flex;align-items:center;}
@@ -36,7 +36,6 @@ a.option-container:hover {background: #333}
 .options-left, .options-right {width: 50%;}
 .customDomain {font-weight:600}
 
-/* Canvas URL list — one text box per school */
 #custom-domain-list {display: flex;flex-direction: column;gap: 6px;margin-top: 8px}
 .domain-row {display: flex;gap: 6px;align-items: center}
 .domain-row input {flex: 1;min-width: 0;box-sizing: border-box;font-size: 12px;background: var(--inputbg);border: none;padding: 8px;color: #e2e2e2;border-radius: 7px;font-family: inherit}
@@ -86,19 +85,12 @@ h2 {margin-top: 20px;font-weight:600}
 #todo_timeframe option {background:#1e1e1e;color:#e2e2e2;}
 #todo_timeframe option:checked,
 #todo_timeframe option:hover {background:#2e2e2e;color:#fff;}
-/* Custom timeframe inputs, shown under the Time frame dropdown when "Custom" is selected */
 .custom-tf-wrap {display:none;flex-direction:column;gap:6px;}
 .custom-tf-wrap.visible {display:flex;}
 .custom-tf-row {display:flex;align-items:center;gap:6px;}
 .custom-tf-row input {flex:none;width:58px;font-size:12px;background:var(--inputbg);border:none;padding:6px;color:#e2e2e2;border-radius:6px;font-family:inherit;text-align:right;box-sizing:border-box;color-scheme:dark;}
 .custom-tf-row input::-webkit-outer-spin-button, .custom-tf-row input::-webkit-inner-spin-button {opacity:1;}
-/* Collapsible "More options" section for the Better Todo List sub-options */
 .todo-more-options {margin-top: 7px;}
-/* Celebrations box — effect picker + amount for task completion animations */
-/* The big "Celebration" toggle is the whole box header; type/amount rows hide when it's off. */
-/* The two controls below mirror #todo_timeframe exactly (same font, padding,
-   radius, colors and full-width stacked layout) so they read like the popup's
-   other dropdowns. */
 .celebration-multiselect {position:relative;}
 .celebration-multiselect-btn {display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;cursor:pointer;text-align:left;}
 .celebration-multiselect-btn svg {flex:none;transition:transform .15s ease;}
@@ -106,7 +98,6 @@ h2 {margin-top: 20px;font-weight:600}
 .celebration-multiselect-menu {display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;background:#1e1e1e;border-radius:7px;padding:5px 0;max-height:180px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.45);}
 .celebration-multiselect.open .celebration-multiselect-menu {display:block;}
 .celebration-multiselect.flip-up .celebration-multiselect-menu {top:auto;bottom:calc(100% + 4px);}
-/* Menu rows mirror the native option colors (#1e1e1e idle, #2e2e2e hover) used by the other dropdowns */
 .celebration-option {display:flex;align-items:center;gap:7px;padding:5px 10px;font-size:12px;color:#e2e2e2;cursor:pointer;white-space:nowrap;user-select:none;}
 .celebration-option:hover {background:#2e2e2e;color:#fff;}
 .celebration-option input {accent-color:#56caf0;cursor:pointer;margin:0;}
@@ -329,7 +320,6 @@ input[type="checkbox"]:checked {background: #8dd28d;}
     }
 }
 
-/* ===== Header feature search ===== */
 .header-search { position: relative; margin-left: auto; display: flex; align-items: center; gap: 8px; width: 170px; max-width: 42%; background: var(--inputbg); border-radius: 8px; padding: 7px 10px; box-sizing: border-box; }
 .header-search-icon { color: #9a9a9a; flex: none; }
 .header-search:focus-within { box-shadow: 0 0 0 1.5px #56Caf0; }
@@ -345,7 +335,6 @@ input[type="checkbox"]:checked {background: #8dd28d;}
 .search-result.empty:hover { background: none; }
 .search-highlight { outline: 2px solid #56Caf0; outline-offset: 2px; border-radius: 8px; animation: search-pulse 1.8s ease-out; }
 @keyframes search-pulse { 0% { box-shadow: 0 0 0 0 #56Caf099; } 40% { box-shadow: 0 0 0 6px #56Caf000; } 100% { box-shadow: 0 0 0 0 #56Caf000; } }
-/* ===== Quiz Safe Mode info bubble ===== */
 .cr-info-bubble {
     display: inline-flex;
     align-items: center;
@@ -386,40 +375,28 @@ input[type="checkbox"]:checked {background: #8dd28d;}
 .cr-info-bubble:hover .cr-info-bubble-text,
 .cr-info-bubble:focus .cr-info-bubble-text { visibility: visible; opacity: 1; }
 
-/* Widget container-order strips (Widgets tab): boxes sized by each widget's
-   % of the shared container, separated by draggable dividers. */
 .widget-order-strip {display:flex;align-items:stretch;width:100%;height:44px;margin-top:6px;}
 .wos-item {border:1px solid #ffffff2e;background:var(--inputbg);border-radius:7px;display:flex;align-items:center;padding:0 10px;font-size:12px;color:#e2e2e2;min-width:0;overflow:hidden;white-space:nowrap;cursor:grab;user-select:none;}
 .wos-item.dragging {opacity:.45;}
 .wos-divider {flex:0 0 6px;width:6px;align-self:stretch;margin:0 5px;border-radius:3px;background:#8a8a8a;cursor:col-resize;}
 .wos-divider:hover {background:#e2e2e2;}
-/* Widget order box (Widgets tab): one shared "Widget order" rectangle with
-   a section per area (Top / Before cards / After cards / Bottom); each
-   section shows only when 2+ enabled widgets share that area. */
 .widget-order-section + .widget-order-section {margin-top: 16px;}
 .widget-order-label {font-size: 12px;color: #c7c7c7;}
 .widget-order-strip {margin-top: 6px;}
-/* Before/after strips: sequence only, so boxes share the width evenly with
-   a gap between them instead of draggable dividers. */
 .widget-order-strip[data-area="cards_start"],
 .widget-order-strip[data-area="cards_end"] {column-gap: 8px;}
 .widget-order-strip[data-area="cards_start"] .wos-item,
 .widget-order-strip[data-area="cards_end"] .wos-item {flex: 1 1 0;}
-/* Widget sections (Widgets tab): two side-by-side columns; add future
-   widgets as one more .option-container inside .widgets-grid. */
 .widgets-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch;margin-top:8px;}
 .widgets-grid .option-container {margin-top:0;box-sizing:border-box;min-width:0;}
-/* Widget position dropdowns (Widgets tab) — mirror #todo_timeframe exactly:
-   same font, padding, radius, colors and full-width stacked layout. */
 .widget-pos {font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
 .widget-pos option {background:#1e1e1e;color:#e2e2e2;}
 .widget-pos option:checked,
 .widget-pos option:hover {background:#2e2e2e;color:#fff;}
-/* Inline rows: the label sits on the same line as its control. */
 .widget-inline-row {display:flex;align-items:center;gap:8px;}
 .widget-inline-label {flex:none;}
 .widget-inline-select {flex:1;min-width:0;margin-top:0;margin-bottom:0;}
-/* Compact clock entry (preset lengths), matching the on-canvas widget. */
+/* compact clock entry, matching the on-canvas widget */
 .popup-time-input {display:flex;align-items:center;justify-content:center;gap:1px;flex:1;min-width:0;background:var(--inputbg);border-radius:7px;padding:4px 6px;}
 .popup-time-input:focus-within {box-shadow:0 0 0 2px rgba(86,202,240,.35);}
 .popup-tf {width:2.2ch;min-width:0;border:none;background:transparent;color:#e2e2e2;font:inherit;font-size:13px;font-weight:700;text-align:center;padding:0;border-radius:4px;}

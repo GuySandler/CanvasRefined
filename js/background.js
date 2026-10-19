@@ -72,7 +72,6 @@ chrome.runtime.onInstalled.addListener(function () {
             "custom_assignments_overflow": ["custom_assignments"],
             "grade_hover": false,
             "card_letter": true,
-            // "hide_completed": false,
             "hide_completed_cards": false,
             "num_todo_items": 10,
             "custom_font": { "link": "", "family": "" },
@@ -94,7 +93,6 @@ chrome.runtime.onInstalled.addListener(function () {
                 "D-": { "cutoff": 60, "gpa": .7 },
                 "F": { "cutoff": 0, "gpa": 0 }
             },
-            // "todo_overdues": false,
             "card_overdues": false,
             "relative_dues": false,
             "equal_height_cards": false,
@@ -118,7 +116,6 @@ chrome.runtime.onInstalled.addListener(function () {
             "custom_font_skip_p": false,
             "device_dark": false,
             "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
-            // "show_updates": false,
             "card_method_date": false,
             "card_method_dashboard": true,
             "card_limit": 25,
@@ -170,7 +167,6 @@ chrome.runtime.onInstalled.addListener(function () {
                 newLocalOptions[option] = default_options["local"][option];
             })
 
-            // migrate old setting name
             if (sync["nasaFitToScreen"] !== undefined && sync["fitImageToScreen"] === undefined) {
                 newSyncOptions["fitImageToScreen"] = sync["nasaFitToScreen"];
             }
@@ -192,8 +188,7 @@ chrome.runtime.onInstalled.addListener(function () {
     });
 });
 
-// The NASA APOD API with the demo key is limited to 30 requests/hour and 50/day.
-// Calls are serialized through this worker; the API's own 429 responses handle limiting.
+// APOD demo key allows 30 req/hour, 50/day; the API's own 429s do the limiting.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "getNasaBackground") {
         getNasaBackground().then(sendResponse);
@@ -222,7 +217,7 @@ async function getNasaBackground() {
             const cached = await chrome.storage.local.get([cacheKey, metadataKey]);
             if (cached[cacheKey]) return cached[cacheKey];
 
-            // Don't re-probe dates the API already told us don't exist
+            // never re-probe dates the API reported as missing
             const missingKey = `nasa_apod_missing_${dateStr}`;
             const missing = await chrome.storage.local.get(missingKey);
             if (missing[missingKey]) {
@@ -242,8 +237,7 @@ async function getNasaBackground() {
             if (!url) return null;
             const result = { url, scale: 100, date: dateStr };
             const meta = { title: data.title || "", date: data.date || dateStr, copyright: data.copyright || "", explanation: data.explanation || "" };
-            // Write image + metadata atomically so the info overlay never sees a
-            // cached image with missing metadata.
+            // one write, so the overlay never sees an image without its metadata
             await chrome.storage.local.set({ [cacheKey]: result, [metadataKey]: meta });
             return result;
         }
@@ -272,10 +266,7 @@ async function callNasaApi(dateStr) {
     return await response.json().catch(() => null);
 }
 
-// --- Daily quote (stoic.tekloon.net) ---------------------------------------
-// Cached in storage.local and refreshed at most once per local calendar day.
-// Fetched from the extension worker (host_permissions) because the endpoint
-// does not send CORS headers, so a page-context fetch would be blocked.
+// Cached in storage.local for one day; fetched from the worker (no CORS headers).
 function dailyQuoteTodayKey() {
     const d = new Date();
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -290,7 +281,6 @@ async function getDailyQuote() {
         cached = st && st.daily_quote;
     } catch (e) { /* ignore storage issues */ }
 
-    // Once-a-day: reuse today's cached quote without hitting the network.
     if (cached && cached.date === today && cached.quote) return cached;
     if (dailyQuoteInFlight) return dailyQuoteInFlight;
 
@@ -308,7 +298,6 @@ async function getDailyQuote() {
             return entry;
         } catch (e) {
             console.warn("[CanvasRefined] Daily quote fetch failed:", e);
-            // Fall back to the previous day's quote rather than losing it.
             return cached || null;
         } finally {
             dailyQuoteInFlight = null;
