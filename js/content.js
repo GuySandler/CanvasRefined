@@ -2204,11 +2204,25 @@ function progressFilterDim(courseId) {
     return betterTodoProgressFilter != null && String(courseId) !== String(betterTodoProgressFilter);
 }
 // Assignments, quizzes and graded discussions (plus custom planner notes) are tasks.
+// Peer Review items arrive as assessment_request (legacy peer reviews) and
+// peer_review_sub_assignment (new allocation/grading flows), plus checkpoint
+// sub_assignments which should also surface in the todo list.
+const TODO_PEER_REVIEW_TYPES = ["assessment_request", "peer_review_sub_assignment"];
+const TODO_SUB_ASSIGNMENT_TYPES = ["sub_assignment"];
 function isTodoTaskType(item) {
-    return item.plannable_type == "assignment"
-        || item.plannable_type == "planner_note"
-        || item.plannable_type == "quiz"
-        || item.plannable_type == "discussion_topic";
+    const t = String(item.plannable_type || "").toLowerCase();
+    return t === "assignment"
+        || t === "planner_note"
+        || t === "quiz"
+        || t === "discussion_topic"
+        || TODO_PEER_REVIEW_TYPES.includes(t)
+        || TODO_SUB_ASSIGNMENT_TYPES.includes(t);
+}
+function isPeerReviewType(item) {
+    return TODO_PEER_REVIEW_TYPES.includes(String(item.plannable_type || "").toLowerCase());
+}
+function isSubAssignmentType(item) {
+    return TODO_SUB_ASSIGNMENT_TYPES.includes(String(item.plannable_type || "").toLowerCase());
 }
 
 // Click filters the todo list to one class; no-op on course pages, toggles off.
@@ -3731,13 +3745,21 @@ async function getTodoPreviewText(item) {
     }
     let url = null;
     let field = "description";
-    if (type === "assignment") {
+    const lowType = String(type || "").toLowerCase();
+    if (lowType === "assignment") {
         url = `${domain}/api/v1/courses/${item.course_id}/assignments/${id}`;
-    } else if (type === "quiz") {
+    } else if (lowType === "quiz") {
         url = `${domain}/api/v1/courses/${item.course_id}/quizzes/${id}`;
-    } else if (type === "discussion_topic" || type === "announcement") {
+    } else if (lowType === "discussion_topic" || lowType === "announcement") {
         url = `${domain}/api/v1/courses/${item.course_id}/discussion_topics/${id}`;
         field = "message";
+    } else if (TODO_PEER_REVIEW_TYPES.includes(lowType) || TODO_SUB_ASSIGNMENT_TYPES.includes(lowType)) {
+        // Peer review / sub-assignment planner payloads already carry the
+        // assignment description inline; avoid an extra API call.
+        const raw = item.plannable?.description || item.plannable?.message || item.plannable?.details || "";
+        const text = stripHtmlPreview(raw) || chrome.i18n.getMessage("no_details") || "No details given";
+        todoPreviewCache.set(key, text);
+        return text;
     }
     if (!url) {
         const text = getMsg("preview_unavailable", "No preview available");
@@ -3794,6 +3816,8 @@ function attachTodoHoverPreview(anchor, item) {
 
 // Quiz / discussion row icons, sharing the assignment icon's fill variable.
 const TODO_QUIZ_ICON_SVG = '<svg fill="var(--cr-todo-icon)" label="Quiz" name="IconQuiz" viewBox="0 0 1920 1920" rotate="0" aria-hidden="true" role="presentation" focusable="false"  ><g role="presentation"><g fill-rule="evenodd" stroke="none" stroke-width="1"><path d="M746.255375,1466.76417 L826.739372,1547.47616 L577.99138,1796.11015 L497.507383,1715.51216 L746.255375,1466.76417 Z M580.35118,1300.92837 L660.949178,1381.52637 L329.323189,1713.15236 L248.725192,1632.55436 L580.35118,1300.92837 Z M414.503986,1135.20658 L495.101983,1215.80457 L80.5979973,1630.30856 L0,1549.71056 L414.503986,1135.20658 Z M1119.32036,264.600006 C1475.79835,-91.8779816 1844.58834,86.3040124 1848.35034,88.1280123 L1848.35034,88.1280123 L1865.45034,96.564012 L1873.88634,113.664011 C1875.71034,117.312011 2053.89233,486.101999 1697.30034,842.693987 L1697.30034,842.693987 L1550.69635,989.297982 L1548.07435,1655.17196 L1325.43235,1877.81395 L993.806366,1546.30196 L415.712386,968.207982 L84.0863971,636.467994 L306.72839,413.826001 L972.602367,411.318001 Z M1436.24035,1103.75398 L1074.40436,1465.70397 L1325.43235,1716.61796 L1434.30235,1607.74796 L1436.24035,1103.75398 Z M1779.26634,182.406009 C1710.18234,156.41401 1457.90035,87.1020124 1199.91836,345.198004 L1199.91836,345.198004 L576.90838,968.207982 L993.806366,1385.10597 L1616.70235,762.095989 C1873.65834,505.139998 1804.68834,250.920007 1779.26634,182.406009 Z M858.146371,525.773997 L354.152388,527.597997 L245.282392,636.467994 L496.310383,887.609985 L858.146371,525.773997 Z"></path><path d="M1534.98715,372.558003 C1483.91515,371.190003 1403.31715,385.326002 1321.69316,466.949999 L1281.22316,507.305998 L1454.61715,680.585992 L1494.97315,640.343994 C1577.16715,558.035996 1591.87315,479.033999 1589.82115,427.164001 L1587.65515,374.610003 L1534.98715,372.558003 Z"></path></g></g></svg>';
+const TODO_PEER_REVIEW_ICON_SVG = '<svg fill="var(--cr-todo-icon)" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;"><path d="M8 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM9.5 15.5c1.1 1 2.9 1 4 0" stroke="var(--cr-todo-icon)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 3a7 7 0 0 0-6 10.3V21l3.5-1.8A7 7 0 1 0 12 3Z" stroke="var(--cr-todo-icon)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+const TODO_SUB_ASSIGNMENT_ICON_SVG = '<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;"><path d="M480 200h960v200H480zM480 600h960v200H480zM480 1000h600v200H480z" fill="var(--cr-todo-icon)"/><path d="M1200 950l320 260-320 260V950Z" fill="var(--cr-todo-icon)"/></svg>';
 const TODO_DISCUSSION_ICON_SVG = '<svg fill="var(--cr-todo-icon)" name="IconDiscussion" viewBox="0 0 1920 1920" rotate="0" aria-hidden="true" role="presentation" focusable="false"  ><g role="presentation"><path d="M677.647059,16 L677.647059,354.936471 L790.588235,354.936471 L790.588235,129.054118 L1807.05882,129.054118 L1807.05882,919.529412 L1581.06353,919.529412 L1581.06353,1179.29412 L1321.41176,919.529412 L1242.24,919.529412 L1242.24,467.877647 L677.647059,467.877647 L0,467.877647 L0,1484.34824 L338.710588,1484.34824 L338.710588,1903.24706 L756.705882,1484.34824 L1242.24,1484.34824 L1242.24,1032.47059 L1274.99294,1032.47059 L1694.11765,1451.59529 L1694.11765,1032.47059 L1920,1032.47059 L1920,16 L677.647059,16 Z M338.789647,919.563294 L903.495529,919.563294 L903.495529,806.622118 L338.789647,806.622118 L338.789647,919.563294 Z M338.789647,1145.44565 L677.726118,1145.44565 L677.726118,1032.39153 L338.789647,1032.39153 L338.789647,1145.44565 Z M112.941176,580.705882 L1129.41176,580.705882 L1129.41176,1371.40706 L710.4,1371.40706 L451.651765,1631.05882 L451.651765,1371.40706 L112.941176,1371.40706 L112.941176,580.705882 Z" fill-rule="evenodd" stroke="none" stroke-width="1"></path></g></svg>';
 
 // Scores: planner items omit the earned score, so it is fetched per course and cached;
@@ -3808,7 +3832,8 @@ function formatTodoScoreNumber(n) {
 function todoGradedBadgeHtml() { return `<svg class="better-todo-graded" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:10px;height:10px;margin-left:5px;display:inline-block;vertical-align:-1px;" title="${getMsg("todo_graded", "Graded")}"><path d="M20 6L9 17l-5-5" stroke="#28a745" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 
 function todoScoreBadgeHtml(item) {
-    if (item.plannable_type == "planner_note" || item.planner_override?.custom === true) return "";
+    const _low = String(item.plannable_type || "").toLowerCase();
+    if (_low === "planner_note" || TODO_PEER_REVIEW_TYPES.includes(_low) || TODO_SUB_ASSIGNMENT_TYPES.includes(_low) || item.planner_override?.custom === true) return "";
     const points = item.plannable?.points_possible;
     if (points == null) return "";
     const pts = formatTodoScoreNumber(points);
@@ -3831,7 +3856,8 @@ async function loadTodoScores(items) {
     if (options.todo_show_scores !== true) return;
     const byCourse = new Map();
     for (const item of items) {
-        if (item.plannable_type == "planner_note" || item.planner_override?.custom === true) continue;
+        const _lt = String(item.plannable_type || "").toLowerCase();
+        if (_lt === "planner_note" || TODO_PEER_REVIEW_TYPES.includes(_lt) || TODO_SUB_ASSIGNMENT_TYPES.includes(_lt) || item.planner_override?.custom === true) continue;
         if (item.plannable?.points_possible == null) continue;
         const cid = item.course_id ?? item.context_id;
         if (cid == null) continue;
@@ -3980,7 +4006,7 @@ function populateAssignments(iscompleted = false) {
             ? `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
                 <path d="M19.8201 14H15.6001C15.04 14 14.76 14 14.5461 14.109C14.3579 14.2049 14.2049 14.3578 14.1091 14.546C14.0001 14.7599 14.0001 15.0399 14.0001 15.6V19.82M20 12.7269V7.2C20 6.0799 20 5.51984 19.782 5.09202C19.5903 4.71569 19.2843 4.40973 18.908 4.21799C18.4802 4 17.9201 4 16.8 4H7.2C6.0799 4 5.51984 4 5.09202 4.21799C4.71569 4.40973 4.40973 4.71569 4.21799 5.09202C4 5.51984 4 6.0799 4 7.2V16.8C4 17.9201 4 18.4802 4.21799 18.908C4.40973 19.2843 4.71569 19.5903 5.09202 19.782C5.51984 20 6.0799 20 7.2 20H12.9496C13.4578 20 13.7118 20 13.9498 19.9407C14.1608 19.8882 14.3618 19.8016 14.5449 19.6844C14.7515 19.5522 14.926 19.3675 15.2751 18.9983L19.1254 14.9252C19.4486 14.5833 19.6101 14.4124 19.7255 14.2156C19.8278 14.041 19.903 13.8519 19.9486 13.6548C20 13.4325 20 13.1973 20 12.7269Z" stroke="var(--cr-todo-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>`
-            : (item.plannable_type == "quiz" ? TODO_QUIZ_ICON_SVG : item.plannable_type == "discussion_topic" ? TODO_DISCUSSION_ICON_SVG : `<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
+            : (isPeerReviewType(item) ? TODO_PEER_REVIEW_ICON_SVG : isSubAssignmentType(item) ? TODO_SUB_ASSIGNMENT_ICON_SVG : item.plannable_type == "quiz" ? TODO_QUIZ_ICON_SVG : item.plannable_type == "discussion_topic" ? TODO_DISCUSSION_ICON_SVG : `<svg fill="var(--cr-todo-icon)" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
                 <g id="SVGRepo_bgCarrier" stroke-width="1"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
                 <g id="SVGRepo_iconCarrier">
                     <path d="M1468.214 0v551.145L840.27 1179.089c-31.623 31.623-49.693 74.54-49.693 119.715v395.289h395.288c45.176 0 88.093-18.07 119.716-49.694l162.633-162.633v438.206H0V0h1468.214Zm129.428 581.3c22.137-22.136 57.825-22.136 79.962 0l225.879 225.879c22.023 22.023 22.023 57.712 0 79.848l-677.638 677.637c-10.616 10.503-24.96 16.49-39.98 16.49H903.516v-282.35c0-15.02 5.986-29.364 16.49-39.867Zm-920.005 548.095H338.82v112.94h338.818v-112.94Zm225.88-225.879H338.818v112.94h564.697v-112.94Zm734.106-202.5-89.561 89.56 146.03 146.031 89.562-89.56-146.031-146.031Zm-508.228-362.197H338.82v338.818h790.576V338.82Z" fill-rule="evenodd"></path>
