@@ -294,7 +294,7 @@
 
 .canvasrefined-gs-modal {
     position: fixed; inset: 0; z-index: 2147483100;
-    background: rgba(0,0,0,.42);
+    background: rgba(0,0,0,.26);
     display: flex; align-items: flex-start; justify-content: center;
     padding-top: 12vh; animation: canvasrefined-gs-fade .12s ease;
 }

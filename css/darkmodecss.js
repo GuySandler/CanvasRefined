@@ -1446,6 +1446,14 @@ td.status [class*="-pill"]:hover,
   background: var(--bcbackground-1) !important;
   color: var(--bctext-0) !important;
 }
+/* CanvasRefined's global search overlay is a full-screen scrim, not a panel.
+   The [class$="-modal"] rule above would otherwise paint it solid chrome and
+   cover the whole page in an opaque block. Keep it a light dim instead; the
+   dialog card inside carries its own background. */
+.canvasrefined-gs-modal {
+  background: rgba(0, 0, 0, 0.52) !important;
+  border-color: transparent !important;
+}
 [class*="-mask"] {
   background: rgba(0, 0, 0, 0.60) !important;
 }

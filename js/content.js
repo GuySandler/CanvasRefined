@@ -720,18 +720,39 @@ function showExampleReminder() {
 // Canvas detection: empty list auto-adds the first canvas, otherwise ask once per domain.
 isDomainCanvasPage();
 
+// Saved entries are whatever the user/prompt put in storage ("school.instructure.com",
+// "https://school.instructure.com", "https://school.instructure.com/", ...). Matching
+// used to be a raw substring test, so a stored URL with a scheme or trailing slash
+// never matched the origin — the extension looked like it wasn't detecting the site.
+// Compare hostnames instead, and let a parent domain cover its subdomains.
+function normalizeDomain(value) {
+    return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/^[a-z][a-z0-9+.-]*:\/\//, "")
+        .replace(/[/?#].*$/, "")
+        .replace(/^www\./, "");
+}
+
+function domainMatches(entry) {
+    const saved = normalizeDomain(entry);
+    if (!saved) return false;
+    const here = normalizeDomain(domain) || normalizeDomain(location.host);
+    return here === saved || here.endsWith("." + saved);
+}
+
 function isDomainCanvasPage() {
     chrome.storage.sync.get(['custom_domain', 'custom_domain_denied', 'auto_detect_disabled', 'dark_mode', 'dark_preset', 'device_dark', 'remind'], result => {
         options = result;
         const domains = (result.custom_domain || []).filter(d => d && d !== "");
         const denied = result.custom_domain_denied || [];
-        if (domains.some(d => domain.includes(d))) {
+        if (domains.some(domainMatches)) {
             startExtension();
             return;
         }
 
         // auto detect off or already declined here: no prompt, just reminders
-        if (result.auto_detect_disabled === true || denied.some(d => domain.includes(d))) {
+        if (result.auto_detect_disabled === true || denied.some(domainMatches)) {
             startReminderMode();
             return;
         }
@@ -763,18 +784,95 @@ function startReminderMode() {
 }
 
 // The courses API only answers on real Canvas installs. Resolves { isCanvas, courses }.
+// Retried: the content script starts before the session/redirect dance settles
+// (and on Firefox the first request can race a login redirect), so a single
+// attempt used to silently give up and leave the whole extension disabled.
 async function detectCanvasPage() {
-    try {
-        const courses = await getData(`${domain}/api/v1/courses?${/*enrollment_state=active&*/""}per_page=100`);
-        if (isCanvasCourseList(courses)) {
-            return { isCanvas: true, courses };
+    const RETRY_DELAYS = [0, 1500, 4000, 9000];
+    let lastError = null;
+
+    for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
+        if (RETRY_DELAYS[attempt]) await sleep(RETRY_DELAYS[attempt]);
+
+        // At document_start the document is empty, so the markup fingerprints only
+        // mean something once parsing has finished. The API call itself runs right
+        // away: it is the fast path for normal Canvas pages.
+        const domReady = document.readyState !== "loading";
+        const score = canvasMarkupScore();
+
+        // Keep retrying only when the page looks like Canvas or the API answered
+        // with an auth/server error (i.e. we were too early). Otherwise we would
+        // fire four API calls at every site the user visits.
+        if (attempt > 0 && domReady && score === 0 && !isTransientDetectError(lastError)) break;
+
+        try {
+            const courses = await getData(`${domain}/api/v1/courses?per_page=100`);
+            if (isCanvasCourseList(courses)) {
+                return { isCanvas: true, courses };
+            }
+            if (Array.isArray(courses)) {
+                // A JSON array is Canvas' own API shape. With zero courses the
+                // account simply has no active enrollments (observer/parent, new
+                // term) — those used to be missed because the check required items.
+                if (score > 0) return { isCanvas: true, courses };
+                // Empty-handed before the DOM exists: not enough information yet.
+                if (!domReady) continue;
+                break;
+            }
+            break;
+        } catch (err) {
+            lastError = err;
         }
-        console.log("Canvas Refined - this url doesn't seem to be a canvas url (1)");
-        return { isCanvas: false, courses: null };
-    } catch (err) {
-        console.log("Canvas Refined - this url doesn't seem to be a canvas url (2)");
-        return { isCanvas: false, courses: null };
     }
+
+    console.log("Canvas Refined - this url doesn't seem to be a canvas url");
+    return { isCanvas: false, courses: null };
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Canvas' window.ENV is a page-defined global: Firefox hides those behind Xray
+// wrappers, so read it through wrappedJSObject there.
+function pageWindow() {
+    try {
+        return window.wrappedJSObject || window;
+    } catch (_) {
+        return window;
+    }
+}
+
+// Cheap Canvas fingerprints from the DOM/globals. Used to accept an otherwise
+// empty courses list and to decide whether a failed request deserves a retry.
+// Score >= 2 is "almost certainly Canvas".
+function canvasMarkupScore() {
+    let score = 0;
+    try {
+        const env = pageWindow().ENV;
+        if (env && typeof env === "object" && (
+            env.CANVAS_URL || env.DOMAIN_ROOT_ACCOUNT_UUID || env.APP_CONTEXT ||
+            env.CURRENT_USER || env.current_user || env.context_asset_string || env.LOCALE
+        )) {
+            score += 2;
+        }
+    } catch (_) { /* ignore */ }
+
+    const has = selector => {
+        try { return !!document.querySelector(selector); } catch (_) { return false; }
+    };
+    if (has('link[href*="brandable_css"], script[src*="brandable_css"]')) score++;
+    if (has('#application.ic-Layout-wrapper, .ic-Layout-wrapper')) score++;
+    if (has('#header.ic-app-header, .ic-app-header__main-navigation, .ic-Dashboard-header__layout')) score++;
+    if (has('.ic-Login__body, #login_form')) score++;
+    return score;
+}
+
+function isTransientDetectError(err) {
+    const match = /\((\d{3})\)/.exec((err && err.message) || "");
+    if (!match) return true; // network/opaque failure: worth one more try
+    const status = Number(match[1]);
+    return status === 401 || status === 403 || status === 408 || status === 429 || status >= 500;
 }
 
 // Real Canvas courses carry a numeric id and name; looser checks misdetected sites like apstudents.collegeboard.org.
@@ -795,7 +893,7 @@ function addCanvasDomain(courses) {
                 domains.push(domain);
                 // just accepted: drop it from the decline list
                 chrome.storage.sync.get(["custom_domain_denied"], deniedStorage => {
-                    const denied = (deniedStorage.custom_domain_denied || []).filter(d => !domain.includes(d));
+                    const denied = (deniedStorage.custom_domain_denied || []).filter(d => !domainMatches(d));
                     chrome.storage.sync.set({ custom_domain: domains, custom_domain_denied: denied }).then(resolve);
                 });
             });
@@ -842,7 +940,7 @@ function showCanvasPrompt(courses) {
         dismiss();
         chrome.storage.sync.get(["custom_domain_denied"], storage => {
             const denied = storage.custom_domain_denied || [];
-            if (!denied.some(d => domain.includes(d))) denied.push(domain);
+            if (!denied.some(domainMatches)) denied.push(domain);
             chrome.storage.sync.set({ custom_domain_denied: denied });
         });
         startReminderMode();
@@ -2909,7 +3007,7 @@ async function createCanvasPlannerNote(payload) {
 
     let lastError = getMsg("canvas_rejected_create", "Canvas rejected task creation.");
     for (const attempt of attempts) {
-        const response = await fetch(domain + "/api/v1/planner_notes", {
+        const response = await pageFetch(domain + "/api/v1/planner_notes", {
             method: "POST",
             headers: attempt.headers,
             body: attempt.body,
@@ -3025,7 +3123,7 @@ async function updateCanvasPlannerNote(id, payload) {
 
     let lastError = getMsg("canvas_rejected_update", "Canvas rejected task update.");
     for (const attempt of attempts) {
-        const response = await fetch(`${domain}/api/v1/planner_notes/${id}`, {
+        const response = await pageFetch(`${domain}/api/v1/planner_notes/${id}`, {
             method: "PUT",
             headers: attempt.headers,
             body: attempt.body,
@@ -3052,7 +3150,7 @@ async function updateCanvasPlannerNote(id, payload) {
 async function deleteCanvasPlannerNote(id) {
     if (!id) throw new Error(getMsg("missing_task_id", "Missing task id."));
     const csrfToken = CSRFtoken();
-    const response = await fetch(`${domain}/api/v1/planner_notes/${id}`, {
+    const response = await pageFetch(`${domain}/api/v1/planner_notes/${id}`, {
         method: "DELETE",
         headers: {
             "content-type": "application/json",
@@ -3875,7 +3973,7 @@ async function loadTodoScores(items) {
             let url = `${domain}/api/v1/courses/${cid}/students/submissions?student_ids[]=self&per_page=100`;
             // Page cap guards against a malformed next link.
             for (let page = 0; page < 10 && url; page++) {
-                const response = await fetch(url, {
+                const response = await pageFetch(url, {
                     method: "GET",
                     headers: { "Content-Type": "application/json", "Accept": "application/json" }
                 });
@@ -4915,7 +5013,7 @@ function markAs(item, element, makeComplete, opts = {}) {
 
     // --- Persistence (background, best-effort) ---
     // Store the override id so later toggles PUT instead of POSTing a duplicate.
-    const sendOverride = (override) => fetch(domain + "/api/v1/planner/overrides" + (override && override.id ? "/" + override.id : ""), {
+    const sendOverride = (override) => pageFetch(domain + "/api/v1/planner/overrides" + (override && override.id ? "/" + override.id : ""), {
         method: override && override.id ? "PUT" : "POST",
         headers: {
             "content-type": "application/json",
@@ -4936,7 +5034,7 @@ function markAs(item, element, makeComplete, opts = {}) {
         const all = [];
         let url = domain + "/api/v1/planner/overrides?per_page=100";
         for (let page = 0; page < 10 && url; page++) {
-            const pageResp = await fetch(url, { headers: { "accept": "application/json" } });
+            const pageResp = await pageFetch(url, { headers: { "accept": "application/json" } });
             if (!pageResp.ok) return null;
             const data = await pageResp.json();
             if (!Array.isArray(data)) return null;
@@ -5767,8 +5865,8 @@ async function getPaletteCards() {
     if (cards.length > 0) return { cards, apiColors };
     try {
         const [cardsRes, colorsRes] = await Promise.all([
-            fetch(domain + "/api/v1/dashboard/dashboard_cards", { headers: { "accept": "application/json" } }),
-            fetch(domain + "/api/v1/users/self/colors", { headers: { "accept": "application/json" } })
+            pageFetch(domain + "/api/v1/dashboard/dashboard_cards", { headers: { "accept": "application/json" } }),
+            pageFetch(domain + "/api/v1/users/self/colors", { headers: { "accept": "application/json" } })
         ]);
         const apiCards = await cardsRes.json();
         apiColors = (await colorsRes.json())?.custom_colors || {};
@@ -5838,7 +5936,7 @@ async function changeColorPreset(colors) {
             };
 
             let changeCardColor = () => {
-                fetch(domain + "/api/v1/users/self/colors/courses_" + course_id,
+                pageFetch(domain + "/api/v1/users/self/colors/courses_" + course_id,
                     {
                         method: "PUT",
                         headers: {
@@ -9423,7 +9521,7 @@ async function fetchActiveCourseIds() {
         let response;
         let data;
         try {
-            response = await fetch(url, {
+            response = await pageFetch(url, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -9486,7 +9584,7 @@ async function fetchPlannerItemsSince(startDate) {
         let response;
         let data;
         try {
-            response = await fetch(url, {
+            response = await pageFetch(url, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -11306,8 +11404,23 @@ function makeElement(element, location, options, prepend = false) {
 }
 
 
+// Firefox content scripts run `fetch` with the *extension's* origin, so the
+// request loses the page's cookies and Referer/Origin; Canvas then answers
+// 401/403 (or a login page), which made detection and every API call fail on
+// Firefox only. `content.fetch` (Firefox 58+) sends the request exactly as the
+// page would. Chrome has no `content` global, so this is a no-op there.
+function pageFetch(url, init) {
+    const opts = { credentials: "include", cache: "no-store", ...init };
+    try {
+        if (typeof content !== "undefined" && content && typeof content.fetch === "function") {
+            return content.fetch(url, opts);
+        }
+    } catch (_) { /* fall through to the normal fetch */ }
+    return fetch(url, opts);
+}
+
 async function getData(url) {
-    let response = await fetch(url, {
+    let response = await pageFetch(url, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
