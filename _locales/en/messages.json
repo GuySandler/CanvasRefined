@@ -911,6 +911,12 @@
     "hide_links": {
         "message": "Hide links"
     },
+    "rate_us_chrome": {
+        "message": "Enjoying the extension? Rate us on the Chrome Web Store!"
+    },
+    "rate_us_firefox": {
+        "message": "Enjoying the extension? Rate us on Firefox Add-ons!"
+    },
     "hide_navbar": {
         "message": "Hide Navigation Bar"
     },

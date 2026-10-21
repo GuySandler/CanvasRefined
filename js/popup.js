@@ -421,10 +421,25 @@ document.addEventListener("DOMContentLoaded", setup);
 document.addEventListener("DOMContentLoaded", () => {
     const toggle = document.getElementById("social-toggle");
     const buttons = document.querySelector(".social-buttons");
+    const rateLink = document.getElementById("rate-link");
     if (!toggle || !buttons) return;
+
+    // One review link, pointed at whichever store this browser installs from.
+    if (rateLink) {
+        const isFirefox = /firefox/i.test(navigator.userAgent);
+        const key = isFirefox ? "rate_us_firefox" : "rate_us_chrome";
+        rateLink.href = isFirefox
+            ? "https://addons.mozilla.org/en-US/firefox/addon/canvas-refined/reviews/"
+            : "https://chromewebstore.google.com/detail/canvas-refined/ihienfbdfdamhmhhiokjnjmpjgbenedg/reviews";
+        rateLink.dataset.i18n = key;
+        const msg = getMsg(key);
+        if (msg) rateLink.textContent = msg;
+    }
+
     const KEY = "hide_socials";
     const render = (hidden) => {
         buttons.classList.toggle("hidden", hidden);
+        if (rateLink) rateLink.classList.toggle("hidden", hidden);
         toggle.textContent = getMsg(hidden ? "show_links" : "hide_links") || (hidden ? "Show links" : "Hide links");
     };
     chrome.storage.local.get(KEY, (res) => render(!!res[KEY]));

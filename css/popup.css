@@ -129,6 +129,9 @@ h2 {margin-top: 20px;font-weight:600}
 .social-toggle {text-align: center;font-size: 12px;color: #9a9a9a;cursor: pointer;user-select: none;transition: .15s color;text-decoration: underline;text-underline-offset: 3px;padding: 4px 10px;border-radius: 6px;}
 .social-toggle:hover {color: #e2e2e2;background: #ffffff0a;}
 .social-buttons.hidden {display: none}
+.rate-link {font-size: 12px;color: #9a9a9a;text-align: center;text-decoration: underline;text-underline-offset: 3px;font-weight: 600;padding: 2px 8px;border-radius: 6px;transition: .15s color, .15s background;}
+.rate-link:hover {color: #e2e2e2;background: #ffffff0a;}
+.rate-link.hidden {display: none}
 .social-footer:has(.social-buttons.hidden) {padding-top: 8px;border-top-color: transparent;margin-top: 8px;}
 #setSingleColor, #setGradientColor {padding: 8px 20px;margin-top:5px;}
 .tab-header {display: flex;justify-content: space-between;gap:20px;align-items:center}

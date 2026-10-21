@@ -618,3 +618,9 @@
 .cr-quote-mark {font-size:clamp(20px,11cqw,44px);line-height:.5;font-weight:800;color:color-mix(in srgb, var(--bclinks,#0374b5) 55%, transparent);}
 .cr-quote-text {margin:0;font-size:clamp(14px,7.5cqw,26px);line-height:1.45;font-style:italic;color:var(--bctext-0,#2d3b45);}
 .cr-quote-author {font-size:clamp(11px,3.6cqw,17px);font-weight:600;color:var(--bctext-2,#9aa3ab);align-self:flex-end;}
+
+/* Canvas' SpeedGrader/document preview container: give the preview 80% of its
+   parent instead of Canvas' default height. */
+#doc_preview {
+    height: 80% !important;
+}
