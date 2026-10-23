@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'quick_links', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
 	"hide_course_images",
@@ -19,6 +19,7 @@ const syncedSubOptions = [
 	"gpa_calc_prepend",
 	"gpa_calc_cumulative",
 	"gpa_calc_weighted",
+	"gpa_calc_show_on_hover",
 	"focus_timer_position",
 	"focus_timer_preset_1",
 	"focus_timer_preset_2",
@@ -28,12 +29,14 @@ const syncedSubOptions = [
 	"breathing_preset_2",
 	"breathing_preset_3",
 	"daily_quotes_position",
+	"quick_links_position",
 	"widget_row_height",
 	"dashboard_notes_height",
 	"gpa_calc_height",
 	"focus_timer_height",
 	"breathing_height",
 	"daily_quotes_height",
+	"quick_links_height",
 	"auto_dark",
 	"auto_dark_start",
 	"auto_dark_end",
@@ -189,7 +192,7 @@ const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "ima
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
-const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
+const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles": every visual toggle, minus GPA/schedule/productivity.
 const exportToggles = ["dark_mode", "quiz_safe_mode", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
@@ -239,6 +242,7 @@ const defaultOptions = {
         "dashboard_notes_mode": "edit",
         "dashboard_notes_position": "top",
         "gpa_calc_position": "cards_end",
+        "gpa_calc_show_on_hover": false,
         "focus_timer": false,
         "focus_timer_position": "cards_end",
         "focus_timer_preset_1": { "h": 0, "m": 15, "s": 0 },
@@ -251,6 +255,8 @@ const defaultOptions = {
         "breathing_preset_3": { "h": 0, "m": 10, "s": 0 },
         "daily_quotes": false,
         "daily_quotes_position": "top",
+        "quick_links": false,
+        "quick_links_position": "cards_end",
         // Height in px (0 = auto); widget_row_height is the shared Top/Bottom row.
         "widget_row_height": 0,
         "dashboard_notes_height": 0,
@@ -258,6 +264,7 @@ const defaultOptions = {
         "focus_timer_height": 0,
         "breathing_height": 0,
         "daily_quotes_height": 0,
+        "quick_links_height": 0,
         "better_todo": true,
         "better_sidebar": false,
         "sidebar_scale": 100,
@@ -1070,6 +1077,7 @@ const WIDGET_LIST = [
     { id: "focus_timer", nameKey: "focus_timer", shortKey: "widget_short_focus" },
     { id: "breathing", nameKey: "breathing_breaks", shortKey: "widget_short_breathing" },
     { id: "daily_quotes", nameKey: "daily_quotes", shortKey: "widget_short_quotes" },
+    { id: "quick_links", nameKey: "quick_links", shortKey: "widget_short_links" },
 ];
 
 function widgetPosFromSync(id, sync) {
@@ -1283,6 +1291,7 @@ function setupWidgetPosition() {
         { select: "focus_timer_position", key: "focus_timer_position" },
         { select: "breathing_position", key: "breathing_position" },
         { select: "daily_quotes_position", key: "daily_quotes_position" },
+        { select: "quick_links_position", key: "quick_links_position" },
     ].forEach(({ select, key }) => {
         const el = document.getElementById(select);
         if (!el) return;
@@ -1365,7 +1374,7 @@ function setupWidgetTimeInput(prefix, initial) {
 }
 
 function toggleSubOptionsVisibility(option, isOn) {
-    const togglesWithSubOptions = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
+    const togglesWithSubOptions = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "quick_links", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
     if (!togglesWithSubOptions.includes(option)) return;
     const optionEl = document.getElementById(option);
     if (!optionEl) return;
@@ -1717,6 +1726,7 @@ async function setup() {
 			"browser_show_likes",
 			"gpa_calc_weighted",
 			"gpa_calc_cumulative",
+			"gpa_calc_show_on_hover",
             "todo_hide_feedback",
             "todo_hide_read",
 			"todo_full_height",
@@ -1964,6 +1974,10 @@ async function setup() {
 				setup: (initial) => setupWidgetHeightInput("daily_quotes_height", initial),
 			},
 			{
+				identifier: "quick_links_height",
+				setup: (initial) => setupWidgetHeightInput("quick_links_height", initial),
+			},
+			{
 				identifier: "focus_timer_preset_1",
 				setup: (initial) => setupWidgetTimeInput("focus_timer_preset_1", initial),
 			},
@@ -2029,7 +2043,7 @@ async function setup() {
                     chrome.storage.sync.set({ "hide_course_images": false });
                 }
                 toggleSubOptionsVisibility(option, status);
-                if (option === "dashboard_notes" || option === "gpa_calc" || option === "focus_timer" || option === "breathing" || option === "daily_quotes") {
+                if (option === "dashboard_notes" || option === "gpa_calc" || option === "focus_timer" || option === "breathing" || option === "daily_quotes" || option === "quick_links") {
                     if (refreshWidgetOrder) refreshWidgetOrder();
                 }
             });
@@ -2039,7 +2053,7 @@ async function setup() {
         chrome.storage.sync.get("todo_celebrations_enabled", v => {
             toggleCelebrationOptionsVisibility(v["todo_celebrations_enabled"] !== false);
         });
-        ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
+        ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "quick_links", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
         toggleAlternateColorsVisibility(sync["dark_mode"] === true);

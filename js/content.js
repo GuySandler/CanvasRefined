@@ -1087,6 +1087,14 @@ function applyOptionsChanges(changes) {
 			case "daily_quotes_height":
 				loadDailyQuotesWidget();
 				break;
+			case "quick_links":
+			case "quick_links_position":
+			case "quick_links_height":
+				loadQuickLinksWidget();
+				break;
+			case "quick_links_items":
+				updateQuickLinksWidget();
+				break;
 			case "daily_quote":
 				document.querySelectorAll(".canvasrefined-quotes").forEach(el => {
 					renderDailyQuote(el, changes["daily_quote"].newValue);
@@ -1218,8 +1226,10 @@ function applyOptionsChanges(changes) {
 			case "gpa_calc_height":
 			case "gpa_calc_weighted":
 			case "gpa_calc_cumulative":
+			case "gpa_calc_show_on_hover":
 				if (!grades) getGrades();
 				setupGPACalc();
+				updateGpaHoverBlur();
 				// GPA elements take part in the grid layout, so regenerate the grid CSS.
 				if (options.card_grid === true) debouncedApplyAestheticChanges();
 				break;
@@ -5996,12 +6006,44 @@ const BC_LIGHT_DEFAULTS = {
     "text-2": "#4f4f4f"
 };
 
+const BC_DARK_DEFAULTS = {
+    "background-0": "#161616",
+    "background-1": "#1e1e1e",
+    "background-2": "#262626",
+    "borders": "#3c3c3c",
+    "text-0": "#f5f5f5",
+    "text-1": "#e2e2e2",
+    "text-2": "#ababab",
+    "links": "#56Caf0",
+    "sidebar": "#1e1e1e",
+    "sidebar-text": "#f5f5f5"
+};
+
+function generateWidgetDarkCSS() {
+    const preset = options.dark_preset || BC_DARK_DEFAULTS;
+    let css = "/* CanvasRefined widgets always use dark mode colors */\n";
+    css += ".canvasrefined-widget-card,\n";
+    css += ".canvasrefined-dashboard-notes,\n";
+    css += ".canvasrefined-gpa-card,\n";
+    css += ".canvasrefined-gpa,\n";
+    css += "#canvasrefined-gpa-modal,\n";
+    css += ".cr-gpa-modal,\n";
+    css += ".canvasrefined-widget-slot {\n";
+    Object.keys(preset).forEach((key) => {
+        css += "    --bc" + key + ": " + preset[key] + ";\n";
+    });
+    css += "}\n";
+    return css;
+}
+
 function generateDarkModeCSS() {
     let css = ":root{\n";
     Object.keys(BC_LIGHT_DEFAULTS).forEach((key) => {
         css += "    --bc" + key + ": " + BC_LIGHT_DEFAULTS[key] + ";\n";
     });
     css += "}\n\n";
+
+    css += generateWidgetDarkCSS() + "\n";
 
     const darkOn = options.dark_mode === true || options.device_dark === true;
     if (!darkOn) return css;
@@ -7181,9 +7223,9 @@ function placeGPAElements(dashboardContainer, container, container2) {
     }
 }
 
-const CR_WIDGET_IDS = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes"];
+const CR_WIDGET_IDS = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "quick_links"];
 // Widgets rendered by the generic loader: one root element, no GPA-style pair.
-const CR_SIMPLE_WIDGET_IDS = ["focus_timer", "breathing", "daily_quotes"];
+const CR_SIMPLE_WIDGET_IDS = ["focus_timer", "breathing", "daily_quotes", "quick_links"];
 function isCRWidget(id) { return CR_WIDGET_IDS.indexOf(id) !== -1; }
 
 // Shared full-width row (top/below): slot width is the % from the Widgets tab.
@@ -7507,6 +7549,12 @@ function openGpaModal(dashboardContainer, container, container2) {
     modal.addEventListener("mousedown", (e) => { if (e.target === modal) close(); });
 }
 
+function updateGpaHoverBlur() {
+    const card = document.querySelector(".canvasrefined-gpa-card");
+    if (!card) return;
+    card.classList.toggle("gpa-show-on-hover", options.gpa_calc_show_on_hover === true);
+}
+
 // Bounded retry while Canvas renders the container, instead of waiting for the observer.
 let gpaSetupRetryTimer = null;
 let gpaSetupAttempts = 0;
@@ -7563,6 +7611,7 @@ function setupGPACalc() {
         }
 
         placeGPAElements(dashboardContainer, container, container2);
+        updateGpaHoverBlur();
 
         try {
             if (sortableContainer && window.jQuery && window.jQuery.fn && window.jQuery.fn.sortable) {
@@ -7940,6 +7989,7 @@ const CR_WIDGET_DEFAULT_POSITION = {
     focus_timer: "cards_end",
     breathing: "cards_end",
     daily_quotes: "top",
+    quick_links: "cards_end",
 };
 
 function crWidgetPosition(id) {
@@ -8406,6 +8456,405 @@ function loadAllSimpleWidgets() {
     loadFocusTimer();
     loadBreathingWidget();
     loadDailyQuotesWidget();
+    loadQuickLinksWidget();
+}
+
+/* ---- Quick Links (editable links with theme-aware preset icons) ---- */
+
+const QUICK_LINK_ICONS = {
+    link: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5 14.5 9.5"/><path d="M7 17a4.5 4.5 0 0 1 0-6.36l2.12-2.12a4.5 4.5 0 0 1 6.36 0"/><path d="M17 7a4.5 4.5 0 0 1 0 6.36l-2.12 2.12a4.5 4.5 0 0 1-6.36 0"/></svg>`,
+    home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.5 20v-6h5v6"/></svg>`,
+    book: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C10.5 5 8.5 4.5 4 4.5v14c4.5 0 6.5.5 8 2 1.5-1.5 3.5-2 8-2v-14c-4.5 0-6.5.5-8 2Z"/><path d="M12 6.5v14"/></svg>`,
+    calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>`,
+    mail: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/></svg>`,
+    video: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="14" height="12" rx="2.5"/><path d="m16.5 10 5-3v10l-5-3"/></svg>`,
+    code: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4"/><path d="m16 8 4 4-4 4"/><path d="m13.5 5-3 14"/></svg>`,
+    chart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,
+    chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>`,
+    star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/></svg>`,
+};
+const QUICK_LINK_ICON_KEYS = Object.keys(QUICK_LINK_ICONS);
+const QUICK_LINK_ICON_LABELS = {
+    link: "Link", home: "Home", book: "Book", calendar: "Calendar", mail: "Mail",
+    video: "Video", code: "Code", chart: "Chart", chat: "Chat", star: "Star",
+};
+
+const quickLinksUI = { editing: false, mode: null, id: null, error: "" };
+
+function crEscapeHtml(value) {
+    return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// Blocks script-ish schemes; plain "example.com" becomes https, bare paths stay Canvas-relative.
+function quickLinksSafeUrl(value, isImage) {
+    const raw = String(value == null ? "" : value).trim();
+    if (!raw) return "";
+    if (isImage) {
+        if (/^data:image\/(?:png|jpe?g|gif|webp|svg\+xml);/i.test(raw)) return raw.length <= 4000 ? raw : "";
+        if (/^https?:\/\//i.test(raw)) return raw;
+        if (/^\/\//.test(raw)) return "https:" + raw;
+        if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return "";
+        if (/^[\w-]+(?:\.[\w-]+)+(?::\d+)?(?=[/?#]|$)/.test(raw)) return "https://" + raw;
+        return "";
+    }
+    if (/^\/\//.test(raw)) return "https:" + raw;
+    if (/^(?:\/|#|\?)/.test(raw)) return raw;
+    if (/^(?:https?:|mailto:|tel:)/i.test(raw)) return raw;
+    if (/^(?:javascript:|vbscript:|file:|data:|blob:)/i.test(raw)) return "";
+    if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return "";
+    if (/^[\w-]+(?:\.[\w-]+)+(?::\d+)?(?=[/?#]|$)/.test(raw)) return "https://" + raw;
+    return "/" + raw.replace(/^\.?\/+/, "");
+}
+
+function quickLinksLabelFromUrl(url) {
+    try {
+        const parsed = new URL(url, window.location.origin);
+        if (parsed.hostname && parsed.hostname !== window.location.hostname) {
+            return parsed.hostname.replace(/^www\./i, "");
+        }
+        const part = parsed.pathname.split("/").filter(Boolean).pop();
+        if (part) return decodeURIComponent(part).replace(/[-_]+/g, " ");
+        return parsed.hostname || url;
+    } catch (e) {
+        return url;
+    }
+}
+
+function quickLinksSanitizeItem(raw, index) {
+    if (!raw || typeof raw !== "object") return null;
+    const url = quickLinksSafeUrl(raw.url, false);
+    if (!url) return null;
+    let image = raw.icon === "image" ? quickLinksSafeUrl(raw.image, true) : "";
+    const icon = image ? "image" : (QUICK_LINK_ICONS[raw.icon] ? raw.icon : "link");
+    let label = typeof raw.label === "string" ? raw.label.trim().slice(0, 60) : "";
+    if (!label) label = quickLinksLabelFromUrl(url).slice(0, 60);
+    return {
+        id: typeof raw.id === "string" && raw.id ? raw.id : "ql_legacy_" + index,
+        label: label,
+        url: url,
+        icon: icon,
+        image: icon === "image" ? image : "",
+    };
+}
+
+function quickLinksItems() {
+    const raw = options.quick_links_items;
+    if (!Array.isArray(raw)) return [];
+    return raw.map(quickLinksSanitizeItem).filter(Boolean);
+}
+
+function quickLinksIconMarkup(item) {
+    const image = item.icon === "image" ? quickLinksSafeUrl(item.image, true) : "";
+    if (image) return `<img src="${crEscapeHtml(image)}" alt="" loading="lazy">`;
+    return QUICK_LINK_ICONS[item.icon] || QUICK_LINK_ICONS.link;
+}
+
+function quickLinksTileHtml(item, editing) {
+    const label = crEscapeHtml(item.label || quickLinksLabelFromUrl(item.url));
+    const letter = crEscapeHtml((item.label || quickLinksLabelFromUrl(item.url) || "?").trim().charAt(0).toUpperCase() || "?");
+    const icon = `<span class="cr-ql-icon">${quickLinksIconMarkup(item)}<span class="cr-ql-icon-letter" aria-hidden="true">${letter}</span></span>`;
+    if (editing) {
+        return `<div class="cr-ql-tile is-editing" role="button" tabindex="0" data-ql-action="edit" data-ql-id="${crEscapeHtml(item.id)}" title="${getMsg("quick_links_edit_link", "Edit link")}">
+            ${icon}<span class="cr-ql-label">${label}</span>
+            <button type="button" class="cr-ql-tile-delete" data-ql-action="delete" data-ql-id="${crEscapeHtml(item.id)}" title="${getMsg("quick_links_delete", "Delete")}" aria-label="${getMsg("quick_links_delete", "Delete")}">&times;</button>
+        </div>`;
+    }
+    return `<a class="cr-ql-tile" href="${crEscapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" title="${label}" data-ql-id="${crEscapeHtml(item.id)}">
+        ${icon}<span class="cr-ql-label">${label}</span>
+    </a>`;
+}
+
+function quickLinksGridHtml(items, editing) {
+    const tiles = items.map(item => quickLinksTileHtml(item, editing)).join("");
+    const error = quickLinksUI.error
+        ? `<p class="cr-ql-error">${crEscapeHtml(quickLinksUI.error)}</p>`
+        : "";
+    if (editing) {
+        return `<div class="cr-ql-hint">${getMsg("quick_links_hint_edit", "Click a link to edit it.")}</div>
+            ${error}<div class="cr-ql-grid">${tiles}
+                <button type="button" class="cr-ql-tile cr-ql-add" data-ql-action="add">
+                    <span class="cr-ql-add-plus" aria-hidden="true">+</span>
+                    <span class="cr-ql-label">${getMsg("quick_links_add", "Add link")}</span>
+                </button>
+            </div>`;
+    }
+    if (!items.length) {
+        return `<div class="cr-ql-empty">
+            <span>${getMsg("quick_links_empty", "No links yet.")}</span>
+            <button type="button" class="cr-widget-btn" data-ql-action="add">${getMsg("quick_links_add", "Add link")}</button>
+        </div>`;
+    }
+    return `<div class="cr-ql-grid">${tiles}</div>`;
+}
+
+function quickLinksEditorHtml(item) {
+    const isEdit = quickLinksUI.mode === "edit";
+    const icon = item && item.icon !== "image" ? item.icon : "link";
+    const image = item && item.icon === "image" ? item.image : "";
+    const picks = QUICK_LINK_ICON_KEYS.map(key => `
+        <button type="button" class="cr-ql-icon-choice${icon === key ? " is-active" : ""}" data-ql-action="icon" data-icon="${key}" title="${QUICK_LINK_ICON_LABELS[key] || key}" aria-label="${QUICK_LINK_ICON_LABELS[key] || key}">${QUICK_LINK_ICONS[key]}</button>`).join("");
+    const preview = image
+        ? `<img src="${crEscapeHtml(image)}" alt="" loading="lazy">`
+        : QUICK_LINK_ICONS[icon] || QUICK_LINK_ICONS.link;
+    return `<div class="cr-ql-editor">
+        <div class="cr-ql-editor-title">${isEdit ? getMsg("quick_links_edit_title", "Edit link") : getMsg("quick_links_add_title", "New link")}</div>
+        <label class="cr-ql-field">${getMsg("quick_links_label", "Label")}
+            <input type="text" class="cr-ql-input cr-ql-label-input" maxlength="60" placeholder="${getMsg("quick_links_label_ph", "e.g. Canvas")}" value="${crEscapeHtml(item ? item.label : "")}">
+        </label>
+        <label class="cr-ql-field">${getMsg("quick_links_url", "URL")}
+            <input type="text" class="cr-ql-input cr-ql-url-input" maxlength="2048" placeholder="${getMsg("quick_links_url_ph", "https://...")}" value="${crEscapeHtml(item ? item.url : "")}">
+        </label>
+        <div class="cr-ql-field">${getMsg("quick_links_icon", "Icon")}
+            <div class="cr-ql-icon-picker">${picks}</div>
+        </div>
+        <label class="cr-ql-field">${getMsg("quick_links_custom_image", "Custom image URL")}
+            <div class="cr-ql-custom-row">
+                <span class="cr-ql-custom-preview">${preview}</span>
+                <input type="text" class="cr-ql-input cr-ql-image-input" maxlength="4000" placeholder="${getMsg("quick_links_custom_image_ph", "https://example.com/icon.png")}" value="${crEscapeHtml(image)}">
+            </div>
+        </label>
+        <p class="cr-ql-error" ${quickLinksUI.error ? "" : "hidden"}>${crEscapeHtml(quickLinksUI.error)}</p>
+        <div class="cr-ql-editor-actions">
+            <button type="button" class="cr-widget-btn" data-ql-action="save">${getMsg("quick_links_save", "Save")}</button>
+            <button type="button" class="cr-widget-btn cr-widget-btn-ghost" data-ql-action="cancel">${getMsg("quick_links_cancel", "Cancel")}</button>
+        </div>
+        ${isEdit ? `<button type="button" class="cr-ql-delete-link" data-ql-action="delete" data-ql-id="${crEscapeHtml(quickLinksUI.id || "")}">${getMsg("quick_links_delete", "Delete")}</button>` : ""}
+    </div>`;
+}
+
+function renderQuickLinks(el) {
+    if (!el) return;
+    const body = el.querySelector(".cr-ql-body");
+    const toggle = el.querySelector(".cr-ql-edit-toggle");
+    if (!body) return;
+    body.classList.toggle("is-editing", quickLinksUI.editing);
+    if (quickLinksUI.mode) {
+        const items = quickLinksItems();
+        const item = quickLinksUI.mode === "edit" ? items.find(i => i.id === quickLinksUI.id) : null;
+        body.innerHTML = quickLinksEditorHtml(item);
+    } else {
+        body.innerHTML = quickLinksGridHtml(quickLinksItems(), quickLinksUI.editing);
+    }
+    if (toggle) {
+        const done = quickLinksUI.editing;
+        toggle.classList.toggle("is-editing", done);
+        toggle.title = done ? getMsg("quick_links_done", "Done") : getMsg("quick_links_edit", "Edit links");
+        toggle.setAttribute("aria-label", toggle.title);
+        toggle.innerHTML = done
+            ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>`
+            : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+    }
+}
+
+function quickLinksCloseEditor(keepEditing) {
+    quickLinksUI.editing = keepEditing === true;
+    quickLinksUI.mode = null;
+    quickLinksUI.id = null;
+    quickLinksUI.error = "";
+}
+
+function quickLinksPersist(items, el) {
+    // Drop our bookkeeping fields and keep only serializable link data.
+    const payload = items.map(item => ({
+        id: item.id,
+        label: item.label,
+        url: item.url,
+        icon: item.icon,
+        image: item.icon === "image" ? item.image : "",
+    }));
+    const previous = options.quick_links_items;
+    options = { ...options, quick_links_items: payload };
+    renderQuickLinks(el);
+    chrome.storage.sync.set({ quick_links_items: payload }, () => {
+        if (chrome.runtime.lastError) {
+            options = { ...options, quick_links_items: previous };
+            quickLinksUI.editing = true;
+            quickLinksUI.error = getMsg("quick_links_store_error", "Couldn't save your links. Try shorter URLs.");
+            renderQuickLinks(el);
+        }
+    });
+}
+
+function quickLinksShowError(el, message, focusSelector) {
+    quickLinksUI.error = message;
+    const errorEl = el.querySelector(".cr-ql-error");
+    if (errorEl) {
+        errorEl.hidden = false;
+        errorEl.textContent = message;
+    }
+    if (focusSelector) {
+        const field = el.querySelector(focusSelector);
+        if (field) field.focus();
+    }
+}
+
+function quickLinksSaveEditor(el) {
+    const labelEl = el.querySelector(".cr-ql-label-input");
+    const urlEl = el.querySelector(".cr-ql-url-input");
+    const imageEl = el.querySelector(".cr-ql-image-input");
+    const active = el.querySelector(".cr-ql-icon-choice.is-active");
+    const rawUrl = urlEl ? urlEl.value.trim() : "";
+    const rawImage = imageEl ? imageEl.value.trim() : "";
+    const url = quickLinksSafeUrl(rawUrl, false);
+    const image = rawImage ? quickLinksSafeUrl(rawImage, true) : "";
+    if (!url) {
+        quickLinksShowError(el, getMsg("quick_links_url_error", "Enter a valid URL."), ".cr-ql-url-input");
+        return;
+    }
+    if (rawImage && !image) {
+        quickLinksShowError(el, getMsg("quick_links_image_error", "Enter a valid image URL."), ".cr-ql-image-input");
+        return;
+    }
+    const items = quickLinksItems();
+    let label = labelEl ? labelEl.value.trim().slice(0, 60) : "";
+    if (!label) label = quickLinksLabelFromUrl(url).slice(0, 60);
+    const icon = image ? "image" : ((active && active.dataset.icon) || "link");
+    if (quickLinksUI.mode === "edit") {
+        const index = items.findIndex(item => item.id === quickLinksUI.id);
+        if (index !== -1) items[index] = { ...items[index], label, url, icon, image };
+        else items.push({ id: "ql_" + Date.now().toString(36), label, url, icon, image });
+    } else {
+        items.push({ id: "ql_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), label, url, icon, image });
+    }
+    quickLinksCloseEditor(true);
+    quickLinksPersist(items, el);
+}
+
+function quickLinksOpenEditor(el, mode, id) {
+    quickLinksUI.editing = true;
+    quickLinksUI.mode = mode;
+    quickLinksUI.id = id || null;
+    quickLinksUI.error = "";
+    renderQuickLinks(el);
+    const label = el.querySelector(".cr-ql-label-input");
+    if (label) label.focus();
+}
+
+function quickLinksDelete(el, id) {
+    if (!id) return;
+    if (!window.confirm(getMsg("quick_links_delete_confirm", "Delete this link?"))) return;
+    const items = quickLinksItems().filter(item => item.id !== id);
+    quickLinksCloseEditor(true);
+    quickLinksPersist(items, el);
+}
+
+function wireQuickLinks(el) {
+    el.addEventListener("click", e => {
+        const toggle = e.target.closest(".cr-ql-edit-toggle");
+        if (toggle) {
+            if (quickLinksUI.editing) quickLinksCloseEditor(false);
+            else quickLinksUI.editing = true;
+            renderQuickLinks(el);
+            return;
+        }
+        const actionEl = e.target.closest("[data-ql-action]");
+        if (!actionEl) return;
+        const action = actionEl.dataset.qlAction;
+        if (action === "add") {
+            e.preventDefault();
+            quickLinksOpenEditor(el, "add", null);
+        } else if (action === "edit") {
+            e.preventDefault();
+            quickLinksOpenEditor(el, "edit", actionEl.dataset.qlId);
+        } else if (action === "delete") {
+            e.preventDefault();
+            quickLinksDelete(el, actionEl.dataset.qlId);
+        } else if (action === "save") {
+            e.preventDefault();
+            quickLinksSaveEditor(el);
+        } else if (action === "cancel") {
+            e.preventDefault();
+            quickLinksCloseEditor(true);
+            renderQuickLinks(el);
+        } else if (action === "icon") {
+            e.preventDefault();
+            el.querySelectorAll(".cr-ql-icon-choice.is-active").forEach(btn => btn.classList.remove("is-active"));
+            actionEl.classList.add("is-active");
+            const imageEl = el.querySelector(".cr-ql-image-input");
+            if (imageEl) imageEl.value = "";
+            const preview = el.querySelector(".cr-ql-custom-preview");
+            if (preview) preview.innerHTML = QUICK_LINK_ICONS[actionEl.dataset.icon] || QUICK_LINK_ICONS.link;
+        }
+    });
+
+    el.addEventListener("input", e => {
+        const target = e.target;
+        if (target.classList.contains("cr-ql-image-input")) {
+            el.querySelectorAll(".cr-ql-icon-choice.is-active").forEach(btn => btn.classList.remove("is-active"));
+            const preview = el.querySelector(".cr-ql-custom-preview");
+            const image = quickLinksSafeUrl(target.value.trim(), true);
+            if (preview) preview.innerHTML = image
+                ? `<img src="${crEscapeHtml(image)}" alt="" loading="lazy">`
+                : QUICK_LINK_ICONS.link;
+        }
+        if (quickLinksUI.error) {
+            quickLinksUI.error = "";
+            const errorEl = el.querySelector(".cr-ql-error");
+            if (errorEl) { errorEl.hidden = true; errorEl.textContent = ""; }
+        }
+    });
+
+    el.addEventListener("keydown", e => {
+        if (!el.querySelector(".cr-ql-editor")) {
+            if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-ql-action='edit']")) {
+                e.preventDefault();
+                e.target.click();
+            }
+            return;
+        }
+        if (e.key === "Escape") {
+            e.preventDefault();
+            quickLinksCloseEditor(true);
+            renderQuickLinks(el);
+        } else if (e.key === "Enter" && e.target.matches && e.target.matches(".cr-ql-input")) {
+            e.preventDefault();
+            quickLinksSaveEditor(el);
+        }
+    });
+
+    // Custom image URLs can 404; reveal the label initial instead of a broken icon.
+    el.addEventListener("error", e => {
+        const img = e.target;
+        if (!img || img.tagName !== "IMG") return;
+        if (img.closest(".cr-ql-icon")) {
+            const tile = img.closest(".cr-ql-tile");
+            if (tile) tile.classList.add("cr-ql-img-broken");
+        } else if (img.closest(".cr-ql-custom-preview")) {
+            img.parentNode.innerHTML = QUICK_LINK_ICONS.link;
+        }
+    }, true);
+
+    renderQuickLinks(el);
+}
+
+function quickLinksHtml() { return `
+    <div class="cr-widget-head">
+        <span class="cr-widget-title">${getMsg("quick_links", "Quick Links")}</span>
+        <button type="button" class="cr-ql-edit-toggle" title="${getMsg("quick_links_edit", "Edit links")}" aria-label="${getMsg("quick_links_edit", "Edit links")}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+    </div>
+    <div class="cr-ql-body"></div>
+`; }
+
+function updateQuickLinksWidget() {
+    const el = document.querySelector(".canvasrefined-quick-links");
+    if (!el) return;
+    // Don't rebuild while the user is typing in the editor (e.g. our own storage echo).
+    if (quickLinksUI.mode && el.querySelector(".cr-ql-editor")) return;
+    renderQuickLinks(el);
+}
+
+function loadQuickLinksWidget() {
+    if (options.quick_links !== true) quickLinksCloseEditor(false);
+    crLoadWidget("quick_links", {
+        className: "canvasrefined-quick-links",
+        html: quickLinksHtml(),
+        wire: wireQuickLinks,
+        update: updateQuickLinksWidget,
+    });
 }
 
 

@@ -34,7 +34,7 @@
             <div class="more-options-container">
                 <button id="customize-dark-btn" class="big-button tab-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" /></svg>
-                    <span data-i18n="edit_dark_mode">Edit Dark Mode</span>
+                    <span data-i18n="edit_dark_mode">Dark Mode</span>
                 </button>
                 <button id="advanced-settings" class="big-button tab-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4H14C17.7712 4 19.6569 4 20.8284 5.17157C22 6.34315 22 8.22876 22 12C22 15.7712 22 17.6569 20.8284 18.8284C19.6569 20 17.7712 20 14 20H10C6.22876 20 4.34315 20 3.17157 18.8284C2 17.6569 2 15.7712 2 12Z"></path><path d="M10 16H6"></path><path d="M14 16H12.5"></path><path d="M2 10L22 10"></path></svg>
@@ -703,7 +703,7 @@
 
     <div class="customize-dark tab" style="display: none">
         <div class="tab-header">
-            <h2 style="margin-top: 0" data-i18n="edit_dark_mode">Edit dark mode</h2>
+            <h2 style="margin-top: 0" data-i18n="edit_dark_mode">Dark Mode</h2>
             <button class="big-button back-btn" data-i18n="back">Back</button>
         </div>
         <div class="customization">
@@ -1214,6 +1214,10 @@
                         <input type="checkbox" id="gpa_calc_weighted" name="gpa_calc_weighted">
                         <label for="gpa_calc_weighted" class="sub-text" data-i18n="gpa_calc_weighted">Show weighted GPA</label>
                     </div>
+                    <div class="sub-option" style="margin-top:5px">
+                        <input type="checkbox" id="gpa_calc_show_on_hover" name="gpa_calc_show_on_hover">
+                        <label for="gpa_calc_show_on_hover" class="sub-text" data-i18n="gpa_show_on_hover">Show on hover</label>
+                    </div>
                 </div>
             </div>
             <div class="option-container">
@@ -1344,6 +1348,32 @@
                     <div class="sub-option widget-inline-row" style="margin-top:6px;">
                         <label for="daily_quotes_height" class="sub-text widget-inline-label" data-i18n="height">Height</label>
                         <input type="number" id="daily_quotes_height" class="card-input" min="0" max="2000" data-i18n-placeholder="auto" placeholder="auto" style="width:92px;margin:0;">
+                        <span class="sub-text">px</span>
+                    </div>
+                </div>
+            </div>
+            <div class="option-container">
+                <div class="option" id="quick_links">
+                    <input type="radio" id="off" name="quick_links">
+                    <input type="radio" id="on" name="quick_links">
+                    <div class="slider">
+                        <div class="sliderknob"></div>
+                        <div class="sliderbg"></div>
+                    </div><span class="option-name" data-i18n="quick_links">Quick Links</span>
+                </div>
+                <div class="sub-options">
+                    <div class="sub-option widget-inline-row">
+                        <label for="quick_links_position" class="sub-text widget-inline-label" data-i18n="widget_position">Position</label>
+                        <select id="quick_links_position" class="widget-pos widget-inline-select">
+                            <option value="top" data-i18n="pos_top">Top</option>
+                            <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
+                            <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
+                            <option value="below" data-i18n="pos_below">Bottom</option>
+                        </select>
+                    </div>
+                    <div class="sub-option widget-inline-row" style="margin-top:6px;">
+                        <label for="quick_links_height" class="sub-text widget-inline-label" data-i18n="height">Height</label>
+                        <input type="number" id="quick_links_height" class="card-input" min="0" max="2000" data-i18n-placeholder="auto" placeholder="auto" style="width:92px;margin:0;">
                         <span class="sub-text">px</span>
                     </div>
                 </div>

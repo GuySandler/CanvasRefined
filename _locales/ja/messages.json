@@ -21,10 +21,26 @@
         "message": "いいね数を常に表示"
     },
     "assignment_avg": {
-        "message": "— $COUNT$ 件の課題の平均 $AVG$%:"
+        "message": "— $COUNT$ 件の課題の平均 $AVG$%:",
+        "placeholders": {
+            "avg": {
+                "content": "$AVG$",
+                "example": "AVG"
+            },
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "assignment_due_in": {
-        "message": "課題の期限まで $TIME$"
+        "message": "課題の期限まで $TIME$",
+        "placeholders": {
+            "time": {
+                "content": "$TIME$",
+                "example": "TIME"
+            }
+        }
     },
     "auto": {
         "message": "自動"
@@ -243,7 +259,17 @@
         "message": "完了"
     },
     "completed_total": {
-        "message": "$DONE$/$TOTAL$ 完了"
+        "message": "$DONE$/$TOTAL$ 完了",
+        "placeholders": {
+            "total": {
+                "content": "$TOTAL$",
+                "example": "TOTAL"
+            },
+            "done": {
+                "content": "$DONE$",
+                "example": "DONE"
+            }
+        }
     },
     "condensed_cards": {
         "message": "凝縮カード"
@@ -429,7 +455,13 @@
         "message": "期限"
     },
     "due_days": {
-        "message": "期限 <strong>$COUNT$日</strong>"
+        "message": "期限 <strong>$COUNT$日</strong>",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "due_later": {
         "message": "期限 <strong>後日</strong>"
@@ -447,7 +479,13 @@
         "message": "期限 <strong>明日</strong>"
     },
     "due_weeks": {
-        "message": "期限 <strong>$COUNT$週間</strong>"
+        "message": "期限 <strong>$COUNT$週間</strong>",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "edit_custom_task": {
         "message": "このカスタムタスクを編集"
@@ -555,7 +593,13 @@
         "message": "課題"
     },
     "final_avg": {
-        "message": "— 平均 $AVG$% ..."
+        "message": "— 平均 $AVG$% ...",
+        "placeholders": {
+            "avg": {
+                "content": "$AVG$",
+                "example": "AVG"
+            }
+        }
     },
     "final_waiting": {
         "message": "成績データを待っています…"
@@ -573,7 +617,17 @@
         "message": "Fixer はこれらのページで自動的に実行されます:"
     },
     "fix_took": {
-        "message": "修正に $TIME$ms かかりました (評価: $RATING$)"
+        "message": "修正に $TIME$ms かかりました (評価: $RATING$)",
+        "placeholders": {
+            "time": {
+                "content": "$TIME$",
+                "example": "TIME"
+            },
+            "rating": {
+                "content": "$RATING$",
+                "example": "RATING"
+            }
+        }
     },
     "flexible_grid": {
         "message": "フレキシブルグリッド"
@@ -606,13 +660,25 @@
         "message": "Y軸に合わせる"
     },
     "ga_heatmap_assignments": {
-        "message": "$COUNT$件の課題:"
+        "message": "$COUNT$件の課題:",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "ga_heatmap_avg": {
         "message": "平均"
     },
     "ga_heatmap_undated": {
-        "message": "期限のない評価済み課題$COUNT$件は表示されていません。"
+        "message": "期限のない評価済み課題$COUNT$件は表示されていません。",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "ga_line_title": {
         "message": "総合評価の推移"
@@ -666,10 +732,30 @@
         "message": "未評価"
     },
     "ga_sub_secured": {
-        "message": "期末試験で0点でも<b>$ZERO$%</b>となり、目標の<b>$TARGET$%</b>を上回ります。"
+        "message": "期末試験で0点でも<b>$ZERO$%</b>となり、目標の<b>$TARGET$%</b>を上回ります。",
+        "placeholders": {
+            "target": {
+                "content": "$TARGET$",
+                "example": "TARGET"
+            },
+            "zero": {
+                "content": "$ZERO$",
+                "example": "ZERO"
+            }
+        }
     },
     "ga_sub_unreachable": {
-        "message": "期末試験で満点でも<b>$PERFECT$%</b>にしかならず、目標の<b>$TARGET$%</b>を下回ります。"
+        "message": "期末試験で満点でも<b>$PERFECT$%</b>にしかならず、目標の<b>$TARGET$%</b>を下回ります。",
+        "placeholders": {
+            "perfect": {
+                "content": "$PERFECT$",
+                "example": "PERFECT"
+            },
+            "target": {
+                "content": "$TARGET$",
+                "example": "TARGET"
+            }
+        }
     },
     "ga_tab_calc": {
         "message": "期末計算"
@@ -702,13 +788,25 @@
         "message": "Imagine-Ifの得点（分子）。空欄 = 集計しない"
     },
     "ga_tooltip_assignments": {
-        "message": "$COUNT$件の課題"
+        "message": "$COUNT$件の課題",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "ga_you_got_this": {
         "message": "いけますよ！"
     },
     "ga_you_need": {
-        "message": "期末試験で$PCT$%以上必要です"
+        "message": "期末試験で$PCT$%以上必要です",
+        "placeholders": {
+            "pct": {
+                "content": "$PCT$",
+                "example": "PCT"
+            }
+        }
     },
     "get_active_cards": {
         "message": "ダッシュボードからアクティブなカードを取得"
@@ -834,7 +932,13 @@
         "message": "成績を分析するためのツールを追加します。"
     },
     "grade_analytics_failed": {
-        "message": "成績分析の読み込みに失敗しました: $ERROR$"
+        "message": "成績分析の読み込みに失敗しました: $ERROR$",
+        "placeholders": {
+            "error": {
+                "content": "$ERROR$",
+                "example": "ERROR"
+            }
+        }
     },
     "grade_analytics_info_label": {
         "message": "成績分析の情報"
@@ -864,7 +968,29 @@
         "message": " (GPA計算を含む)"
     },
     "grid_warning": {
-        "message": "グリッドには$TOTAL$枚のカード$TOTAL_S$が入りますが、$ACTIVE$枚のカード$ACTIVE_S$$GPA_NOTE$があります - 一部のカードが切れる可能性があります。"
+        "message": "グリッドには$TOTAL$枚のカード$TOTAL_S$が入りますが、$ACTIVE$枚のカード$ACTIVE_S$$GPA_NOTE$があります - 一部のカードが切れる可能性があります。",
+        "placeholders": {
+            "gpa_note": {
+                "content": "$GPA_NOTE$",
+                "example": "GPA_NOTE"
+            },
+            "active_s": {
+                "content": "$ACTIVE_S$",
+                "example": "ACTIVE_S"
+            },
+            "total": {
+                "content": "$TOTAL$",
+                "example": "TOTAL"
+            },
+            "active": {
+                "content": "$ACTIVE$",
+                "example": "ACTIVE"
+            },
+            "total_s": {
+                "content": "$TOTAL_S$",
+                "example": "TOTAL_S"
+            }
+        }
     },
     "group_graded": {
         "message": "評価済み"
@@ -1023,16 +1149,34 @@
         "message": "NASAの天文写真"
     },
     "nasa_credit": {
-        "message": "クレジット: $CREDIT$"
+        "message": "クレジット: $CREDIT$",
+        "placeholders": {
+            "credit": {
+                "content": "$CREDIT$",
+                "example": "CREDIT"
+            }
+        }
     },
     "nasa_date": {
-        "message": "日付: $DATE$"
+        "message": "日付: $DATE$",
+        "placeholders": {
+            "date": {
+                "content": "$DATE$",
+                "example": "DATE"
+            }
+        }
     },
     "need_refresh": {
         "message": "変更を反映するにはページを更新する必要がある場合があります。"
     },
     "new_canvas_desc": {
-        "message": "Canvas Refinedが$HOST$でCanvasページを検出しました。canvasリストに追加しますか?"
+        "message": "Canvas Refinedが$HOST$でCanvasページを検出しました。canvasリストに追加しますか?",
+        "placeholders": {
+            "host": {
+                "content": "$HOST$",
+                "example": "HOST"
+            }
+        }
     },
     "new_canvas_detected": {
         "message": "新しいCanvasを検出"
@@ -1143,7 +1287,13 @@
         "message": "右上のパズルアイコンをクリックします"
     },
     "options_contact": {
-        "message": "問題や提案があれば $EMAIL$ までご連絡ください。フィードバックをお待ちしています！"
+        "message": "問題や提案があれば $EMAIL$ までご連絡ください。フィードバックをお待ちしています！",
+        "placeholders": {
+            "email": {
+                "content": "$EMAIL$",
+                "example": "EMAIL"
+            }
+        }
     },
     "options_how_to_access": {
         "message": "後でこのメニューを開く方法:"
@@ -1233,7 +1383,13 @@
         "message": "スイカ"
     },
     "percent_done": {
-        "message": "$PERCENT$%"
+        "message": "$PERCENT$%",
+        "placeholders": {
+            "percent": {
+                "content": "$PERCENT$",
+                "example": "PERCENT"
+            }
+        }
     },
     "personal_task": {
         "message": "個人タスク"
@@ -1290,13 +1446,51 @@
         "message": "プライバシー"
     },
     "progress_done": {
-        "message": "$DONE$/$TOTAL$ 完了"
+        "message": "$DONE$/$TOTAL$ 完了",
+        "placeholders": {
+            "total": {
+                "content": "$TOTAL$",
+                "example": "TOTAL"
+            },
+            "done": {
+                "content": "$DONE$",
+                "example": "DONE"
+            }
+        }
     },
     "progress_overall": {
-        "message": "$PCT$% ($DONE$/$TOTAL$)"
+        "message": "$PCT$% ($DONE$/$TOTAL$)",
+        "placeholders": {
+            "pct": {
+                "content": "$PCT$",
+                "example": "PCT"
+            },
+            "total": {
+                "content": "$TOTAL$",
+                "example": "TOTAL"
+            },
+            "done": {
+                "content": "$DONE$",
+                "example": "DONE"
+            }
+        }
     },
     "progress_pct": {
-        "message": "$PCT$% ($DONE$/$TOTAL$)"
+        "message": "$PCT$% ($DONE$/$TOTAL$)",
+        "placeholders": {
+            "pct": {
+                "content": "$PCT$",
+                "example": "PCT"
+            },
+            "total": {
+                "content": "$TOTAL$",
+                "example": "TOTAL"
+            },
+            "done": {
+                "content": "$DONE$",
+                "example": "DONE"
+            }
+        }
     },
     "quiz_dont_show": {
         "message": "今後表示しない"
@@ -1344,13 +1538,25 @@
         "message": "成績データを読み込み中…"
     },
     "relative_ago": {
-        "message": "$TIME$前"
+        "message": "$TIME$前",
+        "placeholders": {
+            "time": {
+                "content": "$TIME$",
+                "example": "TIME"
+            }
+        }
     },
     "relative_due_dates": {
         "message": "相対的な期日"
     },
     "relative_in": {
-        "message": "$TIME$後"
+        "message": "$TIME$後",
+        "placeholders": {
+            "time": {
+                "content": "$TIME$",
+                "example": "TIME"
+            }
+        }
     },
     "remlogo": {
         "message": "サイドバーのロゴを削除"
@@ -1425,16 +1631,34 @@
         "message": "新しいタブ"
     },
     "search_no_course": {
-        "message": "「$QUERY$」に一致するコースはありません。"
+        "message": "「$QUERY$」に一致するコースはありません。",
+        "placeholders": {
+            "query": {
+                "content": "$QUERY$",
+                "example": "QUERY"
+            }
+        }
     },
     "search_no_courses_grades": {
         "message": "成績を開けるコースが見つかりません。"
     },
     "search_no_match": {
-        "message": "「$QUERY$」の結果はありません。"
+        "message": "「$QUERY$」の結果はありません。",
+        "placeholders": {
+            "query": {
+                "content": "$QUERY$",
+                "example": "QUERY"
+            }
+        }
     },
     "search_no_match_hint": {
-        "message": "「$QUERY$」の結果はありません。別のキーワードを試してください。"
+        "message": "「$QUERY$」の結果はありません。別のキーワードを試してください。",
+        "placeholders": {
+            "query": {
+                "content": "$QUERY$",
+                "example": "QUERY"
+            }
+        }
     },
     "search_no_modules": {
         "message": "モジュールや課題が見つかりません..."
@@ -1443,7 +1667,13 @@
         "message": "モジュールや課題が見つかりません。コースの読み込み中であれば、後で検索を開き直してください。"
     },
     "search_no_results": {
-        "message": "「$QUERY$」の結果はありません。"
+        "message": "「$QUERY$」の結果はありません。",
+        "placeholders": {
+            "query": {
+                "content": "$QUERY$",
+                "example": "QUERY"
+            }
+        }
     },
     "search_open": {
         "message": "開く"
@@ -1488,7 +1718,13 @@
         "message": "セクション"
     },
     "selected_count": {
-        "message": "$COUNT$ 件選択中"
+        "message": "$COUNT$ 件選択中",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "show": {
         "message": "表示"
@@ -1533,7 +1769,13 @@
         "message": "空"
     },
     "storage_items": {
-        "message": " ($COUNT$件)"
+        "message": " ($COUNT$件)",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "storage_limit_error": {
         "message": "入力したデータがストレージの上限を超えているため保存できません。リンクを短くし、リンクには「画像をコピー」ではなく「画像アドレスをコピー」を使用してください。"
@@ -1620,7 +1862,13 @@
         "message": "テーマが次のガイドラインに従っていることを確認してください:"
     },
     "theme_number": {
-        "message": "テーマ $NUM$"
+        "message": "テーマ $NUM$",
+        "placeholders": {
+            "num": {
+                "content": "$NUM$",
+                "example": "NUM"
+            }
+        }
     },
     "theme_optin_reset": {
         "message": "テーマブラウザのオプトインをリセット"
@@ -1725,7 +1973,21 @@
         "message": "打ち消し線"
     },
     "todo_date_format": {
-        "message": "$DATE$ $TIME$（$RELATIVE$）"
+        "message": "$DATE$ $TIME$（$RELATIVE$）",
+        "placeholders": {
+            "relative": {
+                "content": "$RELATIVE$",
+                "example": "RELATIVE"
+            },
+            "time": {
+                "content": "$TIME$",
+                "example": "TIME"
+            },
+            "date": {
+                "content": "$DATE$",
+                "example": "DATE"
+            }
+        }
     },
     "todo_delete": {
         "message": "削除"
@@ -1863,7 +2125,13 @@
         "message": "もっと見る"
     },
     "view_more_count": {
-        "message": "もっと見る ($COUNT$)"
+        "message": "もっと見る ($COUNT$)",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "view_on_github": {
         "message": "GitHubで見る"
@@ -1891,5 +2159,8 @@
     },
     "widgets": {
         "message": "ウィジェット"
+    },
+    "gpa_show_on_hover": {
+        "message": "Show on hover"
     }
 }

@@ -21,10 +21,26 @@
         "message": "Mostra sempre il numero di Mi piace"
     },
     "assignment_avg": {
-        "message": "— media $AVG$% su $COUNT$ compito/i:"
+        "message": "— media $AVG$% su $COUNT$ compito/i:",
+        "placeholders": {
+            "avg": {
+                "content": "$AVG$",
+                "example": "AVG"
+            },
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "assignment_due_in": {
-        "message": "Compito in scadenza tra $TIME$"
+        "message": "Compito in scadenza tra $TIME$",
+        "placeholders": {
+            "time": {
+                "content": "$TIME$",
+                "example": "TIME"
+            }
+        }
     },
     "auto": {
         "message": "auto"
@@ -243,7 +259,17 @@
         "message": "completato"
     },
     "completed_total": {
-        "message": "$DONE$/$TOTAL$ completati"
+        "message": "$DONE$/$TOTAL$ completati",
+        "placeholders": {
+            "total": {
+                "content": "$TOTAL$",
+                "example": "TOTAL"
+            },
+            "done": {
+                "content": "$DONE$",
+                "example": "DONE"
+            }
+        }
     },
     "condensed_cards": {
         "message": "Carte condensate"
@@ -429,7 +455,13 @@
         "message": "Dovuto"
     },
     "due_days": {
-        "message": "Scade <strong>tra $COUNT$ giorni</strong>"
+        "message": "Scade <strong>tra $COUNT$ giorni</strong>",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "due_later": {
         "message": "Scade <strong>più tardi</strong>"
@@ -447,7 +479,13 @@
         "message": "Scade <strong>domani</strong>"
     },
     "due_weeks": {
-        "message": "Scade <strong>tra $COUNT$ settimane</strong>"
+        "message": "Scade <strong>tra $COUNT$ settimane</strong>",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "edit_custom_task": {
         "message": "Modifica questa attività personalizzata"
@@ -555,7 +593,13 @@
         "message": "compiti"
     },
     "final_avg": {
-        "message": "— media $AVG$% ..."
+        "message": "— media $AVG$% ...",
+        "placeholders": {
+            "avg": {
+                "content": "$AVG$",
+                "example": "AVG"
+            }
+        }
     },
     "final_waiting": {
         "message": "In attesa dei dati sui voti…"
@@ -573,7 +617,17 @@
         "message": "Il fissatore viene eseguito automaticamente su queste pagine:"
     },
     "fix_took": {
-        "message": "Correzione completata in $TIME$ms (valutazione: $RATING$)"
+        "message": "Correzione completata in $TIME$ms (valutazione: $RATING$)",
+        "placeholders": {
+            "time": {
+                "content": "$TIME$",
+                "example": "TIME"
+            },
+            "rating": {
+                "content": "$RATING$",
+                "example": "RATING"
+            }
+        }
     },
     "flexible_grid": {
         "message": "Griglia flessibile"
@@ -606,13 +660,25 @@
         "message": "Adatta asse Y"
     },
     "ga_heatmap_assignments": {
-        "message": "$COUNT$ consegna/e:"
+        "message": "$COUNT$ consegna/e:",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "ga_heatmap_avg": {
         "message": "media"
     },
     "ga_heatmap_undated": {
-        "message": "$COUNT$ consegna/e valutata/e senza data di scadenza non mostrata/e."
+        "message": "$COUNT$ consegna/e valutata/e senza data di scadenza non mostrata/e.",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "ga_line_title": {
         "message": "Voto complessivo nel tempo"
@@ -666,10 +732,30 @@
         "message": "Non valutate"
     },
     "ga_sub_secured": {
-        "message": "Anche con 0 all'esame finale resteresti a <b>$ZERO$%</b>, sopra il tuo obiettivo del <b>$TARGET$%</b>."
+        "message": "Anche con 0 all'esame finale resteresti a <b>$ZERO$%</b>, sopra il tuo obiettivo del <b>$TARGET$%</b>.",
+        "placeholders": {
+            "target": {
+                "content": "$TARGET$",
+                "example": "TARGET"
+            },
+            "zero": {
+                "content": "$ZERO$",
+                "example": "ZERO"
+            }
+        }
     },
     "ga_sub_unreachable": {
-        "message": "Anche un esame finale perfetto ti porterebbe solo a <b>$PERFECT$%</b>, sotto il tuo obiettivo del <b>$TARGET$%</b>."
+        "message": "Anche un esame finale perfetto ti porterebbe solo a <b>$PERFECT$%</b>, sotto il tuo obiettivo del <b>$TARGET$%</b>.",
+        "placeholders": {
+            "perfect": {
+                "content": "$PERFECT$",
+                "example": "PERFECT"
+            },
+            "target": {
+                "content": "$TARGET$",
+                "example": "TARGET"
+            }
+        }
     },
     "ga_tab_calc": {
         "message": "Calcolatore finale"
@@ -702,13 +788,25 @@
         "message": "Punteggio Imagine-If (numeratore); vuoto = non conteggiata"
     },
     "ga_tooltip_assignments": {
-        "message": "$COUNT$ consegna/e"
+        "message": "$COUNT$ consegna/e",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "ga_you_got_this": {
         "message": "Puoi farcela!"
     },
     "ga_you_need": {
-        "message": "Ti serve ≥ $PCT$% all'esame finale"
+        "message": "Ti serve ≥ $PCT$% all'esame finale",
+        "placeholders": {
+            "pct": {
+                "content": "$PCT$",
+                "example": "PCT"
+            }
+        }
     },
     "get_active_cards": {
         "message": "Ottieni card attive dalla dashboard"
@@ -834,7 +932,13 @@
         "message": "Aggiunge strumenti per aiutarti ad analizzare i tuoi voti."
     },
     "grade_analytics_failed": {
-        "message": "Impossibile caricare l'analisi dei voti: $ERROR$"
+        "message": "Impossibile caricare l'analisi dei voti: $ERROR$",
+        "placeholders": {
+            "error": {
+                "content": "$ERROR$",
+                "example": "ERROR"
+            }
+        }
     },
     "grade_analytics_info_label": {
         "message": "Informazioni sull'analisi dei voti"
@@ -864,7 +968,29 @@
         "message": " (incluso il calcolatore GPA)"
     },
     "grid_warning": {
-        "message": "La tua griglia contiene $TOTAL$ card$TOTAL_S$ ma ne hai $ACTIVE$ card$ACTIVE_S$$GPA_NOTE$ - alcune card potrebbero essere tagliate."
+        "message": "La tua griglia contiene $TOTAL$ card$TOTAL_S$ ma ne hai $ACTIVE$ card$ACTIVE_S$$GPA_NOTE$ - alcune card potrebbero essere tagliate.",
+        "placeholders": {
+            "gpa_note": {
+                "content": "$GPA_NOTE$",
+                "example": "GPA_NOTE"
+            },
+            "active_s": {
+                "content": "$ACTIVE_S$",
+                "example": "ACTIVE_S"
+            },
+            "total": {
+                "content": "$TOTAL$",
+                "example": "TOTAL"
+            },
+            "active": {
+                "content": "$ACTIVE$",
+                "example": "ACTIVE"
+            },
+            "total_s": {
+                "content": "$TOTAL_S$",
+                "example": "TOTAL_S"
+            }
+        }
     },
     "group_graded": {
         "message": "Valutate"
@@ -1023,16 +1149,34 @@
         "message": "Immagine astronomica del giorno NASA"
     },
     "nasa_credit": {
-        "message": "Crediti: $CREDIT$"
+        "message": "Crediti: $CREDIT$",
+        "placeholders": {
+            "credit": {
+                "content": "$CREDIT$",
+                "example": "CREDIT"
+            }
+        }
     },
     "nasa_date": {
-        "message": "Data: $DATE$"
+        "message": "Data: $DATE$",
+        "placeholders": {
+            "date": {
+                "content": "$DATE$",
+                "example": "DATE"
+            }
+        }
     },
     "need_refresh": {
         "message": "Potrebbe essere necessario aggiornare la pagina per vedere alcune modifiche."
     },
     "new_canvas_desc": {
-        "message": "Canvas Refined ha rilevato una pagina Canvas su $HOST$. Aggiungerla al tuo elenco Canvas?"
+        "message": "Canvas Refined ha rilevato una pagina Canvas su $HOST$. Aggiungerla al tuo elenco Canvas?",
+        "placeholders": {
+            "host": {
+                "content": "$HOST$",
+                "example": "HOST"
+            }
+        }
     },
     "new_canvas_detected": {
         "message": "Nuovo Canvas rilevato"
@@ -1143,7 +1287,13 @@
         "message": "Fai clic su questa icona del puzzle in alto a destra"
     },
     "options_contact": {
-        "message": "La mia email è $EMAIL$ se hai problemi o suggerimenti: qualsiasi feedback è apprezzato!"
+        "message": "La mia email è $EMAIL$ se hai problemi o suggerimenti: qualsiasi feedback è apprezzato!",
+        "placeholders": {
+            "email": {
+                "content": "$EMAIL$",
+                "example": "EMAIL"
+            }
+        }
     },
     "options_how_to_access": {
         "message": "Come accedere a questo menu in seguito:"
@@ -1233,7 +1383,13 @@
         "message": "Anguria"
     },
     "percent_done": {
-        "message": "$PERCENT$%"
+        "message": "$PERCENT$%",
+        "placeholders": {
+            "percent": {
+                "content": "$PERCENT$",
+                "example": "PERCENT"
+            }
+        }
     },
     "personal_task": {
         "message": "Attività personale"
@@ -1290,13 +1446,51 @@
         "message": "Privacy"
     },
     "progress_done": {
-        "message": "$DONE$/$TOTAL$ completati"
+        "message": "$DONE$/$TOTAL$ completati",
+        "placeholders": {
+            "total": {
+                "content": "$TOTAL$",
+                "example": "TOTAL"
+            },
+            "done": {
+                "content": "$DONE$",
+                "example": "DONE"
+            }
+        }
     },
     "progress_overall": {
-        "message": "$PCT$% ($DONE$/$TOTAL$)"
+        "message": "$PCT$% ($DONE$/$TOTAL$)",
+        "placeholders": {
+            "pct": {
+                "content": "$PCT$",
+                "example": "PCT"
+            },
+            "total": {
+                "content": "$TOTAL$",
+                "example": "TOTAL"
+            },
+            "done": {
+                "content": "$DONE$",
+                "example": "DONE"
+            }
+        }
     },
     "progress_pct": {
-        "message": "$PCT$% ($DONE$/$TOTAL$)"
+        "message": "$PCT$% ($DONE$/$TOTAL$)",
+        "placeholders": {
+            "pct": {
+                "content": "$PCT$",
+                "example": "PCT"
+            },
+            "total": {
+                "content": "$TOTAL$",
+                "example": "TOTAL"
+            },
+            "done": {
+                "content": "$DONE$",
+                "example": "DONE"
+            }
+        }
     },
     "quiz_dont_show": {
         "message": "Non mostrare più"
@@ -1344,13 +1538,25 @@
         "message": "Lettura dei dati sui voti…"
     },
     "relative_ago": {
-        "message": "$TIME$ fa"
+        "message": "$TIME$ fa",
+        "placeholders": {
+            "time": {
+                "content": "$TIME$",
+                "example": "TIME"
+            }
+        }
     },
     "relative_due_dates": {
         "message": "Date di scadenza relative"
     },
     "relative_in": {
-        "message": "tra $TIME$"
+        "message": "tra $TIME$",
+        "placeholders": {
+            "time": {
+                "content": "$TIME$",
+                "example": "TIME"
+            }
+        }
     },
     "remlogo": {
         "message": "Rimuovi il logo della barra laterale"
@@ -1425,16 +1631,34 @@
         "message": "nuova scheda"
     },
     "search_no_course": {
-        "message": "Nessun corso corrisponde a \"$QUERY$\"."
+        "message": "Nessun corso corrisponde a \"$QUERY$\".",
+        "placeholders": {
+            "query": {
+                "content": "$QUERY$",
+                "example": "QUERY"
+            }
+        }
     },
     "search_no_courses_grades": {
         "message": "Nessun corso disponibile per aprire i voti."
     },
     "search_no_match": {
-        "message": "Nessun risultato per \"$QUERY$\"."
+        "message": "Nessun risultato per \"$QUERY$\".",
+        "placeholders": {
+            "query": {
+                "content": "$QUERY$",
+                "example": "QUERY"
+            }
+        }
     },
     "search_no_match_hint": {
-        "message": "Nessun risultato per \"$QUERY$\". Prova con parole chiave diverse."
+        "message": "Nessun risultato per \"$QUERY$\". Prova con parole chiave diverse.",
+        "placeholders": {
+            "query": {
+                "content": "$QUERY$",
+                "example": "QUERY"
+            }
+        }
     },
     "search_no_modules": {
         "message": "Nessun modulo o compito trovato..."
@@ -1443,7 +1667,13 @@
         "message": "Nessun modulo o consegna trovato. Riapri la ricerca più tardi se i tuoi corsi sono ancora in caricamento."
     },
     "search_no_results": {
-        "message": "Nessun risultato per \"$QUERY$\"."
+        "message": "Nessun risultato per \"$QUERY$\".",
+        "placeholders": {
+            "query": {
+                "content": "$QUERY$",
+                "example": "QUERY"
+            }
+        }
     },
     "search_open": {
         "message": "apri"
@@ -1488,7 +1718,13 @@
         "message": "Sezione"
     },
     "selected_count": {
-        "message": "$COUNT$ selezionati"
+        "message": "$COUNT$ selezionati",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "show": {
         "message": "Mostra"
@@ -1533,7 +1769,13 @@
         "message": "vuota"
     },
     "storage_items": {
-        "message": " ($COUNT$ elementi)"
+        "message": " ($COUNT$ elementi)",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "storage_limit_error": {
         "message": "I dati che stai inserendo superano il limite di archiviazione, quindi non verranno salvati. Prova a usare link più brevi e assicurati di premere \"Copia indirizzo immagine\" e non \"Copia immagine\" per i link."
@@ -1620,7 +1862,13 @@
         "message": "Assicurati che il tuo tema rispetti queste linee guida:"
     },
     "theme_number": {
-        "message": "Tema $NUM$"
+        "message": "Tema $NUM$",
+        "placeholders": {
+            "num": {
+                "content": "$NUM$",
+                "example": "NUM"
+            }
+        }
     },
     "theme_optin_reset": {
         "message": "Adesione al browser dei temi ripristinata"
@@ -1725,7 +1973,21 @@
         "message": "Barra"
     },
     "todo_date_format": {
-        "message": "$DATE$ alle $TIME$ ($RELATIVE$)"
+        "message": "$DATE$ alle $TIME$ ($RELATIVE$)",
+        "placeholders": {
+            "relative": {
+                "content": "$RELATIVE$",
+                "example": "RELATIVE"
+            },
+            "time": {
+                "content": "$TIME$",
+                "example": "TIME"
+            },
+            "date": {
+                "content": "$DATE$",
+                "example": "DATE"
+            }
+        }
     },
     "todo_delete": {
         "message": "Elimina"
@@ -1863,7 +2125,13 @@
         "message": "Mostra di più"
     },
     "view_more_count": {
-        "message": "Mostra di più ($COUNT$)"
+        "message": "Mostra di più ($COUNT$)",
+        "placeholders": {
+            "count": {
+                "content": "$COUNT$",
+                "example": "COUNT"
+            }
+        }
     },
     "view_on_github": {
         "message": "Visualizza su GitHub"
@@ -1891,5 +2159,8 @@
     },
     "widgets": {
         "message": "Widget"
+    },
+    "gpa_show_on_hover": {
+        "message": "Show on hover"
     }
 }
