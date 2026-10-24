@@ -21,26 +21,10 @@
         "message": "Всегда показывать число лайков"
     },
     "assignment_avg": {
-        "message": "— в среднем $AVG$% по $COUNT$ заданиям:",
-        "placeholders": {
-            "avg": {
-                "content": "$AVG$",
-                "example": "AVG"
-            },
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "— в среднем {{AVG}}% по {{COUNT}} заданиям:"
     },
     "assignment_due_in": {
-        "message": "Задание нужно сдать через $TIME$",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            }
-        }
+        "message": "Задание нужно сдать через {{TIME}}"
     },
     "auto": {
         "message": "авто"
@@ -259,17 +243,7 @@
         "message": "готово"
     },
     "completed_total": {
-        "message": "$DONE$/$TOTAL$ выполнено",
-        "placeholders": {
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "{{DONE}}/{{TOTAL}} выполнено"
     },
     "condensed_cards": {
         "message": "Сжатые карты"
@@ -455,13 +429,7 @@
         "message": "Должный"
     },
     "due_days": {
-        "message": "Срок через <strong>$COUNT$ дн.</strong>",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "Срок через <strong>{{COUNT}} дн.</strong>"
     },
     "due_later": {
         "message": "Срок <strong>позже</strong>"
@@ -479,13 +447,7 @@
         "message": "Срок <strong>завтра</strong>"
     },
     "due_weeks": {
-        "message": "Срок через <strong>$COUNT$ нед.</strong>",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "Срок через <strong>{{COUNT}} нед.</strong>"
     },
     "edit_custom_task": {
         "message": "Изменить эту задачу"
@@ -593,13 +555,7 @@
         "message": "заданий"
     },
     "final_avg": {
-        "message": "— в среднем $AVG$% ...",
-        "placeholders": {
-            "avg": {
-                "content": "$AVG$",
-                "example": "AVG"
-            }
-        }
+        "message": "— в среднем {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "Ожидание данных об оценках…"
@@ -617,17 +573,7 @@
         "message": "Fixer автоматически запускается на этих страницах:"
     },
     "fix_took": {
-        "message": "Исправление заняло $TIME$ мс (оценка: $RATING$)",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            },
-            "rating": {
-                "content": "$RATING$",
-                "example": "RATING"
-            }
-        }
+        "message": "Исправление заняло {{TIME}} мс (оценка: {{RATING}})"
     },
     "flexible_grid": {
         "message": "Гибкая сетка"
@@ -660,25 +606,13 @@
         "message": "По размеру оси Y"
     },
     "ga_heatmap_assignments": {
-        "message": "$COUNT$ заданий:",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "{{COUNT}} заданий:"
     },
     "ga_heatmap_avg": {
         "message": "сред."
     },
     "ga_heatmap_undated": {
-        "message": "$COUNT$ оценённых заданий без срока не показано.",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "{{COUNT}} оценённых заданий без срока не показано."
     },
     "ga_line_title": {
         "message": "Итоговая оценка во времени"
@@ -732,30 +666,10 @@
         "message": "Не оценено"
     },
     "ga_sub_secured": {
-        "message": "Даже 0 за экзамен оставит вас на <b>$ZERO$%</b>, что выше вашей цели <b>$TARGET$%</b>.",
-        "placeholders": {
-            "target": {
-                "content": "$TARGET$",
-                "example": "TARGET"
-            },
-            "zero": {
-                "content": "$ZERO$",
-                "example": "ZERO"
-            }
-        }
+        "message": "Даже 0 за экзамен оставит вас на <b>{{ZERO}}%</b>, что выше вашей цели <b>{{TARGET}}%</b>."
     },
     "ga_sub_unreachable": {
-        "message": "Даже идеальный экзамен даст только <b>$PERFECT$%</b>, что ниже вашей цели <b>$TARGET$%</b>.",
-        "placeholders": {
-            "perfect": {
-                "content": "$PERFECT$",
-                "example": "PERFECT"
-            },
-            "target": {
-                "content": "$TARGET$",
-                "example": "TARGET"
-            }
-        }
+        "message": "Даже идеальный экзамен даст только <b>{{PERFECT}}%</b>, что ниже вашей цели <b>{{TARGET}}%</b>."
     },
     "ga_tab_calc": {
         "message": "Калькулятор экзамена"
@@ -788,25 +702,13 @@
         "message": "Баллы Imagine-If (числитель); пусто = не учитывается"
     },
     "ga_tooltip_assignments": {
-        "message": "$COUNT$ заданий",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "{{COUNT}} заданий"
     },
     "ga_you_got_this": {
         "message": "У вас всё получится!"
     },
     "ga_you_need": {
-        "message": "Вам нужно ≥ $PCT$% за экзамен",
-        "placeholders": {
-            "pct": {
-                "content": "$PCT$",
-                "example": "PCT"
-            }
-        }
+        "message": "Вам нужно ≥ {{PCT}}% за экзамен"
     },
     "get_active_cards": {
         "message": "Получить активные карточки с панели"
@@ -932,13 +834,7 @@
         "message": "Добавляет инструменты для анализа ваших оценок."
     },
     "grade_analytics_failed": {
-        "message": "Не удалось загрузить анализ оценок: $ERROR$",
-        "placeholders": {
-            "error": {
-                "content": "$ERROR$",
-                "example": "ERROR"
-            }
-        }
+        "message": "Не удалось загрузить анализ оценок: {{ERROR}}"
     },
     "grade_analytics_info_label": {
         "message": "Сведения об анализе оценок"
@@ -968,29 +864,7 @@
         "message": " (включая калькулятор GPA)"
     },
     "grid_warning": {
-        "message": "В вашей сетке помещается $TOTAL$ карточек$TOTAL_S$, но у вас $ACTIVE$ карточка$ACTIVE_S$$GPA_NOTE$ — некоторые карточки могут обрезаться.",
-        "placeholders": {
-            "gpa_note": {
-                "content": "$GPA_NOTE$",
-                "example": "GPA_NOTE"
-            },
-            "active_s": {
-                "content": "$ACTIVE_S$",
-                "example": "ACTIVE_S"
-            },
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "active": {
-                "content": "$ACTIVE$",
-                "example": "ACTIVE"
-            },
-            "total_s": {
-                "content": "$TOTAL_S$",
-                "example": "TOTAL_S"
-            }
-        }
+        "message": "В вашей сетке помещается {{TOTAL}} карточек{{TOTAL_S}}, но у вас {{ACTIVE}} карточка{{ACTIVE_S}}{{GPA_NOTE}} — некоторые карточки могут обрезаться."
     },
     "group_graded": {
         "message": "С оценкой"
@@ -1149,34 +1023,16 @@
         "message": "Астрономическое изображение дня NASA"
     },
     "nasa_credit": {
-        "message": "Автор: $CREDIT$",
-        "placeholders": {
-            "credit": {
-                "content": "$CREDIT$",
-                "example": "CREDIT"
-            }
-        }
+        "message": "Автор: {{CREDIT}}"
     },
     "nasa_date": {
-        "message": "Дата: $DATE$",
-        "placeholders": {
-            "date": {
-                "content": "$DATE$",
-                "example": "DATE"
-            }
-        }
+        "message": "Дата: {{DATE}}"
     },
     "need_refresh": {
         "message": "Возможно, потребуется обновить страницу, чтобы увидеть некоторые изменения."
     },
     "new_canvas_desc": {
-        "message": "Canvas Refined обнаружил страницу Canvas по адресу $HOST$. Добавить её в ваш список Canvas?",
-        "placeholders": {
-            "host": {
-                "content": "$HOST$",
-                "example": "HOST"
-            }
-        }
+        "message": "Canvas Refined обнаружил страницу Canvas по адресу {{HOST}}. Добавить её в ваш список Canvas?"
     },
     "new_canvas_detected": {
         "message": "Обнаружен новый Canvas"
@@ -1287,13 +1143,7 @@
         "message": "Нажмите на значок пазла в правом верхнем углу"
     },
     "options_contact": {
-        "message": "Моя почта — $EMAIL$. Если у вас есть проблемы или предложения, буду рад обратной связи!",
-        "placeholders": {
-            "email": {
-                "content": "$EMAIL$",
-                "example": "EMAIL"
-            }
-        }
+        "message": "Моя почта — {{EMAIL}}. Если у вас есть проблемы или предложения, буду рад обратной связи!"
     },
     "options_how_to_access": {
         "message": "Как открыть это меню позже:"
@@ -1383,13 +1233,7 @@
         "message": "Арбуз"
     },
     "percent_done": {
-        "message": "$PERCENT$%",
-        "placeholders": {
-            "percent": {
-                "content": "$PERCENT$",
-                "example": "PERCENT"
-            }
-        }
+        "message": "{{PERCENT}}%"
     },
     "personal_task": {
         "message": "Личная задача"
@@ -1446,51 +1290,13 @@
         "message": "Конфиденциальность"
     },
     "progress_done": {
-        "message": "$DONE$/$TOTAL$ выполнено",
-        "placeholders": {
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "{{DONE}}/{{TOTAL}} выполнено"
     },
     "progress_overall": {
-        "message": "$PCT$% ($DONE$/$TOTAL$)",
-        "placeholders": {
-            "pct": {
-                "content": "$PCT$",
-                "example": "PCT"
-            },
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "{{PCT}}% ({{DONE}}/{{TOTAL}})"
     },
     "progress_pct": {
-        "message": "$PCT$% ($DONE$/$TOTAL$)",
-        "placeholders": {
-            "pct": {
-                "content": "$PCT$",
-                "example": "PCT"
-            },
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "{{PCT}}% ({{DONE}}/{{TOTAL}})"
     },
     "quiz_dont_show": {
         "message": "Больше не показывать"
@@ -1538,25 +1344,13 @@
         "message": "Чтение данных об оценках…"
     },
     "relative_ago": {
-        "message": "$TIME$ назад",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            }
-        }
+        "message": "{{TIME}} назад"
     },
     "relative_due_dates": {
         "message": "Относительные сроки выполнения"
     },
     "relative_in": {
-        "message": "через $TIME$",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            }
-        }
+        "message": "через {{TIME}}"
     },
     "remlogo": {
         "message": "Удалить логотип боковой панели"
@@ -1631,34 +1425,16 @@
         "message": "новая вкладка"
     },
     "search_no_course": {
-        "message": "Нет курса, соответствующего \"$QUERY$\".",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "Нет курса, соответствующего \"{{QUERY}}\"."
     },
     "search_no_courses_grades": {
         "message": "Курсы для открытия оценок не найдены."
     },
     "search_no_match": {
-        "message": "Нет результатов по \"$QUERY$\".",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "Нет результатов по \"{{QUERY}}\"."
     },
     "search_no_match_hint": {
-        "message": "Нет результатов по \"$QUERY$\". Попробуйте другие ключевые слова.",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "Нет результатов по \"{{QUERY}}\". Попробуйте другие ключевые слова."
     },
     "search_no_modules": {
         "message": "Модули или задания не найдены..."
@@ -1667,13 +1443,7 @@
         "message": "Модули или задания не найдены. Откройте поиск позже, если ваши курсы ещё загружаются."
     },
     "search_no_results": {
-        "message": "Нет результатов по \"$QUERY$\".",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "Нет результатов по \"{{QUERY}}\"."
     },
     "search_open": {
         "message": "открыть"
@@ -1718,13 +1488,7 @@
         "message": "Раздел"
     },
     "selected_count": {
-        "message": "Выбрано: $COUNT$",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "Выбрано: {{COUNT}}"
     },
     "show": {
         "message": "Показать"
@@ -1769,13 +1533,7 @@
         "message": "пусто"
     },
     "storage_items": {
-        "message": " ($COUNT$ элем.)",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": " ({{COUNT}} элем.)"
     },
     "storage_limit_error": {
         "message": "Вводимые данные превышают лимит хранилища, поэтому они не сохранятся. Используйте более короткие ссылки и обязательно нажимайте «копировать адрес изображения», а не «копировать изображение»."
@@ -1862,13 +1620,7 @@
         "message": "Убедитесь, что ваша тема соответствует этим правилам:"
     },
     "theme_number": {
-        "message": "Тема $NUM$",
-        "placeholders": {
-            "num": {
-                "content": "$NUM$",
-                "example": "NUM"
-            }
-        }
+        "message": "Тема {{NUM}}"
     },
     "theme_optin_reset": {
         "message": "Сброс согласия браузера тем"
@@ -1973,21 +1725,7 @@
         "message": "Вычеркнуть"
     },
     "todo_date_format": {
-        "message": "$DATE$ в $TIME$ ($RELATIVE$)",
-        "placeholders": {
-            "relative": {
-                "content": "$RELATIVE$",
-                "example": "RELATIVE"
-            },
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            },
-            "date": {
-                "content": "$DATE$",
-                "example": "DATE"
-            }
-        }
+        "message": "{{DATE}} в {{TIME}} ({{RELATIVE}})"
     },
     "todo_delete": {
         "message": "Удалить"
@@ -2125,13 +1863,7 @@
         "message": "Показать больше"
     },
     "view_more_count": {
-        "message": "Показать больше ($COUNT$)",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "Показать больше ({{COUNT}})"
     },
     "view_on_github": {
         "message": "Посмотреть на GitHub"

@@ -30,9 +30,9 @@ function applyI18n() {
     });
     const contact = document.getElementById("options-contact");
     if (contact) {
-        const msg = getMsg("options_contact", "My email is $EMAIL$ if you have any issues/suggestions - any feedback is appreciated!");
+        const msg = getMsg("options_contact", "My email is {{EMAIL}} if you have any issues/suggestions - any feedback is appreciated!");
         const email = "sandlerguy5@gmail.com";
-        const parts = msg.split("$EMAIL$");
+        const parts = msg.split("{{EMAIL}}");
         contact.textContent = "";
         contact.append(parts[0]);
         const strong = document.createElement("span");

@@ -21,26 +21,10 @@
         "message": "Visa alltid antal gillningar"
     },
     "assignment_avg": {
-        "message": "— snitt $AVG$% över $COUNT$ uppgift(er):",
-        "placeholders": {
-            "avg": {
-                "content": "$AVG$",
-                "example": "AVG"
-            },
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "— snitt {{AVG}}% över {{COUNT}} uppgift(er):"
     },
     "assignment_due_in": {
-        "message": "Uppgift förfaller om $TIME$",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            }
-        }
+        "message": "Uppgift förfaller om {{TIME}}"
     },
     "auto": {
         "message": "auto"
@@ -259,17 +243,7 @@
         "message": "klar"
     },
     "completed_total": {
-        "message": "$DONE$/$TOTAL$ klara",
-        "placeholders": {
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "{{DONE}}/{{TOTAL}} klara"
     },
     "condensed_cards": {
         "message": "Kondenserade kort"
@@ -455,13 +429,7 @@
         "message": "Förfaller"
     },
     "due_days": {
-        "message": "Förfaller om <strong>$COUNT$ dagar</strong>",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "Förfaller om <strong>{{COUNT}} dagar</strong>"
     },
     "due_later": {
         "message": "Förfaller <strong>senare</strong>"
@@ -479,13 +447,7 @@
         "message": "Förfaller <strong>imorgon</strong>"
     },
     "due_weeks": {
-        "message": "Förfaller om <strong>$COUNT$ veckor</strong>",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "Förfaller om <strong>{{COUNT}} veckor</strong>"
     },
     "edit_custom_task": {
         "message": "Redigera denna anpassade uppgift"
@@ -593,13 +555,7 @@
         "message": "uppgifter"
     },
     "final_avg": {
-        "message": "— snitt $AVG$% ...",
-        "placeholders": {
-            "avg": {
-                "content": "$AVG$",
-                "example": "AVG"
-            }
-        }
+        "message": "— snitt {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "Väntar på betygsdata…"
@@ -617,17 +573,7 @@
         "message": "Fixern körs automatiskt på dessa sidor:"
     },
     "fix_took": {
-        "message": "Åtgärden tog $TIME$ ms (betyg: $RATING$)",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            },
-            "rating": {
-                "content": "$RATING$",
-                "example": "RATING"
-            }
-        }
+        "message": "Åtgärden tog {{TIME}} ms (betyg: {{RATING}})"
     },
     "flexible_grid": {
         "message": "Flexibelt rutnät"
@@ -660,25 +606,13 @@
         "message": "Anpassa Y-axeln"
     },
     "ga_heatmap_assignments": {
-        "message": "$COUNT$ uppgift(er):",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "{{COUNT}} uppgift(er):"
     },
     "ga_heatmap_avg": {
         "message": "snitt"
     },
     "ga_heatmap_undated": {
-        "message": "$COUNT$ betygsatt(a) uppgift(er) utan förfallodatum visas inte.",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "{{COUNT}} betygsatt(a) uppgift(er) utan förfallodatum visas inte."
     },
     "ga_line_title": {
         "message": "Totalt betyg över tid"
@@ -732,30 +666,10 @@
         "message": "Ej betygsatta"
     },
     "ga_sub_secured": {
-        "message": "Även en 0 på tentan ger dig <b>$ZERO$%</b>, vilket är över ditt mål på <b>$TARGET$%</b>.",
-        "placeholders": {
-            "target": {
-                "content": "$TARGET$",
-                "example": "TARGET"
-            },
-            "zero": {
-                "content": "$ZERO$",
-                "example": "ZERO"
-            }
-        }
+        "message": "Även en 0 på tentan ger dig <b>{{ZERO}}%</b>, vilket är över ditt mål på <b>{{TARGET}}%</b>."
     },
     "ga_sub_unreachable": {
-        "message": "Även en perfekt tenta ger dig bara <b>$PERFECT$%</b>, vilket är under ditt mål på <b>$TARGET$%</b>.",
-        "placeholders": {
-            "perfect": {
-                "content": "$PERFECT$",
-                "example": "PERFECT"
-            },
-            "target": {
-                "content": "$TARGET$",
-                "example": "TARGET"
-            }
-        }
+        "message": "Även en perfekt tenta ger dig bara <b>{{PERFECT}}%</b>, vilket är under ditt mål på <b>{{TARGET}}%</b>."
     },
     "ga_tab_calc": {
         "message": "Tentakalkylator"
@@ -788,25 +702,13 @@
         "message": "Imagine-If-poäng (täljare); tomt = räknas inte"
     },
     "ga_tooltip_assignments": {
-        "message": "$COUNT$ uppgift(er)",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "{{COUNT}} uppgift(er)"
     },
     "ga_you_got_this": {
         "message": "Det här klarar du!"
     },
     "ga_you_need": {
-        "message": "Du behöver ≥ $PCT$% på tentan",
-        "placeholders": {
-            "pct": {
-                "content": "$PCT$",
-                "example": "PCT"
-            }
-        }
+        "message": "Du behöver ≥ {{PCT}}% på tentan"
     },
     "get_active_cards": {
         "message": "Hämta aktiva kort från översikten"
@@ -932,13 +834,7 @@
         "message": "Lägger till verktyg som hjälper dig analysera dina betyg."
     },
     "grade_analytics_failed": {
-        "message": "Betygsanalysen kunde inte laddas: $ERROR$",
-        "placeholders": {
-            "error": {
-                "content": "$ERROR$",
-                "example": "ERROR"
-            }
-        }
+        "message": "Betygsanalysen kunde inte laddas: {{ERROR}}"
     },
     "grade_analytics_info_label": {
         "message": "Information om betygsanalys"
@@ -968,29 +864,7 @@
         "message": " (inklusive GPA-kalkylatorn)"
     },
     "grid_warning": {
-        "message": "Ditt rutnät har plats för $TOTAL$ kort$TOTAL_S$ men du har $ACTIVE$ kort$ACTIVE_S$$GPA_NOTE$ – vissa kort kan klippas av.",
-        "placeholders": {
-            "gpa_note": {
-                "content": "$GPA_NOTE$",
-                "example": "GPA_NOTE"
-            },
-            "active_s": {
-                "content": "$ACTIVE_S$",
-                "example": "ACTIVE_S"
-            },
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "active": {
-                "content": "$ACTIVE$",
-                "example": "ACTIVE"
-            },
-            "total_s": {
-                "content": "$TOTAL_S$",
-                "example": "TOTAL_S"
-            }
-        }
+        "message": "Ditt rutnät har plats för {{TOTAL}} kort{{TOTAL_S}} men du har {{ACTIVE}} kort{{ACTIVE_S}}{{GPA_NOTE}} – vissa kort kan klippas av."
     },
     "group_graded": {
         "message": "Betygsatta"
@@ -1149,34 +1023,16 @@
         "message": "NASA:s astronomiska bild för dagen"
     },
     "nasa_credit": {
-        "message": "Kredit: $CREDIT$",
-        "placeholders": {
-            "credit": {
-                "content": "$CREDIT$",
-                "example": "CREDIT"
-            }
-        }
+        "message": "Kredit: {{CREDIT}}"
     },
     "nasa_date": {
-        "message": "Datum: $DATE$",
-        "placeholders": {
-            "date": {
-                "content": "$DATE$",
-                "example": "DATE"
-            }
-        }
+        "message": "Datum: {{DATE}}"
     },
     "need_refresh": {
         "message": "Du kan behöva uppdatera sidan för att se vissa ändringar."
     },
     "new_canvas_desc": {
-        "message": "Canvas Refined hittade en Canvas-sida på $HOST$. Lägg till den i din Canvas-lista?",
-        "placeholders": {
-            "host": {
-                "content": "$HOST$",
-                "example": "HOST"
-            }
-        }
+        "message": "Canvas Refined hittade en Canvas-sida på {{HOST}}. Lägg till den i din Canvas-lista?"
     },
     "new_canvas_detected": {
         "message": "Ny Canvas hittad"
@@ -1287,13 +1143,7 @@
         "message": "Klicka på pusselikonen uppe till höger"
     },
     "options_contact": {
-        "message": "Min e-post är $EMAIL$ om du har problem eller förslag – all feedback uppskattas!",
-        "placeholders": {
-            "email": {
-                "content": "$EMAIL$",
-                "example": "EMAIL"
-            }
-        }
+        "message": "Min e-post är {{EMAIL}} om du har problem eller förslag – all feedback uppskattas!"
     },
     "options_how_to_access": {
         "message": "Så här öppnar du menyn senare:"
@@ -1383,13 +1233,7 @@
         "message": "Vattenmelon"
     },
     "percent_done": {
-        "message": "$PERCENT$%",
-        "placeholders": {
-            "percent": {
-                "content": "$PERCENT$",
-                "example": "PERCENT"
-            }
-        }
+        "message": "{{PERCENT}}%"
     },
     "personal_task": {
         "message": "Personlig uppgift"
@@ -1446,51 +1290,13 @@
         "message": "Integritet"
     },
     "progress_done": {
-        "message": "$DONE$/$TOTAL$ klara",
-        "placeholders": {
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "{{DONE}}/{{TOTAL}} klara"
     },
     "progress_overall": {
-        "message": "$PCT$% ($DONE$/$TOTAL$)",
-        "placeholders": {
-            "pct": {
-                "content": "$PCT$",
-                "example": "PCT"
-            },
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "{{PCT}}% ({{DONE}}/{{TOTAL}})"
     },
     "progress_pct": {
-        "message": "$PCT$% ($DONE$/$TOTAL$)",
-        "placeholders": {
-            "pct": {
-                "content": "$PCT$",
-                "example": "PCT"
-            },
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "{{PCT}}% ({{DONE}}/{{TOTAL}})"
     },
     "quiz_dont_show": {
         "message": "Visa inte igen"
@@ -1538,25 +1344,13 @@
         "message": "Läser betygsdata…"
     },
     "relative_ago": {
-        "message": "$TIME$ sedan",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            }
-        }
+        "message": "{{TIME}} sedan"
     },
     "relative_due_dates": {
         "message": "Relativa förfallodatum"
     },
     "relative_in": {
-        "message": "om $TIME$",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            }
-        }
+        "message": "om {{TIME}}"
     },
     "remlogo": {
         "message": "Ta bort Sidebar-logotypen"
@@ -1631,34 +1425,16 @@
         "message": "ny flik"
     },
     "search_no_course": {
-        "message": "Ingen kurs matchar \"$QUERY$\".",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "Ingen kurs matchar \"{{QUERY}}\"."
     },
     "search_no_courses_grades": {
         "message": "Inga kurser hittades att öppna betyg för."
     },
     "search_no_match": {
-        "message": "Inga resultat för \"$QUERY$\".",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "Inga resultat för \"{{QUERY}}\"."
     },
     "search_no_match_hint": {
-        "message": "Inga resultat för \"$QUERY$\". Prova andra sökord.",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "Inga resultat för \"{{QUERY}}\". Prova andra sökord."
     },
     "search_no_modules": {
         "message": "Inga moduler eller uppgifter hittades..."
@@ -1667,13 +1443,7 @@
         "message": "Inga moduler eller uppgifter hittades. Öppna sökningen igen senare om kurserna fortfarande laddas."
     },
     "search_no_results": {
-        "message": "Inga resultat för \"$QUERY$\".",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "Inga resultat för \"{{QUERY}}\"."
     },
     "search_open": {
         "message": "öppna"
@@ -1718,13 +1488,7 @@
         "message": "Avsnitt"
     },
     "selected_count": {
-        "message": "$COUNT$ valda",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "{{COUNT}} valda"
     },
     "show": {
         "message": "Visa"
@@ -1769,13 +1533,7 @@
         "message": "tom"
     },
     "storage_items": {
-        "message": " ($COUNT$ objekt)",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": " ({{COUNT}} objekt)"
     },
     "storage_limit_error": {
         "message": "Uppgifterna du anger överskrider lagringsgränsen och sparas inte. Prova kortare länkar och se till att trycka på \"kopiera bildadress\" och inte \"kopiera bild\" för länkar."
@@ -1862,13 +1620,7 @@
         "message": "Se till att ditt tema följer dessa riktlinjer:"
     },
     "theme_number": {
-        "message": "Tema $NUM$",
-        "placeholders": {
-            "num": {
-                "content": "$NUM$",
-                "example": "NUM"
-            }
-        }
+        "message": "Tema {{NUM}}"
     },
     "theme_optin_reset": {
         "message": "Opt-in för temabläddrare återställd"
@@ -1973,21 +1725,7 @@
         "message": "Stryk över"
     },
     "todo_date_format": {
-        "message": "$DATE$ kl. $TIME$ ($RELATIVE$)",
-        "placeholders": {
-            "relative": {
-                "content": "$RELATIVE$",
-                "example": "RELATIVE"
-            },
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            },
-            "date": {
-                "content": "$DATE$",
-                "example": "DATE"
-            }
-        }
+        "message": "{{DATE}} kl. {{TIME}} ({{RELATIVE}})"
     },
     "todo_delete": {
         "message": "Ta bort"
@@ -2125,13 +1863,7 @@
         "message": "Visa mer"
     },
     "view_more_count": {
-        "message": "Visa mer ($COUNT$)",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "Visa mer ({{COUNT}})"
     },
     "view_on_github": {
         "message": "Visa på GitHub"

@@ -21,26 +21,10 @@
         "message": "永遠顯示按讚數"
     },
     "assignment_avg": {
-        "message": "— 平均 $AVG$%，共 $COUNT$ 份作業：",
-        "placeholders": {
-            "avg": {
-                "content": "$AVG$",
-                "example": "AVG"
-            },
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "— 平均 {{AVG}}%，共 {{COUNT}} 份作業："
     },
     "assignment_due_in": {
-        "message": "作業將於 $TIME$ 後到期",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            }
-        }
+        "message": "作業將於 {{TIME}} 後到期"
     },
     "auto": {
         "message": "自動"
@@ -259,17 +243,7 @@
         "message": "完成"
     },
     "completed_total": {
-        "message": "已完成 $DONE$/$TOTAL$",
-        "placeholders": {
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "已完成 {{DONE}}/{{TOTAL}}"
     },
     "condensed_cards": {
         "message": "浓缩卡"
@@ -455,13 +429,7 @@
         "message": "到期的"
     },
     "due_days": {
-        "message": "到期 <strong>$COUNT$ 天</strong>",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "到期 <strong>{{COUNT}} 天</strong>"
     },
     "due_later": {
         "message": "到期 <strong>稍後</strong>"
@@ -479,13 +447,7 @@
         "message": "到期 <strong>明天</strong>"
     },
     "due_weeks": {
-        "message": "到期 <strong>$COUNT$ 週</strong>",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "到期 <strong>{{COUNT}} 週</strong>"
     },
     "edit_custom_task": {
         "message": "編輯此自訂待辦事項"
@@ -593,13 +555,7 @@
         "message": "份作業"
     },
     "final_avg": {
-        "message": "— 平均 $AVG$% ...",
-        "placeholders": {
-            "avg": {
-                "content": "$AVG$",
-                "example": "AVG"
-            }
-        }
+        "message": "— 平均 {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "正在等待成績資料…"
@@ -617,17 +573,7 @@
         "message": "修复程序会自动在这些页面上运行:"
     },
     "fix_took": {
-        "message": "修正耗時 $TIME$ 毫秒（評分：$RATING$）",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            },
-            "rating": {
-                "content": "$RATING$",
-                "example": "RATING"
-            }
-        }
+        "message": "修正耗時 {{TIME}} 毫秒（評分：{{RATING}}）"
     },
     "flexible_grid": {
         "message": "彈性格線"
@@ -660,25 +606,13 @@
         "message": "調整 Y 軸範圍"
     },
     "ga_heatmap_assignments": {
-        "message": "$COUNT$ 項作業：",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "{{COUNT}} 項作業："
     },
     "ga_heatmap_avg": {
         "message": "平均"
     },
     "ga_heatmap_undated": {
-        "message": "有 $COUNT$ 項已評分作業沒有到期日，因此未顯示。",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "有 {{COUNT}} 項已評分作業沒有到期日，因此未顯示。"
     },
     "ga_line_title": {
         "message": "總成績變化"
@@ -732,30 +666,10 @@
         "message": "未評分"
     },
     "ga_sub_secured": {
-        "message": "即使期末考拿 0 分，你仍有 <b>$ZERO$%</b>，高於你的目標 <b>$TARGET$%</b>。",
-        "placeholders": {
-            "target": {
-                "content": "$TARGET$",
-                "example": "TARGET"
-            },
-            "zero": {
-                "content": "$ZERO$",
-                "example": "ZERO"
-            }
-        }
+        "message": "即使期末考拿 0 分，你仍有 <b>{{ZERO}}%</b>，高於你的目標 <b>{{TARGET}}%</b>。"
     },
     "ga_sub_unreachable": {
-        "message": "即使期末考滿分，你也只能達到 <b>$PERFECT$%</b>，低於你的目標 <b>$TARGET$%</b>。",
-        "placeholders": {
-            "perfect": {
-                "content": "$PERFECT$",
-                "example": "PERFECT"
-            },
-            "target": {
-                "content": "$TARGET$",
-                "example": "TARGET"
-            }
-        }
+        "message": "即使期末考滿分，你也只能達到 <b>{{PERFECT}}%</b>，低於你的目標 <b>{{TARGET}}%</b>。"
     },
     "ga_tab_calc": {
         "message": "期末考計算器"
@@ -788,25 +702,13 @@
         "message": "Imagine-If 分數（分子）；留空 = 不計入"
     },
     "ga_tooltip_assignments": {
-        "message": "$COUNT$ 項作業",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "{{COUNT}} 項作業"
     },
     "ga_you_got_this": {
         "message": "你可以的！"
     },
     "ga_you_need": {
-        "message": "你的期末考需要 ≥ $PCT$%",
-        "placeholders": {
-            "pct": {
-                "content": "$PCT$",
-                "example": "PCT"
-            }
-        }
+        "message": "你的期末考需要 ≥ {{PCT}}%"
     },
     "get_active_cards": {
         "message": "從儀表板取得使用中的卡片"
@@ -932,13 +834,7 @@
         "message": "新增工具，協助你分析成績。"
     },
     "grade_analytics_failed": {
-        "message": "成績分析載入失敗：$ERROR$",
-        "placeholders": {
-            "error": {
-                "content": "$ERROR$",
-                "example": "ERROR"
-            }
-        }
+        "message": "成績分析載入失敗：{{ERROR}}"
     },
     "grade_analytics_info_label": {
         "message": "成績分析資訊"
@@ -968,29 +864,7 @@
         "message": " （包含 GPA 計算器）"
     },
     "grid_warning": {
-        "message": "你的格線可容納 $TOTAL$ 張卡片$TOTAL_S$，但你目前有 $ACTIVE$ 張卡片$ACTIVE_S$$GPA_NOTE$——部分卡片可能會被裁切。",
-        "placeholders": {
-            "gpa_note": {
-                "content": "$GPA_NOTE$",
-                "example": "GPA_NOTE"
-            },
-            "active_s": {
-                "content": "$ACTIVE_S$",
-                "example": "ACTIVE_S"
-            },
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "active": {
-                "content": "$ACTIVE$",
-                "example": "ACTIVE"
-            },
-            "total_s": {
-                "content": "$TOTAL_S$",
-                "example": "TOTAL_S"
-            }
-        }
+        "message": "你的格線可容納 {{TOTAL}} 張卡片{{TOTAL_S}}，但你目前有 {{ACTIVE}} 張卡片{{ACTIVE_S}}{{GPA_NOTE}}——部分卡片可能會被裁切。"
     },
     "group_graded": {
         "message": "已評分"
@@ -1149,34 +1023,16 @@
         "message": "NASA 每日天文圖片"
     },
     "nasa_credit": {
-        "message": "版權：$CREDIT$",
-        "placeholders": {
-            "credit": {
-                "content": "$CREDIT$",
-                "example": "CREDIT"
-            }
-        }
+        "message": "版權：{{CREDIT}}"
     },
     "nasa_date": {
-        "message": "日期：$DATE$",
-        "placeholders": {
-            "date": {
-                "content": "$DATE$",
-                "example": "DATE"
-            }
-        }
+        "message": "日期：{{DATE}}"
     },
     "need_refresh": {
         "message": "你可能需要重新整理頁面才能看到某些變更。"
     },
     "new_canvas_desc": {
-        "message": "Canvas Refined 在 $HOST$ 偵測到 Canvas 頁面。要將它加入你的 Canvas 清單嗎？",
-        "placeholders": {
-            "host": {
-                "content": "$HOST$",
-                "example": "HOST"
-            }
-        }
+        "message": "Canvas Refined 在 {{HOST}} 偵測到 Canvas 頁面。要將它加入你的 Canvas 清單嗎？"
     },
     "new_canvas_detected": {
         "message": "偵測到新的 Canvas"
@@ -1287,13 +1143,7 @@
         "message": "點擊右上角的拼圖圖示"
     },
     "options_contact": {
-        "message": "如果你有任何問題或建議，我的電子郵件是 $EMAIL$，歡迎回饋！",
-        "placeholders": {
-            "email": {
-                "content": "$EMAIL$",
-                "example": "EMAIL"
-            }
-        }
+        "message": "如果你有任何問題或建議，我的電子郵件是 {{EMAIL}}，歡迎回饋！"
     },
     "options_how_to_access": {
         "message": "之後如何開啟此選單："
@@ -1383,13 +1233,7 @@
         "message": "西瓜"
     },
     "percent_done": {
-        "message": "$PERCENT$%",
-        "placeholders": {
-            "percent": {
-                "content": "$PERCENT$",
-                "example": "PERCENT"
-            }
-        }
+        "message": "{{PERCENT}}%"
     },
     "personal_task": {
         "message": "個人任務"
@@ -1446,51 +1290,13 @@
         "message": "隱私"
     },
     "progress_done": {
-        "message": "已完成 $DONE$/$TOTAL$",
-        "placeholders": {
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "已完成 {{DONE}}/{{TOTAL}}"
     },
     "progress_overall": {
-        "message": "$PCT$%（$DONE$/$TOTAL$）",
-        "placeholders": {
-            "pct": {
-                "content": "$PCT$",
-                "example": "PCT"
-            },
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "{{PCT}}%（{{DONE}}/{{TOTAL}}）"
     },
     "progress_pct": {
-        "message": "$PCT$%（$DONE$/$TOTAL$）",
-        "placeholders": {
-            "pct": {
-                "content": "$PCT$",
-                "example": "PCT"
-            },
-            "total": {
-                "content": "$TOTAL$",
-                "example": "TOTAL"
-            },
-            "done": {
-                "content": "$DONE$",
-                "example": "DONE"
-            }
-        }
+        "message": "{{PCT}}%（{{DONE}}/{{TOTAL}}）"
     },
     "quiz_dont_show": {
         "message": "不再顯示"
@@ -1538,25 +1344,13 @@
         "message": "正在讀取成績資料…"
     },
     "relative_ago": {
-        "message": "$TIME$前",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            }
-        }
+        "message": "{{TIME}}前"
     },
     "relative_due_dates": {
         "message": "相对到期日"
     },
     "relative_in": {
-        "message": "$TIME$後",
-        "placeholders": {
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            }
-        }
+        "message": "{{TIME}}後"
     },
     "remlogo": {
         "message": "删除侧边栏徽标"
@@ -1631,34 +1425,16 @@
         "message": "新分頁"
     },
     "search_no_course": {
-        "message": "沒有符合「$QUERY$」的課程。",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "沒有符合「{{QUERY}}」的課程。"
     },
     "search_no_courses_grades": {
         "message": "找不到可開啟成績的課程。"
     },
     "search_no_match": {
-        "message": "找不到「$QUERY$」的結果。",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "找不到「{{QUERY}}」的結果。"
     },
     "search_no_match_hint": {
-        "message": "找不到「$QUERY$」的結果。請嘗試其他關鍵字。",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "找不到「{{QUERY}}」的結果。請嘗試其他關鍵字。"
     },
     "search_no_modules": {
         "message": "找不到模組或作業..."
@@ -1667,13 +1443,7 @@
         "message": "找不到課程模組或作業。如果你的課程仍在載入，請稍後再開啟搜尋。"
     },
     "search_no_results": {
-        "message": "找不到「$QUERY$」的結果。",
-        "placeholders": {
-            "query": {
-                "content": "$QUERY$",
-                "example": "QUERY"
-            }
-        }
+        "message": "找不到「{{QUERY}}」的結果。"
     },
     "search_open": {
         "message": "開啟"
@@ -1718,13 +1488,7 @@
         "message": "章節"
     },
     "selected_count": {
-        "message": "已選取 $COUNT$ 項",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "已選取 {{COUNT}} 項"
     },
     "show": {
         "message": "顯示"
@@ -1769,13 +1533,7 @@
         "message": "空白"
     },
     "storage_items": {
-        "message": " （$COUNT$ 項）",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": " （{{COUNT}} 項）"
     },
     "storage_limit_error": {
         "message": "你輸入的資料超過儲存上限，因此無法儲存。請嘗試使用較短的連結，並確認按下「複製圖片網址」而不是「複製圖片」來取得連結。"
@@ -1862,13 +1620,7 @@
         "message": "請確認你的主題符合以下規範："
     },
     "theme_number": {
-        "message": "主題 $NUM$",
-        "placeholders": {
-            "num": {
-                "content": "$NUM$",
-                "example": "NUM"
-            }
-        }
+        "message": "主題 {{NUM}}"
     },
     "theme_optin_reset": {
         "message": "已重設主題瀏覽器加入狀態"
@@ -1973,21 +1725,7 @@
         "message": "劃掉"
     },
     "todo_date_format": {
-        "message": "$DATE$ $TIME$（$RELATIVE$）",
-        "placeholders": {
-            "relative": {
-                "content": "$RELATIVE$",
-                "example": "RELATIVE"
-            },
-            "time": {
-                "content": "$TIME$",
-                "example": "TIME"
-            },
-            "date": {
-                "content": "$DATE$",
-                "example": "DATE"
-            }
-        }
+        "message": "{{DATE}} {{TIME}}（{{RELATIVE}}）"
     },
     "todo_delete": {
         "message": "刪除"
@@ -2125,13 +1863,7 @@
         "message": "顯示更多"
     },
     "view_more_count": {
-        "message": "顯示更多（$COUNT$）",
-        "placeholders": {
-            "count": {
-                "content": "$COUNT$",
-                "example": "COUNT"
-            }
-        }
+        "message": "顯示更多（{{COUNT}}）"
     },
     "view_on_github": {
         "message": "在 GitHub 上檢視"

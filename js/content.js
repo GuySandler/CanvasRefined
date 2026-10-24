@@ -48,6 +48,24 @@ if (!chrome.i18n._origGetMessage) {
     chrome.i18n.getMessage = (key) => getMsg(key) || chrome.i18n._origGetMessage(key) || "";
 }
 
+// Chrome (crbug.com/40206032) runs ReplaceStringPlaceholders on EVERY message,
+// which eats "$NAME$" tokens: "$COUNT$" became "OUNT" ("$C" dropped + trailing "$").
+// Messages therefore use $ -free tokens like {{COUNT}}; this fills them in.
+const PLACEHOLDER_RE = /\{\{([A-Z][A-Z0-9_]*)\}\}/g;
+
+function replaceCountPlaceholder(msg, count, token) {
+    if (!msg) return msg;
+    const name = token || "COUNT";
+    return String(msg).split("{{" + name + "}}").join(String(count));
+}
+
+// Fill every {{TOKEN}} in a message from a { TOKEN: value } map.
+function fillPlaceholders(msg, values) {
+    if (!msg) return msg;
+    return String(msg).replace(PLACEHOLDER_RE, (m, name) => (
+        values && Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : m
+    ));
+}
 
 // Canvas' New UI navigates via pushState; without this hook current_page goes stale.
 function setupNavigationListener() {
@@ -514,8 +532,8 @@ function createNasaInfoOverlay() {
             const meta = metadata[metadataKey];
             if (!meta) return false;
             document.getElementById("nasa-info-title").textContent = meta.title || "";
-            document.getElementById("nasa-info-date").textContent = (chrome.i18n.getMessage("nasa_date") || "Date: $DATE$").replace("$DATE$", meta.date);
-            document.getElementById("nasa-info-credit").textContent = meta.copyright ? (chrome.i18n.getMessage("nasa_credit") || "Credit: $CREDIT$").replace("$CREDIT$", meta.copyright) : "";
+            document.getElementById("nasa-info-date").textContent = (chrome.i18n.getMessage("nasa_date") || "Date: {{DATE}}").replace("{{DATE}}", meta.date);
+            document.getElementById("nasa-info-credit").textContent = meta.copyright ? (chrome.i18n.getMessage("nasa_credit") || "Credit: {{CREDIT}}").replace("{{CREDIT}}", meta.copyright) : "";
             document.getElementById("nasa-info-explanation").textContent = meta.explanation || chrome.i18n.getMessage("no_description") || "No description available.";
             return true;
         }
@@ -655,7 +673,7 @@ function createReminder(reminder, location) {
     const svg = makeElement("div", container, { "innerHTML": canvas_svg });
     const content = makeElement("a", container, { "className": "canvasrefined-reminder-content", "href": reminder.h, "target": "_blank" });
     const title = makeElement("h2", content, { "className": "canvasrefined-reminder-title", "textContent": reminder.t });
-    const due = makeElement("p", content, { "className": "canvasrefined-reminder-due", "textContent": (chrome.i18n.getMessage("assignment_due_in") || "Assignment due in $TIME$").replace("$TIME$", remaining.time) });
+    const due = makeElement("p", content, { "className": "canvasrefined-reminder-due", "textContent": (chrome.i18n.getMessage("assignment_due_in") || "Assignment due in {{TIME}}").replace("{{TIME}}", remaining.time) });
     const hidebtn = makeElement("btn", wrapper, { "className": "canvasrefined-reminder-hide", "textContent": "x" });
     hidebtn.addEventListener("click", () => {
         hideReminder(reminder.h);
@@ -917,7 +935,7 @@ function showCanvasPrompt(courses) {
     const prompt = makeElement("div", backdrop, { "id": "canvasrefined-domain-prompt" });
     makeElement("h3", prompt, { "textContent": chrome.i18n.getMessage("new_canvas_detected") || "New Canvas detected" });
     const text = makeElement("p", prompt, {});
-    const canvasDesc = (chrome.i18n.getMessage("new_canvas_desc") || "Canvas Refined detected a Canvas page at $HOST$. Add it to your canvas list?").replace("$HOST$", host);
+    const canvasDesc = (chrome.i18n.getMessage("new_canvas_desc") || "Canvas Refined detected a Canvas page at {{HOST}}. Add it to your canvas list?").replace("{{HOST}}", host);
     const parts = canvasDesc.split(host);
     if (parts.length === 2) {
         text.append(parts[0]);
@@ -2492,7 +2510,7 @@ function renderProgressRingsMode(wrapper, shown, totalAll, completedAll, percent
         wrapper.appendChild(overlay);
     }
     overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
-    overlay.querySelector('.canvasrefined-progress-count').textContent = (chrome.i18n.getMessage("progress_done") || "$DONE$/$TOTAL$ done").replace("$DONE$", completedAll).replace("$TOTAL$", totalAll);
+    overlay.querySelector('.canvasrefined-progress-count').textContent = (chrome.i18n.getMessage("progress_done") || "{{DONE}}/{{TOTAL}} done").replace("{{DONE}}", completedAll).replace("{{TOTAL}}", totalAll);
 
     const stroke = 8;
     const gap = 4;
@@ -2722,7 +2740,7 @@ function renderProgressRainbow(wrapper, shown, totalAll, completedAll, percent) 
         overlay.style.transform = `translateY(${nudge}px)`;
     }
     overlay.querySelector('.canvasrefined-progress-percent').textContent = `${percent}%`;
-    overlay.querySelector('.canvasrefined-progress-count').textContent = (chrome.i18n.getMessage("progress_done") || "$DONE$/$TOTAL$ done").replace("$DONE$", completedAll).replace("$TOTAL$", totalAll);
+    overlay.querySelector('.canvasrefined-progress-count').textContent = (chrome.i18n.getMessage("progress_done") || "{{DONE}}/{{TOTAL}} done").replace("{{DONE}}", completedAll).replace("{{TOTAL}}", totalAll);
 
     const bowlRadius = Math.max(0, innerRadius - stroke / 2 - 2);
     fitProgressOverlayText(overlay, (hw, hh) => {
@@ -2761,7 +2779,7 @@ function renderProgressLines(wrapper, shown) {
         const labelEl = row.querySelector('.cr-pl-label');
         labelEl.textContent = courseRingLabel(entry.courseId);
         labelEl.style.color = color;
-        row.querySelector('.cr-pl-pct').textContent = (chrome.i18n.getMessage("progress_pct") || "$PCT$% ($DONE$/$TOTAL$)").replace("$PCT$", pct).replace("$DONE$", entry.completed).replace("$TOTAL$", entry.total);
+        row.querySelector('.cr-pl-pct').textContent = (chrome.i18n.getMessage("progress_pct") || "{{PCT}}% ({{DONE}}/{{TOTAL}})").replace("{{PCT}}", pct).replace("{{DONE}}", entry.completed).replace("{{TOTAL}}", entry.total);
         const track = row.children[1];
         track.style.background = `color-mix(in srgb, ${color} 25%, transparent)`;
         const fill = row.querySelector('.cr-pl-fill');
@@ -2798,7 +2816,7 @@ function renderProgressOneLine(wrapper, shown, totalAll, completedAll, percent) 
         head.innerHTML = `<span>Overall</span><span class="cr-ol-pct" style="font-weight:700;"></span>`;
         box.appendChild(head);
     }
-    box.querySelector('.cr-ol-pct').textContent = (chrome.i18n.getMessage("progress_pct") || "$PCT$% ($DONE$/$TOTAL$)").replace("$PCT$", percent).replace("$DONE$", completedAll).replace("$TOTAL$", totalAll);
+    box.querySelector('.cr-ol-pct').textContent = (chrome.i18n.getMessage("progress_pct") || "{{PCT}}% ({{DONE}}/{{TOTAL}})").replace("{{PCT}}", percent).replace("{{DONE}}", completedAll).replace("{{TOTAL}}", totalAll);
     if (getCurrentCourseId() == null) {
         head.style.cursor = betterTodoProgressFilter != null ? 'pointer' : '';
         head.onclick = () => {
@@ -3641,8 +3659,8 @@ async function createTodoSections(location) {
             if (key == "-1") label = getMsg("due_overdue", "<strong>Overdue</strong>");
             else if (key == "0") label = getMsg("due_today", "Due <strong>Today</strong>");
             else if (key == "1") label = getMsg("due_tomorrow", "Due <strong>Tomorrow</strong>");
-            else if (key >= 2 && key < 7) label = getMsg("due_days", "Due <strong>$COUNT$ days</strong>").replace("$COUNT$", key);
-            else if (key >= 7 && key < 30) label = getMsg("due_weeks", "Due <strong>$COUNT$ weeks</strong>").replace("$COUNT$", key / 7);
+            else if (key >= 2 && key < 7) label = replaceCountPlaceholder(getMsg("due_days", "Due <strong>{{COUNT}} days</strong>"), key);
+            else if (key >= 7 && key < 30) label = replaceCountPlaceholder(getMsg("due_weeks", "Due <strong>{{COUNT}} weeks</strong>"), Math.floor(key / 7));
             else if (key == "30") label = getMsg("due_one_month", "Due <strong>1 month</strong>");
             else label = "<strong>" + dueGroupLabel(key) + "</strong>";
             makeElement("div", wrapper, {
@@ -4173,7 +4191,7 @@ function populateAssignments(iscompleted = false) {
 		let isExpanded = false;
 
 		let seeMoreButton = makeElement("button", document.getElementById("better-todo-main"), {
-			textContent: (chrome.i18n.getMessage("view_more_count") || "View More ($COUNT$)").replace("$COUNT$", assignmentCount - maxElements),
+			textContent: replaceCountPlaceholder((chrome.i18n.getMessage("view_more_count") || "View More ({{COUNT}})"), assignmentCount - maxElements),
 			className: "canvasrefined-custom-btn",
 			id: "better-todo-see-more",
 			style: "width:100%;margin-top:15px;cursor:pointer;"
@@ -4186,7 +4204,7 @@ function populateAssignments(iscompleted = false) {
 			} else {
 				document.querySelectorAll(".better-todo-hidden-assignment").forEach(element => element.style.display = "none");
 				document.querySelectorAll(".better-todo-hidden-wrapper").forEach(element => element.style.display = "none");
-				seeMoreButton.textContent = (chrome.i18n.getMessage("view_more_count") || "View More ($COUNT$)").replace("$COUNT$", assignmentCount - maxElements);
+				seeMoreButton.textContent = replaceCountPlaceholder((chrome.i18n.getMessage("view_more_count") || "View More ({{COUNT}})"), assignmentCount - maxElements);
 			}
 			isExpanded = !isExpanded;
 		})
@@ -9724,7 +9742,7 @@ async function runGlobalSearch(query, resultsEl) {
         const filter = (gradesMatch[1] || "").trim();
         const matching = courseEntries.filter(c => globalSearchCourseMatches(c, filter));
         if (!matching.length) {
-            resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${filter ? getMsg("search_no_course", "No course matches \"$QUERY$\".").replace("$QUERY$", escapeGlobalSearchHtml(filter)) : getMsg("search_no_courses_grades", "No courses found to open grades for.")}</div>`;
+            resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${filter ? getMsg("search_no_course", "No course matches \"{{QUERY}}\".").replace("{{QUERY}}", escapeGlobalSearchHtml(filter)) : getMsg("search_no_courses_grades", "No courses found to open grades for.")}</div>`;
             return [];
         }
         const gradeRows = matching.map(c => ({
@@ -9750,7 +9768,7 @@ async function runGlobalSearch(query, resultsEl) {
         allowedCourseIds = new Set(matching.map(c => String(c.courseId)));
         if (!effectiveQuery) {
             if (!matching.length) {
-                resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_no_course", "No course matches \"$QUERY$\".").replace("$QUERY$", escapeGlobalSearchHtml(parsed.courseFilter))}</div>`;
+                resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_no_course", "No course matches \"{{QUERY}}\".").replace("{{QUERY}}", escapeGlobalSearchHtml(parsed.courseFilter))}</div>`;
                 return [];
             }
             resultsEl.innerHTML = matching.map((item, i) => globalSearchRowHtml(item, i)).join("");
@@ -9781,7 +9799,7 @@ async function runGlobalSearch(query, resultsEl) {
     const top = matches.slice(0, 50);
 
     if (!top.length) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_no_match", "No results for \"$QUERY$\".").replace("$QUERY$", escapeGlobalSearchHtml(query))}</div>`;
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_no_match", "No results for \"{{QUERY}}\".").replace("{{QUERY}}", escapeGlobalSearchHtml(query))}</div>`;
         return [];
     }
 
@@ -10561,7 +10579,7 @@ async function loadGradeAnalytics() {
     } catch (err) {
         logError(err);
         const s = document.getElementById("canvasrefined-ga-status");
-        if (s) s.textContent = (chrome.i18n.getMessage("grade_analytics_failed") || "Grade Analytics failed to load: $ERROR$").replace("$ERROR$", err && err.message ? err.message : err);
+        if (s) s.textContent = (chrome.i18n.getMessage("grade_analytics_failed") || "Grade Analytics failed to load: {{ERROR}}").replace("{{ERROR}}", err && err.message ? err.message : err);
     } finally {
         gaLoading = false;
     }
@@ -10879,12 +10897,12 @@ function renderGaCalculator() {
     let head, sub;
     if (needed <= 0) {
         head = `<span style="font-size:20px;font-weight:700;color:#16a34a;">${getMsg("ga_already_there", "You're already there!")}</span>`;
-        sub = getMsg("ga_sub_secured", "Even a 0 on the final leaves you at <b>$ZERO$%</b>, which is above your <b>$TARGET$%</b> goal.").replace("$ZERO$", withZero.toFixed(2)).replace("$TARGET$", target);
+        sub = getMsg("ga_sub_secured", "Even a 0 on the final leaves you at <b>{{ZERO}}%</b>, which is above your <b>{{TARGET}}%</b> goal.").replace("{{ZERO}}", withZero.toFixed(2)).replace("{{TARGET}}", target);
     } else if (needed > 100) {
         head = `<span style="font-size:20px;font-weight:700;color:#dc2626;">${getMsg("ga_out_of_reach", "Out of reach")}</span>`;
-        sub = getMsg("ga_sub_unreachable", "Even a perfect final only gets you to <b>$PERFECT$%</b>, which is below your <b>$TARGET$%</b> goal.").replace("$PERFECT$", withPerfect.toFixed(2)).replace("$TARGET$", target);
+        sub = getMsg("ga_sub_unreachable", "Even a perfect final only gets you to <b>{{PERFECT}}%</b>, which is below your <b>{{TARGET}}%</b> goal.").replace("{{PERFECT}}", withPerfect.toFixed(2)).replace("{{TARGET}}", target);
     } else {
-        head = `<span style="font-size:20px;font-weight:700;color:${gaNeededColor(needed)};">${getMsg("ga_you_need", "You need ≥ $PCT$% on the final").replace("$PCT$", needed.toFixed(2))}</span>`;
+        head = `<span style="font-size:20px;font-weight:700;color:${gaNeededColor(needed)};">${getMsg("ga_you_need", "You need ≥ {{PCT}}% on the final").replace("{{PCT}}", needed.toFixed(2))}</span>`;
         sub = getMsg("ga_you_got_this", "You got this!");
     }
     box.innerHTML = head + `<div style="margin-top:6px;color:var(--bctext-1);font-size:13px;">${sub}</div>`;
@@ -10974,7 +10992,7 @@ function gaHeatmapShowTip(tip, e, cell, avg) {
     const d = cell.date;
     const rows = cell.items.map(p =>
         `<div style="margin-top:2px;color:var(--bctext-1);">${gaEscHtml(p.title)} — <b style="color:${gaHeatmapColor(p.pct)};">${p.pct.toFixed(2)}%</b></div>`).join("");
-    tip.innerHTML = `<b>${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</b> — ${getMsg("ga_heatmap_avg", "avg")} <b style="color:${gaHeatmapColor(avg)};">${avg.toFixed(2)}%</b><div style="margin-top:4px;font-size:11px;color:var(--bctext-1);">${getMsg("ga_heatmap_assignments", "$COUNT$ assignment(s):").replace("$COUNT$", cell.items.length)}</div>${rows}`;
+    tip.innerHTML = `<b>${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</b> — ${getMsg("ga_heatmap_avg", "avg")} <b style="color:${gaHeatmapColor(avg)};">${avg.toFixed(2)}%</b><div style="margin-top:4px;font-size:11px;color:var(--bctext-1);">${replaceCountPlaceholder(getMsg("ga_heatmap_assignments", "{{COUNT}} assignment(s):"), cell.items.length)}</div>${rows}`;
     tip.style.display = "block";
     const host = tip.offsetParent || tip.parentNode;
     const hostRect = host.getBoundingClientRect();
@@ -11006,7 +11024,7 @@ function renderGaHeatmap() {
         return;
     }
     note.textContent = data.undated > 0
-        ? getMsg("ga_heatmap_undated", "$COUNT$ graded assignment(s) without a due date not shown.").replace("$COUNT$", data.undated)
+        ? replaceCountPlaceholder(getMsg("ga_heatmap_undated", "{{COUNT}} graded assignment(s) without a due date not shown."), data.undated)
         : "";
     const start = new Date(data.min);
     start.setDate(start.getDate() - start.getDay());
@@ -11143,7 +11161,7 @@ function gaDrawPie(canvas, tooltip) {
             if (d < a.start) d += Math.PI * 2;
             return dist <= canvas._gaCenter.r && dist >= canvas._gaCenter.r * 0.55 && d >= a.start && d <= a.end;
         });
-        if (hit) gaShowTooltip(tooltip, e.clientX - rect.left, e.clientY - rect.top, `<b>${hit.label}</b>: ${getMsg("ga_tooltip_assignments", "$COUNT$ assignment(s)").replace("$COUNT$", hit.value)}`);
+        if (hit) gaShowTooltip(tooltip, e.clientX - rect.left, e.clientY - rect.top, `<b>${hit.label}</b>: ${replaceCountPlaceholder(getMsg("ga_tooltip_assignments", "{{COUNT}} assignment(s)"), hit.value)}`);
         else tooltip.style.display = "none";
     };
     canvas._gaLeave = () => { tooltip.style.display = "none"; };
@@ -11962,15 +11980,15 @@ const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 function formatTodoDate(date, submissions, hr24) {
     let { time, ms } = getRelativeDate(date);
     let fromNow = ms < 0
-        ? getMsg("relative_in", "in $TIME$").replace("$TIME$", time)
-        : getMsg("relative_ago", "$TIME$ ago").replace("$TIME$", time);
+        ? getMsg("relative_in", "in {{TIME}}").replace("{{TIME}}", time)
+        : getMsg("relative_ago", "{{TIME}} ago").replace("{{TIME}}", time);
     let dueSoon = false;
     if (submissions && submissions.submitted === false && ms >= -21600000) {
         dueSoon = true;
     }
     const dateText = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
     const timeText = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: !hr24 });
-    return { "dueSoon": dueSoon, "date": getMsg("todo_date_format", "$DATE$ at $TIME$ ($RELATIVE$)").replace("$DATE$", dateText).replace("$TIME$", timeText).replace("$RELATIVE$", fromNow) };
+    return { "dueSoon": dueSoon, "date": getMsg("todo_date_format", "{{DATE}} at {{TIME}} ({{RELATIVE}})").replace("{{DATE}}", dateText).replace("{{TIME}}", timeText).replace("{{RELATIVE}}", fromNow) };
 }
 
 function formatCardDue(date) {
@@ -11978,8 +11996,8 @@ function formatCardDue(date) {
     if (options.relative_dues === true) {
         let relative = getRelativeDate(due, true);
         return relative.ms > 0
-            ? getMsg("relative_ago", "$TIME$ ago").replace("$TIME$", relative.time)
-            : getMsg("relative_in", "in $TIME$").replace("$TIME$", relative.time);
+            ? getMsg("relative_ago", "{{TIME}} ago").replace("{{TIME}}", relative.time)
+            : getMsg("relative_in", "in {{TIME}}").replace("{{TIME}}", relative.time);
     }
     return options.assignment_date_format ? (due.getDate()) + "/" + (due.getMonth() + 1) : (due.getMonth() + 1) + "/" + (due.getDate());
 }

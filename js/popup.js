@@ -129,6 +129,21 @@ function getMsg(key, fallback) {
     return fallback !== undefined ? fallback : "";
 }
 
+const PLACEHOLDER_RE = /\{\{([A-Z][A-Z0-9_]*)\}\}/g;
+
+function replaceCountPlaceholder(msg, count, token) {
+    if (!msg) return msg;
+    const name = token || "COUNT";
+    return String(msg).split("{{" + name + "}}").join(String(count));
+}
+
+function fillPlaceholders(msg, values) {
+    if (!msg) return msg;
+    return String(msg).replace(PLACEHOLDER_RE, (m, name) => (
+        values && Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : m
+    ));
+}
+
 function applyI18nOverride() {
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.dataset.i18n;
@@ -579,7 +594,7 @@ function setupCelebrationsSelect(initial) {
     const updateLabel = () => {
         if (selected.length === 0) label.textContent = getMsg("celebration_none") || "None";
         else if (selected.length === 1) label.textContent = CELEBRATION_TYPES.find(t => t.id === selected[0]) ? (getMsg("celebration_" + selected[0]) || CELEBRATION_TYPES.find(t => t.id === selected[0]).label) : (getMsg("celebration_none") || "None");
-        else label.textContent = (getMsg("selected_count") || "$COUNT$ selected").replace("$COUNT$", selected.length);
+        else label.textContent = replaceCountPlaceholder((getMsg("selected_count") || "{{COUNT}} selected"), selected.length);
     };
 
     // Legacy key: the special handler only passes the new one.
@@ -929,7 +944,7 @@ function updateCardGridPreview() {
                 warning.style.display = "block";
             } else if (active > total) {
                 const gpaNote = s.gpa_calc === true ? getMsg("grid_includes_gpa", " (including the GPA calculator)") : "";
-                warning.textContent = "\u26A0 " + (getMsg("grid_warning") || "Your grid holds $TOTAL$ card$TOTAL_S$ but you have $ACTIVE$ card$ACTIVE_S$$GPA_NOTE$ - some cards may be cut off.").replace("$TOTAL$", total).replace("$TOTAL_S$", total === 1 ? "" : "s").replace("$ACTIVE$", active).replace("$ACTIVE_S$", active === 1 ? "" : "s").replace("$GPA_NOTE$", gpaNote);
+                warning.textContent = "\u26A0 " + (getMsg("grid_warning") || "Your grid holds {{TOTAL}} card{{TOTAL_S}} but you have {{ACTIVE}} card{{ACTIVE_S}}{{GPA_NOTE}} - some cards may be cut off.").replace("{{TOTAL}}", total).replace("{{TOTAL_S}}", total === 1 ? "" : "s").replace("{{ACTIVE}}", active).replace("{{ACTIVE_S}}", active === 1 ? "" : "s").replace("{{GPA_NOTE}}", gpaNote);
                 warning.style.display = "block";
             } else {
                 warning.style.display = "none";
@@ -2140,7 +2155,7 @@ async function setup() {
         } else if (output.time < 250) {
             rating = "ok";
         }
-        document.getElementById("fix-dm-output").textContent = (getMsg("fix_took") || "Fix took $TIME$ms (rating: $RATING$)").replace("$TIME$", Math.round(output.time)).replace("$RATING$", rating);
+        document.getElementById("fix-dm-output").textContent = (getMsg("fix_took") || "Fix took {{TIME}}ms (rating: {{RATING}})").replace("{{TIME}}", Math.round(output.time)).replace("{{RATING}}", rating);
         chrome.storage.sync.get("dark_mode_fix", sync => {
             if (sync["dark_mode_fix"].includes(output.path)) return;
             sync["dark_mode_fix"].push(output.path);
@@ -2213,7 +2228,7 @@ async function setup() {
             try {
                 const result = await chrome.storage.local.get("planner_cache_v1");
                 const count = result?.["planner_cache_v1"]?.items?.length;
-                cacheText = formatStorageBytes(cacheBytes) + (typeof count === "number" ? getMsg("storage_items", " ($COUNT$ items)").replace("$COUNT$", count) : "");
+                cacheText = formatStorageBytes(cacheBytes) + (typeof count === "number" ? replaceCountPlaceholder(getMsg("storage_items", " ({{COUNT}} items)"), count) : "");
             } catch (e) {
                 cacheText = formatStorageBytes(cacheBytes);
             }
@@ -2891,8 +2906,8 @@ function displaySavedThemes() {
         Object.keys(local["saved_themes"]).forEach((key, index) => {
             const created = new Date(parseInt(key));
             let btn = makeElement("div", target, { "className": "saved-theme" });
-            let title = makeElement("p", btn, { "className": "theme-button-title", "textContent": (getMsg("theme_number") || "Theme $NUM$").replace("$NUM$", index + 1)});
-            let date = makeElement("p", btn, { "className": "theme-button-creator", "textContent": (getMsg("relative_ago", "$TIME$ ago")).replace("$TIME$", getRelativeDate(created).time) });
+            let title = makeElement("p", btn, { "className": "theme-button-title", "textContent": (getMsg("theme_number") || "Theme {{NUM}}").replace("{{NUM}}", index + 1)});
+            let date = makeElement("p", btn, { "className": "theme-button-creator", "textContent": (getMsg("relative_ago", "{{TIME}} ago")).replace("{{TIME}}", getRelativeDate(created).time) });
             let remove = makeElement("div", btn, { "className": "theme-button-remove", "textContent": "x" });
             btn.style.backgroundImage = `linear-gradient(rgba(0, 0, 0, 0.44), rgba(0, 0, 0, 0.44)), url(${local["saved_themes"][key]["custom_cards"]?.[0] || ""})`;
             btn.addEventListener("click", () => {

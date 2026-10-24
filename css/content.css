@@ -632,7 +632,7 @@
 .cr-quote-body {padding:clamp(12px,4.5cqw,26px);display:flex;flex-direction:column;gap:clamp(4px,1.6cqw,12px);flex:1;justify-content:center;}
 .cr-quote-mark {font-size:clamp(20px,11cqw,44px);line-height:.5;font-weight:800;color:color-mix(in srgb, var(--bclinks,#0374b5) 55%, transparent);}
 .cr-quote-text {margin:0;font-size:clamp(14px,7.5cqw,26px);line-height:1.45;font-style:italic;color:var(--bctext-0,#2d3b45);}
-.cr-quote-author {font-size:clamp(11px,3.6cqw,17px);font-weight:600;color:var(--bctext-2,#9aa3ab);align-self:flex-end;}
+.cr-quote-author {font-size:clamp(14px,4.2cqw,20px);font-weight:700;color:var(--bctext-2,#9aa3ab);align-self:flex-end;letter-spacing:0.01em;}
 
 /* Quick Links: editable link grid with theme-tinted preset icons */
 .canvasrefined-quick-links .cr-widget-head {gap:8px;}
