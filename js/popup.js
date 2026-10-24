@@ -37,6 +37,8 @@ const syncedSubOptions = [
 	"breathing_height",
 	"daily_quotes_height",
 	"quick_links_height",
+	"quick_links_font_size",
+	"quick_links_icon_size",
 	"auto_dark",
 	"auto_dark_start",
 	"auto_dark_end",
@@ -280,6 +282,10 @@ const defaultOptions = {
         "breathing_height": 0,
         "daily_quotes_height": 0,
         "quick_links_height": 0,
+        // Quick Links tile label font size in px.
+        "quick_links_font_size": 12,
+        // Quick Links tile icon box size in px.
+        "quick_links_icon_size": 36,
         "better_todo": true,
         "better_sidebar": false,
         "sidebar_scale": 100,
@@ -507,12 +513,13 @@ function setupSidebarScaleSlider(initial) {
     });
 }
 
-// Slider 0..max; `unit` is appended to the displayed value ("%" / "px").
-function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, unit, initial) {
+// Slider min..max; `unit` is appended to the displayed value ("%" / "px").
+function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, unit, initial, min) {
     const el = document.querySelector("#" + sliderId);
     const out = document.querySelector("#" + valueId);
     if (!el || !out) return;
-    const value = Math.max(0, Math.min(max, parseInt(initial)));
+    const floor = Number.isFinite(parseInt(min, 10)) ? parseInt(min, 10) : 0;
+    const value = Math.max(floor, Math.min(max, parseInt(initial)));
     if (isNaN(value)) return;
     el.value = value;
     out.textContent = `${value}${unit}`;
@@ -523,7 +530,7 @@ function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, un
     const reset = document.querySelector("#" + resetId);
     if (reset) {
         reset.addEventListener("click", () => {
-            const v = Math.max(0, Math.min(max, parseInt(defaultValue)));
+            const v = Math.max(floor, Math.min(max, parseInt(defaultValue)));
             el.value = v;
             out.textContent = `${v}${unit}`;
             chrome.storage.sync.set({ [key]: v });
@@ -1991,6 +1998,14 @@ async function setup() {
 			{
 				identifier: "quick_links_height",
 				setup: (initial) => setupWidgetHeightInput("quick_links_height", initial),
+			},
+			{
+				identifier: "quick_links_font_size",
+				setup: (initial) => setupRangeSlider("quick_links_font_size", "quickLinksFontSizeSlider", "quickLinksFontSizeValue", null, 12, 24, "px", initial, 8),
+			},
+			{
+				identifier: "quick_links_icon_size",
+				setup: (initial) => setupRangeSlider("quick_links_icon_size", "quickLinksIconSizeSlider", "quickLinksIconSizeValue", null, 36, 64, "px", initial, 20),
 			},
 			{
 				identifier: "focus_timer_preset_1",

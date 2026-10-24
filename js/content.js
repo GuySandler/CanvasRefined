@@ -1110,6 +1110,10 @@ function applyOptionsChanges(changes) {
 			case "quick_links_height":
 				loadQuickLinksWidget();
 				break;
+			case "quick_links_font_size":
+			case "quick_links_icon_size":
+				document.querySelectorAll(".canvasrefined-quick-links").forEach(quickLinksApplySizes);
+				break;
 			case "quick_links_items":
 				updateQuickLinksWidget();
 				break;
@@ -8563,6 +8567,26 @@ function quickLinksItems() {
     return raw.map(quickLinksSanitizeItem).filter(Boolean);
 }
 
+// Per-tile sizes (px): stored per setting, exposed as CSS vars on the widget so
+// the grid, edit mode and the "add" tile all follow one value. Unset keeps the
+// stylesheet default.
+const QUICK_LINKS_SIZE_SETTINGS = [
+    { key: "quick_links_font_size", cssVar: "--cr-ql-label-size", min: 8, max: 24 },
+    { key: "quick_links_icon_size", cssVar: "--cr-ql-icon-size", min: 20, max: 64 },
+];
+
+function quickLinksApplySizes(el) {
+    if (!el) return;
+    QUICK_LINKS_SIZE_SETTINGS.forEach(({ key, cssVar, min, max }) => {
+        const n = parseInt(options[key], 10);
+        if (!Number.isFinite(n) || n <= 0) {
+            el.style.removeProperty(cssVar);
+            return;
+        }
+        el.style.setProperty(cssVar, Math.min(max, Math.max(min, n)) + "px");
+    });
+}
+
 function quickLinksIconMarkup(item) {
     const image = item.icon === "image" ? quickLinksSafeUrl(item.image, true) : "";
     if (image) return `<img src="${crEscapeHtml(image)}" alt="" loading="lazy">`;
@@ -8644,6 +8668,7 @@ function quickLinksEditorHtml(item) {
 
 function renderQuickLinks(el) {
     if (!el) return;
+    quickLinksApplySizes(el);
     const body = el.querySelector(".cr-ql-body");
     const toggle = el.querySelector(".cr-ql-edit-toggle");
     if (!body) return;

@@ -566,8 +566,12 @@
 .canvasrefined-widget-slot .canvasrefined-widget-card {width:100%;margin:0;height:100%;}
 .cr-widget-head {display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px;border-bottom:1px solid var(--bcborders,#c7cdd1);}
 .cr-widget-title {font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bctext-2,#9aa3ab);}
-.cr-widget-btn {flex:1;border:none;border-radius:8px;padding:9px 12px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;background:var(--ic-brand-primary,#0374b5);color:#fff;}
-.cr-widget-btn:hover {filter:brightness(1.07);}
+/* Primary action uses the dark palette's "Background Other" surface
+   (--bcbackground-2) instead of Canvas' brand color, which stays light-theme
+   blue against the always-dark widget card. */
+.cr-widget-btn {flex:1;border:1px solid var(--bcborders,#c7cdd1);border-radius:8px;padding:9px 12px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;background:var(--bcbackground-2,#d9d9d9);color:var(--bctext-0,#2d3b45);}
+.cr-widget-btn:hover {background:color-mix(in srgb, var(--bcbackground-2,#d9d9d9) 80%, var(--bctext-0,#2d3b45));}
+.cr-widget-btn:focus-visible {outline:2px solid color-mix(in srgb, var(--bclinks,#0374b5) 70%, transparent);outline-offset:2px;}
 .cr-widget-btn-ghost {background:transparent;color:var(--bctext-0,#2d3b45);border:1px solid var(--bcborders,#c7cdd1);}
 .cr-time-box {position:relative;margin:14px 14px 0;border-radius:12px;background:color-mix(in srgb, var(--bctext-0,#2d3b45) 6%, transparent);border:1px solid var(--bcborders,#c7cdd1);overflow:hidden;}
 /* the time rectangle is the progress bar, tinted with the theme link color */
@@ -649,19 +653,21 @@
 .cr-ql-tile:active {transform:scale(.97);}
 .cr-ql-tile:focus-visible {outline:2px solid var(--bclinks,#0374b5);outline-offset:2px;}
 .cr-ql-tile.is-editing {cursor:pointer;}
-.cr-ql-icon {display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex:none;border-radius:10px;overflow:hidden;background:color-mix(in srgb, var(--bclinks,#0374b5) 12%, transparent);color:var(--bclinks,#0374b5);}
-.cr-ql-icon svg {width:21px;height:21px;display:block;}
+/* --cr-ql-icon-size is set by the content script (Quick Links settings); the
+   glyphs scale with the box so preset and custom icons stay proportionate. */
+.cr-ql-icon {display:flex;align-items:center;justify-content:center;width:var(--cr-ql-icon-size,36px);height:var(--cr-ql-icon-size,36px);flex:none;border-radius:10px;overflow:hidden;background:color-mix(in srgb, var(--bclinks,#0374b5) 12%, transparent);color:var(--bclinks,#0374b5);}
+.cr-ql-icon svg {width:calc(var(--cr-ql-icon-size,36px) * .5833);height:calc(var(--cr-ql-icon-size,36px) * .5833);display:block;}
 .cr-ql-icon img {width:100%;height:100%;object-fit:contain;display:block;}
-.cr-ql-icon-letter {display:none;font-size:16px;font-weight:800;line-height:1;color:var(--bclinks,#0374b5);}
+.cr-ql-icon-letter {display:none;font-size:calc(var(--cr-ql-icon-size,36px) * .4444);font-weight:800;line-height:1;color:var(--bclinks,#0374b5);}
 .cr-ql-tile.cr-ql-img-broken .cr-ql-icon img,
 .cr-ql-tile.cr-ql-img-broken .cr-ql-icon svg {display:none;}
 .cr-ql-tile.cr-ql-img-broken .cr-ql-icon-letter {display:block;}
-.cr-ql-label {display:-webkit-box;max-width:100%;overflow:hidden;font-size:12px;font-weight:600;line-height:1.25;text-align:center;word-break:break-word;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.cr-ql-label {display:-webkit-box;max-width:100%;overflow:hidden;font-size:var(--cr-ql-label-size,12px);font-weight:600;line-height:1.25;text-align:center;word-break:break-word;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .cr-ql-tile-delete {position:absolute;top:4px;right:4px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;border:none;border-radius:6px;background:transparent;color:var(--bctext-2,#9aa3ab);font-size:14px;line-height:1;cursor:pointer;}
 .cr-ql-tile-delete:hover {background:color-mix(in srgb, #e5484d 18%, transparent);color:#e5484d !important;}
 .cr-ql-add {border-style:dashed;color:var(--bctext-2,#9aa3ab);}
 .cr-ql-add:hover {color:var(--bclinks,#0374b5) !important;}
-.cr-ql-add-plus {display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:color-mix(in srgb, var(--bctext-0,#2d3b45) 7%, transparent);font-size:22px;font-weight:400;line-height:1;}
+.cr-ql-add-plus {display:flex;align-items:center;justify-content:center;width:var(--cr-ql-icon-size,36px);height:var(--cr-ql-icon-size,36px);border-radius:10px;background:color-mix(in srgb, var(--bctext-0,#2d3b45) 7%, transparent);font-size:calc(var(--cr-ql-icon-size,36px) * .6111);font-weight:400;line-height:1;}
 .cr-ql-empty {display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px 6px;text-align:center;color:var(--bctext-2,#9aa3ab);font-size:12px;}
 .cr-ql-empty .cr-widget-btn {flex:none;}
 .cr-ql-hint {margin:0 0 8px;color:var(--bctext-2,#9aa3ab);font-size:11px;}

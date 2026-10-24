@@ -63,6 +63,8 @@ chrome.runtime.onInstalled.addListener(function () {
             "breathing_height": 0,
             "daily_quotes_height": 0,
             "quick_links_height": 0,
+            "quick_links_font_size": 12,
+            "quick_links_icon_size": 36,
             "better_todo": true,
             "todo_hr24": false,
 			"todo_separate_scrollbar": false,

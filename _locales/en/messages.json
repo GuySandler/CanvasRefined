@@ -1913,6 +1913,12 @@
     "quick_links": {
         "message": "Quick Links"
     },
+    "quick_links_font_size": {
+        "message": "Link label size"
+    },
+    "quick_links_icon_size": {
+        "message": "Icon size"
+    },
     "quick_links_hint_edit": {
         "message": "Click a link to edit it."
     },
