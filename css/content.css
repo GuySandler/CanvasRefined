@@ -211,7 +211,6 @@
 .cr-fmt-sep {width:1px;height:18px;align-self:center;background:var(--bcborders,#c7cdd1);margin:0 3px;}
 .canvasrefined-notes-surface {position:relative;background:var(--bcbackground-1,#fff);}
 .canvasrefined-notes-rendered {box-sizing:border-box;width:100%;min-height:140px;padding:12px 16px;font-size:14px;line-height:1.5;color:var(--bctext-0,var(--ic-brand-font-color-dark-lightened-30,#2d3b45));overflow-wrap:break-word;cursor:text;outline:none;border-radius:0 0 4px 4px;}
-.canvasrefined-notes-rendered:hover {background:var(--bcbackground-2,rgba(0,0,0,.02));}
 .canvasrefined-notes-rendered:empty::before {content:"Click to add a note…";color:var(--bctext-2,#9aa3ab);font-style:italic;}
 .canvasrefined-notes-rendered > :first-child {margin-top:0;}
 .canvasrefined-notes-rendered > :last-child {margin-bottom:0;}
