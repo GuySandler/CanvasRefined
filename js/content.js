@@ -8634,10 +8634,28 @@ async function crHeatmapFetchSubmissions(course) {
     return map;
 }
 
+// The name the user actually sees for a class: their Canvas Refined custom card name,
+// then the Canvas nickname (the dashboard card title / API `name`), then the code. This
+// mirrors the dashboard card title and the popup's card list. "Hide personal details"
+// wins, like the GPA calculator does with course names.
+function crCourseDisplayName(courseId, fallbackName) {
+    if (options.hide_personal_details === true && courseId != null && /^\d+$/.test(String(courseId))) {
+        return fakeCourseLabel("id:" + courseId);
+    }
+    const cards = options.custom_cards || {};
+    const card = courseId != null ? (cards[String(courseId)] || cards[courseId]) : null;
+    const custom = typeof card?.name === "string" ? card.name.trim() : "";
+    if (custom) return custom;
+    const full = typeof card?.fullName === "string" ? card.fullName.trim() : "";
+    if (full) return full;
+    return String(fallbackName || "").trim();
+}
+
 async function crHeatmapFetchCourse(course) {
     const url = `${domain}/api/v1/courses/${course.id}/assignments?include[]=submission&per_page=100`;
     const list = await gsGetJsonPages(url, { maxPages: CR_HEATMAP_MAX_PAGES });
-    const code = String(course.course_code || course.name || "");
+    // The label the user knows the class by, not its course code.
+    const label = crCourseDisplayName(course.id, course.name || course.course_code || "");
     // `include[]=submission` is documented, but a few instances ignore it: when no
     // assignment carries a submission key at all, ask the submissions endpoint.
     let subs = null;
@@ -8649,7 +8667,10 @@ async function crHeatmapFetchCourse(course) {
         if (!a || a.name == null) continue;
         const sub = a.submission || (subs && subs.get(String(a.id))) || null;
         out.push({
-            course: code,
+            course: label,
+            // kept so cached items can be relabelled after a rename or an
+            // anonymity toggle, without refetching every course
+            courseId: String(course.id),
             title: String(a.name),
             due: a.due_at || null,
             points: typeof a.points_possible === "number" && a.points_possible > 0 ? a.points_possible : 0,
@@ -8741,7 +8762,7 @@ function crHeatmapBuild(items) {
                 const pct = (item.score / item.points) * 100;
                 const cell = cellFor(d, "grades");
                 cell.scores.push(pct);
-                cell.gradeItems.push({ title: item.title, course: item.course, pct });
+                cell.gradeItems.push({ title: item.title, course: crCourseDisplayName(item.courseId, item.course), pct });
             } else {
                 undated++;
             }
@@ -8749,7 +8770,7 @@ function crHeatmapBuild(items) {
         if (item.submitted) {
             const d = crHeatmapDayStart(item.submitted);
             if (d) {
-                cellFor(d, "subs").subs.push({ title: item.title, course: item.course });
+                cellFor(d, "subs").subs.push({ title: item.title, course: crCourseDisplayName(item.courseId, item.course) });
                 subTotal++;
             }
         }
