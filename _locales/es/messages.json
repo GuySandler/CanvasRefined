@@ -1416,7 +1416,7 @@
         "message": "Buscar funciones..."
     },
     "search_hint": {
-        "message": "Empieza a escribir para buscar en tus módulos y tareas. Usa @coursename para buscar un curso concreto, o @grades para abrir la página de notas de un curso."
+        "message": "Empieza a escribir para buscar en tus módulos y tareas. Usa @coursename para buscar un curso concreto, o @grades para abrir la página de notas de un curso, o @home para ir a tu panel."
     },
     "search_navigate": {
         "message": "navegar"
@@ -1471,6 +1471,9 @@
     },
     "search_type_file": {
         "message": "Archivo"
+    },
+    "search_type_home": {
+        "message": "Inicio"
     },
     "search_type_item": {
         "message": "Elemento"

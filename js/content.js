@@ -74,6 +74,7 @@ function setupNavigationListener() {
         if (next === current_page) return;
         current_page = next;
         watchSequenceFooter();
+        applyHideAssignmentSidebar();
         watchSubmissionPageButton();
         watchProfileLogoutPageButton();
         watchGradeAnalytics();
@@ -376,6 +377,31 @@ function applyHideSequenceFooter() {
 
 function watchSequenceFooter() {
     applyHideSequenceFooter();
+}
+
+// The assignment page's details column repeats what the assignment header already
+// shows and takes half the width, so it is dropped there. CSS-only, so it survives
+// Canvas re-renders and SPA navigation; removed again on any other page.
+function isAssignmentShowPage() {
+    return /^\/courses\/\d+\/assignments\/\d+(?!\/submissions)(?:\/|$)/.test(current_page);
+}
+
+function applyHideAssignmentSidebar() {
+    let style = document.getElementById("canvasrefined-hide-assignment-sidebar");
+    if (!isAssignmentShowPage()) {
+        if (style) style.remove();
+        return;
+    }
+    if (!style) {
+        style = document.createElement("style");
+        style.id = "canvasrefined-hide-assignment-sidebar";
+        style.textContent = `
+            #right-side-wrapper { display: none !important; }
+            /* the freed column belongs to the page body */
+            #not_right_side { width: 100% !important; max-width: 100% !important; }
+        `;
+        (document.head || document.documentElement).appendChild(style);
+    }
 }
 
 // Persistent observer keeping both assignment nav buttons mounted;
@@ -992,6 +1018,7 @@ function startExtension() {
 
     // Watchers start before the async storage callbacks, so a later throw can't block them.
     setupNavigationListener();
+    applyHideAssignmentSidebar();
     watchSubmissionPageButton();
 
     toggleDarkMode();
@@ -1639,11 +1666,12 @@ async function applyCustomBackground() {
         .page-title {
             background: none !important;
         }
+        .module-sequence-footer,
         .module-sequence-footer .module-sequence-footer-content {
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
-            backdrop-filter: blur(${bgBlur}px) !important;
-            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
-            border-radius: 5px !important;
+            background: none !important;
+            border-top: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
         }
         .item-group-condensed,
         .item-group-container {
@@ -1684,6 +1712,10 @@ async function applyCustomBackground() {
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
+        }
+        /* same flex View, other emotion hash: its opaque surface hides the image */
+        .css-43gqe2-view--flex-flex {
+            background: transparent !important;
         }
         /* flatten inner Views to one surface; keep avatars, role pills, buttons */
         .css-fiozi7-view--flex-flex [class*="-view"]:not([class*="-avatar"]):not([data-testid="pill-container"]):not([data-testid="pill-container"] *):not([class*="-baseButton"]) {
@@ -10356,6 +10388,7 @@ const GS_KIND_CLASS = {
     externalurl: "link",
     externaltool: "external-tool",
     grades: "grades",
+    home: "home",
 };
 
 function gsKindClass(kind) {
@@ -10366,6 +10399,7 @@ function gsKindLabel(kind) {
     if (kind === "course") return getMsg("search_type_course", "Course");
     if (kind === "module") return getMsg("search_type_module", "Module");
     if (kind === "grades") return getMsg("search_type_grades", "Grades");
+    if (kind === "home") return getMsg("search_type_home", "Home");
     return prettyModuleItemType(kind);
 }
 
@@ -10968,6 +11002,23 @@ async function runGlobalSearch(query, resultsEl) {
     if (!query) {
         resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_hint", "Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.")}</div>`;
         return [];
+    }
+
+    // "@home" opens the dashboard and needs no index, so it answers before the
+    // empty-index guard below.
+    if (query.trim().toLowerCase() === "@home") {
+        const homeRows = [{
+            kind: "home",
+            cls: "home",
+            type: gsKindLabel("home"),
+            title: getMsg("dashboard", "Dashboard"),
+            course: "",
+            courseId: null,
+            url: `${domain}/`,
+        }];
+        resultsEl.innerHTML = homeRows.map((item, i) => globalSearchRowHtml(item, i)).join("");
+        bindGlobalSearchRows(resultsEl, homeRows);
+        return homeRows;
     }
     if (!index.length) {
         resultsEl.innerHTML = indexing

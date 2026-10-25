@@ -1416,7 +1416,7 @@
         "message": "Pesquisar funcionalidades..."
     },
     "search_hint": {
-        "message": "Começa a escrever para procurar módulos e trabalhos. Usa @nomedocurso para procurar num curso específico, ou @grades para abrir a página de notas de um curso."
+        "message": "Começa a escrever para procurar módulos e trabalhos. Usa @nomedocurso para procurar num curso específico, ou @grades para abrir a página de notas de um curso, ou @home para ires para o teu painel."
     },
     "search_navigate": {
         "message": "navegar"
@@ -1471,6 +1471,9 @@
     },
     "search_type_file": {
         "message": "Ficheiro"
+    },
+    "search_type_home": {
+        "message": "Início"
     },
     "search_type_item": {
         "message": "Item"

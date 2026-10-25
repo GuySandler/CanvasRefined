@@ -1258,6 +1258,10 @@ hr {
     background: transparent !important;
     box-shadow: none !important;
 }
+/* InstUI flex View ships an opaque surface that stays light in dark mode */
+.css-43gqe2-view--flex-flex {
+    background: transparent !important;
+}
 /* content span ships a light background + border and sets dark ink */
 .css-1ta5ds2-baseButton__content {
     background: var(--bcbackground-1) !important;
@@ -1489,5 +1493,18 @@ input[type="checkbox"]:is([name="turnitin_pledge"], [name="vericite_pledge"]) {
 }
 [data-testid="similarity-pledge"] [class*="-checkboxFacade__facade"]::before {
     border-color: var(--bclinks) !important;
+}
+/* the footer's full-width surface leaves a bare strip between Previous and Next */
+.module-sequence-footer,
+.module-sequence-footer .module-sequence-footer-content {
+    background: none !important;
+    border-top: none !important;
+    box-shadow: none !important;
+}
+/* with the surface gone the buttons need their own outline */
+.module-sequence-footer .module-sequence-footer-button--previous a,
+.module-sequence-footer .module-sequence-footer-button--next a {
+    border: 1px solid var(--bcborders) !important;
+    border-radius: 6px !important;
 }
 `;

@@ -1416,7 +1416,7 @@
         "message": "搜索功能..."
     },
     "search_hint": {
-        "message": "开始输入以搜索你的模块和作业。使用 @课程名 搜索特定课程，或使用 @grades 打开课程的成绩页面。"
+        "message": "开始输入以搜索你的模块和作业。使用 @课程名 搜索特定课程，或使用 @grades 打开课程的成绩页面，或输入 @home 跳转到你的仪表板。"
     },
     "search_navigate": {
         "message": "导航"
@@ -1471,6 +1471,9 @@
     },
     "search_type_file": {
         "message": "文件"
+    },
+    "search_type_home": {
+        "message": "主页"
     },
     "search_type_item": {
         "message": "项目"

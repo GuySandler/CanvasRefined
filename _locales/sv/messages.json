@@ -1416,7 +1416,7 @@
         "message": "Sök funktioner..."
     },
     "search_hint": {
-        "message": "Börja skriva för att söka bland moduler och uppgifter. Använd @kursnamn för att söka i en viss kurs, eller @grades för att öppna en kurs betygssida."
+        "message": "Börja skriva för att söka bland moduler och uppgifter. Använd @kursnamn för att söka i en viss kurs, eller @grades för att öppna en kurs betygssida, eller @home för att gå till din översikt."
     },
     "search_navigate": {
         "message": "navigera"
@@ -1471,6 +1471,9 @@
     },
     "search_type_file": {
         "message": "Fil"
+    },
+    "search_type_home": {
+        "message": "Start"
     },
     "search_type_item": {
         "message": "Objekt"

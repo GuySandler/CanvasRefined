@@ -1416,7 +1416,7 @@
         "message": "Cerca funzioni..."
     },
     "search_hint": {
-        "message": "Inizia a digitare per cercare moduli e consegne. Usa @corsonome per cercare un corso specifico o @grades per aprire la pagina dei voti di un corso."
+        "message": "Inizia a digitare per cercare moduli e consegne. Usa @corsonome per cercare un corso specifico o @grades per aprire la pagina dei voti di un corso, oppure @home per andare alla tua dashboard."
     },
     "search_navigate": {
         "message": "naviga"
@@ -1471,6 +1471,9 @@
     },
     "search_type_file": {
         "message": "File"
+    },
+    "search_type_home": {
+        "message": "Home"
     },
     "search_type_item": {
         "message": "Elemento"

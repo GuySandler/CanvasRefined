@@ -1416,7 +1416,7 @@
         "message": "機能を検索..."
     },
     "search_hint": {
-        "message": "モジュールや課題を検索するには入力してください。@コース名で特定のコースを検索、@gradesでコースの成績ページを開けます。"
+        "message": "モジュールや課題を検索するには入力してください。@コース名で特定のコースを検索、@gradesでコースの成績ページを開けます、または @home でダッシュボードに移動できます。"
     },
     "search_navigate": {
         "message": "移動"
@@ -1471,6 +1471,9 @@
     },
     "search_type_file": {
         "message": "ファイル"
+    },
+    "search_type_home": {
+        "message": "ホーム"
     },
     "search_type_item": {
         "message": "項目"

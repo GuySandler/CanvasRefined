@@ -1416,7 +1416,7 @@
         "message": "Funktionen suchen..."
     },
     "search_hint": {
-        "message": "Beginne zu tippen, um deine Module und Aufgaben zu durchsuchen. Verwende @kursname, um einen bestimmten Kurs zu durchsuchen, oder @grades, um die Notenseite eines Kurses zu öffnen."
+        "message": "Beginne zu tippen, um deine Module und Aufgaben zu durchsuchen. Verwende @kursname, um einen bestimmten Kurs zu durchsuchen, oder @grades, um die Notenseite eines Kurses zu öffnen, oder @home, um zu deinem Dashboard zu springen."
     },
     "search_navigate": {
         "message": "navigieren"
@@ -1471,6 +1471,9 @@
     },
     "search_type_file": {
         "message": "Datei"
+    },
+    "search_type_home": {
+        "message": "Startseite"
     },
     "search_type_item": {
         "message": "Element"

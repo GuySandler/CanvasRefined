@@ -155,7 +155,11 @@ function applyI18nOverride() {
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.dataset.i18n;
         const msg = getMsg(key);
-        if (msg) el.textContent = msg;
+        if (!msg) return;
+        // textContent would destroy interactive or non-text children (the font
+        // dropdown's arrow and its "keep font" checkbox live inside a label).
+        if (el.querySelector("input,select,button,a,img,picture,svg,iframe,video,canvas")) return;
+        el.textContent = msg;
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const msg = getMsg(el.dataset.i18nPlaceholder);
