@@ -1412,6 +1412,18 @@
     "search": {
         "message": "Search"
     },
+    "search_age_days": {
+        "message": "{{COUNT}}d ago"
+    },
+    "search_age_hours": {
+        "message": "{{COUNT}}h ago"
+    },
+    "search_age_minutes": {
+        "message": "{{COUNT}}m ago"
+    },
+    "search_age_now": {
+        "message": "just now"
+    },
     "search_building": {
         "message": "Building search index…"
     },
@@ -1432,6 +1444,18 @@
     },
     "search_hint": {
         "message": "Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page."
+    },
+    "search_index_count": {
+        "message": "{{COUNT}} items"
+    },
+    "search_index_updated": {
+        "message": "updated {{AGE}}"
+    },
+    "search_index_working": {
+        "message": "updating…"
+    },
+    "search_indexing": {
+        "message": "Indexing your courses…"
     },
     "search_navigate": {
         "message": "navigate"
@@ -1463,6 +1487,15 @@
     "search_open": {
         "message": "open"
     },
+    "search_partial": {
+        "message": "Still indexing your courses…"
+    },
+    "search_refresh": {
+        "message": "Refresh"
+    },
+    "search_refresh_title": {
+        "message": "Rebuild the index from Canvas"
+    },
     "search_placeholder": {
         "message": "Search modules & assignments… (@coursename filters by course)"
     },
@@ -1478,6 +1511,9 @@
     "search_type_assignment": {
         "message": "Assignment"
     },
+    "search_type_course": {
+        "message": "Course"
+    },
     "search_type_discussion": {
         "message": "Discussion"
     },
@@ -1487,11 +1523,17 @@
     "search_type_file": {
         "message": "File"
     },
+    "search_type_grades": {
+        "message": "Grades"
+    },
     "search_type_item": {
         "message": "Item"
     },
     "search_type_link": {
         "message": "Link"
+    },
+    "search_type_module": {
+        "message": "Module"
     },
     "search_type_page": {
         "message": "Page"

@@ -373,6 +373,22 @@
     .canvasrefined-gs-type-link, .canvasrefined-gs-type-external-tool { background: #fff4d6; color: #7a5b00; border-color: #f1dfab; }
 .canvasrefined-gs-type-course { background: #dff3f3; color: #0b6e6e; border-color: #b3dede; }
 .canvasrefined-gs-type-grades { background: #e8eefc; color: #1d4ed8; border-color: #c3d2f5; }
+.canvasrefined-gs-status {
+    display: flex; align-items: center; gap: 10px; padding: 6px 14px;
+    border-top: 1px solid var(--bcborders, #e2e6e8);
+    background: var(--bcbackground-1, #fff);
+    font-size: 11px; color: var(--bctext-2, #9aa3ab);
+}
+.canvasrefined-gs-status-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.canvasrefined-gs-refresh {
+    border: 1px solid var(--bcborders, #c7cdd1); border-radius: 6px;
+    background: var(--bcbackground-2, #f5f7f8); color: var(--bctext-1, #5b6770);
+    font: inherit; font-size: 11px; font-weight: 600; padding: 2px 8px; cursor: pointer;
+    flex-shrink: 0;
+}
+.canvasrefined-gs-refresh:hover:not(:disabled) { background: var(--bcbackground-2, #ececec); }
+.canvasrefined-gs-refresh:disabled { opacity: .55; cursor: default; }
+.canvasrefined-gs-partial { color: var(--bctext-2, #9aa3ab); font-size: 12px; }
 .canvasrefined-gs-footer {
     display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 14px; font-size: 12px;
     color: var(--bctext-2, #9aa3ab); border-top: 1px solid var(--bcborders, #e2e6e8);

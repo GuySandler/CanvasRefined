@@ -9011,6 +9011,9 @@ function applyAestheticChanges() {
         // strip Canvas' natural top/left card margins; the grid supplies its own gaps
         style.textContent += `.ic-DashboardCard__box__container{margin-top:0!important;margin-left:0!important}`;
         style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{margin-top:0!important;margin-left:0!important}`;
+        // CanvasRefined's own widgets carry 36px outer margins meant for the flex
+        // card flow; in the grid every side is spacing the gaps already provide
+        style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-widget-card,.ic-DashboardCard__box__container > .canvasrefined-dashboard-notes,.ic-DashboardCard__box__container > .canvasrefined-gpa-card,.ic-DashboardCard__box__container > .canvasrefined-gpa{margin:0!important}`;
         const centerGrid = options.center_cards === true;
         const gpaOn = options.gpa_calc === true;
         const gpaPos = gpaCalcPosition();
@@ -9226,18 +9229,47 @@ function injectQuizSafeModeBanner(safeModeOn) {
 // Global Canvas Search: search every course's modules, items and assignments, then jump
 // to them. Triggered by the floating button or Ctrl/Cmd+K.
 
-let globalSearchIndex = null;            // [{type,title,course,courseId,url}]
-let globalSearchIndexPromise = null;     // in-flight build so concurrent opens share one fetch
-let globalSearchIndexAt = 0;             // ms timestamp of last successful build
-const GLOBAL_SEARCH_INDEX_TTL = 10 * 60 * 1000; // 10 minutes
-const GLOBAL_SEARCH_STORAGE_KEY = "canvasrefined_global_search_index";
+// Cost model: Canvas has no cross-course search API, so the index is assembled from
+// /courses -> (/assignments + /modules?include[]=items). Items are returned inline by
+// Canvas where it supports it, which keeps a full build at ~2 requests per course
+// instead of one per module. The result is cached per host in chrome.storage.local,
+// so reopening search costs zero requests; stale courses are topped up a few at a
+// time while the tab idles, and "Refresh" forces a full network rebuild.
+
+const GS_CACHE_VERSION = 2;
+const GS_CACHE_KEY_PREFIX = "canvasrefined_gs_cache_";
+const GS_CACHE_MAX_AGE = 14 * 24 * 60 * 60 * 1000; // drop a cache untouched for 2 weeks
+const GS_COURSE_TTL = 30 * 60 * 1000;              // course content is fresh for 30 min
+const GS_COURSELIST_TTL = 15 * 60 * 1000;          // enrollment list is fresh for 15 min
+const GS_REFRESH_PER_LOAD = 6;                     // stale courses topped up per page load
+const GS_CONCURRENCY = 12;                         // parallel requests while indexing
+const GS_MAX_COURSES = 60;
+const GS_MAX_PAGES = 10;                           // pagination safety net
+const GS_BUILD_LOCK = "canvasrefined-gs-build";
+
+// Persisted shape (keyed per host):
+// { v, updatedAt, courses: { "<id>": { n: name, c: code, at: fetchedAt,
+//                                       e: [[kind, title, urlPath], ...] } } }
+let gsCache = null;
+let gsCacheLoaded = false;
+let gsCachePromise = null;
+let gsEntries = [];                 // live flat index, appended per course as it lands
+let gsEntriesByCourse = new Map();  // "<id>" -> its entries, so a course can be replaced
+let gsSeenUrls = new Set();         // dedupe across courses by normalized URL
+let gsBuildPromise = null;
+let gsTopUpPromise = null;          // background stale-course refresh, if any
+let gsBuiltOnce = false;
+let gsRequests = 0;                 // request counter for the debug summary
+let gsRateLimitedUntil = 0;         // throttle gate shared by all workers
+let gsOnIndexUpdated = null;        // modal hook: rerun the current query
+let _gsPrewarmScheduled = false;
 let _gsShortcutBound = false;
 
 function setupGlobalSearch() {
     if (options.global_search !== true) return;
-    invalidateGlobalSearchIndex();
     ensureGlobalSearchButton();
     ensureGlobalSearchShortcut();
+    gsSchedulePrewarm();
 }
 
 function removeGlobalSearch() {
@@ -9406,6 +9438,10 @@ function openGlobalSearchModal() {
                 <button id="canvasrefined-gs-close" class="canvasrefined-gs-close" type="button" title="${getMsg("search_close_title", "Close (Esc)")}">Esc</button>
             </div>
             <div id="canvasrefined-gs-results" class="canvasrefined-gs-results"></div>
+            <div class="canvasrefined-gs-status" style="display:none;">
+                <span id="canvasrefined-gs-status-text" class="canvasrefined-gs-status-text"></span>
+                <button id="canvasrefined-gs-refresh" class="canvasrefined-gs-refresh" type="button" title="${getMsg("search_refresh_title", "Rebuild the index from Canvas")}">${getMsg("search_refresh", "Refresh")}</button>
+            </div>
             <div class="canvasrefined-gs-footer">
                 <span><kbd>\u2191</kbd><kbd>\u2193</kbd> ${getMsg("search_navigate", "navigate")}</span>
                 <span><kbd>Enter</kbd> ${getMsg("search_open", "open")}</span>
@@ -9446,23 +9482,43 @@ function openGlobalSearchModal() {
         if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) e.stopPropagation();
     });
 
+    const applyResults = (res) => {
+        currentResults = res;
+        selected = res.length ? 0 : -1;
+        renderGlobalSearchSelection(resultsEl, selected);
+    };
     let debounce = null;
+    const rerun = () => {
+        if (document.getElementById("canvasrefined-global-search-modal") !== modal) return;
+        clearTimeout(debounce);
+        runGlobalSearch(input.value.trim(), resultsEl).then(applyResults);
+    };
     input.addEventListener("input", () => {
         clearTimeout(debounce);
-        debounce = setTimeout(() => runGlobalSearch(input.value.trim(), resultsEl).then(res => {
-            currentResults = res;
-            selected = res.length ? 0 : -1;
-            renderGlobalSearchSelection(resultsEl, selected);
-        }), 120);
+        debounce = setTimeout(rerun, 120);
     });
+
+    modal.querySelector("#canvasrefined-gs-refresh")?.addEventListener("click", () => {
+        gsForceRefresh();
+        gsUpdateStatus(true);
+    });
+
+    // Results that land late (cold build, background top-up) should show up without
+    // the user retyping.
+    gsOnIndexUpdated = () => {
+        if (input.value.trim()) rerun();
+        gsUpdateStatus(true);
+    };
 
     requestAnimationFrame(() => input.focus());
     ensureGlobalSearchIndex();
+    gsUpdateStatus(true);
     resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_hint", "Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.")}</div>`;
 }
 
 function closeGlobalSearchModal() {
     const modal = document.getElementById("canvasrefined-global-search-modal");
+    gsOnIndexUpdated = null;
     if (!modal) return;
     modal.remove();
 }
@@ -9488,177 +9544,650 @@ function renderGlobalSearchSelection(resultsEl, selected) {
 }
 
 
-function invalidateGlobalSearchIndex() {
-    globalSearchIndex = null;
-    globalSearchIndexAt = 0;
-    globalSearchIndexPromise = null;
-    try { chrome.storage.local.remove(GLOBAL_SEARCH_STORAGE_KEY); } catch (_) { /* ignore */ }
+function gsCacheKey() {
+    return GS_CACHE_KEY_PREFIX + location.host;
 }
 
-async function ensureGlobalSearchIndex() {
-    // In-memory only: never served across reloads.
-    if (globalSearchIndex && (Date.now() - globalSearchIndexAt) < GLOBAL_SEARCH_INDEX_TTL) {
-        return globalSearchIndex;
-    }
-    if (globalSearchIndexPromise) return globalSearchIndexPromise;
-
-    globalSearchIndexPromise = (async () => {
-        const index = await buildGlobalSearchIndex();
-        globalSearchIndex = index;
-        globalSearchIndexAt = Date.now();
-        return index;
-    })();
-
-    try {
-        return await globalSearchIndexPromise;
-    } finally {
-        globalSearchIndexPromise = null;
-    }
+function gsSleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function buildGlobalSearchIndex() {
-    let courses = [];
-    try {
-        // enrollment_state=active filters past-term courses at the source.
-        courses = await getData(`${domain}/api/v1/courses?enrollment_state=active&per_page=100`);
-    } catch (e) {
-        console.warn("[CanvasRefined] global search: failed to load courses", e);
-        return [];
-    }
-    if (!Array.isArray(courses) || !courses.length) return [];
+// chrome.storage supports both callbacks and promises depending on browser and
+// version; wrap either shape so the cache path can't hang.
+function gsStorageGet(key) {
+    return new Promise(resolve => {
+        try {
+            const maybe = chrome.storage.local.get(key, result => resolve(result || {}));
+            if (maybe && typeof maybe.then === "function") {
+                maybe.then(r => resolve(r || {}), () => resolve({}));
+            }
+        } catch (_) { resolve({}); }
+    });
+}
 
-    // Some institutions report past-term courses as active — double-check here too.
+function gsStorageSet(value) {
+    return new Promise(resolve => {
+        try {
+            const maybe = chrome.storage.local.set(value, () => resolve());
+            if (maybe && typeof maybe.then === "function") maybe.then(() => resolve(), () => resolve());
+        } catch (_) { resolve(); }
+    });
+}
+
+async function gsReadCache() {
+    const key = gsCacheKey();
+    const stored = (await gsStorageGet(key))[key];
+    if (!stored || stored.v !== GS_CACHE_VERSION || !stored.courses) return null;
     const now = Date.now();
-    courses = courses.filter(c => {
-        if (!c || !c.name) return false;
-        if (c.access_restricted_by_date === true) return false;
-        if (c.concluded === true) return false;
-        const endAt = c?.term?.end_at || c?.end_at;
+    const courses = {};
+    let kept = 0;
+    for (const [cid, course] of Object.entries(stored.courses)) {
+        if (!course || !course.n || !Array.isArray(course.e)) continue;
+        if (now - (course.at || 0) > GS_CACHE_MAX_AGE) continue;
+        courses[cid] = course;
+        kept++;
+    }
+    if (!kept) return null;
+    return {
+        v: GS_CACHE_VERSION,
+        updatedAt: stored.updatedAt || 0,
+        courseList: stored.courseList && Array.isArray(stored.courseList.items) ? stored.courseList : null,
+        courses
+    };
+}
+
+async function gsEnsureCacheLoaded() {
+    if (gsCacheLoaded) return gsCache;
+    if (gsCachePromise) return gsCachePromise;
+    gsCachePromise = (async () => {
+        gsCache = await gsReadCache();
+        gsCacheLoaded = true;
+        return gsCache;
+    })();
+    try {
+        return await gsCachePromise;
+    } finally {
+        gsCachePromise = null;
+    }
+}
+
+// Merge rather than overwrite: Canvas is often open in several tabs and every tab
+// shares this cache, so a per-course entry is only ever replaced by a newer one.
+async function gsPersistCache() {
+    if (!gsCache || !gsCache.courses) return;
+    try {
+        const key = gsCacheKey();
+        const stored = (await gsStorageGet(key))[key];
+        if (stored && stored.v === GS_CACHE_VERSION && stored.courses) {
+            for (const [cid, course] of Object.entries(stored.courses)) {
+                const mine = gsCache.courses[cid];
+                if (!mine || (course.at || 0) > (mine.at || 0)) gsCache.courses[cid] = course;
+            }
+            const theirs = stored.courseList;
+            if (theirs && (!gsCache.courseList || (theirs.at || 0) > (gsCache.courseList.at || 0))) {
+                gsCache.courseList = theirs;
+            }
+        }
+        gsCache.updatedAt = Date.now();
+        await gsStorageSet({ [key]: gsCache });
+    } catch (_) { /* cache write is best-effort */ }
+}
+
+async function gsMergeFromStorage() {
+    const fresh = await gsReadCache();
+    if (!fresh || !gsCache) return;
+    for (const [cid, course] of Object.entries(fresh.courses)) {
+        const mine = gsCache.courses[cid];
+        if (!mine || (course.at || 0) > (mine.at || 0)) gsCache.courses[cid] = course;
+    }
+    if (fresh.courseList && (!gsCache.courseList || (fresh.courseList.at || 0) > (gsCache.courseList.at || 0))) {
+        gsCache.courseList = fresh.courseList;
+    }
+}
+
+// Cached URLs are stored as paths so the cache is small and host-independent
+// within one Canvas instance.
+function gsRelUrl(url) {
+    try {
+        const u = new URL(url, domain);
+        if (u.origin === domain) return u.pathname + u.search;
+        return u.href;
+    } catch (_) {
+        return String(url || "");
+    }
+}
+
+function gsAbsUrl(url) {
+    const s = String(url || "");
+    if (!s) return "";
+    if (/^https?:/i.test(s)) return s;
+    return domain + (s.charAt(0) === "/" ? s : "/" + s);
+}
+
+const GS_KIND_CLASS = {
+    course: "course",
+    module: "module",
+    assignment: "assignment",
+    quiz: "quiz",
+    discussion_topic: "discussion",
+    discussion: "discussion",
+    page: "page",
+    file: "file",
+    externalurl: "link",
+    externaltool: "external-tool",
+    grades: "grades",
+};
+
+function gsKindClass(kind) {
+    return GS_KIND_CLASS[kind] || String(kind || "item").toLowerCase().replace(/[^a-z0-9-]/g, "");
+}
+
+function gsKindLabel(kind) {
+    if (kind === "course") return getMsg("search_type_course", "Course");
+    if (kind === "module") return getMsg("search_type_module", "Module");
+    if (kind === "grades") return getMsg("search_type_grades", "Grades");
+    return prettyModuleItemType(kind);
+}
+
+function gsKindFromItemType(type) {
+    const t = (type || "").toLowerCase();
+    if (t === "discussion") return "discussion_topic";
+    return t || "item";
+}
+
+// Entries carry their lowercase forms and display label so a keystroke only has to
+// compare strings (the index is rebuilt in memory once per page, not per keypress).
+function gsMakeEntry(kind, title, course, courseCode, courseId, url) {
+    const t = String(title || "");
+    const c = String(course || "");
+    return {
+        kind,
+        cls: gsKindClass(kind),
+        type: gsKindLabel(kind),
+        title: t,
+        course: c,
+        courseCode: courseCode || c,
+        courseId,
+        url,
+        _t: t.toLowerCase(),
+        _c: c.toLowerCase()
+    };
+}
+
+function gsRemoveCourseEntries(courseId) {
+    const old = gsEntriesByCourse.get(courseId);
+    if (!old || !old.length) return;
+    const drop = new Set(old);
+    gsEntries = gsEntries.filter(entry => !drop.has(entry));
+    for (const entry of old) gsSeenUrls.delete(normalizeGlobalSearchUrl(entry.url));
+    gsEntriesByCourse.delete(courseId);
+}
+
+function gsAddCourseEntries(courseId, name, courseCode, tuples) {
+    gsRemoveCourseEntries(courseId);
+    const list = [];
+    const push = (kind, title, url) => {
+        const absolute = gsAbsUrl(url);
+        const key = normalizeGlobalSearchUrl(absolute);
+        if (!key || gsSeenUrls.has(key)) return;
+        gsSeenUrls.add(key);
+        const entry = gsMakeEntry(kind, title, name, courseCode, courseId, absolute);
+        gsEntries.push(entry);
+        list.push(entry);
+    };
+    if (name) push("course", name, `/courses/${courseId}`);
+    for (const tuple of tuples || []) {
+        if (Array.isArray(tuple)) push(tuple[0], tuple[1], tuple[2]);
+    }
+    gsEntriesByCourse.set(courseId, list);
+}
+
+// courses === null rebuilds from everything cached (used before the course list
+// arrives, so search works while that request is still in flight).
+function gsLoadFromCache(courses) {
+    gsEntries = [];
+    gsEntriesByCourse = new Map();
+    gsSeenUrls = new Set();
+    const cachedCourses = (gsCache && gsCache.courses) || {};
+    if (courses) {
+        for (const course of courses) {
+            const cached = cachedCourses[String(course.id)];
+            if (cached) gsAddCourseEntries(String(course.id), cached.n, cached.c || cached.n, cached.e);
+        }
+    } else {
+        for (const [cid, cached] of Object.entries(cachedCourses)) {
+            gsAddCourseEntries(cid, cached.n, cached.c || cached.n, cached.e);
+        }
+    }
+}
+
+// One request with retry. Canvas throttles with 429 — or 403 "Rate Limit Exceeded"
+// — and costs are per token, so a burst of 60 courses would otherwise lose courses.
+async function gsFetchOnce(url, attempt) {
+    const gate = gsRateLimitedUntil - Date.now();
+    if (gate > 0) await gsSleep(Math.min(gate, 4000));
+
+    let response;
+    try {
+        response = await pageFetch(url, {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+        });
+    } catch (e) {
+        if (attempt < 2) {
+            await gsSleep(300 * (attempt + 1));
+            return gsFetchOnce(url, attempt + 1);
+        }
+        throw e;
+    }
+    gsRequests++;
+
+    const remainingHeader = response.headers.get("X-Rate-Limit-Remaining");
+    const remaining = remainingHeader === null ? NaN : Number(remainingHeader);
+    if (Number.isFinite(remaining) && remaining <= 50) gsRateLimitedUntil = Date.now() + 1500;
+
+    if (response.ok) {
+        const data = await response.json();
+        return { data, response };
+    }
+
+    let retryable = response.status === 429 || response.status >= 500;
+    if (response.status === 403) {
+        let body = "";
+        try { body = await response.text(); } catch (_) { /* ignore */ }
+        retryable = /rate.?limit/i.test(body);
+    }
+    if (retryable && attempt < 2) {
+        const retryAfter = Number(response.headers.get("Retry-After"));
+        const delay = Number.isFinite(retryAfter) && retryAfter > 0
+            ? retryAfter * 1000
+            : 400 * Math.pow(2, attempt);
+        gsRateLimitedUntil = Math.max(gsRateLimitedUntil, Date.now() + delay);
+        await gsSleep(Math.min(delay, 8000));
+        return gsFetchOnce(url, attempt + 1);
+    }
+    throw new Error(`Canvas API request failed (${response.status})`);
+}
+
+async function gsGetJsonPages(url, options_) {
+    const maxPages = (options_ && options_.maxPages) || GS_MAX_PAGES;
+    const out = [];
+    let next = url;
+    for (let page = 0; page < maxPages && next; page++) {
+        const { data, response } = await gsFetchOnce(next, 0);
+        if (Array.isArray(data)) out.push(...data);
+        next = response && response.headers ? getNextPageUrl(response.headers.get("Link")) : null;
+    }
+    return out;
+}
+
+async function gsFetchCourseList() {
+    const raw = await gsGetJsonPages(`${domain}/api/v1/courses?enrollment_state=active&per_page=100`, { maxPages: 3 });
+    const now = Date.now();
+    const seen = new Set();
+    const courses = [];
+    for (const course of raw) {
+        if (!course || !course.id || !course.name) continue;
+        // Some institutions report past-term courses as active.
+        if (course.access_restricted_by_date === true) continue;
+        if (course.concluded === true) continue;
+        const endAt = (course.term && course.term.end_at) || course.end_at;
         if (endAt) {
             const end = new Date(endAt).getTime();
-            if (!isNaN(end) && end < now) return false;
+            if (!isNaN(end) && end < now) continue;
         }
-        if (isCourseHidden(c.id)) return false;
-        return true;
-    });
-    courses = courses.slice(0, 60);
+        // Canvas can repeat a course (multi-role, cross-listed) — dedupe by id.
+        const id = String(course.id);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        courses.push(course);
+        if (courses.length >= GS_MAX_COURSES) break;
+    }
+    return courses;
+}
 
-    // Canvas can repeat a course (multi-role, cross-listed) — dedupe by id.
-    const seenCourseIds = new Set();
-    courses = courses.filter(c => {
-        if (seenCourseIds.has(c.id)) return false;
-        seenCourseIds.add(c.id);
-        return true;
-    });
-
-    const index = [];
-    // Content-identity keys so an item surfaced twice (e.g. a module item that is
-    // also a standalone assignment) collapses to one result; assignments go first
-    // so their direct URL wins.
-    const seenContent = new Set();
-
-    await Promise.all(courses.map(async (course) => {
-        const courseId = course.id;
-        const courseName = course.name;
-        const courseCode = course.course_code || courseName;
-
-        const courseKey = `course:${courseId}`;
-        if (!seenContent.has(courseKey)) {
-            seenContent.add(courseKey);
-            index.push({
-                type: "Course",
-                title: courseName,
-                course: courseName,
-                courseCode,
-                courseId,
-                url: `${domain}/courses/${courseId}`
-            });
-        }
-
-        // Assignments first so their direct URLs win over module-item copies.
-        try {
-            const assignments = await getData(`${domain}/api/v1/courses/${courseId}/assignments?per_page=100`);
-            if (Array.isArray(assignments)) {
-                for (const a of assignments) {
-                    if (!a || !a.name || !a.html_url) continue;
-                    const key = `asn:${courseId}:${a.id}`;
-                    if (seenContent.has(key)) continue;
-                    seenContent.add(key);
-                    index.push({
-                        type: "Assignment",
-                        title: a.name,
-                        course: courseName,
-                        courseCode,
-                        courseId,
-                        url: a.html_url
-                    });
-                }
-            }
-        } catch (_) { /* non-fatal */ }
-
-        try {
-            const modules = await getData(`${domain}/api/v1/courses/${courseId}/modules?per_page=100`);
-            if (Array.isArray(modules)) {
-                for (const m of modules) {
-                    if (!m || !m.name) continue;
-                    const modKey = `module:${courseId}:${m.id}`;
-                    if (!seenContent.has(modKey)) {
-                        seenContent.add(modKey);
-                        index.push({
-                            type: "Module",
-                            title: m.name,
-                            course: courseName,
-                            courseCode,
-                            courseId,
-                            url: `${domain}/courses/${courseId}/modules`
-                        });
-                    }
-                    try {
-                        const items = await getData(`${domain}/api/v1/courses/${courseId}/modules/${m.id}/items?per_page=100`);
-                        if (Array.isArray(items)) {
-                            for (const it of items) {
-                                if (!it || !it.title) continue;
-                                const itype = (it.type || "").toLowerCase();
-                                if (itype === "subheader") continue;
-                                // Prefer html_url/external_url; bare `url` is the API endpoint.
-                                const url = it.html_url || it.external_url;
-                                if (!url) continue;
-
-                                let key;
-                                if (itype === "assignment" && it.content_id) {
-                                    key = `asn:${courseId}:${it.content_id}`;
-                                } else if (it.content_id) {
-                                    key = `${itype}:${courseId}:${it.content_id}`;
-                                } else {
-                                    key = `url:${normalizeGlobalSearchUrl(url)}`;
-                                }
-                                if (seenContent.has(key)) continue;
-                                seenContent.add(key);
-
-                                index.push({
-                                    type: prettyModuleItemType(it.type),
-                                    title: it.title,
-                                    course: courseName,
-                                    courseCode,
-                                    courseId,
-                                    url
-                                });
-                            }
-                        }
-                    } catch (_) { /* per-module failure is non-fatal */ }
-                }
-            }
-        } catch (_) { /* per-course failure is non-fatal */ }
-    }));
-
-    // Collapse anything left that resolves to the same page.
+// Two requests per course in the common case: assignments, and modules with their
+// items inlined. Canvas may omit `items` (it is explicitly best-effort), and only
+// then do we pay for per-module requests.
+async function gsFetchCourse(course) {
+    const courseId = String(course.id);
+    const name = course.name;
+    const courseCode = course.course_code || name;
+    const tuples = [];
     const seen = new Set();
-    return index.filter(item => {
-        const key = normalizeGlobalSearchUrl(item.url);
-        if (!key || seen.has(key)) return false;
+
+    const add = (kind, title, url, dedupeKey) => {
+        if (!title || !url) return;
+        const key = dedupeKey || `url:${normalizeGlobalSearchUrl(gsAbsUrl(url))}`;
+        if (seen.has(key)) return;
         seen.add(key);
-        return true;
-    });
+        tuples.push([kind, String(title), gsRelUrl(url)]);
+    };
+
+    const settle = (url) => gsGetJsonPages(url).then(data => ({ ok: true, data }), () => ({ ok: false, data: [] }));
+    const [assignmentsResult, modulesResult] = await Promise.all([
+        settle(`${domain}/api/v1/courses/${courseId}/assignments?per_page=100`),
+        settle(`${domain}/api/v1/courses/${courseId}/modules?include[]=items&per_page=100`)
+    ]);
+    const assignments = assignmentsResult.data;
+    const modules = modulesResult.data;
+    // Nothing came back (expired session, outage): keep the previous cache entry
+    // rather than overwrite it with an empty course.
+    if (!assignmentsResult.ok && !modulesResult.ok) {
+        throw new Error(`course ${courseId} unavailable`);
+    }
+    // A half-fetched course is still useful but must not look fresh.
+    const complete = assignmentsResult.ok && modulesResult.ok;
+
+    // Assignments first so their direct URL wins over a module-item copy.
+    for (const assignment of assignments) {
+        if (!assignment || !assignment.name || !assignment.html_url) continue;
+        add("assignment", assignment.name, assignment.html_url, `asn:${assignment.id}`);
+    }
+
+    const missingInline = [];
+    const addItems = (items) => {
+        for (const item of items) {
+            if (!item || !item.title) continue;
+            const itemType = (item.type || "").toLowerCase();
+            if (itemType === "subheader") continue;
+            // Prefer html_url/external_url; bare `url` is the API endpoint.
+            const url = item.html_url || item.external_url;
+            if (!url) continue;
+            let key;
+            if (itemType === "assignment" && item.content_id) key = `asn:${item.content_id}`;
+            else if (item.content_id) key = `${itemType}:${item.content_id}`;
+            else key = `url:${normalizeGlobalSearchUrl(gsAbsUrl(url))}`;
+            add(gsKindFromItemType(itemType), item.title, url, key);
+        }
+    };
+
+    for (const module of modules) {
+        if (!module || !module.name) continue;
+        add("module", module.name, `/courses/${courseId}/modules`, `module:${module.id}`);
+        if (Array.isArray(module.items)) addItems(module.items);
+        else missingInline.push(module);
+    }
+
+    if (missingInline.length) {
+        await gsRunPool(missingInline, 4, async (module) => {
+            const items = await gsGetJsonPages(`${domain}/api/v1/courses/${courseId}/modules/${module.id}/items?per_page=100`).catch(() => []);
+            addItems(items);
+        });
+    }
+
+    // A half-fetched course is retried sooner (half a TTL) instead of on every load.
+    const at = complete ? Date.now() : Date.now() - Math.floor(GS_COURSE_TTL / 2);
+    return { courseId, name, code: courseCode, at, tuples };
+}
+
+async function gsRefreshCourse(course) {
+    try {
+        const result = await gsFetchCourse(course);
+        if (!gsCache) gsCache = { v: GS_CACHE_VERSION, updatedAt: 0, courses: {} };
+        gsCache.courses[result.courseId] = {
+            n: result.name,
+            c: result.code,
+            at: result.at,
+            e: result.tuples
+        };
+        // Publish progressively so typing during a cold build already finds things.
+        gsAddCourseEntries(result.courseId, result.name, result.code, result.tuples);
+        gsUpdateStatus();
+    } catch (e) {
+        // Keep the previously cached copy; this course retries on the next load.
+        console.debug("[CanvasRefined] global search: course failed", course && course.id, e && e.message);
+    }
+}
+
+async function gsRunPool(items, limit, worker) {
+    let next = 0;
+    const runners = [];
+    const count = Math.max(1, Math.min(limit, items.length));
+    for (let i = 0; i < count; i++) {
+        runners.push((async () => {
+            while (next < items.length) {
+                const item = items[next++];
+                try {
+                    await worker(item);
+                } catch (_) { /* per-item failure is non-fatal */ }
+            }
+        })());
+    }
+    await Promise.all(runners);
+}
+
+// Web Locks are origin-scoped, so all Canvas tabs of this instance coordinate: the
+// first tab builds, the rest pick the result up from storage instead of refetching.
+async function gsWithBuildLock(fn) {
+    let entered = false;
+    if (typeof navigator !== "undefined" && navigator.locks && typeof navigator.locks.request === "function") {
+        try {
+            return await navigator.locks.request(GS_BUILD_LOCK, async () => {
+                entered = true;
+                return await fn();
+            });
+        } catch (e) {
+            if (entered) throw e;
+        }
+    }
+    return await fn();
+}
+
+function gsIsIndexing() {
+    return !!(gsBuildPromise || gsTopUpPromise);
+}
+
+function gsNewestCourseAt() {
+    let newest = 0;
+    const courses = (gsCache && gsCache.courses) || {};
+    for (const course of Object.values(courses)) {
+        if ((course.at || 0) > newest) newest = course.at;
+    }
+    return newest;
+}
+
+function gsFormatAge(ms) {
+    if (ms < 60000) return getMsg("search_age_now", "just now");
+    const minutes = Math.floor(ms / 60000);
+    if (minutes < 60) return getMsg("search_age_minutes", "{{COUNT}}m ago").replace("{{COUNT}}", String(minutes));
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return getMsg("search_age_hours", "{{COUNT}}h ago").replace("{{COUNT}}", String(hours));
+    return getMsg("search_age_days", "{{COUNT}}d ago").replace("{{COUNT}}", String(Math.floor(hours / 24)));
+}
+
+let _gsStatusAt = 0;
+function gsUpdateStatus(force) {
+    const textEl = document.getElementById("canvasrefined-gs-status-text");
+    if (!textEl) return;
+    const now = Date.now();
+    if (!force && now - _gsStatusAt < 120) return;
+    _gsStatusAt = now;
+
+    const count = gsEntries.length;
+    let text = "";
+    if (count) {
+        const parts = [getMsg("search_index_count", "{{COUNT}} items").replace("{{COUNT}}", count.toLocaleString())];
+        const newest = gsNewestCourseAt();
+        if (newest) parts.push(getMsg("search_index_updated", "updated {{AGE}}").replace("{{AGE}}", gsFormatAge(now - newest)));
+        if (gsIsIndexing()) parts.push(getMsg("search_index_working", "updating\u2026"));
+        text = parts.join(" \u00b7 ");
+    } else if (gsIsIndexing()) {
+        text = getMsg("search_indexing", "Indexing your courses\u2026");
+    }
+
+    textEl.textContent = text;
+    const row = textEl.parentElement;
+    if (row) row.style.display = text ? "" : "none";
+    const refreshBtn = document.getElementById("canvasrefined-gs-refresh");
+    if (refreshBtn) refreshBtn.disabled = !!gsBuildPromise;
+}
+
+function gsIndexUpdated() {
+    try {
+        if (typeof gsOnIndexUpdated === "function") gsOnIndexUpdated();
+    } catch (_) { /* ignore */ }
+}
+
+function gsDebugSummary(startedAt, requestsBefore) {
+    try {
+        console.debug(`[CanvasRefined] global search index: ${gsEntries.length} items, ` +
+            `${gsRequests - requestsBefore} requests, ${Date.now() - startedAt}ms`);
+    } catch (_) { /* ignore */ }
+}
+
+async function gsBuildIndex(options_) {
+    const force = !!(options_ && options_.force);
+    const startedAt = Date.now();
+    const requestsBefore = gsRequests;
+    try {
+        await gsEnsureCacheLoaded();
+
+        // Serve whatever is on disk before touching the network: a warm open shows
+        // results in milliseconds and updates behind the user's back.
+        if (gsCache && !gsEntries.length) {
+            gsLoadFromCache(null);
+            gsUpdateStatus();
+        }
+
+        if (!gsCache) gsCache = { v: GS_CACHE_VERSION, updatedAt: 0, courses: {} };
+
+        // A fresh enrollment list (or a failed refresh with a list on hand) means a
+        // warm open costs literally zero requests.
+        const cachedList = gsCache.courseList;
+        const listFresh = cachedList && (Date.now() - (cachedList.at || 0)) < GS_COURSELIST_TTL;
+        let courses = (!force && listFresh) ? cachedList.items : [];
+        if (!courses.length) {
+            try {
+                courses = await gsFetchCourseList();
+                if (courses.length) {
+                    gsCache.courseList = {
+                        at: Date.now(),
+                        items: courses.map(c => ({ id: c.id, name: c.name, course_code: c.course_code }))
+                    };
+                }
+            } catch (e) {
+                console.warn("[CanvasRefined] global search: failed to load courses", e);
+                courses = (cachedList && cachedList.items) || [];
+                if (!courses.length) return gsEntries;
+            }
+        }
+        if (!courses.length) {
+            if (!gsEntries.length) gsLoadFromCache(null);
+            return gsEntries;
+        }
+
+        const activeIds = new Set(courses.map(course => String(course.id)));
+        for (const cid of Object.keys(gsCache.courses)) {
+            if (!activeIds.has(cid)) delete gsCache.courses[cid];
+        }
+
+        // Ignore cached courses that are no longer in the active enrollment list.
+        gsLoadFromCache(courses);
+
+        const now = Date.now();
+        const missing = force ? courses : courses.filter(course => !gsCache.courses[String(course.id)]);
+        const stale = force ? [] : courses.filter(course => {
+            const cached = gsCache.courses[String(course.id)];
+            return cached && (now - (cached.at || 0)) > GS_COURSE_TTL;
+        });
+
+        if (missing.length) {
+            await gsWithBuildLock(async () => {
+                // Another tab may have finished the same build while we waited.
+                await gsMergeFromStorage();
+                gsLoadFromCache(courses);
+                // A forced rebuild refetches everything even if storage already has it
+                // (another tab may have built while we queued for the lock).
+                const stillMissing = force
+                    ? courses
+                    : missing.filter(course => !gsCache.courses[String(course.id)]);
+                await gsRunPool(stillMissing, GS_CONCURRENCY, course => gsRefreshCourse(course));
+            });
+            gsLoadFromCache(courses);
+            await gsPersistCache();
+        }
+
+        gsUpdateStatus();
+
+        // Warm start: refresh the stalest courses a few per page load instead of
+        // rebuilding everything. Never blocks the modal.
+        if (stale.length) {
+            const batch = stale.slice(0, GS_REFRESH_PER_LOAD);
+            gsTopUpPromise = gsRunPool(batch, Math.min(GS_CONCURRENCY, 3), course => gsRefreshCourse(course));
+            gsTopUpPromise
+                .then(() => gsPersistCache())
+                .then(() => gsIndexUpdated())
+                .catch(() => { /* background top-up is best-effort */ })
+                .finally(() => {
+                    gsTopUpPromise = null;
+                    gsUpdateStatus(true);
+                });
+        }
+
+        return gsEntries;
+    } finally {
+        gsDebugSummary(startedAt, requestsBefore);
+    }
+}
+
+function gsStartBuild(force) {
+    if (gsBuildPromise) return gsBuildPromise;
+    if (!force && gsBuiltOnce) return Promise.resolve(gsEntries);
+    gsBuiltOnce = true;
+
+    let resolveDone;
+    const done = new Promise(resolve => { resolveDone = resolve; });
+    gsBuildPromise = done;
+
+    gsBuildIndex({ force: !!force })
+        .catch(e => console.warn("[CanvasRefined] global search index failed", e))
+        .then(() => {
+            gsBuildPromise = null;
+            gsUpdateStatus(true);
+            gsIndexUpdated();
+            resolveDone(gsEntries);
+        });
+
+    gsUpdateStatus(true);
+    return done;
+}
+
+function gsForceRefresh() {
+    if (gsBuildPromise) return;
+    gsBuiltOnce = false;
+    // Let an in-flight top-up finish first: the full rebuild supersedes it anyway.
+    if (gsTopUpPromise) {
+        gsTopUpPromise.then(() => {
+            gsTopUpPromise = null;
+            gsStartBuild(true);
+        });
+        return;
+    }
+    gsStartBuild(true);
+}
+
+function ensureGlobalSearchIndex() {
+    return gsStartBuild(false);
+}
+
+// Warm the index on dashboard loads so Ctrl+K has something to show instantly. Only
+// runs once a cache exists (i.e. the user has searched before): a cold build costs
+// ~120 requests and shouldn't happen for a feature nobody has opened. Once warm, a
+// page load only tops up a handful of stale courses at idle.
+function gsSchedulePrewarm() {
+    if (_gsPrewarmScheduled || options.global_search !== true) return;
+    if (!isDashboardPage()) return;
+    _gsPrewarmScheduled = true;
+    const run = async () => {
+        if (options.global_search !== true) return;
+        try {
+            await gsEnsureCacheLoaded();
+            if (gsCache) gsStartBuild(false);
+        } catch (_) { /* prewarm is best-effort */ }
+    };
+    if (typeof requestIdleCallback === "function") requestIdleCallback(run, { timeout: 4000 });
+    else setTimeout(run, 2500);
 }
 
 function normalizeGlobalSearchUrl(url) {
@@ -9681,6 +10210,9 @@ function prettyModuleItemType(type) {
         case "externaltool": return getMsg("search_type_external_tool", "External Tool");
         case "file": return getMsg("search_type_file", "File");
         case "page": return getMsg("search_type_page", "Page");
+        case "module": return getMsg("search_type_module", "Module");
+        case "course": return getMsg("search_type_course", "Course");
+        case "grades": return getMsg("search_type_grades", "Grades");
         case "subheader": return getMsg("search_type_section", "Section");
         default: return type || getMsg("search_type_item", "Item");
     }
@@ -9721,7 +10253,7 @@ function globalSearchRowHtml(item, i) {
     return `
         <div class="canvasrefined-gs-row" data-i="${i}" data-url="${escapeGlobalSearchAttr(item.url)}">
             <div class="canvasrefined-gs-row-main">
-                <span class="canvasrefined-gs-type canvasrefined-gs-type-${escapeGlobalSearchAttr((item.type || "").toLowerCase().replace(/\s+/g, "-"))}">${escapeGlobalSearchHtml(item.type || "")}</span>
+                <span class="canvasrefined-gs-type canvasrefined-gs-type-${escapeGlobalSearchAttr(item.cls || (item.type || "").toLowerCase().replace(/\s+/g, "-"))}">${escapeGlobalSearchHtml(item.type || "")}</span>
                 <span class="canvasrefined-gs-title">${escapeGlobalSearchHtml(item.title || "")}</span>
             </div>
             <span class="canvasrefined-gs-course">${escapeGlobalSearchHtml(item.course || "")}</span>
@@ -9745,25 +10277,34 @@ function bindGlobalSearchRows(resultsEl, top) {
     });
 }
 
+// Never awaits the network: searches whatever the live index holds right now (the
+// persisted cache on a warm load, partially-filled during a cold build) so results
+// appear as courses land instead of after the whole index is ready.
 async function runGlobalSearch(query, resultsEl) {
-    if (!globalSearchIndex && globalSearchIndexPromise) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-loading">${getMsg("search_building", "Building search index…")}</div>`;
-    }
-    const index = await ensureGlobalSearchIndex();
+    gsStartBuild(false);
+    const index = gsEntries;
+    const indexing = gsIsIndexing();
+
     if (!query) {
         resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_hint", "Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.")}</div>`;
         return [];
     }
-    if (!index || !index.length) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_no_modules_found", "No modules or assignments found. Open the search again later if your courses are still loading.")}</div>`;
+    if (!index.length) {
+        resultsEl.innerHTML = indexing
+            ? `<div class="canvasrefined-gs-loading">${getMsg("search_building", "Building search index…")}</div>`
+            : `<div class="canvasrefined-gs-hint">${getMsg("search_no_modules_found", "No modules or assignments found. Open the search again later if your courses are still loading.")}</div>`;
         return [];
     }
+
+    // Hidden courses are filtered here (not at build time) so hiding a course never
+    // needs an index rebuild.
+    const hiddenCourseIds = gsHiddenCourseIds();
 
     // "@grades [filter]" lists grade pages instead. Checked before the @course
     // parse so a course actually named "Grades" isn't eaten.
     const gradesMatch = query.match(/(?:^|\s)@grades(?:\s+(.+))?$/i);
     if (gradesMatch) {
-        const courseEntries = index.filter(i => i.type === "Course");
+        const courseEntries = index.filter(entry => entry.kind === "course" && !hiddenCourseIds.has(String(entry.courseId)));
         const filter = (gradesMatch[1] || "").trim();
         const matching = courseEntries.filter(c => globalSearchCourseMatches(c, filter));
         if (!matching.length) {
@@ -9771,11 +10312,14 @@ async function runGlobalSearch(query, resultsEl) {
             return [];
         }
         const gradeRows = matching.map(c => ({
-            type: "Grades",
+            kind: "grades",
+            cls: "grades",
+            type: gsKindLabel("grades"),
             title: c.title,
             course: c.course,
+            courseCode: c.courseCode,
             courseId: c.courseId,
-            url: `${domain}/courses/${c.courseId}/grades`,
+            url: `${domain}/courses/${c.courseId}/grades`
         }));
         resultsEl.innerHTML = gradeRows.map((item, i) => globalSearchRowHtml(item, i)).join("");
         bindGlobalSearchRows(resultsEl, gradeRows);
@@ -9783,7 +10327,7 @@ async function runGlobalSearch(query, resultsEl) {
     }
 
     // "@course name" narrows the search; a bare filter lists course homepages.
-    const courseEntries = index.filter(i => i.type === "Course");
+    const courseEntries = index.filter(entry => entry.kind === "course" && !hiddenCourseIds.has(String(entry.courseId)));
     const parsed = parseGlobalSearchCourseFilter(query, courseEntries);
     let effectiveQuery = query;
     let allowedCourseIds = null;
@@ -9805,18 +10349,16 @@ async function runGlobalSearch(query, resultsEl) {
     const q = effectiveQuery.toLowerCase();
     const matches = [];
     for (const item of index) {
-        // Re-check hidden status: the cached index is up to 10 min old.
-        if (isCourseHidden(item.courseId)) continue;
         if (allowedCourseIds && !allowedCourseIds.has(String(item.courseId))) continue;
-        const t = (item.title || "").toLowerCase();
-        const c = (item.course || "").toLowerCase();
+        if (hiddenCourseIds.has(String(item.courseId))) continue;
         let score = -1;
-        if (t.startsWith(q)) score = 100 - t.indexOf(q);
-        else if (t.includes(q)) score = 60 - t.indexOf(q);
-        else if (c.includes(q)) score = 20;
+        const at = item._t.indexOf(q);
+        if (at === 0) score = 100;
+        else if (at > 0) score = 60 - at;
+        else if (item._c.includes(q)) score = 20;
         if (score >= 0) {
-            if (item.type === "Course" && t.startsWith(q)) score += 40;
-            item._score = score + (t === q ? 50 : 0);
+            if (item.kind === "course" && at === 0) score += 40;
+            item._score = score + (item._t === q ? 50 : 0);
             matches.push(item);
         }
     }
@@ -9824,13 +10366,23 @@ async function runGlobalSearch(query, resultsEl) {
     const top = matches.slice(0, 50);
 
     if (!top.length) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_no_match", "No results for \"{{QUERY}}\".").replace("{{QUERY}}", escapeGlobalSearchHtml(query))}</div>`;
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_no_match", "No results for \"{{QUERY}}\".").replace("{{QUERY}}", escapeGlobalSearchHtml(query))}${indexing ? `<br><span class="canvasrefined-gs-partial">${getMsg("search_partial", "Still indexing your courses…")}</span>` : ""}</div>`;
         return [];
     }
 
     resultsEl.innerHTML = top.map((item, i) => globalSearchRowHtml(item, i)).join("");
     bindGlobalSearchRows(resultsEl, top);
     return top;
+}
+
+// One pass over the card settings rather than an options lookup per index entry.
+function gsHiddenCourseIds() {
+    const hidden = new Set();
+    const cards = options.custom_cards || {};
+    for (const [courseId, card] of Object.entries(cards)) {
+        if (card && card.hidden === true) hidden.add(String(courseId));
+    }
+    return hidden;
 }
 
 function escapeGlobalSearchHtml(s) {
