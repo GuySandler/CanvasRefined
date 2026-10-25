@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "Grelha flexível"
     },
-    "flexible_grid_on": {
-        "message": "A grelha flexível está ativa — os cartões ajustam-se para caber em janelas estreitas em vez de serem cortados."
-    },
     "focus_timer": {
         "message": "Temporizador de foco"
     },
@@ -860,8 +857,8 @@
     "gradient_desc": {
         "message": "Escolhe 2 cores para criar um gradiente entre elas:"
     },
-    "grid_includes_gpa": {
-        "message": " (incluindo a calculadora de GPA)"
+    "grid_includes_widgets": {
+        "message": " (incluindo {{NAMES}})"
     },
     "grid_warning": {
         "message": "A tua grelha comporta {{TOTAL}} vaga{{TOTAL_S}}, mas tens {{ACTIVE}} vaga{{ACTIVE_S}}{{GPA_NOTE}} - alguns cartões podem ficar cortados."

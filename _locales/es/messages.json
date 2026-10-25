@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "Cuadrícula flexible"
     },
-    "flexible_grid_on": {
-        "message": "La cuadrícula flexible está activada: las tarjetas se ajustan al ancho de las ventanas estrechas en lugar de quedar cortadas."
-    },
     "focus_timer": {
         "message": "Temporizador de enfoque"
     },
@@ -860,8 +857,8 @@
     "gradient_desc": {
         "message": "Elige 2 colores para crear un degradado entre ellos:"
     },
-    "grid_includes_gpa": {
-        "message": " (incluida la calculadora de GPA)"
+    "grid_includes_widgets": {
+        "message": " (incluidos {{NAMES}})"
     },
     "grid_warning": {
         "message": "Tu cuadrícula admite {{TOTAL}} tarjeta{{TOTAL_S}} pero tienes {{ACTIVE}} tarjeta{{ACTIVE_S}}{{GPA_NOTE}} - algunas tarjetas pueden quedar cortadas."

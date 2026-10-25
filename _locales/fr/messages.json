@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "Grille flexible"
     },
-    "flexible_grid_on": {
-        "message": "La grille flexible est active — les cartes s'enroulent pour s'adapter aux fenêtres étroites au lieu d'être coupées."
-    },
     "focus_timer": {
         "message": "Minuteur de concentration"
     },
@@ -860,8 +857,8 @@
     "gradient_desc": {
         "message": "Choisissez 2 couleurs pour créer un dégradé entre elles :"
     },
-    "grid_includes_gpa": {
-        "message": " (y compris le calculateur GPA)"
+    "grid_includes_widgets": {
+        "message": " (y compris {{NAMES}})"
     },
     "grid_warning": {
         "message": "Votre grille contient {{TOTAL}} carte{{TOTAL_S}} mais vous avez {{ACTIVE}} carte{{ACTIVE_S}}{{GPA_NOTE}} — certaines cartes peuvent être coupées."

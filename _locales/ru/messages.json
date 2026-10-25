@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "Гибкая сетка"
     },
-    "flexible_grid_on": {
-        "message": "Включена гибкая сетка — карточки переносятся, чтобы помещаться в узкие окна, а не обрезаются."
-    },
     "focus_timer": {
         "message": "Таймер фокуса"
     },
@@ -860,8 +857,8 @@
     "gradient_desc": {
         "message": "Выберите 2 цвета, чтобы создать между ними градиент:"
     },
-    "grid_includes_gpa": {
-        "message": " (включая калькулятор GPA)"
+    "grid_includes_widgets": {
+        "message": " (включая {{NAMES}})"
     },
     "grid_warning": {
         "message": "В вашей сетке помещается {{TOTAL}} карточек{{TOTAL_S}}, но у вас {{ACTIVE}} карточка{{ACTIVE_S}}{{GPA_NOTE}} — некоторые карточки могут обрезаться."

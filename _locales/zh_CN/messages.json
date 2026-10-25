@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "弹性网格"
     },
-    "flexible_grid_on": {
-        "message": "弹性网格已开启 - 卡片会自动换行以适应窄窗口，而不会被裁切。"
-    },
     "focus_timer": {
         "message": "专注计时器"
     },
@@ -860,8 +857,8 @@
     "gradient_desc": {
         "message": "选择 2 种颜色以在它们之间创建渐变："
     },
-    "grid_includes_gpa": {
-        "message": " （包括 GPA 计算器）"
+    "grid_includes_widgets": {
+        "message": " （包括 {{NAMES}}）"
     },
     "grid_warning": {
         "message": "你的网格可容纳 {{TOTAL}} 张卡片{{TOTAL_S}}，但你有 {{ACTIVE}} 张卡片{{ACTIVE_S}}{{GPA_NOTE}} - 部分卡片可能会被裁切。"

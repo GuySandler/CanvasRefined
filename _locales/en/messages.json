@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "Flexible grid"
     },
-    "flexible_grid_on": {
-        "message": "Flexible grid is on - cards wrap to fit narrow windows instead of being cut off."
-    },
     "focus_timer": {
         "message": "Focus Timer"
     },
@@ -863,8 +860,8 @@
     "gradient_desc": {
         "message": "Choose 2 colors to create a gradient between them:"
     },
-    "grid_includes_gpa": {
-        "message": " (including the GPA calculator)"
+    "grid_includes_widgets": {
+        "message": " (including {{NAMES}})"
     },
     "grid_warning": {
         "message": "Your grid holds {{TOTAL}} card{{TOTAL_S}} but you have {{ACTIVE}} card{{ACTIVE_S}}{{GPA_NOTE}} - some cards may be cut off."

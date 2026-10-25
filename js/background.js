@@ -58,6 +58,8 @@ chrome.runtime.onInstalled.addListener(function () {
             "quick_links_position": "cards_end",
             "heatmap": false,
             "heatmap_position": "below",
+            "widget_top_height": 0,
+            "widget_bottom_height": 0,
             "widget_row_height": 0,
             "dashboard_notes_height": 0,
             "gpa_calc_height": 0,
@@ -178,6 +180,16 @@ chrome.runtime.onInstalled.addListener(function () {
 
             if (sync["nasaFitToScreen"] !== undefined && sync["fitImageToScreen"] === undefined) {
                 newSyncOptions["fitImageToScreen"] = sync["nasaFitToScreen"];
+            }
+
+            // The Top/Bottom widget rows used to share one height: give both rows the
+            // user's old value instead of dropping it to "auto".
+            if (sync["widget_top_height"] === undefined && sync["widget_bottom_height"] === undefined) {
+                const legacyRowHeight = Number(sync["widget_row_height"]);
+                if (Number.isFinite(legacyRowHeight) && legacyRowHeight > 0) {
+                    newSyncOptions["widget_top_height"] = legacyRowHeight;
+                    newSyncOptions["widget_bottom_height"] = legacyRowHeight;
+                }
             }
 
             if (Object.keys(newLocalOptions).length > 0) {

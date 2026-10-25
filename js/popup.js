@@ -31,6 +31,8 @@ const syncedSubOptions = [
 	"daily_quotes_position",
 	"quick_links_position",
 	"heatmap_position",
+	"widget_top_height",
+	"widget_bottom_height",
 	"widget_row_height",
 	"dashboard_notes_height",
 	"gpa_calc_height",
@@ -278,7 +280,10 @@ const defaultOptions = {
         "quick_links_position": "cards_end",
         "heatmap": false,
         "heatmap_position": "below",
-        // Height in px (0 = auto); widget_row_height is the shared Top/Bottom row.
+        // Row height in px (0 = auto) for the Top and Bottom widget rows.
+        // widget_row_height is the pre-split shared value (legacy only).
+        "widget_top_height": 0,
+        "widget_bottom_height": 0,
         "widget_row_height": 0,
         "dashboard_notes_height": 0,
         "gpa_calc_height": 0,
@@ -403,6 +408,12 @@ chrome.storage.onChanged.addListener((changes) => {
         if (Object.keys(changes["custom_cards"].oldValue || {}).length !== Object.keys(changes["custom_cards"].newValue || {}).length) {
             displayAdvancedCards();
         }
+        updateCardGridPreview();
+        scheduleGridPreviewFollowUp();
+        return;
+    }
+    // Widget toggles/positions decide which widgets take grid cells in the preview.
+    if (cardGridWidgetKeys().some(key => changes[key])) {
         updateCardGridPreview();
         scheduleGridPreviewFollowUp();
     }
@@ -909,6 +920,40 @@ function countActiveDashboardCards(cards) {
     return Object.values(cards || {}).filter(c => c && typeof c === "object" && !c.hidden && !c.hide).length;
 }
 
+// Card cells are blue, in-grid widgets yellow, empty slots grey.
+const CARD_GRID_CARD_COLOR = "#56Caf0";
+const CARD_GRID_WIDGET_COLOR = "#f5c451";
+const CARD_GRID_EMPTY_COLOR = "#3c3c3c";
+
+// Storage keys the preview needs to know which widgets land inside the grid.
+function cardGridWidgetKeys() {
+    return WIDGET_LIST
+        .reduce((keys, w) => keys.concat([w.id, w.id + "_position"]), [])
+        .concat(["gpa_calc_prepend", "widget_order"]);
+}
+
+// Enabled widgets rendered before/after the cards, split by anchor. They take grid
+// cells just like course cards (see content.js cardGridWidgets).
+function cardGridWidgetCells(sync) {
+    const saved = Array.isArray(sync.widget_order && sync.widget_order.cards) ? sync.widget_order.cards : [];
+    const savedIds = saved.map(e => (typeof e === "string" ? e : (e && e.id) || null)).filter(Boolean);
+    const rank = id => {
+        const i = savedIds.indexOf(id);
+        return i === -1 ? savedIds.length : i;
+    };
+    const cells = { start: [], end: [] };
+    WIDGET_LIST.forEach(w => {
+        if (sync[w.id] !== true) return;
+        const pos = widgetPosFromSync(w.id, sync);
+        if (pos === "cards_start") cells.start.push(w.id);
+        else if (pos === "cards_end") cells.end.push(w.id);
+    });
+    // The saved order wins; WIDGET_LIST order breaks ties (sort is stable).
+    cells.start.sort((a, b) => rank(a) - rank(b));
+    cells.end.sort((a, b) => rank(a) - rank(b));
+    return cells;
+}
+
 function updateCardGridPreview() {
     const panel = document.getElementById("card-grid-options");
     const preview = document.getElementById("card-grid-preview");
@@ -917,33 +962,58 @@ function updateCardGridPreview() {
     const rows = Math.max(1, parseInt(document.getElementById("card_grid_rows").value, 10) || 1);
     const colGapRaw = parseInt(document.getElementById("card_grid_column_gap").value, 10);
     const colGap = Math.max(0, Math.min(10, isNaN(colGapRaw) ? 12 : colGapRaw));
-    const total = cols * rows;
     preview.style.gridTemplateColumns = `repeat(${cols}, 18px)`;
     // Clamped so extreme values don't blow the layout out.
     preview.style.columnGap = `${colGap}px`;
     preview.style.rowGap = "4px";
     preview.innerHTML = "";
-    chrome.storage.sync.get(["custom_cards", "gpa_calc"], async s => {
+    chrome.storage.sync.get(["custom_cards", "card_grid_flex"].concat(cardGridWidgetKeys()), async s => {
         if (document.getElementById("card-grid-options").style.display === "none") return;
+        // Widgets in the cards area occupy cells too, so they count against the grid.
+        const widgetCells = cardGridWidgetCells(s);
+        const widgetIds = widgetCells.start.concat(widgetCells.end);
+        const gpaInGrid = widgetIds.includes("gpa_calc");
+        // Same row budget as content.js cardGridMetrics: nothing may rely on implicit
+        // rows (the grid clips those), so each in-grid widget gets rows of its own.
+        // The flexible grid grows rows on its own, so there it is the plain rows x cols.
+        const spareRows = s.card_grid_flex === true
+            ? 0
+            : Math.ceil((widgetIds.filter(id => id !== "gpa_calc").length + (gpaInGrid ? 1 : 0)) / cols) + (gpaInGrid ? 1 : 0);
+        const total = cols * (rows + spareRows);
         // Prefer the live count from a dashboard tab; it knows which cards are
         // actually rendered. Falls back to the storage-derived count.
         const live = await sendFromPopup("getGridCardCount");
-        let active = (live && typeof live.count === "number" && live.count >= 0)
+        const cardCount = (live && typeof live.count === "number" && live.count >= 0)
             ? live.count
             : countActiveDashboardCards(s.custom_cards);
-        if (s.gpa_calc === true) active += 1;
+        // Auto-placement order: before-card widgets, the cards, after-card widgets.
+        const cells = widgetCells.start.map(id => ({ kind: "widget", id }))
+            .concat(Array.from({ length: cardCount }, () => ({ kind: "card" })),
+                widgetCells.end.map(id => ({ kind: "widget", id })));
+        const active = cells.length;
+        // The flexible grid grows rows on its own, so nothing is cut off there: draw
+        // every cell. The fixed grid clips, so it stays within its template.
+        const cellCount = s.card_grid_flex === true ? Math.max(total, active) : total;
         let lastRowStart = -1, offset = 0;
         if (document.getElementById("card_grid_center_rows")?.checked === true && active > 0 && active < total) {
             lastRowStart = Math.floor((active - 1) / cols) * cols;
             const inLastRow = active - lastRowStart;
             if (inLastRow < cols) offset = cols - inLastRow;
         }
-        for (let i = 0; i < total; i++) {
+        for (let i = 0; i < cellCount; i++) {
             const inShiftedRow = lastRowStart !== -1 && i >= lastRowStart;
             if (inShiftedRow && i >= active) continue;
+            const cell = cells[i];
             const square = document.createElement("div");
             square.style.cssText = "width:18px;height:18px;border-radius:4px;box-sizing:border-box;";
-            square.style.background = i < active ? "#56Caf0" : "#3c3c3c";
+            if (!cell) {
+                square.style.background = CARD_GRID_EMPTY_COLOR;
+            } else if (cell.kind === "widget") {
+                square.style.background = CARD_GRID_WIDGET_COLOR;
+                square.title = widgetFullName(cell.id);
+            } else {
+                square.style.background = CARD_GRID_CARD_COLOR;
+            }
             if (inShiftedRow && offset > 0) {
                 square.style.marginLeft = `${offset * (18 + colGap) / 2}px`;
             }
@@ -951,12 +1021,13 @@ function updateCardGridPreview() {
         }
         const warning = document.getElementById("card-grid-warning");
         if (warning) {
-            if (s.card_grid_flex === true) {
-                warning.textContent = getMsg("flexible_grid_on") || "Flexible grid is on - cards wrap to fit narrow windows instead of being cut off.";
-                warning.style.display = "block";
-            } else if (active > total) {
-                const gpaNote = s.gpa_calc === true ? getMsg("grid_includes_gpa", " (including the GPA calculator)") : "";
-                warning.textContent = "\u26A0 " + (getMsg("grid_warning") || "Your grid holds {{TOTAL}} card{{TOTAL_S}} but you have {{ACTIVE}} card{{ACTIVE_S}}{{GPA_NOTE}} - some cards may be cut off.").replace("{{TOTAL}}", total).replace("{{TOTAL_S}}", total === 1 ? "" : "s").replace("{{ACTIVE}}", active).replace("{{ACTIVE_S}}", active === 1 ? "" : "s").replace("{{GPA_NOTE}}", gpaNote);
+            // The flexible grid wraps instead of clipping, so only the fixed grid can
+            // overflow its template.
+            if (s.card_grid_flex !== true && active > total) {
+                const widgetNote = widgetIds.length
+                    ? (getMsg("grid_includes_widgets", " (including {{NAMES}})")).replace("{{NAMES}}", widgetIds.map(widgetFullName).join(", "))
+                    : "";
+                warning.textContent = "\u26A0 " + (getMsg("grid_warning") || "Your grid holds {{TOTAL}} card{{TOTAL_S}} but you have {{ACTIVE}} card{{ACTIVE_S}}{{GPA_NOTE}} - some cards may be cut off.").replace("{{TOTAL}}", total).replace("{{TOTAL_S}}", total === 1 ? "" : "s").replace("{{ACTIVE}}", active).replace("{{ACTIVE_S}}", active === 1 ? "" : "s").replace("{{GPA_NOTE}}", widgetNote);
                 warning.style.display = "block";
             } else {
                 warning.style.display = "none";
@@ -1138,6 +1209,13 @@ function widgetDisplayName(id) {
     const msg = info && getMsg(info.shortKey || info.nameKey);
     if (msg) return msg;
     return id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Unabbreviated name, for sentences (the preview warning lists widget names).
+function widgetFullName(id) {
+    const info = WIDGET_LIST.find(w => w.id === id);
+    const msg = info && getMsg(info.nameKey);
+    return msg || widgetDisplayName(id);
 }
 
 let refreshWidgetOrder = null;
@@ -1338,14 +1416,25 @@ function setupWidgetPosition() {
     });
 }
 
-function setupWidgetHeightInput(id, initial) {
+// Height fields (px; empty = auto). `legacyKey` seeds an empty field from a key that
+// has since been split in two (the Top/Bottom row height used to be shared), so users
+// who set it keep their value until they edit the field.
+function setupWidgetHeightInput(id, initial, legacyKey) {
     const el = document.getElementById(id);
     if (!el) return;
     const parse = (v) => {
         const n = parseInt(v, 10);
         return Number.isFinite(n) && n > 0 ? n : 0;
     };
-    el.value = parse(initial) || "";
+    const apply = (v) => { el.value = parse(v) || ""; };
+    apply(initial);
+    if (legacyKey) {
+        chrome.storage.sync.get([id, legacyKey], sync => {
+            // A stored 0 means "auto" and must not be overwritten by the old value.
+            if (sync[id] !== undefined) { if (!parse(el.value)) apply(sync[id]); return; }
+            if (!parse(el.value)) apply(sync[legacyKey]);
+        });
+    }
     el.addEventListener("change", function () {
         const n = Math.min(2000, Math.max(0, parseInt(this.value, 10) || 0));
         this.value = n > 0 ? n : "";
@@ -1979,8 +2068,12 @@ async function setup() {
 				setup: (initial) => setupAnonProgressInput("anon_progress_total", initial, false),
 			},
 			{
-				identifier: "widget_row_height",
-				setup: (initial) => setupWidgetHeightInput("widget_row_height", initial),
+				identifier: "widget_top_height",
+				setup: (initial) => setupWidgetHeightInput("widget_top_height", initial, "widget_row_height"),
+			},
+			{
+				identifier: "widget_bottom_height",
+				setup: (initial) => setupWidgetHeightInput("widget_bottom_height", initial, "widget_row_height"),
 			},
 			{
 				identifier: "dashboard_notes_height",

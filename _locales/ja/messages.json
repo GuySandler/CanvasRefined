@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "フレキシブルグリッド"
     },
-    "flexible_grid_on": {
-        "message": "フレキシブルグリッドが有効です。カードは切れずに折り返して狭いウィンドウに収まります。"
-    },
     "focus_timer": {
         "message": "集中タイマー"
     },
@@ -860,8 +857,8 @@
     "gradient_desc": {
         "message": "2色を選んでグラデーションを作成します:"
     },
-    "grid_includes_gpa": {
-        "message": " (GPA計算を含む)"
+    "grid_includes_widgets": {
+        "message": " ({{NAMES}}を含む)"
     },
     "grid_warning": {
         "message": "グリッドには{{TOTAL}}枚のカード{{TOTAL_S}}が入りますが、{{ACTIVE}}枚のカード{{ACTIVE_S}}{{GPA_NOTE}}があります - 一部のカードが切れる可能性があります。"

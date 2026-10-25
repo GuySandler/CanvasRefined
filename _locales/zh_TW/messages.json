@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "彈性格線"
     },
-    "flexible_grid_on": {
-        "message": "彈性格線已開啟——卡片會自動換行以配合狹窄視窗，而不會被裁切。"
-    },
     "focus_timer": {
         "message": "專注計時器"
     },
@@ -860,8 +857,8 @@
     "gradient_desc": {
         "message": "選擇 2 種顏色，在它們之間建立漸層："
     },
-    "grid_includes_gpa": {
-        "message": " （包含 GPA 計算器）"
+    "grid_includes_widgets": {
+        "message": " （包含 {{NAMES}}）"
     },
     "grid_warning": {
         "message": "你的格線可容納 {{TOTAL}} 張卡片{{TOTAL_S}}，但你目前有 {{ACTIVE}} 張卡片{{ACTIVE_S}}{{GPA_NOTE}}——部分卡片可能會被裁切。"

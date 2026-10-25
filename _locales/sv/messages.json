@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "Flexibelt rutnät"
     },
-    "flexible_grid_on": {
-        "message": "Flexibelt rutnät är på – korten radbryts för att passa smala fönster i stället för att klippas av."
-    },
     "focus_timer": {
         "message": "Fokustimer"
     },
@@ -860,8 +857,8 @@
     "gradient_desc": {
         "message": "Välj 2 färger för att skapa en gradient mellan dem:"
     },
-    "grid_includes_gpa": {
-        "message": " (inklusive GPA-kalkylatorn)"
+    "grid_includes_widgets": {
+        "message": " (inklusive {{NAMES}})"
     },
     "grid_warning": {
         "message": "Ditt rutnät har plats för {{TOTAL}} kort{{TOTAL_S}} men du har {{ACTIVE}} kort{{ACTIVE_S}}{{GPA_NOTE}} – vissa kort kan klippas av."

@@ -1090,6 +1090,7 @@ function applyOptionsChanges(changes) {
 			case "dashboard_notes_position":
 			case "dashboard_notes_height":
 				loadDashboardNotes();
+				refreshCardGridLayout();
 				break;
 			case "focus_timer":
 			case "focus_timer_position":
@@ -1098,6 +1099,7 @@ function applyOptionsChanges(changes) {
 			case "focus_timer_preset_2":
 			case "focus_timer_preset_3":
 				loadFocusTimer();
+				refreshCardGridLayout();
 				break;
 			case "breathing":
 			case "breathing_position":
@@ -1106,21 +1108,25 @@ function applyOptionsChanges(changes) {
 			case "breathing_preset_2":
 			case "breathing_preset_3":
 				loadBreathingWidget();
+				refreshCardGridLayout();
 				break;
 			case "daily_quotes":
 			case "daily_quotes_position":
 			case "daily_quotes_height":
 				loadDailyQuotesWidget();
+				refreshCardGridLayout();
 				break;
 			case "quick_links":
 			case "quick_links_position":
 			case "quick_links_height":
 				loadQuickLinksWidget();
+				refreshCardGridLayout();
 				break;
 			case "heatmap":
 			case "heatmap_position":
 			case "heatmap_height":
 				loadHeatmapWidget();
+				refreshCardGridLayout();
 				break;
 			case "quick_links_font_size":
 			case "quick_links_icon_size":
@@ -1144,7 +1150,10 @@ function applyOptionsChanges(changes) {
 				if (options.dashboard_notes === true) loadDashboardNotes();
 				if (options.gpa_calc === true && current_page === "/") setupGPACalc();
 				loadAllSimpleWidgets();
+				refreshCardGridLayout();
 				break;
+			case "widget_top_height":
+			case "widget_bottom_height":
 			case "widget_row_height":
 				document.querySelectorAll(".canvasrefined-widget-row").forEach(row => {
 					applyWidgetRowLayout(row, row.dataset.area);
@@ -1267,7 +1276,7 @@ function applyOptionsChanges(changes) {
 				setupGPACalc();
 				updateGpaHoverBlur();
 				// GPA elements take part in the grid layout, so regenerate the grid CSS.
-				if (options.card_grid === true) debouncedApplyAestheticChanges();
+				refreshCardGridLayout();
 				break;
 			case "gpa_calc_bounds":
 				calculateGPA2();
@@ -7369,8 +7378,7 @@ function widgetContainerAnchor(container) {
     return document.querySelector("#DashboardCard_Container") || container;
 }
 
-function ensureWidgetRow(area, container) {
-    const parent = container.parentNode;
+function ensureWidgetRow(area, container) {    const parent = container.parentNode;
     if (!parent) return null;
     let row = parent.querySelector(":scope > .canvasrefined-widget-row[data-area='" + area + "']");
     if (!row) {
@@ -7383,12 +7391,24 @@ function ensureWidgetRow(area, container) {
     return row;
 }
 
+// Row height in px for the Top / Bottom widget rows (0 = auto). The two rows have
+// their own setting now; older builds shared one value (widget_row_height), which is
+// still honoured until storage has been migrated. Row areas are "top"/"below", the
+// stored settings are "Top"/"Bottom".
+const WIDGET_ROW_HEIGHT_KEYS = { top: "widget_top_height", below: "widget_bottom_height" };
+function widgetRowHeight(area) {
+    const own = parseInt(options[WIDGET_ROW_HEIGHT_KEYS[area]], 10);
+    if (Number.isFinite(own)) return Math.max(0, own);
+    const legacy = parseInt(options.widget_row_height, 10);
+    return Number.isFinite(legacy) ? Math.max(0, legacy) : 0;
+}
+
 function applyWidgetRowLayout(row, area) {
     const slots = [...row.querySelectorAll(":scope > .canvasrefined-widget-slot")];
     if (!slots.length) { row.remove(); return; }
     // Shared row height (px; 0 = auto) so every widget in the row matches.
-    const rowHeight = parseInt(options.widget_row_height, 10);
-    if (Number.isFinite(rowHeight) && rowHeight > 0) row.style.height = rowHeight + "px";
+    const rowHeight = widgetRowHeight(area);
+    if (rowHeight > 0) row.style.height = rowHeight + "px";
     else row.style.height = "";
     const entries = containerWidgetOrder(area);
     const byId = {};
@@ -9493,6 +9513,74 @@ function debouncedApplyAestheticChanges(delay = 150) {
     }, delay);
 }
 
+// In-card widgets take grid cells and rows, so the template has to be rebuilt when
+// one is toggled, moved or resized.
+function refreshCardGridLayout() {
+    if (options.card_grid === true) debouncedApplyAestheticChanges();
+}
+
+/*
+Card Grid geometry (shared by the layout CSS and centerUnevenGridRows)
+
+The grid has to know about every child that takes a cell or a row: the course
+cards, the widgets placed Before/After cards (notes, focus timer, breathing,
+quotes, quick links, heatmap) and the GPA summary card. The calculator itself
+spans a full row when it is open inside the grid.
+*/
+
+const CARD_GRID_HOST = ".ic-DashboardCard__box__container";
+
+// One card-sized cell: course cards, in-card widgets and the GPA summary card.
+// (The GPA calculator `.canvasrefined-gpa` is not one: it spans a whole row.)
+// `:not(.container-mode)` on the GPA keeps these rules above the card-style margins
+// that follow them in the sheet.
+const CARD_GRID_CELLS = [
+    `${CARD_GRID_HOST} > .ic-DashboardCard`,
+    `${CARD_GRID_HOST} > .canvasrefined-widget-card.in-cards`,
+    `${CARD_GRID_HOST} > .canvasrefined-dashboard-notes.in-cards`,
+    `${CARD_GRID_HOST} > .canvasrefined-gpa-card:not(.container-mode)`,
+].join(",");
+
+function isCardGridCell(el) {
+    if (!el || !el.classList) return false;
+    if (el.classList.contains("ic-DashboardCard") || el.classList.contains("canvasrefined-gpa-card")) return true;
+    return el.classList.contains("in-cards")
+        && (el.classList.contains("canvasrefined-widget-card") || el.classList.contains("canvasrefined-dashboard-notes"));
+}
+
+// Enabled widgets rendered before/after the cards, i.e. inside the grid.
+function cardGridWidgets() {
+    return CR_SIMPLE_WIDGET_IDS.map(id => ({ id, position: crWidgetPosition(id) }))
+        .concat([{ id: "dashboard_notes", position: crWidgetPosition("dashboard_notes") }])
+        .filter(w => options[w.id] === true
+            && (w.position === "cards_start" || w.position === "cards_end"));
+}
+
+function cardGridMetrics() {
+    const cols = Math.max(1, parseInt(options.card_grid_columns, 10) || 4);
+    const rows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
+    const colGap = Math.max(0, !isNaN(parseInt(options.card_grid_column_gap, 10)) ? parseInt(options.card_grid_column_gap, 10) : 12);
+    const rowGap = Math.max(0, !isNaN(parseInt(options.card_grid_row_gap, 10)) ? parseInt(options.card_grid_row_gap, 10) : 12);
+    const gpaPos = gpaCalcPosition();
+    const gpaInGrid = options.gpa_calc === true && (gpaPos === "cards_start" || gpaPos === "cards_end");
+    const widgets = cardGridWidgets();
+    // Every widget and the GPA card need a cell, and the calculator a whole row.
+    // Nothing may rely on implicit rows: the template clips them to zero height.
+    const extraRows = Math.ceil((widgets.length + (gpaInGrid ? 1 : 0)) / cols) + (gpaInGrid ? 1 : 0);
+    return {
+        cols,
+        rows,
+        colGap,
+        rowGap,
+        widgets,
+        startWidgets: widgets.filter(w => w.position === "cards_start"),
+        gpaInGrid,
+        gpaFirst: gpaPos === "cards_start",
+        extraRows,
+        totalRows: rows + extraRows,
+    };
+}
+
 function applyAestheticChanges() {
     if (quizSafeModeActive()) return;
     let style = document.querySelector("#canvasrefined-aesthetics") || document.createElement('style');
@@ -9504,44 +9592,58 @@ function applyAestheticChanges() {
     if (options.full_width === true) style.textContent += "#wrapper,.ic-Layout-wrapper{max-width:100%!important}";
     if (options.center_cards === true) style.textContent += ".ic-DashboardCard__box__container{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:flex-start!important}";
     // Card Grid: strict columns x rows layout, emitted after center_cards to win the
-    // !important tie-break. Columns are doubled into sub-columns (each card spans 2) so
-    // "center uneven rows" can shift a partial row by half a card; two spare rows keep
-    // the GPA card/calculator out of the clipped implicit rows.
+    // !important tie-break. Columns are doubled into sub-columns (each cell spans 2) so
+    // "center uneven rows" can shift a partial row by half a card; spare rows keep the
+    // in-grid widgets (notes, timers, quotes, links, heatmap, GPA card/calculator) out
+    // of the clipped implicit rows.
     if (options.card_grid === true) {
-        const gridCols = Math.max(1, parseInt(options.card_grid_columns, 10) || 4);
-        const gridRows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
-        const gridColGap = Math.max(0, !isNaN(parseInt(options.card_grid_column_gap, 10)) ? parseInt(options.card_grid_column_gap, 10) : 12);
-        const gridRowGap = Math.max(0, !isNaN(parseInt(options.card_grid_row_gap, 10)) ? parseInt(options.card_grid_row_gap, 10) : 12);
-        // strip Canvas' natural top/left card margins; the grid supplies its own gaps
-        style.textContent += `.ic-DashboardCard__box__container{margin-top:0!important;margin-left:0!important}`;
-        style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{margin-top:0!important;margin-left:0!important}`;
-        // CanvasRefined's own widgets carry 36px outer margins meant for the flex
-        // card flow; in the grid every side is spacing the gaps already provide
-        style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-widget-card,.ic-DashboardCard__box__container > .canvasrefined-dashboard-notes,.ic-DashboardCard__box__container > .canvasrefined-gpa-card,.ic-DashboardCard__box__container > .canvasrefined-gpa{margin:0!important}`;
+        const grid = cardGridMetrics();
+        const gridCols = grid.cols;
+        const gridColGap = grid.colGap;
+        const gridRowGap = grid.rowGap;
         const centerGrid = options.center_cards === true;
-        const gpaOn = options.gpa_calc === true;
-        const gpaPos = gpaCalcPosition();
-        const gpaInsideGrid = gpaPos === "cards_start" || gpaPos === "cards_end";
-        const gpaFirst = gpaPos === "cards_start";
         const flexGrid = options.card_grid_flex === true;
+        // content.css keeps this container a flex row whenever an in-card widget exists
+        // (so widgets line up with Canvas' loading skeletons). Those selectors carry more
+        // specificity than a bare class, so they are repeated here: grid mode has to
+        // out-specify that fallback instead of silently losing to it.
+        const gridHost = [
+            CARD_GRID_HOST,
+            `${CARD_GRID_HOST}:has(> .canvasrefined-widget-card.in-cards)`,
+            `${CARD_GRID_HOST}:has(> .canvasrefined-dashboard-notes.in-cards)`,
+            `${CARD_GRID_HOST}:has(> .canvasrefined-gpa-card:not(.container-mode))`,
+        ].join(",");
+        // strip Canvas' natural top/left card margins; the grid supplies its own gaps
+        style.textContent += `${CARD_GRID_HOST}{margin-top:0!important;margin-left:0!important}`;
+        // CanvasRefined's own widgets carry 36px outer margins meant for the flex
+        // card flow (plus the card-style spacing); in the grid every side is spacing
+        // the gaps already provide
+        style.textContent += `${CARD_GRID_CELLS}{margin:0!important}`;
+        style.textContent += `${CARD_GRID_HOST} > .canvasrefined-gpa{margin:0!important}`;
         if (flexGrid) {
             // flexible grid: fixed-width tracks; @container queries step the column count
             // down when the next column stops fitting (no window-width guessing)
-            const cardW = options.customCardStyles === true && parseInt(options.cardWidth, 10) > 0
+            // content-box card padding grows the cards past the set width, so the track
+            // (and the widget cards in it) has to follow
+            const cardPad = options.customCardStyles === true ? Math.max(0, parseInt(options.cardPadding, 10) || 0) : 0;
+            const cardW = (options.customCardStyles === true && parseInt(options.cardWidth, 10) > 0
                 ? parseInt(options.cardWidth, 10)
-                : 262;
+                : 262) + 2 * cardPad;
             // container queries need a size container; the card wrapper is full-width
             style.textContent += `#DashboardCard_Container{container-type:inline-size}`;
-            style.textContent += `.ic-DashboardCard__box__container{display:grid!important;grid-template-columns:repeat(${gridCols},${cardW}px)!important;grid-auto-rows:auto!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important${centerGrid ? ";justify-content:center!important" : ""}}`;
+            style.textContent += `${gridHost}{display:grid!important;grid-template-columns:repeat(${gridCols},${cardW}px)!important;grid-auto-rows:auto!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important${centerGrid ? ";justify-content:center!important" : ""}}`;
             // grid gaps alone control spacing (beats the later customCardStyles margins)
-            style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{margin-right:0!important;margin-bottom:0!important}`;
-            if (gpaOn && gpaInsideGrid) {
-                if (gpaFirst) {
-                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1!important}`;
-                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
+            style.textContent += `${CARD_GRID_CELLS}{margin-right:0!important;margin-bottom:0!important}`;
+            if (grid.gpaInGrid) {
+                // Pin only while the GPA is alone in that slot: with another before-card
+                // widget present, auto-placement in DOM order follows the saved widget
+                // order, which the pin would override.
+                if (grid.gpaFirst && !grid.startWidgets.length) {
+                    style.textContent += `${CARD_GRID_HOST} > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1!important}`;
+                    style.textContent += `${CARD_GRID_HOST} > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
                 } else {
                     // auto-placed: flows into the next open slot after the last card
-                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-column:1/-1!important}`;
+                    style.textContent += `${CARD_GRID_HOST} > .canvasrefined-gpa{grid-column:1/-1!important}`;
                 }
             }
             // step down to m columns once m+1 no longer fit; widest-first so the
@@ -9549,35 +9651,49 @@ function applyAestheticChanges() {
             for (let m = gridCols - 1; m >= 1; m--) {
                 const tooWideFor = (m + 1) * cardW + m * gridColGap;
                 if (m === 1) {
-                    style.textContent += `@container (max-width:${tooWideFor - 1}px){.ic-DashboardCard__box__container{grid-template-columns:minmax(0,1fr)!important}.ic-DashboardCard__box__container > .ic-DashboardCard${gpaInsideGrid ? ",.ic-DashboardCard__box__container > .canvasrefined-gpa-card" : ""}{width:100%!important;min-width:0!important}}`;
+                    style.textContent += `@container (max-width:${tooWideFor - 1}px){${gridHost}{grid-template-columns:minmax(0,1fr)!important}${CARD_GRID_CELLS}{width:100%!important;min-width:0!important}}`;
                 } else {
-                    style.textContent += `@container (max-width:${tooWideFor - 1}px){.ic-DashboardCard__box__container{grid-template-columns:repeat(${m},${cardW}px)!important}}`;
+                    style.textContent += `@container (max-width:${tooWideFor - 1}px){${gridHost}{grid-template-columns:repeat(${m},${cardW}px)!important}}`;
                 }
             }
         } else {
-            const totalRows = gridRows + (gpaOn && gpaInsideGrid ? 2 : 0);
-            style.textContent += `.ic-DashboardCard__box__container{display:grid!important;grid-template-columns:repeat(${gridCols * 2},minmax(0,max-content))!important;grid-template-rows:repeat(${totalRows},minmax(0,auto))!important;grid-auto-rows:0!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important;overflow:hidden!important${centerGrid ? ";justify-content:center!important" : ""}}`;
-            style.textContent += `.ic-DashboardCard__box__container > .ic-DashboardCard,.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-column:span 2!important}`;
-            if (gpaOn && gpaInsideGrid) {
+            style.textContent += `${gridHost}{display:grid!important;grid-template-columns:repeat(${gridCols * 2},minmax(0,max-content))!important;grid-template-rows:repeat(${grid.totalRows},minmax(0,auto))!important;grid-auto-rows:0!important;column-gap:${gridColGap}px!important;row-gap:${gridRowGap}px!important;align-items:start!important;overflow:hidden!important${centerGrid ? ";justify-content:center!important" : ""}}`;
+            // every cell-sized child spans one card (two sub-columns)
+            style.textContent += `${CARD_GRID_CELLS}{grid-column:span 2!important}`;
+            if (grid.gpaInGrid) {
                 // GPA card pinned to the first slot, or auto-placed after the cards; the
                 // expanded calculator always takes a full-width row
-                if (gpaFirst) {
-                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1/span 2!important}`;
-                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
+                if (grid.gpaFirst && !grid.startWidgets.length) {
+                    style.textContent += `${CARD_GRID_HOST} > .canvasrefined-gpa-card{grid-row:1!important;grid-column:1/span 2!important}`;
+                    style.textContent += `${CARD_GRID_HOST} > .canvasrefined-gpa{grid-row:2!important;grid-column:1/-1!important}`;
                 } else {
-                    style.textContent += `.ic-DashboardCard__box__container > .canvasrefined-gpa{grid-column:1/-1!important}`;
+                    style.textContent += `${CARD_GRID_HOST} > .canvasrefined-gpa{grid-column:1/-1!important}`;
                 }
             }
         }
     }
     if (options.customCardStyles === true) {
+        // CanvasRefined's own widget cards are card faces too, so the card width, padding,
+        // roundness and spacing settings reach them as well. Only the faces that sit in
+        // the card flow are resized/spaced: a Top/Bottom row widget is sized by the
+        // Widgets tab, so it just inherits the face styling.
+        const widgetFace = ".canvasrefined-widget-card, .canvasrefined-dashboard-notes, .canvasrefined-gpa-card";
+        const widgetCard = ".canvasrefined-widget-card.in-cards, .canvasrefined-dashboard-notes.in-cards, .canvasrefined-gpa-card:not(.container-mode)";
+        const cardRoundness = parseInt(options.cardRoundness, 10);
+        const cardSpacing = parseInt(options.cardSpacing, 10);
+        const cardWidth = parseInt(options.cardWidth, 10);
+        const cardPadding = parseInt(options.cardPadding, 10);
         if (options.imageSize !== undefined && options.imageSize !== 100) style.textContent += `.ic-DashboardCard__header_image {transform: scale(${options.imageSize / 100})!important; }`;
         if (options.cardRoundness !== undefined && options.cardRoundness !== 5) style.textContent += `.ic-DashboardCard {border-radius: ${options.cardRoundness}px!important;}`;
+        // widgets default to 4px, cards to 5px: follow the setting instead of the stock value
+        if (Number.isFinite(cardRoundness) && cardRoundness !== 5) style.textContent += `${widgetFace} {border-radius: ${cardRoundness}px!important;}`;
         // the hero overlay sits on top of the photo, so both need the radius — rounding
         // one alone leaves the other's square corners showing
         if (options.imageRoundness !== undefined && options.imageRoundness !== 0) style.textContent += `.ic-DashboardCard__header_image, .ic-DashboardCard__header_hero {border-radius: ${options.imageRoundness}px!important;}`;
         if (options.cardSpacing !== undefined && options.cardSpacing !== 0) style.textContent += `.ic-DashboardCard {margin-right: ${options.cardSpacing / 2}px!important; margin-bottom: ${options.cardSpacing / 2}px!important;}`;
+        if (Number.isFinite(cardSpacing) && cardSpacing !== 0) style.textContent += `${widgetCard} {margin-right: ${cardSpacing / 2}px!important; margin-bottom: ${cardSpacing / 2}px!important;}`;
         if (options.cardWidth !== undefined && options.cardWidth !== 262) style.textContent += `.ic-DashboardCard {width: ${options.cardWidth}px!important;}`;
+        if (Number.isFinite(cardWidth) && cardWidth > 0 && cardWidth !== 262) style.textContent += `${widgetCard} {width: ${cardWidth}px!important;}`;
         // card height goes on the hero band (146px stock): the card and header are
         // content-sized, so a height on either just clips or adds dead space
         if (options.condensed_cards !== true && options.cardHeight !== undefined && options.cardHeight !== null && options.cardHeight !== "") {
@@ -9587,6 +9703,11 @@ function applyAestheticChanges() {
         // the content (Canvas cards are border-box with a fixed width)
         if (options.cardPadding !== undefined && Number(options.cardPadding) > 0) {
             style.textContent += `.ic-DashboardCard {padding: ${options.cardPadding}px!important; box-sizing: content-box!important;}`;
+        }
+        if (Number.isFinite(cardPadding) && cardPadding > 0) {
+            style.textContent += `${widgetFace} {padding: ${cardPadding}px!important; box-sizing: border-box!important;}`;
+            // fixed-width faces grow like Canvas cards; a row widget must stay inside its slot
+            style.textContent += `${widgetCard} {box-sizing: content-box!important;}`;
         }
     }
 
@@ -9604,15 +9725,21 @@ Center uneven grid rows.
 
 CSS grid always packs rows from the left, so a last row with fewer cards
 than the chosen column count sits flush-left while the rows above are full.
-Pure CSS can't center a partial row, so we offset the first card of the last
+Pure CSS can't center a partial row, so we offset the first cell of the last
 partial row with grid-column-start.
 
-The grid runs on double sub-columns (each card spans 2 — see
+The grid runs on double sub-columns (each cell spans 2 — see
 applyAestheticChanges), which is what makes this possible at all: with 3
 cards under a 4-card row the leftover space is one column, and centering
 needs a HALF-column shift — impossible on plain column lines. On sub-columns
 the shift is a whole sub-column (half a card + half a gap), so every
 remainder can be centered exactly.
+
+In-card widgets are cells just like cards, so they count here too (a grid
+filled by cards plus widgets has a partial last row all the same). Rows are
+detected from the rendered boxes, not from a flat index: a full-width
+calculator row (or a hidden card) leaves holes that index math would read as
+the wrong row.
 
 Only runs while Card Grid is on. Skips when the cards overflow the explicit
 template (those extra rows are clipped anyway, and the last visible row is
@@ -9622,14 +9749,14 @@ hidden/unhidden, dashboard re-render, setting changes) start clean.
 function centerUnevenGridRows() {
     const container = document.querySelector(".ic-DashboardCard__box__container");
     if (!container) return;
-    // DOM order matches auto-placement order, so chunking this list matches the real rows
-    const items = Array.from(container.children).filter(el => el.classList && (el.classList.contains("ic-DashboardCard") || el.classList.contains("canvasrefined-gpa-card")));
+    // DOM order matches auto-placement order, so this list is in visual order
+    const items = Array.from(container.children).filter(isCardGridCell);
     items.forEach(el => el.style.removeProperty("grid-column"));
     if (options.card_grid !== true || options.card_grid_center_rows !== true) return;
     // flexible grid changes the column count live, so fixed offsets would be wrong
     if (options.card_grid_flex === true) return;
-    const cols = Math.max(1, parseInt(options.card_grid_columns, 10) || 4);
-    const rows = Math.max(1, parseInt(options.card_grid_rows, 10) || 3);
+    const grid = cardGridMetrics();
+    const cols = grid.cols;
     const visible = items.filter(el => getComputedStyle(el).display !== "none");
     const count = visible.length;
     // overflow past the template is clipped and the last visible row is full — nothing to center
@@ -9637,15 +9764,23 @@ function centerUnevenGridRows() {
         const expanded = container.querySelector(":scope > .canvasrefined-gpa");
         return !!expanded && getComputedStyle(expanded).display !== "none";
     })();
-    const capacity = cols * (rows + (options.gpa_calc === true ? 2 : 0)) - (gpaExpanded ? cols : 0);
+    const capacity = cols * grid.totalRows - (gpaExpanded ? cols : 0);
     if (count === 0 || count > capacity) return;
-    const lastRowStart = Math.floor((count - 1) / cols) * cols;
-    const inLastRow = count - lastRowStart;
+    // Group by rendered row: cells of one row share a top edge.
+    const rows = [];
+    visible.forEach(el => {
+        const top = Math.round(el.getBoundingClientRect().top);
+        const row = rows.find(r => r.top === top);
+        if (row) row.els.push(el);
+        else rows.push({ top, els: [el] });
+    });
+    const lastRow = rows[rows.length - 1];
+    const inLastRow = lastRow ? lastRow.els.length : 0;
     if (inLastRow >= cols) return;
     // half the leftover, in sub-columns, paired with an explicit span; !important because
     // the stylesheet span rule is !important too
     const offset = cols - inLastRow;
-    if (offset > 0) visible[lastRowStart].style.setProperty("grid-column", `${offset + 1} / span 2`, "important");
+    if (offset > 0) lastRow.els[0].style.setProperty("grid-column", `${offset + 1} / span 2`, "important");
 }
 
 /*

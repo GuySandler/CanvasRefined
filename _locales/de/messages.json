@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "Flexibles Raster"
     },
-    "flexible_grid_on": {
-        "message": "Das flexible Raster ist aktiv – Karten umbrechen, um in schmale Fenster zu passen, statt abgeschnitten zu werden."
-    },
     "focus_timer": {
         "message": "Fokus-Timer"
     },
@@ -860,8 +857,8 @@
     "gradient_desc": {
         "message": "Wähle 2 Farben, um einen Verlauf zwischen ihnen zu erstellen:"
     },
-    "grid_includes_gpa": {
-        "message": " (einschließlich des GPA-Rechners)"
+    "grid_includes_widgets": {
+        "message": " (einschließlich {{NAMES}})"
     },
     "grid_warning": {
         "message": "Dein Raster bietet Platz für {{TOTAL}} Karte{{TOTAL_S}}, aber du hast {{ACTIVE}} Karte{{ACTIVE_S}}{{GPA_NOTE}} – einige Karten werden möglicherweise abgeschnitten."

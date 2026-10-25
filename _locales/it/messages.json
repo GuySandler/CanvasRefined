@@ -578,9 +578,6 @@
     "flexible_grid": {
         "message": "Griglia flessibile"
     },
-    "flexible_grid_on": {
-        "message": "La griglia flessibile è attiva: le card si adattano alle finestre strette invece di essere tagliate."
-    },
     "focus_timer": {
         "message": "Timer di concentrazione"
     },
@@ -860,8 +857,8 @@
     "gradient_desc": {
         "message": "Scegli 2 colori per creare una sfumatura tra loro:"
     },
-    "grid_includes_gpa": {
-        "message": " (incluso il calcolatore GPA)"
+    "grid_includes_widgets": {
+        "message": " (inclusi {{NAMES}})"
     },
     "grid_warning": {
         "message": "La tua griglia contiene {{TOTAL}} card{{TOTAL_S}} ma ne hai {{ACTIVE}} card{{ACTIVE_S}}{{GPA_NOTE}} - alcune card potrebbero essere tagliate."
