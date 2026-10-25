@@ -404,17 +404,22 @@
    fixed layout with % widths lets it scale with the viewport. */
 #grades_summary { table-layout: fixed; width: 100%; }
 /* columns: Name, Due, Submitted, Status, Score, asset processors, Details, progress */
-#grades_summary thead th:nth-child(1) { width: 30%; }
-#grades_summary thead th:nth-child(2) { width: 12%; }
-#grades_summary thead th:nth-child(3) { width: 10%; }
+#grades_summary thead th:nth-child(1) { width: 25%; }
+#grades_summary thead th:nth-child(2) { width: 14%; }
+#grades_summary thead th:nth-child(3) { width: 14%; }
 #grades_summary thead th:nth-child(4) { width: 7%; }
-#grades_summary thead th:nth-child(5) { width: 11%; }
+#grades_summary thead th:nth-child(5) { width: 12%; }
 #grades_summary thead th:nth-child(6) { width: 3%; }
-#grades_summary thead th:nth-child(7) { width: 15%; }
-#grades_summary thead th:nth-child(8) { width: 3%; }
-#grades_summary td.due,
-#grades_summary td.assignment_score,
-#grades_summary td.details { white-space: normal; }
+#grades_summary thead th:nth-child(7) { width: 9%; }
+#grades_summary thead th:nth-child(8) { width: 4%; }
+/* Canvas wraps these hints in body:not(.responsive_student_grades_page), which
+   outranks plain #grades_summary selectors -- without !important the cells keep
+   their nowrap/min-width and, in fixed layout, paint over the next column
+   (due dates over the submitted column) instead of wrapping. */
+#grades_summary th.title,
+#grades_summary td.details { min-width: 0 !important; }
+#grades_summary td,
+#grades_summary th { white-space: normal !important; overflow-wrap: break-word; }
 #assignments { overflow-x: auto; }
 
 

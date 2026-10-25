@@ -169,6 +169,13 @@ function findContentContainer() {
         || document.body;
 }
 
+// The discussions redesign (discussion_topics_post) renders full width and
+// strips .ic-Layout-contentMain off #content after mount, so anything keyed on
+// that class (panel tint, sidebar layout) has to fall back to the stable id.
+function getContentMainEl() {
+    return document.querySelector(".ic-Layout-contentMain") || document.getElementById("content");
+}
+
 let submissionPageButtonObserver = null;
 let submissionButtonScheduled = false;
 let assignmentButtonScheduled = false;
@@ -1442,13 +1449,14 @@ function resetBetterSidebarLayout() {
     document.querySelector(".ic-Layout-contentWrapper")?.style.removeProperty("display");
     document.querySelector(".ic-Layout-contentWrapper")?.style.removeProperty("align-items");
     document.querySelector(".ic-Layout-contentWrapper")?.style.removeProperty("min-width");
-    document.querySelector(".ic-Layout-contentMain")?.style.removeProperty("flex");
-    document.querySelector(".ic-Layout-contentMain")?.style.removeProperty("min-width");
-    document.querySelector(".ic-Layout-contentMain")?.style.removeProperty("margin");
-    document.querySelector(".ic-Layout-contentMain")?.style.removeProperty("padding");
-    document.querySelector(".ic-Layout-contentMain")?.style.removeProperty("background");
-    document.querySelector(".ic-Layout-contentMain")?.style.removeProperty("backdrop-filter");
-    document.querySelector(".ic-Layout-contentMain")?.style.removeProperty("-webkit-backdrop-filter");
+    const contentMain = getContentMainEl();
+    contentMain?.style.removeProperty("flex");
+    contentMain?.style.removeProperty("min-width");
+    contentMain?.style.removeProperty("margin");
+    contentMain?.style.removeProperty("padding");
+    contentMain?.style.removeProperty("background");
+    contentMain?.style.removeProperty("backdrop-filter");
+    contentMain?.style.removeProperty("-webkit-backdrop-filter");
     document.getElementById("left-side")?.style.removeProperty("display");
     document.getElementById("left-side")?.style.removeProperty("padding-top");
     document.getElementById("left-side")?.style.removeProperty("padding-left");
@@ -1724,6 +1732,27 @@ async function applyCustomBackground() {
             border-radius: 10px !important;
         }
         ` : ""}
+        /* Canvas mounts a few React pages (discussion topic, inbox, student
+           grades, AI experience editor) full width and strips
+           .ic-Layout-contentMain off #content after mount. The layout always
+           ships that class, so its absence is the reliable "this page removed
+           it" signal -- and without it the tint above never lands, leaving dark
+           text straight on the background image. */
+        #content:not(.ic-Layout-contentMain) {
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            backdrop-filter: blur(${bgBlur}px) !important;
+            -webkit-backdrop-filter: blur(${bgBlur}px) !important;
+            border-radius: 10px !important;
+            box-sizing: border-box !important;
+        }
+        /* Discussion topics keep the same inset every other page gets. Newer
+           releases mount <div id="discussion-redesign-layout">, older ones only
+           carry the class, so match either. */
+        #content:has(#discussion-redesign-layout),
+        #content:has(.discussion-redesign-layout) {
+            margin: 26px 38px 38px !important;
+            padding: 10px !important;
+        }
         ${isConversationsPage() ? `
         .css-1nh4pc4-view-flexItem {
             background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
@@ -5302,7 +5331,7 @@ function setupMobileNavStyle() {
 function applyBetterSidebarContentPanel() {
     if (!options.better_sidebar) return;
     if (getSidebarLayoutMode() !== "course") return;
-    const contentMain = document.querySelector(".ic-Layout-contentMain");
+    const contentMain = getContentMainEl();
     if (!contentMain) return;
     const bgOpacity = Math.max(0, Math.min(100, Number(options.bg_opacity ?? 65)));
     const bgBlur = Math.max(0, Math.min(30, Number(options.bg_blur ?? 8)));
@@ -5331,7 +5360,7 @@ async function setupBetterSidebar(mode = getSidebarLayoutMode()) {
         mainWrapper.style.display = "flex";
         mainWrapper.style.alignItems = "stretch";
         mainWrapper.style.minWidth = "0";
-        const contentMain = document.querySelector(".ic-Layout-contentMain");
+        const contentMain = getContentMainEl();
         contentMain?.style.setProperty("flex", "1 1 auto");
         contentMain?.style.setProperty("min-width", "0");
         const notRightSide = document.getElementById("not_right_side");
