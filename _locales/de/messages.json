@@ -611,6 +611,9 @@
     "ga_heatmap_undated": {
         "message": "{{COUNT}} benotete Aufgabe(n) ohne Fälligkeitsdatum werden nicht angezeigt."
     },
+    "heatmap_exclude_courses": {
+        "message": "Kurse ausschließen"
+    },
     "ga_line_title": {
         "message": "Gesamtnote im Zeitverlauf"
     },
@@ -1283,8 +1286,8 @@
     "preview_unavailable": {
         "message": "Keine Vorschau verfügbar"
     },
-    "privacy": {
-        "message": "Datenschutz"
+    "dev_tools": {
+        "message": "Entwickler-Tools"
     },
     "progress_done": {
         "message": "{{DONE}}/{{TOTAL}} erledigt"

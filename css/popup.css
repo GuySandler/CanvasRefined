@@ -91,16 +91,22 @@ h2 {margin-top: 20px;font-weight:600}
 .custom-tf-row input {flex:none;width:58px;font-size:12px;background:var(--inputbg);border:none;padding:6px;color:#e2e2e2;border-radius:6px;font-family:inherit;text-align:right;box-sizing:border-box;color-scheme:dark;}
 .custom-tf-row input::-webkit-outer-spin-button, .custom-tf-row input::-webkit-inner-spin-button {opacity:1;}
 .todo-more-options {margin-top: 7px;}
-.celebration-multiselect {position:relative;}
-.celebration-multiselect-btn {display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;cursor:pointer;text-align:left;}
-.celebration-multiselect-btn svg {flex:none;transition:transform .15s ease;}
-.celebration-multiselect.open .celebration-multiselect-btn svg {transform:rotate(-180deg);}
-.celebration-multiselect-menu {display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;background:#1e1e1e;border-radius:7px;padding:5px 0;max-height:180px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.45);}
-.celebration-multiselect.open .celebration-multiselect-menu {display:block;}
-.celebration-multiselect.flip-up .celebration-multiselect-menu {top:auto;bottom:calc(100% + 4px);}
-.celebration-option {display:flex;align-items:center;gap:7px;padding:5px 10px;font-size:12px;color:#e2e2e2;cursor:pointer;white-space:nowrap;user-select:none;}
-.celebration-option:hover {background:#2e2e2e;color:#fff;}
-.celebration-option input {accent-color:#56caf0;cursor:pointer;margin:0;}
+/* Checkbox dropdown shared by todo celebrations and the heatmap's course filter. */
+.cr-multiselect {position:relative;}
+.cr-multiselect-btn {display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;cursor:pointer;text-align:left;}
+/* the current selection stays on one line; the menu is where long names wrap */
+.cr-multiselect-btn > span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cr-multiselect-btn svg {flex:none;transition:transform .15s ease;}
+.cr-multiselect.open .cr-multiselect-btn svg {transform:rotate(-180deg);}
+/* grows past a narrow trigger (widget cards) instead of clipping the labels */
+.cr-multiselect-menu {display:none;position:absolute;top:calc(100% + 4px);left:0;right:auto;z-index:60;background:#1e1e1e;border-radius:7px;padding:5px 0;max-height:200px;overflow-y:auto;overflow-x:hidden;box-shadow:0 6px 18px rgba(0,0,0,.45);box-sizing:border-box;width:max-content;min-width:100%;max-width:min(320px, calc(100vw - 32px));}
+.cr-multiselect.open .cr-multiselect-menu {display:block;}
+.cr-multiselect.flip-up .cr-multiselect-menu {top:auto;bottom:calc(100% + 4px);}
+.cr-multiselect-option {display:flex;align-items:flex-start;gap:7px;padding:5px 10px;font-size:12px;line-height:1.3;color:#e2e2e2;cursor:pointer;user-select:none;}
+.cr-multiselect-option:hover {background:#2e2e2e;color:#fff;}
+.cr-multiselect-option span {overflow-wrap:anywhere;}
+.cr-multiselect-option input {accent-color:#56caf0;cursor:pointer;margin:1px 0 0;}
+.cr-multiselect-empty {padding:6px 10px;font-size:12px;line-height:1.3;color:#9aa3ab;}
 #todo_celebration_amount {font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
 #todo_celebration_amount option {background:#1e1e1e;color:#e2e2e2;}
 #todo_celebration_amount option:checked,

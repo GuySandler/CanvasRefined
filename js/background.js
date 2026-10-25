@@ -58,6 +58,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "quick_links_position": "cards_end",
             "heatmap": false,
             "heatmap_position": "below",
+            "heatmap_excluded_courses": [],
             "widget_top_height": 0,
             "widget_bottom_height": 0,
             "widget_row_height": 0,

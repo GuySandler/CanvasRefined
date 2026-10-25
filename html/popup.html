@@ -349,12 +349,12 @@
                     </div>
                     <div class="sub-option celebration-sub" id="celebration-type-row" style="margin-top:6px;flex-direction:column;align-items:stretch;gap:4px;">
                         <span class="sub-text" data-i18n="celebration_type">Celebration type</span>
-                        <div class="celebration-multiselect" id="todo_celebrations">
-                            <button type="button" class="celebration-multiselect-btn" id="todo_celebrations_btn" aria-haspopup="listbox" aria-expanded="false">
+                        <div class="cr-multiselect" id="todo_celebrations">
+                            <button type="button" class="cr-multiselect-btn" id="todo_celebrations_btn" aria-haspopup="listbox" aria-expanded="false">
                                 <span id="todo_celebrations_label" data-i18n="celebration_confetti">Confetti</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 9l6 6 6-6" /></svg>
                             </button>
-                            <div class="celebration-multiselect-menu" id="todo_celebrations_menu" role="listbox" aria-multiselectable="true"></div>
+                            <div class="cr-multiselect-menu" id="todo_celebrations_menu" role="listbox" aria-multiselectable="true"></div>
                         </div>
                     </div>
                     <div class="sub-option celebration-sub" id="celebration-amount-row" style="flex-direction:column;align-items:stretch;gap:4px;">
@@ -1417,6 +1417,17 @@
                         <input type="number" id="heatmap_height" class="card-input" min="0" max="2000" data-i18n-placeholder="auto" placeholder="auto" style="width:92px;margin:0;">
                         <span class="sub-text">px</span>
                     </div>
+                    <!-- Course filter: ticked courses are left out of the grid. -->
+                    <div class="sub-option" style="margin-top:6px;flex-direction:column;align-items:stretch;gap:4px;">
+                        <span class="sub-text" data-i18n="heatmap_exclude_courses">Exclude courses</span>
+                        <div class="cr-multiselect" id="heatmap_excluded">
+                            <button type="button" class="cr-multiselect-btn" id="heatmap_excluded_btn" aria-haspopup="listbox" aria-expanded="false">
+                                <span id="heatmap_excluded_label" data-i18n="celebration_none">None</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 9l6 6 6-6" /></svg>
+                            </button>
+                            <div class="cr-multiselect-menu" id="heatmap_excluded_menu" role="listbox" aria-multiselectable="true"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1571,7 +1582,7 @@
             <p class="sub-text" style="margin:0;font-size:11px;opacity:0.85;">Email is still available at <strong>sandlerguy5@gmail.com</strong> for private matters.</p>
         </div>
         <div class="option-container">
-            <h3 class="header-small" data-i18n="privacy">Privacy</h3>
+            <h3 class="header-small" data-i18n="dev_tools">Dev tools</h3>
             <div class="option" id="hide_personal_details">
                 <input type="radio" id="off" name="hide_personal_details">
                 <input type="radio" id="on" name="hide_personal_details">

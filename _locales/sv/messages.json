@@ -611,6 +611,9 @@
     "ga_heatmap_undated": {
         "message": "{{COUNT}} betygsatt(a) uppgift(er) utan förfallodatum visas inte."
     },
+    "heatmap_exclude_courses": {
+        "message": "Exkludera kurser"
+    },
     "ga_line_title": {
         "message": "Totalt betyg över tid"
     },
@@ -1283,8 +1286,8 @@
     "preview_unavailable": {
         "message": "Ingen förhandsvisning tillgänglig"
     },
-    "privacy": {
-        "message": "Integritet"
+    "dev_tools": {
+        "message": "Utvecklarverktyg"
     },
     "progress_done": {
         "message": "{{DONE}}/{{TOTAL}} klara"

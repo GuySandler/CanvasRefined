@@ -611,6 +611,9 @@
     "ga_heatmap_undated": {
         "message": "期限のない評価済み課題{{COUNT}}件は表示されていません。"
     },
+    "heatmap_exclude_courses": {
+        "message": "除外するコース"
+    },
     "ga_line_title": {
         "message": "総合評価の推移"
     },
@@ -1283,8 +1286,8 @@
     "preview_unavailable": {
         "message": "プレビューを利用できません"
     },
-    "privacy": {
-        "message": "プライバシー"
+    "dev_tools": {
+        "message": "開発者ツール"
     },
     "progress_done": {
         "message": "{{DONE}}/{{TOTAL}} 完了"

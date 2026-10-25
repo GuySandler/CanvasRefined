@@ -611,6 +611,9 @@
     "ga_heatmap_undated": {
         "message": "{{COUNT}} оценённых заданий без срока не показано."
     },
+    "heatmap_exclude_courses": {
+        "message": "Исключить курсы"
+    },
     "ga_line_title": {
         "message": "Итоговая оценка во времени"
     },
@@ -1283,8 +1286,8 @@
     "preview_unavailable": {
         "message": "Предпросмотр недоступен"
     },
-    "privacy": {
-        "message": "Конфиденциальность"
+    "dev_tools": {
+        "message": "Инструменты разработчика"
     },
     "progress_done": {
         "message": "{{DONE}}/{{TOTAL}} выполнено"

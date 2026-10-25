@@ -611,6 +611,9 @@
     "ga_heatmap_undated": {
         "message": "有 {{COUNT}} 項已評分作業沒有到期日，因此未顯示。"
     },
+    "heatmap_exclude_courses": {
+        "message": "排除課程"
+    },
     "ga_line_title": {
         "message": "總成績變化"
     },
@@ -1283,8 +1286,8 @@
     "preview_unavailable": {
         "message": "無法提供預覽"
     },
-    "privacy": {
-        "message": "隱私"
+    "dev_tools": {
+        "message": "開發人員工具"
     },
     "progress_done": {
         "message": "已完成 {{DONE}}/{{TOTAL}}"

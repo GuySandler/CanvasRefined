@@ -41,6 +41,7 @@ const syncedSubOptions = [
 	"daily_quotes_height",
 	"quick_links_height",
 	"heatmap_height",
+	"heatmap_excluded_courses",
 	"quick_links_font_size",
 	"quick_links_icon_size",
 	"auto_dark",
@@ -292,6 +293,8 @@ const defaultOptions = {
         "daily_quotes_height": 0,
         "quick_links_height": 0,
         "heatmap_height": 0,
+        // Courses left out of the heatmap widget (course ids as strings).
+        "heatmap_excluded_courses": [],
         // Quick Links tile label font size in px.
         "quick_links_font_size": 12,
         // Quick Links tile icon box size in px.
@@ -587,19 +590,44 @@ function resolveCelebrations(raw, legacyConfetti) {
     return legacyConfetti === false ? [] : ["confetti"];
 }
 
-function setupCelebrationsSelect(initial) {
-    const wrap = document.getElementById("todo_celebrations");
-    const btn = document.getElementById("todo_celebrations_btn");
-    const menu = document.getElementById("todo_celebrations_menu");
-    const label = document.getElementById("todo_celebrations_label");
-    if (!wrap || !btn || !menu || !label) return;
+// Labels are rendered through innerHTML, so escape user-provided text (course names).
+function escapePopupHtml(value) {
+    return String(value === null || value === undefined ? "" : value)
+        .replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
 
+// Checkbox dropdown ("select all that apply") shared by the todo celebrations and the
+// heatmap's course filter. Options are { id, label } pairs; every change is handed back
+// through onChange so the caller decides what to persist.
+function setupPopupMultiSelect({ wrapId, btnId, menuId, labelId, emptyText, onChange }) {
+    const wrap = document.getElementById(wrapId);
+    const btn = document.getElementById(btnId);
+    const menu = document.getElementById(menuId);
+    const label = document.getElementById(labelId);
+    if (!wrap || !btn || !menu || !label) return null;
+
+    const noneLabel = getMsg("celebration_none") || "None";
+    let items = [];
     let selected = [];
+
+    const updateLabel = () => {
+        if (selected.length === 0) label.textContent = noneLabel;
+        else if (selected.length === 1) {
+            const item = items.find(i => i.id === selected[0]);
+            label.textContent = item ? item.label : noneLabel;
+        } else {
+            label.textContent = replaceCountPlaceholder(getMsg("selected_count") || "{{COUNT}} selected", selected.length);
+        }
+    };
     const renderMenu = () => {
-        menu.innerHTML = CELEBRATION_TYPES.map(t => `
-            <label class="celebration-option">
-                <input type="checkbox" value="${t.id}" ${selected.includes(t.id) ? "checked" : ""}>
-                <span>${t.label}</span>
+        if (!items.length) {
+            menu.innerHTML = `<p class="cr-multiselect-empty">${escapePopupHtml(emptyText || noneLabel)}</p>`;
+            return;
+        }
+        menu.innerHTML = items.map(item => `
+            <label class="cr-multiselect-option">
+                <input type="checkbox" value="${escapePopupHtml(item.id)}" ${selected.includes(item.id) ? "checked" : ""}>
+                <span>${escapePopupHtml(item.label)}</span>
             </label>
         `).join("");
         menu.querySelectorAll("input").forEach(input => {
@@ -610,22 +638,10 @@ function setupCelebrationsSelect(initial) {
                     selected = selected.filter(id => id !== input.value);
                 }
                 updateLabel();
-                chrome.storage.sync.set({ "todo_celebrations": selected });
+                if (onChange) onChange(selected.slice());
             });
         });
     };
-    const updateLabel = () => {
-        if (selected.length === 0) label.textContent = getMsg("celebration_none") || "None";
-        else if (selected.length === 1) label.textContent = CELEBRATION_TYPES.find(t => t.id === selected[0]) ? (getMsg("celebration_" + selected[0]) || CELEBRATION_TYPES.find(t => t.id === selected[0]).label) : (getMsg("celebration_none") || "None");
-        else label.textContent = replaceCountPlaceholder((getMsg("selected_count") || "{{COUNT}} selected"), selected.length);
-    };
-
-    // Legacy key: the special handler only passes the new one.
-    chrome.storage.sync.get("todo_confetti", legacy => {
-        selected = resolveCelebrations(initial, legacy && legacy["todo_confetti"]);
-        renderMenu();
-        updateLabel();
-    });
 
     btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -644,6 +660,44 @@ function setupCelebrationsSelect(initial) {
             wrap.classList.remove("open");
             btn.setAttribute("aria-expanded", "false");
         }
+    });
+
+    return {
+        // Replacing the option list keeps any still-valid selection.
+        setItems(list) {
+            items = Array.isArray(list) ? list : [];
+            const ids = new Set(items.map(i => i.id));
+            selected = selected.filter(id => ids.has(id));
+            renderMenu();
+            updateLabel();
+        },
+        setSelected(ids) {
+            const valid = new Set(items.map(i => i.id));
+            selected = (Array.isArray(ids) ? ids : []).map(String).filter(id => !valid.size || valid.has(id));
+            renderMenu();
+            updateLabel();
+        },
+        getSelected() { return selected.slice(); },
+        close() {
+            wrap.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+        },
+    };
+}
+
+function setupCelebrationsSelect(initial) {
+    const control = setupPopupMultiSelect({
+        wrapId: "todo_celebrations",
+        btnId: "todo_celebrations_btn",
+        menuId: "todo_celebrations_menu",
+        labelId: "todo_celebrations_label",
+        onChange: (selected) => chrome.storage.sync.set({ "todo_celebrations": selected }),
+    });
+    if (!control) return;
+    control.setItems(CELEBRATION_TYPES.map(t => ({ id: t.id, label: (getMsg("celebration_" + t.id) || t.label) })));
+    // Legacy key: the special handler only passes the new one.
+    chrome.storage.sync.get("todo_confetti", legacy => {
+        control.setSelected(resolveCelebrations(initial, legacy && legacy["todo_confetti"]));
     });
 }
 
@@ -1442,6 +1496,47 @@ function setupWidgetHeightInput(id, initial, legacyKey) {
     });
 }
 
+// Heatmap course filter: ticked courses are left out of the widget completely.
+function setupHeatmapExcludedCourses(initial) {
+    const control = setupPopupMultiSelect({
+        wrapId: "heatmap_excluded",
+        btnId: "heatmap_excluded_btn",
+        menuId: "heatmap_excluded_menu",
+        labelId: "heatmap_excluded_label",
+        emptyText: getMsg("no_course_cards", "Visit your Canvas dashboard to load courses."),
+        onChange: (selected) => chrome.storage.sync.set({ "heatmap_excluded_courses": selected }),
+    });
+    if (!control) return;
+
+    // Only the courses still on the dashboard, labelled the way the user knows them
+    // (custom name, then the Canvas nickname) — same list as the Cards tab.
+    const renderList = (cards) => {
+        const entries = Object.entries(cards || {})
+            .filter(([, card]) => card && card.hidden !== true && card.hide !== true)
+            .map(([id, card]) => ({
+                id: String(id),
+                label: card.name || card.fullName || card.default || card.code || `Course ${id}`,
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+        control.setItems(entries);
+    };
+
+    chrome.storage.sync.get("custom_cards", sync => {
+        renderList(sync.custom_cards);
+        // The stored ids only survive setItems if their course is still listed.
+        control.setSelected(Array.isArray(initial) ? initial : []);
+    });
+
+    // A dashboard tab writes the card list; keep the dropdown in sync when it lands.
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "sync" || !changes["custom_cards"]) return;
+        if (!document.getElementById("heatmap_excluded")) return;
+        const selected = control.getSelected();
+        renderList(changes["custom_cards"].newValue);
+        control.setSelected(selected);
+    });
+}
+
 // h:mm:ss fields: click to edit a segment, a second digit auto-advances, and
 // the value is saved zero-padded on blur. The hours field is optional.
 function setupWidgetTimeInput(prefix, initial) {
@@ -2102,6 +2197,10 @@ async function setup() {
 			{
 				identifier: "heatmap_height",
 				setup: (initial) => setupWidgetHeightInput("heatmap_height", initial),
+			},
+			{
+				identifier: "heatmap_excluded_courses",
+				setup: (initial) => setupHeatmapExcludedCourses(initial),
 			},
 			{
 				identifier: "quick_links_font_size",

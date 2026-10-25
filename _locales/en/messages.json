@@ -1292,8 +1292,8 @@
     "preview_unavailable": {
         "message": "No preview available"
     },
-    "privacy": {
-        "message": "Privacy"
+    "dev_tools": {
+        "message": "Dev tools"
     },
     "progress_done": {
         "message": "{{DONE}}/{{TOTAL}} done"
@@ -2026,6 +2026,9 @@
     },
     "heatmap_widget": {
         "message": "Heatmap"
+    },
+    "heatmap_exclude_courses": {
+        "message": "Exclude courses"
     },
     "widget_short_heatmap": {
         "message": "Heatmap"

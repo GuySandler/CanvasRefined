@@ -611,6 +611,9 @@
     "ga_heatmap_undated": {
         "message": "{{COUNT}} trabalho(s) avaliado(s) sem data de entrega não apresentado(s)."
     },
+    "heatmap_exclude_courses": {
+        "message": "Excluir disciplinas"
+    },
     "ga_line_title": {
         "message": "Nota global ao longo do tempo"
     },
@@ -1283,8 +1286,8 @@
     "preview_unavailable": {
         "message": "Pré-visualização indisponível"
     },
-    "privacy": {
-        "message": "Privacidade"
+    "dev_tools": {
+        "message": "Ferramentas de programador"
     },
     "progress_done": {
         "message": "{{DONE}}/{{TOTAL}} concluídos"

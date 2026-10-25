@@ -611,6 +611,9 @@
     "ga_heatmap_undated": {
         "message": "{{COUNT}} devoir(s) noté(s) sans date d'échéance non affiché(s)."
     },
+    "heatmap_exclude_courses": {
+        "message": "Exclure des cours"
+    },
     "ga_line_title": {
         "message": "Note globale au fil du temps"
     },
@@ -1283,8 +1286,8 @@
     "preview_unavailable": {
         "message": "Aucun aperçu disponible"
     },
-    "privacy": {
-        "message": "Confidentialité"
+    "dev_tools": {
+        "message": "Outils de développement"
     },
     "progress_done": {
         "message": "{{DONE}}/{{TOTAL}} terminés"

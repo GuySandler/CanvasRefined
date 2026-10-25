@@ -611,6 +611,9 @@
     "ga_heatmap_undated": {
         "message": "{{COUNT}} consegna/e valutata/e senza data di scadenza non mostrata/e."
     },
+    "heatmap_exclude_courses": {
+        "message": "Escludi corsi"
+    },
     "ga_line_title": {
         "message": "Voto complessivo nel tempo"
     },
@@ -1283,8 +1286,8 @@
     "preview_unavailable": {
         "message": "Nessuna anteprima disponibile"
     },
-    "privacy": {
-        "message": "Privacy"
+    "dev_tools": {
+        "message": "Strumenti per sviluppatori"
     },
     "progress_done": {
         "message": "{{DONE}}/{{TOTAL}} completati"

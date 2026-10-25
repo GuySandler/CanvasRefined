@@ -611,6 +611,9 @@
     "ga_heatmap_undated": {
         "message": "{{COUNT}} 项有评分但无截止日期的作业未显示。"
     },
+    "heatmap_exclude_courses": {
+        "message": "排除课程"
+    },
     "ga_line_title": {
         "message": "总评成绩变化"
     },
@@ -1283,8 +1286,8 @@
     "preview_unavailable": {
         "message": "没有可用的预览"
     },
-    "privacy": {
-        "message": "隐私"
+    "dev_tools": {
+        "message": "开发者工具"
     },
     "progress_done": {
         "message": "{{DONE}}/{{TOTAL}} 已完成"

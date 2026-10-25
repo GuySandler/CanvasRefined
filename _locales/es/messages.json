@@ -611,6 +611,9 @@
     "ga_heatmap_undated": {
         "message": "{{COUNT}} tarea(s) calificada(s) sin fecha de entrega no mostrada(s)."
     },
+    "heatmap_exclude_courses": {
+        "message": "Excluir cursos"
+    },
     "ga_line_title": {
         "message": "Nota general a lo largo del tiempo"
     },
@@ -1283,8 +1286,8 @@
     "preview_unavailable": {
         "message": "No hay vista previa disponible"
     },
-    "privacy": {
-        "message": "Privacidad"
+    "dev_tools": {
+        "message": "Herramientas de desarrollo"
     },
     "progress_done": {
         "message": "{{DONE}}/{{TOTAL}} hechas"

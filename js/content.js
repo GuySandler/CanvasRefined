@@ -1128,6 +1128,13 @@ function applyOptionsChanges(changes) {
 				loadHeatmapWidget();
 				refreshCardGridLayout();
 				break;
+			case "heatmap_excluded_courses":
+				// Rebuild from the cache (courses drop out immediately) and refetch the rest.
+				crHeatmapData = null;
+				crHeatmapLoadedAt = 0;
+				crHeatmapStarted = false;
+				crHeatmapEnsureData();
+				break;
 			case "quick_links_font_size":
 			case "quick_links_icon_size":
 				document.querySelectorAll(".canvasrefined-quick-links").forEach(quickLinksApplySizes);
@@ -8682,17 +8689,26 @@ async function crHeatmapFetchCourse(course) {
     return out;
 }
 
+// Courses ticked in the widget's course filter (stored as ids; may be numbers).
+function crHeatmapExcludedIds() {
+    const raw = options.heatmap_excluded_courses;
+    return new Set(Array.isArray(raw) ? raw.map(String) : []);
+}
+
 async function crHeatmapFetchAll() {
     if (crHeatmapLoading) return;
     crHeatmapLoading = true;
     crHeatmapRenderAll();
     try {
         const courses = await gsFetchCourseList();
+        // Excluded courses are skipped here, so they cost no requests either.
+        const excluded = crHeatmapExcludedIds();
         const items = [];
         let next = 0;
         const worker = async () => {
             while (next < courses.length) {
                 const course = courses[next++];
+                if (excluded.has(String(course.id))) continue;
                 try {
                     const list = await crHeatmapFetchCourse(course);
                     for (const item of list) items.push(item);
@@ -8742,6 +8758,9 @@ function crHeatmapEnsureData() {
 function crHeatmapBuild(items) {
     const byDay = new Map();
     const range = { grades: { min: null, max: null }, subs: { min: null, max: null } };
+    // Cached items keep their course id, so a course excluded from the widget drops out
+    // of the grid right away instead of waiting for the next fetch.
+    const excluded = crHeatmapExcludedIds();
     let maxCount = 0, subTotal = 0, undated = 0;
     const cellFor = (d, kind) => {
         const key = d.getTime();
@@ -8756,6 +8775,7 @@ function crHeatmapBuild(items) {
         return cell;
     };
     for (const item of items) {
+        if (item.courseId != null && excluded.has(String(item.courseId))) continue;
         if (item.score != null && !item.excused && item.points > 0) {
             const d = crHeatmapDayStart(item.due);
             if (d) {
