@@ -1110,6 +1110,11 @@ function applyOptionsChanges(changes) {
 			case "quick_links_height":
 				loadQuickLinksWidget();
 				break;
+			case "heatmap":
+			case "heatmap_position":
+			case "heatmap_height":
+				loadHeatmapWidget();
+				break;
 			case "quick_links_font_size":
 			case "quick_links_icon_size":
 				document.querySelectorAll(".canvasrefined-quick-links").forEach(quickLinksApplySizes);
@@ -1137,6 +1142,8 @@ function applyOptionsChanges(changes) {
 				document.querySelectorAll(".canvasrefined-widget-row").forEach(row => {
 					applyWidgetRowLayout(row, row.dataset.area);
 				});
+				// The row height is the heatmap's height budget — refit its calendar.
+				crHeatmapRenderAll();
 				break;
 			case "dashboard_grades":
 			case "grade_hover":
@@ -7245,9 +7252,9 @@ function placeGPAElements(dashboardContainer, container, container2) {
     }
 }
 
-const CR_WIDGET_IDS = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "quick_links"];
+const CR_WIDGET_IDS = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "quick_links", "heatmap"];
 // Widgets rendered by the generic loader: one root element, no GPA-style pair.
-const CR_SIMPLE_WIDGET_IDS = ["focus_timer", "breathing", "daily_quotes", "quick_links"];
+const CR_SIMPLE_WIDGET_IDS = ["focus_timer", "breathing", "daily_quotes", "quick_links", "heatmap"];
 function isCRWidget(id) { return CR_WIDGET_IDS.indexOf(id) !== -1; }
 
 // Shared full-width row (top/below): slot width is the % from the Widgets tab.
@@ -8012,6 +8019,7 @@ const CR_WIDGET_DEFAULT_POSITION = {
     breathing: "cards_end",
     daily_quotes: "top",
     quick_links: "cards_end",
+    heatmap: "below",
 };
 
 function crWidgetPosition(id) {
@@ -8474,11 +8482,478 @@ function loadDailyQuotesWidget() {
     });
 }
 
+/* ---- Heatmap (every class combined: average grade / submissions per day) ---- */
+// Same GitHub-style calendar as Grade Analytics' heatmap tab, but pooled across
+// all active courses. Data comes from one assignments call per course with the
+// submission inlined (due date, points, score and submitted_at in one response).
+
+const CR_HEATMAP_CACHE_KEY = "heatmap_widget_cache_v1";
+const CR_HEATMAP_REFRESH_MS = 30 * 60 * 1000; // refetch once the cache is older than this
+const CR_HEATMAP_MAX_PAGES = 5;               // 500 assignments per course, safety net
+const CR_HEATMAP_PARALLEL = 4;                // concurrent course requests (Canvas rate limits)
+const CR_HM_CELL_MIN = 7;                     // cell size range: the grid scales to the card height
+const CR_HM_CELL_MAX = 30;
+const CR_HM_CELL_DEFAULT = 11;
+const CR_HM_GAP = 3;
+const CR_HM_MONTH_H = 15;                     // room for the month labels above the grid
+const CR_HM_EMPTY = "color-mix(in srgb, var(--bctext-1,#e2e2e2) 20%, transparent)";
+// Submission cells are the dark-mode link color at an opacity that grows with the
+// day's count, over the same neutral box the grade tab uses for "nothing here".
+const CR_HM_SUB_BASE = CR_HM_EMPTY;
+const CR_HM_MUTED = "var(--bctext-2,#9aa3ab)";
+const CR_HM_TIP_ROWS = 8;
+
+let crHeatmapTab = "grades";   // active tab: "grades" | "subs"
+let crHeatmapData = null;      // built day buckets for all courses
+let crHeatmapLoadedAt = 0;     // when the shown data was fetched
+let crHeatmapLoading = false;
+let crHeatmapStarted = false;  // cache read kicked off (once per page view)
+
+function heatmapWidgetHtml() { return `
+    <div class="cr-widget-head">
+        <span class="cr-widget-title">${getMsg("heatmap_widget", "Heatmap")}</span>
+        <div class="cr-hm-tabs" role="tablist">
+            <button type="button" class="cr-hm-tab" data-cr-hm-tab="grades" role="tab" aria-selected="true">${getMsg("cr_hm_tab_grades", "Avg grade")}</button>
+            <button type="button" class="cr-hm-tab" data-cr-hm-tab="subs" role="tab" aria-selected="false">${getMsg("cr_hm_tab_subs", "Submissions")}</button>
+        </div>
+    </div>
+    <div class="cr-hm-body">
+        <p class="cr-hm-status">${getMsg("reading_grade_data", "Reading grade data…")}</p>
+        <div class="cr-hm-scroll"><div class="cr-hm-grid"></div></div>
+        <div class="cr-hm-foot">
+            <div class="cr-hm-legend"></div>
+            <p class="cr-hm-note"></p>
+        </div>
+        <div class="cr-hm-tip" role="tooltip"></div>
+    </div>
+`; }
+
+function wireHeatmapWidget(el) {
+    el.querySelectorAll("[data-cr-hm-tab]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const tab = btn.dataset.crHmTab;
+            if (!tab || tab === crHeatmapTab) return;
+            crHeatmapTab = tab === "subs" ? "subs" : "grades";
+            crHeatmapRender(el);
+        });
+    });
+    // The grid is sized from the card's height, so a resize means a rebuild.
+    crHeatmapObserver().observe(el);
+    updateHeatmapWidget(el);
+}
+
+let crHeatmapResizeObserver = null;
+function crHeatmapObserver() {
+    if (!crHeatmapResizeObserver) {
+        crHeatmapResizeObserver = new ResizeObserver(entries => {
+            for (const entry of entries) crHeatmapRender(entry.target);
+        });
+    }
+    return crHeatmapResizeObserver;
+}
+
+function updateHeatmapWidget(el) {
+    crHeatmapEnsureData();
+    crHeatmapRender(el);
+}
+
+function loadHeatmapWidget() {
+    crLoadWidget("heatmap", {
+        className: "canvasrefined-heatmap",
+        html: heatmapWidgetHtml(),
+        wire: wireHeatmapWidget,
+        update: updateHeatmapWidget,
+    });
+}
+
+function crHeatmapDayStart(iso) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+// Per-course submissions, only used when the assignments include is ignored.
+async function crHeatmapFetchSubmissions(course) {
+    const url = `${domain}/api/v1/courses/${course.id}/students/submissions?student_ids[]=self&per_page=100`;
+    const list = await gsGetJsonPages(url, { maxPages: CR_HEATMAP_MAX_PAGES });
+    const map = new Map();
+    for (const sub of list) {
+        if (sub && sub.assignment_id != null) map.set(String(sub.assignment_id), sub);
+    }
+    return map;
+}
+
+async function crHeatmapFetchCourse(course) {
+    const url = `${domain}/api/v1/courses/${course.id}/assignments?include[]=submission&per_page=100`;
+    const list = await gsGetJsonPages(url, { maxPages: CR_HEATMAP_MAX_PAGES });
+    const code = String(course.course_code || course.name || "");
+    // `include[]=submission` is documented, but a few instances ignore it: when no
+    // assignment carries a submission key at all, ask the submissions endpoint.
+    let subs = null;
+    if (list.length && !list.some(a => a && Object.prototype.hasOwnProperty.call(a, "submission"))) {
+        subs = await crHeatmapFetchSubmissions(course).catch(() => null);
+    }
+    const out = [];
+    for (const a of list) {
+        if (!a || a.name == null) continue;
+        const sub = a.submission || (subs && subs.get(String(a.id))) || null;
+        out.push({
+            course: code,
+            title: String(a.name),
+            due: a.due_at || null,
+            points: typeof a.points_possible === "number" && a.points_possible > 0 ? a.points_possible : 0,
+            score: sub && typeof sub.score === "number" ? sub.score : null,
+            excused: !!(sub && sub.excused === true),
+            submitted: sub && sub.submitted_at ? sub.submitted_at : null,
+        });
+    }
+    return out;
+}
+
+async function crHeatmapFetchAll() {
+    if (crHeatmapLoading) return;
+    crHeatmapLoading = true;
+    crHeatmapRenderAll();
+    try {
+        const courses = await gsFetchCourseList();
+        const items = [];
+        let next = 0;
+        const worker = async () => {
+            while (next < courses.length) {
+                const course = courses[next++];
+                try {
+                    const list = await crHeatmapFetchCourse(course);
+                    for (const item of list) items.push(item);
+                } catch (e) {
+                    // One unreachable course must not blank the whole widget.
+                }
+            }
+        };
+        const workers = [];
+        for (let i = 0; i < Math.min(CR_HEATMAP_PARALLEL, courses.length); i++) workers.push(worker());
+        await Promise.all(workers);
+        // Keep the previous data rather than drawing an empty grid on a dead session.
+        if (items.length) {
+            crHeatmapData = crHeatmapBuild(items);
+            crHeatmapLoadedAt = Date.now();
+            try {
+                chrome.storage.local.set({ [CR_HEATMAP_CACHE_KEY]: { at: crHeatmapLoadedAt, items } });
+            } catch (e) { /* cache write failure is non-fatal */ }
+        }
+    } catch (e) {
+        logError(e);
+    }
+    crHeatmapLoading = false;
+    crHeatmapRenderAll();
+}
+
+// Cache first (instant paint), then refresh in the background when stale.
+function crHeatmapEnsureData() {
+    if (crHeatmapStarted) {
+        if (!crHeatmapLoading && Date.now() - crHeatmapLoadedAt > CR_HEATMAP_REFRESH_MS) crHeatmapFetchAll();
+        return;
+    }
+    crHeatmapStarted = true;
+    chrome.storage.local.get(CR_HEATMAP_CACHE_KEY, result => {
+        const cache = result && result[CR_HEATMAP_CACHE_KEY];
+        if (cache && Array.isArray(cache.items) && cache.items.length) {
+            crHeatmapData = crHeatmapBuild(cache.items);
+            crHeatmapLoadedAt = Number(cache.at) || 0;
+        }
+        crHeatmapRenderAll();
+        if (Date.now() - crHeatmapLoadedAt > CR_HEATMAP_REFRESH_MS) crHeatmapFetchAll();
+    });
+}
+
+// Buckets every course's work by day: grades by due date (like Grade Analytics),
+// submissions by the day they were turned in.
+function crHeatmapBuild(items) {
+    const byDay = new Map();
+    const range = { grades: { min: null, max: null }, subs: { min: null, max: null } };
+    let maxCount = 0, subTotal = 0, undated = 0;
+    const cellFor = (d, kind) => {
+        const key = d.getTime();
+        let cell = byDay.get(key);
+        if (!cell) {
+            cell = { date: d, scores: [], gradeItems: [], subs: [] };
+            byDay.set(key, cell);
+        }
+        const r = range[kind];
+        if (!r.min || key < r.min.getTime()) r.min = d;
+        if (!r.max || key > r.max.getTime()) r.max = d;
+        return cell;
+    };
+    for (const item of items) {
+        if (item.score != null && !item.excused && item.points > 0) {
+            const d = crHeatmapDayStart(item.due);
+            if (d) {
+                const pct = (item.score / item.points) * 100;
+                const cell = cellFor(d, "grades");
+                cell.scores.push(pct);
+                cell.gradeItems.push({ title: item.title, course: item.course, pct });
+            } else {
+                undated++;
+            }
+        }
+        if (item.submitted) {
+            const d = crHeatmapDayStart(item.submitted);
+            if (d) {
+                cellFor(d, "subs").subs.push({ title: item.title, course: item.course });
+                subTotal++;
+            }
+        }
+    }
+    if (!byDay.size) return null;
+    for (const cell of byDay.values()) {
+        cell.avg = cell.scores.length ? cell.scores.reduce((a, b) => a + b, 0) / cell.scores.length : null;
+        cell.count = cell.subs.length;
+        if (cell.count > maxCount) maxCount = cell.count;
+    }
+    return { byDay, range, maxCount, subTotal, undated };
+}
+
+function crHeatmapTabRange(data) {
+    const r = data.range[crHeatmapTab === "subs" ? "subs" : "grades"];
+    return r && r.min && r.max ? r : null;
+}
+
+function crHeatmapRenderAll() {
+    document.querySelectorAll(".canvasrefined-heatmap").forEach(el => crHeatmapRender(el));
+}
+
+// Grades reuse the Grade Analytics zone palette; submissions paint the dark-mode
+// link color, more opaque the more was turned in that day.
+function crHeatmapCellStyle(cell, data) {
+    if (crHeatmapTab === "subs") {
+        const max = Math.max(1, data.maxCount);
+        const ratio = cell ? cell.count / max : 0;
+        const pct = Math.round(Math.max(0, Math.min(1, ratio)) * 1000) / 10;
+        const tint = `color-mix(in srgb, var(--bclinks,#56caf0) ${pct}%, transparent)`;
+        return `background-color:${CR_HM_SUB_BASE};background-image:linear-gradient(${tint},${tint});`;
+    }
+    return `background-color:${cell && cell.avg != null ? gaHeatmapColor(cell.avg) : CR_HM_EMPTY};`;
+}
+
+// Cell size that makes the seven weekday rows use the card's free height. Cells
+// grow into surplus space, and only shrink when the card's height is actually fixed
+// (a set widget/row height) — in a content-sized card the free height follows the
+// grid, so shrinking would ratchet the map smaller on every pass.
+function crHeatmapDefiniteHeight(el) {
+    if (el.style && el.style.height) return true;
+    const row = el.closest ? el.closest(".canvasrefined-widget-row") : null;
+    return !!(row && row.style.height);
+}
+
+function crHeatmapMetrics(el) {
+    const gap = CR_HM_GAP, monthH = CR_HM_MONTH_H;
+    const grid = el.querySelector(".cr-hm-grid");
+    const scroll = el.querySelector(".cr-hm-scroll");
+    const current = parseInt(grid && grid.dataset.crHmCell, 10) || CR_HM_CELL_DEFAULT;
+    // The scroll box is exactly the grid's available box: its clientHeight already
+    // drops padding and any horizontal scrollbar, so one measurement covers it all.
+    const avail = scroll ? scroll.clientHeight : 0;
+    const need = (c) => c * 7 + gap * 6 + monthH;
+    const slack = 2; // keep a hair of breathing room so rounding never clips a row
+    const fit = Math.floor((avail - slack - monthH - gap * 6) / 7);
+    const clamped = Number.isFinite(fit) ? Math.min(CR_HM_CELL_MAX, Math.max(CR_HM_CELL_MIN, fit)) : CR_HM_CELL_DEFAULT;
+    let cell = current;
+    // 0 = not laid out yet (or hidden); keep the default until there is a real box.
+    if (avail > 0) {
+        if (need(current) < avail - slack && clamped > current) cell = clamped;
+        else if (crHeatmapDefiniteHeight(el) && need(current) > avail - slack && clamped < current) cell = clamped;
+    }
+    return { cell, gap, monthH };
+}
+
+function crHeatmapShowTip(tip, e, cell) {
+    const date = cell.date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    const rows = [];
+    let head = "";
+    if (crHeatmapTab === "subs") {
+        head = `<b>${date}</b> — ${replaceCountPlaceholder(getMsg("cr_hm_tip_subs", "{{COUNT}} submitted"), cell.count)}`;
+        // One row per class, most submissions first.
+        const byCourse = new Map();
+        for (const s of cell.subs) {
+            const key = s.course || "—";
+            byCourse.set(key, (byCourse.get(key) || 0) + 1);
+        }
+        const entries = [...byCourse.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+        entries.slice(0, CR_HM_TIP_ROWS).forEach(([course, n]) => {
+            rows.push(`<div class="cr-hm-tip-row cr-hm-tip-count"><span>${gaEscHtml(course)}</span><b>${n}</b></div>`);
+        });
+        if (entries.length > CR_HM_TIP_ROWS) rows.push(`<div class="cr-hm-tip-row">+${entries.length - CR_HM_TIP_ROWS}</div>`);
+    } else {
+        head = `<b>${date}</b> — ${getMsg("ga_heatmap_avg", "avg")} <b style="color:${gaHeatmapColor(cell.avg)};">${cell.avg.toFixed(2)}%</b>`;
+        cell.gradeItems.slice(0, CR_HM_TIP_ROWS).forEach(g => {
+            rows.push(`<div class="cr-hm-tip-row cr-hm-tip-count"><span>${gaEscHtml(g.title)}${g.course ? `<span class="cr-hm-tip-course">${gaEscHtml(g.course)}</span>` : ""}</span><b style="color:${gaHeatmapColor(g.pct)};">${g.pct.toFixed(1)}%</b></div>`);
+        });
+        if (cell.gradeItems.length > CR_HM_TIP_ROWS) rows.push(`<div class="cr-hm-tip-row">+${cell.gradeItems.length - CR_HM_TIP_ROWS}</div>`);
+    }
+    tip.innerHTML = rows.length ? `${head}<div class="cr-hm-tip-list">${rows.join("")}</div>` : head;
+    tip.style.display = "block";
+    const card = tip.closest && tip.closest(".canvasrefined-heatmap");
+    if (card) card.classList.add("cr-hm-tip-open");
+    // Absolute inside the (non-clipping) widget body, but free to spill past the card:
+    // only the viewport bounds it, so a cell at the card's edge still shows its tooltip.
+    const host = tip.offsetParent || tip.parentNode;
+    const hostRect = host.getBoundingClientRect();
+    const box = e.currentTarget.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    const pad = 8;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let left = box.right + pad;
+    if (left + tw > vw - pad) left = box.left - tw - pad;
+    left = Math.max(pad, Math.min(left, Math.max(pad, vw - tw - pad)));
+    let top = box.top + (box.height - th) / 2;
+    top = Math.max(pad, Math.min(top, Math.max(pad, vh - th - pad)));
+    tip.style.left = (left - hostRect.left) + "px";
+    tip.style.top = (top - hostRect.top) + "px";
+}
+
+function crHeatmapHideTip(tip) {
+    if (!tip) return;
+    tip.style.display = "none";
+    const card = tip.closest && tip.closest(".canvasrefined-heatmap");
+    if (card) card.classList.remove("cr-hm-tip-open");
+}
+
+function crHeatmapBuildGrid(grid, data, tip, metrics) {
+    const { cell: cellSize, gap, monthH } = metrics;
+    const range = crHeatmapTabRange(data);
+    const start = new Date(range.min);
+    start.setDate(start.getDate() - start.getDay());
+    const end = new Date(range.max);
+    end.setDate(end.getDate() + (6 - end.getDay()));
+    grid.dataset.crHmCell = String(cellSize);
+    grid.textContent = "";
+    const labels = document.createElement("div");
+    labels.style.cssText = `display:flex;flex-direction:column;gap:${gap}px;padding-top:${monthH}px;padding-right:2px;`;
+    ["", "Mon", "", "Wed", "", "Fri", ""].forEach(text => {
+        const label = document.createElement("div");
+        label.style.cssText = `height:${cellSize}px;font-size:9px;line-height:${cellSize}px;color:${CR_HM_MUTED};white-space:nowrap;`;
+        label.textContent = text;
+        labels.appendChild(label);
+    });
+    grid.appendChild(labels);
+    const wrap = document.createElement("div");
+    wrap.style.cssText = `position:relative;padding-top:${monthH}px;`;
+    const cols = document.createElement("div");
+    cols.style.cssText = `display:flex;gap:${gap}px;`;
+    wrap.appendChild(cols);
+    grid.appendChild(wrap);
+    const cursor = new Date(start);
+    let week = 0, prevMonth = null;
+    while (cursor.getTime() <= end.getTime()) {
+        const col = document.createElement("div");
+        col.style.cssText = `display:flex;flex-direction:column;gap:${gap}px;`;
+        // Month label once the week's Thursday enters a new month.
+        const thursday = new Date(cursor);
+        thursday.setDate(thursday.getDate() + 4);
+        if (prevMonth == null || thursday.getMonth() !== prevMonth) {
+            prevMonth = thursday.getMonth();
+            const monthLabel = document.createElement("div");
+            monthLabel.textContent = new Date(thursday.getFullYear(), prevMonth, 1).toLocaleDateString(undefined, { month: "short" });
+            monthLabel.style.cssText = `position:absolute;top:0;left:${week * (cellSize + gap)}px;font-size:10px;line-height:1;color:${CR_HM_MUTED};white-space:nowrap;`;
+            wrap.appendChild(monthLabel);
+        }
+        for (let day = 0; day < 7; day++) {
+            const cell = data.byDay.get(cursor.getTime());
+            const div = document.createElement("div");
+            div.className = "cr-hm-cell";
+            div.style.cssText = `width:${cellSize}px;height:${cellSize}px;flex:none;border-radius:${Math.max(2, Math.round(cellSize / 4))}px;${crHeatmapCellStyle(cell, data)}`;
+            if (tip && cell && (crHeatmapTab === "subs" ? cell.count > 0 : cell.avg != null)) {
+                div.addEventListener("mousemove", (e) => crHeatmapShowTip(tip, e, cell));
+                div.addEventListener("mouseleave", () => crHeatmapHideTip(tip));
+            }
+            col.appendChild(div);
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        cols.appendChild(col);
+        week++;
+    }
+}
+
+function crHeatmapBuildLegend(legend, data, metrics) {
+    const sw = Math.max(8, Math.min(13, Math.round(metrics.cell)));
+    const swatch = (style) => `<span class="cr-hm-sw" style="width:${sw}px;height:${sw}px;${style}"></span>`;
+    if (crHeatmapTab === "subs") {
+        const max = Math.max(1, data.maxCount);
+        const steps = [0, 0.25, 0.5, 0.75, 1].map(t => {
+            const pct = Math.round(t * 1000) / 10;
+            const tint = `color-mix(in srgb, var(--bclinks,#56caf0) ${pct}%, transparent)`;
+            return swatch(`background-color:${CR_HM_SUB_BASE};background-image:linear-gradient(${tint},${tint});`);
+        }).join("");
+        legend.innerHTML = `<span>${gaEscHtml(getMsg("cr_hm_legend_few", "0 submitted"))}</span>${steps}<span>${gaEscHtml(replaceCountPlaceholder(getMsg("cr_hm_legend_many", "{{COUNT}} submitted"), max))}</span>`;
+        return;
+    }
+    const zones = [0, 5, 10, 15, 19].map(i => swatch(`background-color:${GA_ZONE_COLORS[i]};`)).join("");
+    legend.innerHTML = `<span>0%</span>${zones}<span>100%</span>${swatch(`background-color:${CR_HM_EMPTY};`)}<span>${gaEscHtml(getMsg("ga_no_grade_legend", "No grade/assignment"))}</span>`;
+}
+
+function crHeatmapRender(el) {
+    if (!el) return;
+    el.querySelectorAll("[data-cr-hm-tab]").forEach(btn => {
+        const active = btn.dataset.crHmTab === crHeatmapTab;
+        btn.classList.toggle("is-active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    const status = el.querySelector(".cr-hm-status");
+    const grid = el.querySelector(".cr-hm-grid");
+    const legend = el.querySelector(".cr-hm-legend");
+    const note = el.querySelector(".cr-hm-note");
+    const tip = el.querySelector(".cr-hm-tip");
+    if (!grid) return;
+    const data = crHeatmapData;
+    const range = data ? crHeatmapTabRange(data) : null;
+    if (!range) {
+        if (status) {
+            status.style.display = "";
+            const emptyKey = crHeatmapTab === "subs" ? "cr_hm_no_subs" : "cr_hm_no_grades";
+            const emptyFallback = crHeatmapTab === "subs" ? "No submissions recorded yet." : "No graded assignments with due dates yet.";
+            status.textContent = !data && crHeatmapLoading
+                ? getMsg("reading_grade_data", "Reading grade data…")
+                : getMsg(emptyKey, emptyFallback);
+        }
+        grid.textContent = "";
+        grid.dataset.crHmToken = "";
+        crHeatmapHideTip(tip);
+        if (legend) legend.textContent = "";
+        if (note) note.textContent = "";
+        return;
+    }
+    if (status) status.style.display = "none";
+    const metrics = crHeatmapMetrics(el);
+    const token = `${crHeatmapTab}:${metrics.cell}:${range.min.getTime()}:${range.max.getTime()}:${data.maxCount}:${data.subTotal}:${data.byDay.size}`;
+    if (grid.dataset.crHmToken !== token) {
+        grid.dataset.crHmToken = token;
+        crHeatmapHideTip(tip);
+        crHeatmapBuildGrid(grid, data, tip, metrics);
+        if (legend) crHeatmapBuildLegend(legend, data, metrics);
+        // The rebuilt legend can re-wrap and change the free height, so settle the
+        // cell size in the same tick (sync, so it also works in a hidden tab).
+        const passes = (parseInt(grid.dataset.crHmSettle, 10) || 0) + 1;
+        if (passes <= 3) {
+            grid.dataset.crHmSettle = String(passes);
+            crHeatmapRender(el);
+            return;
+        }
+    }
+    grid.dataset.crHmSettle = "0";
+    if (note) {
+        note.textContent = crHeatmapTab === "subs"
+            ? ""
+            : (data.undated > 0 ? replaceCountPlaceholder(getMsg("ga_heatmap_undated", "{{COUNT}} graded assignment(s) without a due date not shown."), data.undated) : "");
+    }
+}
+
 function loadAllSimpleWidgets() {
     loadFocusTimer();
     loadBreathingWidget();
     loadDailyQuotesWidget();
     loadQuickLinksWidget();
+    loadHeatmapWidget();
 }
 
 /* ---- Quick Links (editable links with theme-aware preset icons) ---- */

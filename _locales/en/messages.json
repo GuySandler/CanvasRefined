@@ -2026,5 +2026,32 @@
     },
     "quick_links_store_error": {
         "message": "Couldn't save your links. Try shorter URLs."
+    },
+    "heatmap_widget": {
+        "message": "Heatmap"
+    },
+    "widget_short_heatmap": {
+        "message": "Heatmap"
+    },
+    "cr_hm_tab_grades": {
+        "message": "Avg grade"
+    },
+    "cr_hm_tab_subs": {
+        "message": "Submissions"
+    },
+    "cr_hm_legend_few": {
+        "message": "0 submitted"
+    },
+    "cr_hm_legend_many": {
+        "message": "{{COUNT}} submitted"
+    },
+    "cr_hm_tip_subs": {
+        "message": "{{COUNT}} submitted"
+    },
+    "cr_hm_no_grades": {
+        "message": "No graded assignments with due dates yet."
+    },
+    "cr_hm_no_subs": {
+        "message": "No submissions recorded yet."
     }
 }

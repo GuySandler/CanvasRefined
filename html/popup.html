@@ -1388,6 +1388,32 @@
                     <input type="range" min="20" max="64" step="1" id="quickLinksIconSizeSlider" data-i18n-aria-label="quick_links_icon_size" aria-label="Icon size">
                 </div>
             </div>
+            <div class="option-container">
+                <div class="option" id="heatmap">
+                    <input type="radio" id="off" name="heatmap">
+                    <input type="radio" id="on" name="heatmap">
+                    <div class="slider">
+                        <div class="sliderknob"></div>
+                        <div class="sliderbg"></div>
+                    </div><span class="option-name" data-i18n="heatmap_widget">Heatmap</span>
+                </div>
+                <div class="sub-options">
+                    <div class="sub-option widget-inline-row">
+                        <label for="heatmap_position" class="sub-text widget-inline-label" data-i18n="widget_position">Position</label>
+                        <select id="heatmap_position" class="widget-pos widget-inline-select">
+                            <option value="top" data-i18n="pos_top">Top</option>
+                            <option value="cards_start" data-i18n="pos_cards_start">Before cards</option>
+                            <option value="cards_end" data-i18n="pos_cards_end">After cards</option>
+                            <option value="below" data-i18n="pos_below">Bottom</option>
+                        </select>
+                    </div>
+                    <div class="sub-option widget-inline-row" style="margin-top:6px;">
+                        <label for="heatmap_height" class="sub-text widget-inline-label" data-i18n="height">Height</label>
+                        <input type="number" id="heatmap_height" class="card-input" min="0" max="2000" data-i18n-placeholder="auto" placeholder="auto" style="width:92px;margin:0;">
+                        <span class="sub-text">px</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

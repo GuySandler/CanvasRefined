@@ -611,7 +611,7 @@
 /* 4s in / 6s out; colour shifts green -> blue while exhaling */
 .canvasrefined-breathing {background:linear-gradient(160deg, color-mix(in srgb, #6ea8ff 14%, var(--bcbackground-1,#fff)), var(--bcbackground-1,#fff));}
 .cr-breath-stage {display:flex;align-items:center;justify-content:center;padding:20px 14px 6px;}
-.cr-breath-circle {position:relative;width:112px;height:112px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%, #74e3c4, #2fb595);box-shadow:0 0 18px 2px rgba(65,209,175,.4);}
+.cr-breath-circle {position:relative;width:var(--cr-breath-circle,112px);height:var(--cr-breath-circle,112px);border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%, #74e3c4, #2fb595);box-shadow:0 0 18px 2px rgba(65,209,175,.4);}
 .cr-breath-circle::before {content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 40%, #93a8ff, #536ee0);opacity:0;box-shadow:0 0 26px 5px rgba(101,124,255,.45);}
 .canvasrefined-breathing.is-running .cr-breath-circle {animation: cr-breath-pulse 10s ease-in-out infinite, cr-breath-glow 10s ease-in-out infinite;}
 .canvasrefined-breathing.is-running .cr-breath-circle::before {animation: cr-breath-tint 10s ease-in-out infinite;}
@@ -638,13 +638,17 @@
 .canvasrefined-breathing.is-running .cr-breath-phase-out {animation: cr-breath-out-label 10s ease-in-out infinite;}
 @keyframes cr-breath-in-label {0%{opacity:1;}38%{opacity:1;}44%{opacity:0;}100%{opacity:0;}}
 @keyframes cr-breath-out-label {0%{opacity:0;}38%{opacity:0;}44%{opacity:1;}94%{opacity:1;}100%{opacity:0;}}
-.cr-breath-layout {display:flex;flex-direction:column;flex:1;min-height:0;}
+.cr-breath-layout {--cr-breath-gap:26px;--cr-breath-circle:112px;display:flex;flex-direction:column;flex:1;min-height:0;}
 .cr-breath-left {display:flex;flex-direction:column;align-items:center;justify-content:center;}
 .cr-breath-right {display:flex;flex-direction:column;justify-content:center;}
-.canvasrefined-breathing.container-mode .cr-breath-layout {flex-direction:row;align-items:center;gap:26px;}
-.canvasrefined-breathing.container-mode .cr-breath-left {flex:0 0 40%;width:40%;max-width:40%;}
+.canvasrefined-breathing.container-mode .cr-breath-layout {flex-direction:row;align-items:center;gap:var(--cr-breath-gap);}
+/* The circle keeps exactly one layout gap of breathing room on its left; the column
+   hugs circle + gap, so the gap on its right matches, and the timer shares the same
+   inset so it stays centered under the circle. */
+.canvasrefined-breathing.container-mode .cr-breath-left {flex:0 0 calc(var(--cr-breath-circle) + var(--cr-breath-gap));width:calc(var(--cr-breath-circle) + var(--cr-breath-gap));max-width:none;min-width:0;}
 .canvasrefined-breathing.container-mode .cr-breath-right {flex:1;min-width:0;}
-.canvasrefined-breathing.container-mode .cr-breath-stage {padding:8px 0;}
+.canvasrefined-breathing.container-mode .cr-breath-stage {padding:8px 0 8px var(--cr-breath-gap);}
+.canvasrefined-breathing.container-mode .cr-breath-display {align-self:stretch;padding-left:var(--cr-breath-gap);padding-right:0;}
 .canvasrefined-breathing.container-mode .cr-timer-presets {padding-top:0;}
 .canvasrefined-breathing.container-mode .cr-timer-controls {padding-bottom:0;}
 .canvasrefined-quotes {container-type:inline-size;background:linear-gradient(150deg, color-mix(in srgb, #b98cff 14%, var(--bcbackground-1,#fff)), var(--bcbackground-1,#fff));}
@@ -707,6 +711,44 @@
 .cr-ql-editor-actions .cr-widget-btn {padding:7px 10px;font-size:12.5px;}
 .cr-ql-delete-link {align-self:flex-start;padding:4px 0;border:none;background:transparent;color:#e5484d !important;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;}
 .cr-ql-delete-link:hover {text-decoration:underline;}
+
+/* Heatmap (all classes): grade/submission calendar with in-card tabs */
+.canvasrefined-heatmap .cr-widget-head {gap:8px;}
+.canvasrefined-heatmap .cr-widget-title {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* Hover tooltips are allowed to spill past the card, so this widget never clips —
+   and it lifts above neighbouring cards while one is showing. */
+.canvasrefined-heatmap {overflow:visible;}
+.canvasrefined-heatmap.cr-hm-tip-open {position:relative;z-index:6;}
+.cr-hm-tabs {display:flex;gap:2px;margin-left:auto;flex:none;}
+.cr-hm-tab {border:1px solid transparent;border-radius:7px;background:transparent;color:var(--bctext-2,#9aa3ab);font:inherit;font-size:11px;font-weight:700;letter-spacing:.03em;line-height:1.3;padding:4px 7px;cursor:pointer;white-space:nowrap;}
+.cr-hm-tab:hover {color:var(--bctext-0,#2d3b45);background:color-mix(in srgb, var(--bctext-0,#2d3b45) 9%, transparent);}
+.cr-hm-tab.is-active {color:var(--bctext-0,#2d3b45);background:color-mix(in srgb, var(--bclinks,#0374b5) 18%, transparent);border-color:color-mix(in srgb, var(--bclinks,#0374b5) 45%, transparent);}
+.cr-hm-tab:focus-visible {outline:2px solid color-mix(in srgb, var(--bclinks,#0374b5) 70%, transparent);outline-offset:2px;}
+.cr-hm-body {position:relative;display:flex;flex-direction:column;flex:1;min-height:0;gap:8px;padding:12px 14px 14px;}
+.cr-hm-status {margin:0;color:var(--bctext-2,#9aa3ab);font-size:12px;line-height:1.45;}
+/* flex:1 with min-height:0 keeps the calendar area independent of its content, which
+   is what lets the grid scale its cells to the card's height. */
+.cr-hm-scroll {display:flex;align-items:center;flex:1 1 auto;min-height:0;overflow-x:auto;overflow-y:auto;max-width:100%;}
+@supports (align-items: safe center) { .cr-hm-scroll {align-items:safe center;} }
+.cr-hm-scroll:focus-visible {outline:2px solid color-mix(in srgb, var(--bclinks,#0374b5) 70%, transparent);outline-offset:2px;}
+.cr-hm-grid {display:inline-flex;flex:none;gap:4px;}
+.canvasrefined-heatmap .cr-hm-cell:hover {outline:1px solid var(--bctext-0,#2d3b45);outline-offset:1px;}
+.cr-hm-foot {display:flex;flex-direction:column;gap:4px;margin-top:auto;}
+.cr-hm-legend {display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:10.5px;color:var(--bctext-2,#9aa3ab);}
+.cr-hm-sw {width:11px;height:11px;border-radius:3px;display:inline-block;flex:none;}
+.cr-hm-note {margin:0;color:var(--bctext-2,#9aa3ab);font-size:11px;line-height:1.4;}
+.cr-hm-note:empty {display:none;}
+.cr-hm-tip {position:absolute;display:none;pointer-events:none;z-index:60;padding:6px 10px;border:1px solid var(--bcborders,#3c3c3c);border-radius:6px;background:var(--bcbackground-0,#161616);color:var(--bctext-0,#f5f5f5);font-size:11.5px;line-height:1.45;box-shadow:0 4px 14px rgba(0,0,0,.35);
+    /* max-content: the tip can be parked outside the widget body, so a shrink-to-fit
+       width would collapse against the containing block and turn the box into a
+       narrow column. */
+    width:max-content;max-width:270px;}
+.cr-hm-tip-list {margin-top:4px;display:flex;flex-direction:column;gap:2px;}
+.cr-hm-tip-row {color:var(--bctext-1,#e2e2e2);}
+.cr-hm-tip-course {margin-left:6px;color:var(--bctext-2,#9aa3ab);font-size:10.5px;font-weight:500;}
+.cr-hm-tip-count {display:flex;align-items:baseline;gap:10px;}
+.cr-hm-tip-count span {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cr-hm-tip-count b {flex:none;color:var(--bclinks,#0374b5);font-variant-numeric:tabular-nums;}
 
 /* Canvas' SpeedGrader/document preview container: give the preview 80% of its
    parent instead of Canvas' default height. */
