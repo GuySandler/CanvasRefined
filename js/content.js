@@ -10225,7 +10225,7 @@ function openGlobalSearchModal() {
     requestAnimationFrame(() => input.focus());
     ensureGlobalSearchIndex();
     gsUpdateStatus(true);
-    resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_hint", "Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.")}</div>`;
+    resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_hint", "Start typing to search your modules and assignments.\n@coursename (like @chemistry chapter 5 test) to search a specific course or its homepage\n@grades to open a course's grades page\n@home to jump to your dashboard")}</div>`;
 }
 
 function closeGlobalSearchModal() {
@@ -11000,7 +11000,7 @@ async function runGlobalSearch(query, resultsEl) {
     const indexing = gsIsIndexing();
 
     if (!query) {
-        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_hint", "Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page.")}</div>`;
+        resultsEl.innerHTML = `<div class="canvasrefined-gs-hint">${getMsg("search_hint", "Start typing to search your modules and assignments.\n@coursename (like @chemistry chapter 5 test) to search a specific course or its homepage\n@grades to open a course's grades page\n@home to jump to your dashboard")}</div>`;
         return [];
     }
 
@@ -11087,6 +11087,12 @@ async function runGlobalSearch(query, resultsEl) {
         if (at === 0) score = 100;
         else if (at > 0) score = 60 - at;
         else if (item._c.includes(q)) score = 20;
+        // Nothing literal? fall back to a fuzzy hit, capped so it never outranks a
+        // real substring match.
+        if (score < 0) {
+            const fuzzy = gsFuzzyScore(item._t, q);
+            if (fuzzy >= 0) score = Math.max(1, Math.min(19, Math.round(fuzzy / 3)));
+        }
         if (score >= 0) {
             if (item.kind === "course" && at === 0) score += 40;
             item._score = score + (item._t === q ? 50 : 0);
@@ -11121,6 +11127,36 @@ function escapeGlobalSearchHtml(s) {
 }
 function escapeGlobalSearchAttr(s) {
     return escapeGlobalSearchHtml(s).replace(/`/g, "&#96;");
+}
+
+// Fuzzy (subsequence) match: every query character appears in the text, in order,
+// gaps allowed — "alg2hw" finds "Algebra 2 Homework 5". Word starts and runs of
+// adjacent characters score best, skipped characters cost, so tighter matches win.
+// Returns -1 when the text does not contain the query as a subsequence.
+const GS_FUZZY_MIN_LEN = 3;
+function gsFuzzyScore(text, q) {
+    if (!text || q.length < GS_FUZZY_MIN_LEN || q.length > text.length) return -1;
+    let from = 0;
+    let score = 0;
+    let prev = -2;
+    let streak = 0;
+    for (let qi = 0; qi < q.length; qi++) {
+        const ch = q[qi];
+        let hit = -1;
+        for (let i = from; i < text.length; i++) {
+            if (text[i] === ch) { hit = i; break; }
+        }
+        if (hit < 0) return -1;
+        const before = hit === 0 ? " " : text[hit - 1];
+        // word starts are the strongest signal a human would pick
+        score += " -_/.:(".includes(before) ? 6 : 1;
+        streak = hit === prev + 1 ? streak + 1 : 0;
+        score += Math.min(streak, 5) * 2;
+        score -= Math.min(12, hit - from);
+        prev = hit;
+        from = hit + 1;
+    }
+    return score;
 }
 
 function changeGradientCards() {

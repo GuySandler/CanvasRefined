@@ -1416,7 +1416,7 @@
         "message": "Funktionen suchen..."
     },
     "search_hint": {
-        "message": "Beginne zu tippen, um deine Module und Aufgaben zu durchsuchen. Verwende @kursname, um einen bestimmten Kurs zu durchsuchen, oder @grades, um die Notenseite eines Kurses zu öffnen, oder @home, um zu deinem Dashboard zu springen."
+        "message": "Tippe, um deine Module und Aufgaben zu durchsuchen.\n@coursename (z. B. @chemistry chapter 5 test) sucht einen bestimmten Kurs oder seine Startseite\n@grades öffnet die Notenseite eines Kurses\n@home springt zu deinem Dashboard"
     },
     "search_navigate": {
         "message": "navigieren"

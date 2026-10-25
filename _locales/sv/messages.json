@@ -1416,7 +1416,7 @@
         "message": "Sök funktioner..."
     },
     "search_hint": {
-        "message": "Börja skriva för att söka bland moduler och uppgifter. Använd @kursnamn för att söka i en viss kurs, eller @grades för att öppna en kurs betygssida, eller @home för att gå till din översikt."
+        "message": "Börja skriva för att söka i dina moduler och uppgifter.\n@coursename (till exempel @chemistry chapter 5 test) söker en viss kurs eller dess startsida\n@grades öppnar en kurs resultatsida\n@home tar dig till din översikt"
     },
     "search_navigate": {
         "message": "navigera"

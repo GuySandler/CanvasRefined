@@ -1440,7 +1440,7 @@
         "message": "Search features..."
     },
     "search_hint": {
-        "message": "Start typing to search your modules and assignments. Use @coursename to search a specific course, or @grades to open a course's grades page, or @home to jump to your dashboard."
+        "message": "Start typing to search your modules and assignments.\n@coursename (like @chemistry chapter 5 test) to search a specific course or its homepage\n@grades to open a course's grades page\n@home to jump to your dashboard"
     },
     "search_index_count": {
         "message": "{{COUNT}} items"

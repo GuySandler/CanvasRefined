@@ -339,6 +339,8 @@
 .canvasrefined-gs-results { flex: 1; overflow-y: auto; padding: 6px; }
 .canvasrefined-gs-hint, .canvasrefined-gs-loading {
     padding: 18px 14px; text-align: center; color: var(--bctext-2, #9aa3ab); font-size: 14px;
+    /* the shortcut hint is one tip per line */
+    white-space: pre-line; line-height: 1.6;
 }
 .canvasrefined-gs-row {
     display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;

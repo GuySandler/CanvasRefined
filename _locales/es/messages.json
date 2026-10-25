@@ -1416,7 +1416,7 @@
         "message": "Buscar funciones..."
     },
     "search_hint": {
-        "message": "Empieza a escribir para buscar en tus módulos y tareas. Usa @coursename para buscar un curso concreto, o @grades para abrir la página de notas de un curso, o @home para ir a tu panel."
+        "message": "Empieza a escribir para buscar en tus módulos y tareas.\n@coursename (como @chemistry chapter 5 test) busca un curso concreto o su página principal\n@grades abre la página de calificaciones de un curso\n@home va a tu panel"
     },
     "search_navigate": {
         "message": "navegar"

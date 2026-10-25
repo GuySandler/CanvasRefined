@@ -1416,7 +1416,7 @@
         "message": "Rechercher des fonctionnalités..."
     },
     "search_hint": {
-        "message": "Commencez à taper pour rechercher vos modules et devoirs. Utilisez @nomducours pour chercher un cours précis, ou @grades pour ouvrir la page des notes d'un cours, ou @home pour aller à votre tableau de bord."
+        "message": "Commencez à taper pour chercher dans vos modules et devoirs.\n@coursename (comme @chemistry chapter 5 test) cherche un cours précis ou sa page d'accueil\n@grades ouvre la page des notes d'un cours\n@home vous amène à votre tableau de bord"
     },
     "search_navigate": {
         "message": "naviguer"

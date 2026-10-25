@@ -1416,7 +1416,7 @@
         "message": "搜尋功能..."
     },
     "search_hint": {
-        "message": "開始輸入以搜尋你的課程模組和作業。使用 @課程名稱 搜尋特定課程，或使用 @grades 開啟課程的成績頁面，或輸入 @home 前往你的儀表板。"
+        "message": "開始輸入以搜尋你的模組和作業。\n@課程名稱（例如 @chemistry chapter 5 test）可搜尋特定課程或其首頁\n@grades 開啟課程的成績頁面\n@home 前往你的儀表板"
     },
     "search_navigate": {
         "message": "瀏覽"
