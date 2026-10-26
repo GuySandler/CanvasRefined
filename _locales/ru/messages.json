@@ -281,6 +281,15 @@
     "custom_background": {
         "message": "Свой фон"
     },
+    "solid_color": {
+        "message": "Сплошной цвет"
+    },
+    "solid_color_hex": {
+        "message": "#1e2a38"
+    },
+    "bg_transparency": {
+        "message": "Прозрачные элементы"
+    },
     "custom_background_desc": {
         "message": "Выберите пресет или используйте свою ссылку на изображение."
     },

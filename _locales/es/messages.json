@@ -281,6 +281,15 @@
     "custom_background": {
         "message": "Fondo personalizado"
     },
+    "solid_color": {
+        "message": "Color sólido"
+    },
+    "solid_color_hex": {
+        "message": "#1e2a38"
+    },
+    "bg_transparency": {
+        "message": "Elementos transparentes"
+    },
     "custom_background_desc": {
         "message": "Elige un preajuste o usa la URL de tu propia imagen."
     },

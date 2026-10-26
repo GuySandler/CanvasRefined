@@ -492,7 +492,15 @@ async function getActiveCustomBackground() {
         "customBackgroundNasaDaily",
         "customBackgroundLink",
         "customBackgroundScale",
+        "customBackgroundColor",
+        "customBackgroundColorTransparent",
     ]);
+
+    // A solid colour always wins over the image sources.
+    const color = normalizeBackgroundColor(syncOpts.customBackgroundColor);
+    if (color) {
+        return { color, transparent: syncOpts.customBackgroundColorTransparent === true };
+    }
 
     if (syncOpts.customBackgroundNasaDaily === true) {
         return await getNasaDailyBackground();
@@ -516,6 +524,16 @@ async function getActiveCustomBackground() {
     }
 
     return null;
+}
+
+// Accepts "#1e2a38", "1e2a38" or "#abc"; anything else is "no colour".
+function normalizeBackgroundColor(value) {
+    const hex = String(value || "").trim().replace(/^#/, "");
+    if (/^[0-9a-f]{3}$/i.test(hex)) {
+        return "#" + hex.split("").map(c => c + c).join("").toLowerCase();
+    }
+    if (/^[0-9a-f]{6}$/i.test(hex)) return "#" + hex.toLowerCase();
+    return "";
 }
 
 async function getDailyBackgroundPreset() {
@@ -1431,6 +1449,8 @@ function applyOptionsChanges(changes) {
 				debouncedApplyAestheticChanges();
 				break;
 			case "customBackgroundLink":
+			case "customBackgroundColor":
+			case "customBackgroundColorTransparent":
 				applyCustomBackground();
 				break;
             case "bg_opacity":
@@ -1583,19 +1603,30 @@ async function applyCustomBackground() {
     const cardOpacity = Math.max(0, Math.min(100, Number(options.card_opacity ?? 80)));
     const cardBlur = Math.max(0, Math.min(30, Number(options.card_blur ?? 8)));
     const cardTransparent = 100 - cardOpacity;
-    style.textContent = `
-        #wrapper {
-            background-image: url(${backgroundUrl}) !important;
+    // Solid colour: one flat fill, no image rules. The transparency opt-in is not
+    // about the colour — it decides whether the page's surfaces turn see-through over
+    // it (the glass treatment an image background always gets).
+    const solid = activeBackground.color || "";
+    const surfaceTransparent = solid
+        ? (activeBackground.transparent ? bgTransparent : 0)
+        : bgTransparent;
+    const wrapperBackground = solid
+        ? `background-image: none !important;
+            background-color: ${solid} !important;`
+        : `background-image: url(${backgroundUrl}) !important;
             background-repeat: no-repeat !important;
             background-position: center center !important;
-            background-attachment: fixed !important;
+            background-attachment: fixed !important;`;
+    style.textContent = `
+        #wrapper {
+            ${wrapperBackground}
         }
-        @media (orientation: landscape) {
+        ${solid ? "" : `@media (orientation: landscape) {
             #wrapper { background-size: ${fitToScreen ? 'cover' : backgroundScale + '% auto'} !important; }
         }
         @media (orientation: portrait) {
             #wrapper { background-size: cover !important; }
-        }
+        }`}
         .ic-Dashboard-header__layout {
             background: none !important;
             border-radius: 5px;
@@ -1605,7 +1636,7 @@ async function applyCustomBackground() {
             margin-left: -35px !important;
             margin-right: -35px !important;
             box-sizing: border-box !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
             border: 1px solid color-mix(in srgb, var(--bcborders) 60%, transparent) !important;
             border-radius: 10px !important;
             position: sticky !important;
@@ -1617,7 +1648,7 @@ async function applyCustomBackground() {
         /* glass day groups so a background image shows through between day cards */
         #dashboard-planner .planner-day,
         #dashboard-planner .planner-empty-days {
-            background: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 12px !important;
@@ -1644,14 +1675,14 @@ async function applyCustomBackground() {
         #right-side-wrapper {
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%);
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%);
             border-radius: 5px;
         }
         /* tint the whole #left-side column (the inner frame only wraps the links) */
         #left-side {
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
         }
         /* #right-side sub-text keeps Canvas gray in light mode; recolor for contrast */
         .recent_feedback .event-details {
@@ -1736,14 +1767,14 @@ async function applyCustomBackground() {
             border-radius: 0 !important;
         }
         #assignments.ui-tabs-panel {
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
         }
         /* InstUI flex View ships an opaque surface; give it the glass treatment */
         .css-fiozi7-view--flex-flex {
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
@@ -1770,7 +1801,7 @@ async function applyCustomBackground() {
         }
         /* threads toolbar sits under the header panel; same glass treatment */
         .css-1n94jrf-view {
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
@@ -1786,7 +1817,7 @@ async function applyCustomBackground() {
         #content {
             margin: 36px 48px 48px !important;
             padding: 10px !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
@@ -1797,7 +1828,7 @@ async function applyCustomBackground() {
         #content {
             margin: 36px 48px 48px !important;
             padding: 10px !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;
@@ -1809,7 +1840,7 @@ async function applyCustomBackground() {
         .ic-Layout-contentMain {
             margin: 26px 38px 38px !important;
             padding: 10px !important;
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 10px !important;
@@ -1822,7 +1853,7 @@ async function applyCustomBackground() {
            it" signal -- and without it the tint above never lands, leaving dark
            text straight on the background image. */
         #content:not(.ic-Layout-contentMain) {
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 10px !important;
@@ -1838,7 +1869,7 @@ async function applyCustomBackground() {
         }
         ${isConversationsPage() ? `
         .css-1nh4pc4-view-flexItem {
-            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${bgTransparent}%) !important;
+            background-color: color-mix(in srgb, var(--bcbackground-0), transparent ${surfaceTransparent}%) !important;
             backdrop-filter: blur(${bgBlur}px) !important;
             -webkit-backdrop-filter: blur(${bgBlur}px) !important;
             border-radius: 5px !important;

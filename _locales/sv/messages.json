@@ -281,6 +281,15 @@
     "custom_background": {
         "message": "Anpassad bakgrund"
     },
+    "solid_color": {
+        "message": "Enfärgad"
+    },
+    "solid_color_hex": {
+        "message": "#1e2a38"
+    },
+    "bg_transparency": {
+        "message": "Genomskinliga element"
+    },
     "custom_background_desc": {
         "message": "Välj en förinställning eller använd din egen bild-URL."
     },

@@ -219,7 +219,7 @@ const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_he
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover"];
-const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
+const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "customBackgroundColor", "customBackgroundColorTransparent", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles": every visual toggle, minus GPA/schedule/productivity.
 const exportToggles = ["dark_mode", "quiz_safe_mode", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
 const fontsDropdownStateKey = "fonts_dropdown_open";
@@ -401,6 +401,8 @@ const defaultOptions = {
         "card_grid_flex": false,
         "customCardStyles": false,
         "customBackgroundLink": "",
+        "customBackgroundColor": "",
+        "customBackgroundColorTransparent": false,
         "customBackgroundScale": 100,
         "customBackgroundDaily": false,
         "customBackgroundNasaDaily": false,
@@ -1106,6 +1108,73 @@ function setupCustomBackgroundLink(initial) {
     });
 }
 
+// Accepts "#1e2a38", "1e2a38" or "#abc"; anything else means "no colour".
+function normalizeBackgroundColor(value) {
+    const hex = String(value || "").trim().replace(/^#/, "");
+    if (/^[0-9a-f]{3}$/i.test(hex)) return "#" + hex.split("").map(c => c + c).join("").toLowerCase();
+    if (/^[0-9a-f]{6}$/i.test(hex)) return "#" + hex.toLowerCase();
+    return "";
+}
+
+function currentBackgroundColor() {
+    return normalizeBackgroundColor(document.querySelector("#customBackgroundColorHex")?.value || "");
+}
+
+// Solid colour area: hex field + picker, either one sets it. The colour outranks the
+// presets and the image URL, so those are greyed out while it is set.
+function setupCustomBackgroundColor(initial) {
+    const hexEl = document.querySelector("#customBackgroundColorHex");
+    const picker = document.querySelector("#customBackgroundColorPicker");
+    const clearBtn = document.querySelector("#clearCustomBackgroundColor");
+    const transparency = document.querySelector("#customBackgroundColorTransparent");
+    if (!hexEl || !picker) return;
+
+    const initialColor = normalizeBackgroundColor(initial);
+    if (initialColor) {
+        hexEl.value = initialColor;
+        picker.value = initialColor;
+    }
+    chrome.storage.sync.get("customBackgroundColorTransparent", sync => {
+        if (transparency) transparency.checked = sync.customBackgroundColorTransparent === true;
+    });
+
+    const commit = (raw, { writeField = false } = {}) => {
+        const color = normalizeBackgroundColor(raw);
+        if (color) {
+            if (writeField || !hexEl.value) hexEl.value = color;
+            picker.value = color;
+        } else if (writeField) {
+            hexEl.value = "";
+        }
+        chrome.storage.sync.set({ "customBackgroundColor": color });
+        syncSolidBackgroundState();
+        toggleOpacityOptions();
+    };
+
+    hexEl.addEventListener("input", (e) => commit(e.target.value));
+    hexEl.addEventListener("blur", (e) => commit(e.target.value, { writeField: true }));
+    picker.addEventListener("input", (e) => commit(e.target.value, { writeField: true }));
+    clearBtn?.addEventListener("click", () => {
+        hexEl.value = "";
+        chrome.storage.sync.set({ "customBackgroundColor": "" });
+        syncSolidBackgroundState();
+        toggleOpacityOptions();
+    });
+    transparency?.addEventListener("change", function () {
+        chrome.storage.sync.set({ "customBackgroundColorTransparent": this.checked });
+    });
+    syncSolidBackgroundState();
+}
+
+// Grey the presets out while a colour is set, and only offer transparency with one.
+function syncSolidBackgroundState() {
+    const hasColor = currentBackgroundColor() !== "";
+    const presets = document.getElementById("background-presets");
+    if (presets) presets.classList.toggle("is-disabled", hasColor);
+    const transparencyRow = document.getElementById("customBackgroundColorTransparencyRow");
+    if (transparencyRow) transparencyRow.style.display = hasColor ? "flex" : "none";
+}
+
 function setupCustomBackgroundScale(initial) {
     const el = document.querySelector("#customBackgroundScale");
     const output = document.querySelector("#customBackgroundScaleValue");
@@ -1139,7 +1208,7 @@ function syncCustomBackgroundDailyState(isDaily) {
         manualControls.style.filter = isDaily ? "grayscale(1)" : "none";
     }
 
-    ["customBackgroundLink", "customBackgroundScale", "clearCustomBackground"].forEach(id => {
+    ["customBackgroundLink", "customBackgroundScale", "clearCustomBackground", "customBackgroundColorHex", "customBackgroundColorPicker", "clearCustomBackgroundColor"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = isDaily;
     });
@@ -1152,6 +1221,7 @@ function syncCustomBackgroundDailyState(isDaily) {
 }
 
 function renderBackgroundPresetSelection() {
+    syncSolidBackgroundState();
     const isDaily = document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true;
     const dailyPreset = isDaily ? getDailyBackgroundPreset() : null;
     const currentLink = isDaily ? (dailyPreset?.url || "") : (document.querySelector("#customBackgroundLink")?.value || "");
@@ -1211,7 +1281,7 @@ function customBackgroundActive() {
     const link = document.querySelector("#customBackgroundLink");
     const daily = document.querySelector("#customBackgroundDaily");
     const nasa = document.querySelector("#customBackgroundNasaDaily");
-    return (link && link.value.trim() !== "") || (daily && daily.checked) || (nasa && nasa.checked);
+    return (currentBackgroundColor() !== "") || (link && link.value.trim() !== "") || (daily && daily.checked) || (nasa && nasa.checked);
 }
 
 function toggleOpacityOptions() {
@@ -2128,6 +2198,10 @@ async function setup() {
                 identifier: "customBackgroundScale",
                 setup: (initial) => setupCustomBackgroundScale(initial),
             },
+            {
+                identifier: "customBackgroundColor",
+                setup: (initial) => setupCustomBackgroundColor(initial),
+            },
 			{
 				identifier: "todo_celebrations",
 				setup: (initial) => setupCelebrationsSelect(initial),
@@ -2795,8 +2869,10 @@ async function setup() {
 
 
     document.getElementById("clearCustomBackground").addEventListener("click", () => {
-                chrome.storage.sync.set({ "customBackgroundLink": "", "customBackgroundScale": 100 });
+                chrome.storage.sync.set({ "customBackgroundLink": "", "customBackgroundScale": 100, "customBackgroundColor": "" });
         document.querySelector("#customBackgroundLink").value = "";
+        document.querySelector("#customBackgroundColorHex").value = "";
+        syncSolidBackgroundState();
 		document.querySelector("#customBackgroundScale").value = 100;
 		document.querySelector("#customBackgroundScaleValue").textContent = "100%";
 		renderBackgroundPresetSelection();

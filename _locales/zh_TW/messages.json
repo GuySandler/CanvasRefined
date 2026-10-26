@@ -281,6 +281,15 @@
     "custom_background": {
         "message": "自訂背景"
     },
+    "solid_color": {
+        "message": "純色"
+    },
+    "solid_color_hex": {
+        "message": "#1e2a38"
+    },
+    "bg_transparency": {
+        "message": "元素透明"
+    },
     "custom_background_desc": {
         "message": "選擇預設背景，或使用你自己的圖片網址。"
     },

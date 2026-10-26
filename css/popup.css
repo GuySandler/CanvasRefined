@@ -179,6 +179,11 @@ h2 {margin-top: 20px;font-weight:600}
 .theme-button-creator {font-size:10px;white-space:nowrap}
 .theme-button-title {font-weight: 600;font-size:12px;white-space:nowrap;}
 .background-preset-grid {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px;}
+/* a solid colour outranks the presets, so they are inert until it is cleared */
+.background-preset-grid.is-disabled {opacity: .45; filter: grayscale(1); pointer-events: none;}
+.background-color-picker {width: 38px; height: 30px; padding: 0; border: none; border-radius: 7px; background: var(--inputbg); cursor: pointer;}
+.background-color-picker::-webkit-color-swatch-wrapper {padding: 2px;}
+.background-color-picker::-webkit-color-swatch {border: none; border-radius: 5px;}
 .background-preset-card {min-height: 96px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; border-radius: 8px;}
 .background-preset-card.selected {outline: 2px solid #56Caf0; outline-offset: 2px;}
 .background-preset-scale {font-size:10px;white-space:nowrap;opacity:0.9;}

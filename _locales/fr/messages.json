@@ -281,6 +281,15 @@
     "custom_background": {
         "message": "Arrière-plan personnalisé"
     },
+    "solid_color": {
+        "message": "Couleur unie"
+    },
+    "solid_color_hex": {
+        "message": "#1e2a38"
+    },
+    "bg_transparency": {
+        "message": "Éléments transparents"
+    },
     "custom_background_desc": {
         "message": "Choisissez un préréglage ou utilisez l'URL de votre propre image."
     },

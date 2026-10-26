@@ -150,6 +150,8 @@ chrome.runtime.onInstalled.addListener(function () {
             "cardHeight": 146,
             "customCardStyles": false,
             "customBackgroundLink": "",
+            "customBackgroundColor": "",
+            "customBackgroundColorTransparent": false,
             "customBackgroundScale": 100,
             "customBackgroundDaily": false,
             "customBackgroundNasaDaily": false,

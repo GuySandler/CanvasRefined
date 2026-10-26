@@ -1485,6 +1485,22 @@
                     <input type="range" min="50" max="200" step="1" id="customBackgroundScale">
                 </div>
                 <input style="width:85%;" class="card-input" id="customBackgroundLink" placeholder="https://...">
+                <!-- Solid colour: when set it wins over the presets and the image URL -->
+                <div id="customBackgroundSolidRow" style="margin-top:12px;">
+                    <span class="sub-text" style="font-weight:600; color:#e2e2e2;" data-i18n="solid_color">Solid color</span>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                        <input type="color" id="customBackgroundColorPicker" class="background-color-picker" value="#1e2a38" data-i18n-title="solid_color" title="Solid color">
+                        <input class="card-input" id="customBackgroundColorHex" maxlength="7" style="width:110px;margin:0;" data-i18n-placeholder="solid_color_hex" placeholder="#1e2a38">
+                        <button type="button" class="opacity-reset-btn" id="clearCustomBackgroundColor" title="Clear" data-i18n-title="clear_background">
+                            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <!-- Only meaningful with a colour set -->
+                <div class="sub-option" id="customBackgroundColorTransparencyRow" style="margin-top:8px;display:none;">
+                    <input type="checkbox" id="customBackgroundColorTransparent" name="customBackgroundColorTransparent">
+                    <label for="customBackgroundColorTransparent" class="sub-text" data-i18n="bg_transparency">Background transparency</label>
+                </div>
                 <button id="clearCustomBackground" class="big-button" style="margin-top: 8px;" data-i18n="clear_background">Clear Background</button>
             </div>
             <div class="sub-option" style="margin-top:10px;">

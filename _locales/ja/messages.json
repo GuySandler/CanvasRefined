@@ -281,6 +281,15 @@
     "custom_background": {
         "message": "カスタム背景"
     },
+    "solid_color": {
+        "message": "単色"
+    },
+    "solid_color_hex": {
+        "message": "#1e2a38"
+    },
+    "bg_transparency": {
+        "message": "要素を透過"
+    },
     "custom_background_desc": {
         "message": "プリセットを選ぶか、自分の画像URLを使用してください。"
     },
