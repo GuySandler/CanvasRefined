@@ -53,6 +53,12 @@
     "better_sidebar": {
         "message": "Better Sidebar"
     },
+    "hide_sidebar": {
+        "message": "Hide sidebar"
+    },
+    "sidebar": {
+        "message": "Sidebar"
+    },
     "better_todo": {
         "message": "Better todo list"
     },

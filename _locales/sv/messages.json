@@ -53,6 +53,12 @@
     "better_sidebar": {
         "message": "Bättre sidomeny"
     },
+    "hide_sidebar": {
+        "message": "Dölj sidofält"
+    },
+    "sidebar": {
+        "message": "Sidofält"
+    },
     "better_todo": {
         "message": "Bättre att göra-lista"
     },

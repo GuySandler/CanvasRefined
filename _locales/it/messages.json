@@ -53,6 +53,12 @@
     "better_sidebar": {
         "message": "Sidebar Migliorata"
     },
+    "hide_sidebar": {
+        "message": "Nascondi barra laterale"
+    },
+    "sidebar": {
+        "message": "Barra laterale"
+    },
     "better_todo": {
         "message": "Migliore lista delle cose da fare"
     },

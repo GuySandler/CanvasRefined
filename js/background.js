@@ -110,6 +110,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "hide_new_canvas": true,
             "hide_sequence_footer": false,
             "hide_navbar": false,
+            "hide_sidebar": false,
             "quiz_safe_mode": false,
             "dark_mode_fix": [],
             "assignment_states": {},

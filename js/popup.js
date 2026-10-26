@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'quick_links', 'heatmap', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'quick_links', 'heatmap', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details', 'hide_sidebar'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
 	"hide_course_images",
@@ -215,7 +215,7 @@ async function initLanguageSelector() {
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding", "card_grid", "card_grid_columns", "card_grid_rows", "card_grid_column_gap", "card_grid_row_gap", "card_grid_center_rows", "card_grid_flex"];
-const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "tab_icons"];
+const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "hide_sidebar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover"];
@@ -364,6 +364,7 @@ const defaultOptions = {
         "hide_new_canvas": true,
         "hide_sequence_footer": false,
         "hide_navbar": false,
+        "hide_sidebar": false,
         "grade_analytics_zones": false,
         "quiz_safe_mode": false,
         "dark_mode_fix": [],
@@ -1194,6 +1195,11 @@ function toggleBetterSidebarSubOptions(betterSidebarOn) {
     const remlogoEl = document.getElementById("remlogo");
     if (remlogoEl) {
         remlogoEl.style.display = betterSidebarOn ? "none" : "flex";
+    }
+    // "Hide sidebar" only makes sense without the replacement rail.
+    const hideSidebarRow = document.getElementById("hide_sidebar_row");
+    if (hideSidebarRow) {
+        hideSidebarRow.style.display = betterSidebarOn ? "none" : "flex";
     }
     const sidebarScaleEl = document.getElementById("sidebarScaleSub");
     if (sidebarScaleEl) {

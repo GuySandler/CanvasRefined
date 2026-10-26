@@ -53,6 +53,12 @@
     "better_sidebar": {
         "message": "改良サイドバー"
     },
+    "hide_sidebar": {
+        "message": "サイドバーを非表示"
+    },
+    "sidebar": {
+        "message": "サイドバー"
+    },
     "better_todo": {
         "message": "より良いToDoリスト"
     },

@@ -53,6 +53,12 @@
     "better_sidebar": {
         "message": "Barra lateral melhorada"
     },
+    "hide_sidebar": {
+        "message": "Ocultar barra lateral"
+    },
+    "sidebar": {
+        "message": "Barra lateral"
+    },
     "better_todo": {
         "message": "Melhor lista de tarefas"
     },

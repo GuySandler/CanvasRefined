@@ -53,6 +53,12 @@
     "better_sidebar": {
         "message": "更好的侧边栏"
     },
+    "hide_sidebar": {
+        "message": "隐藏侧边栏"
+    },
+    "sidebar": {
+        "message": "侧边栏"
+    },
     "better_todo": {
         "message": "更好的待办事项列表"
     },

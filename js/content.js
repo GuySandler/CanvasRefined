@@ -74,6 +74,7 @@ function setupNavigationListener() {
         if (next === current_page) return;
         current_page = next;
         watchSequenceFooter();
+        applyHideSidebar();
         applyHideAssignmentSidebar();
         watchSubmissionPageButton();
         watchProfileLogoutPageButton();
@@ -377,6 +378,34 @@ function applyHideSequenceFooter() {
 
 function watchSequenceFooter() {
     applyHideSequenceFooter();
+}
+
+// "Hide sidebar" drops Canvas' global nav rail completely and pulls the page back to
+// the left edge (the layout keeps that column's width as a margin). CSS-only, so it
+// survives re-renders; the replacement rail (Better Sidebar) owns the column when on.
+function applyHideSidebar() {
+    let style = document.getElementById("canvasrefined-hide-sidebar");
+    const hide = options.hide_sidebar === true && options.better_sidebar !== true && !quizSafeModeActive();
+    if (!hide) {
+        if (style) style.remove();
+        return;
+    }
+    if (!style) {
+        style = document.createElement("style");
+        style.id = "canvasrefined-hide-sidebar";
+        style.textContent = `
+            #header,
+            .ic-app-header__main-navigation {
+                display: none !important;
+            }
+            #wrapper,
+            .ic-Layout-wrapper,
+            #main {
+                margin-left: 0 !important;
+            }
+        `;
+        (document.head || document.documentElement).appendChild(style);
+    }
 }
 
 // The assignment page's details column repeats what the assignment header already
@@ -1043,6 +1072,7 @@ function startExtension() {
         applyCustomBackground();
         setupMobileNavStyle();
         ensureBetterSidebar();
+        applyHideSidebar();
         watchSequenceFooter();
         watchProfileLogoutPageButton();
         watchGradeAnalytics();
@@ -1329,6 +1359,11 @@ function applyOptionsChanges(changes) {
 			case "full_width":
 			case "center_cards":
 			case "custom_styles":
+				applyAestheticChanges();
+				break;
+			case "hide_sidebar":
+				applyHideSidebar();
+				break;
 			case "hide_navbar":
 				applyAestheticChanges();
 				// "Hide Navigation Bar" owns that inline style; setupBetterSidebar only sets it on first mount.

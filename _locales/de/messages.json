@@ -53,6 +53,12 @@
     "better_sidebar": {
         "message": "Bessere Seitenleiste"
     },
+    "hide_sidebar": {
+        "message": "Seitenleiste ausblenden"
+    },
+    "sidebar": {
+        "message": "Seitenleiste"
+    },
     "better_todo": {
         "message": "Bessere ToDo-Liste"
     },

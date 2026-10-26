@@ -53,6 +53,12 @@
     "better_sidebar": {
         "message": "Улучшенная боковая панель"
     },
+    "hide_sidebar": {
+        "message": "Скрыть боковую панель"
+    },
+    "sidebar": {
+        "message": "Боковая панель"
+    },
     "better_todo": {
         "message": "Лучший список дел"
     },

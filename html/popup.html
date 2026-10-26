@@ -369,6 +369,7 @@
                     <button type="button" id="celebration-preview-btn" class="customization-button celebration-sub" style="margin-top:8px;width:100%;" data-i18n="celebration_preview">Preview celebration</button>
                 </div>
                 <div class="option-container">
+                    <h3 class="header-small" data-i18n="sidebar">Sidebar</h3>
                     <div class="option" id="better_sidebar">
                         <input type="radio" id="off" name="better_sidebar">
                         <input type="radio" id="on" name="better_sidebar">
@@ -377,6 +378,18 @@
                             <div class="sliderbg"></div>
                         </div>
                         <span class="option-name" data-i18n="better_sidebar">Better Sidebar</span>
+                    </div>
+                    <!-- Only offered with Better Sidebar off: it replaces the rail entirely. -->
+                    <div id="hide_sidebar_row" style="margin-top:10px;display:none;">
+                        <div class="option" id="hide_sidebar">
+                            <input type="radio" id="off" name="hide_sidebar">
+                            <input type="radio" id="on" name="hide_sidebar">
+                            <div class="slider">
+                                <div class="sliderknob"></div>
+                                <div class="sliderbg"></div>
+                            </div>
+                            <span class="option-name" data-i18n="hide_sidebar">Hide sidebar</span>
+                        </div>
                     </div>
                     <div class="sub-options">
                         <div class="option" id="remlogo" style="margin-top:2px">
