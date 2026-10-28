@@ -31,7 +31,7 @@
     }
   ],
   "permissions": ["storage", "unlimitedStorage"],
-  "host_permissions": ["https://stoic.tekloon.net/*"],
+  "host_permissions": ["https://stoic.tekloon.net/*", "https://science.nasa.gov/*"],
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {

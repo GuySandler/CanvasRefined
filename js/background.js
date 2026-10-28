@@ -213,7 +213,9 @@ chrome.runtime.onInstalled.addListener(function () {
     });
 });
 
-// APOD demo key allows 30 req/hour, 50/day; the API's own 429s do the limiting.
+// NASA serves APOD from its own site now: /wp-json/wp/v2/apod-basic/<YYMMDD>.
+// No API key and no per-key quota, but the response carries no usable CORS
+// header, so science.nasa.gov needs a host permission (see manifest.json).
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "getNasaBackground") {
         getNasaBackground().then(sendResponse);
@@ -235,6 +237,7 @@ function queuedNasaTask(task) {
 async function getNasaBackground() {
     return queuedNasaTask(async () => {
         const date = new Date();
+        const todayStr = date.toISOString().slice(0, 10);
         for (let i = 0; i < 7; i++) {
             const dateStr = date.toISOString().slice(0, 10);
             const cacheKey = `nasa_apod_${dateStr}`;
@@ -252,16 +255,28 @@ async function getNasaBackground() {
 
             const data = await callNasaApi(dateStr);
             if (data === "ratelimited" || data === null) return null;
-            if (data === "missing") {
-                await chrome.storage.local.set({ [missingKey]: true });
+            const url = nasaApodImageUrl(data);
+            if (data === "missing" || !url) {
+                // Video days carry only a generic NASA card in hdurl, so they make a
+                // poor wallpaper; skip them like a missing date. Only persist the
+                // marker for past dates: today's APOD may simply not be posted yet,
+                // and a permanent marker would hide it for good.
+                if (dateStr < todayStr || data !== "missing") {
+                    await chrome.storage.local.set({ [missingKey]: true });
+                }
                 date.setDate(date.getDate() - 1);
                 continue;
             }
 
-            const url = data.thumbnail_url || data.hdurl || data.url;
-            if (!url) return null;
             const result = { url, scale: 100, date: dateStr };
-            const meta = { title: data.title || "", date: data.date || dateStr, copyright: data.copyright || "", explanation: data.explanation || "" };
+            // The feed ships HTML (links, <strong>, entities) where the old API
+            // sent plain text; the overlay renders textContent, so strip it.
+            const meta = {
+                title: nasaPlainText(data.title),
+                date: data.date || dateStr,
+                copyright: nasaPlainText(data.copyright || data.credit),
+                explanation: nasaPlainText(data.explanation)
+            };
             // one write, so the overlay never sees an image without its metadata
             await chrome.storage.local.set({ [cacheKey]: result, [metadataKey]: meta });
             return result;
@@ -270,10 +285,49 @@ async function getNasaBackground() {
     });
 }
 
+// "2026-10-27" -> "261027", the date path this endpoint expects.
+function nasaApodPathKey(dateStr) {
+    return String(dateStr).replace(/-/g, "").slice(2);
+}
+
+// Video entries point hdurl at a generic placeholder, not a still frame.
+const NASA_APOD_PLACEHOLDER = /news-thumbnail\.png/i;
+
+function nasaApodImageUrl(data) {
+    if (!data || typeof data !== "object") return null;
+    if (data.media_type && data.media_type !== "image") return null;
+    // hdurl is the asset itself; url is the article page, so only trust it when
+    // it actually points at a picture.
+    const url = data.hdurl || (/\/\S*\.(jpe?g|png|webp|gif)(\?|$)/i.test(data.url || "") ? data.url : null);
+    if (typeof url !== "string" || !/^https?:\/\//i.test(url)) return null;
+    if (NASA_APOD_PLACEHOLDER.test(url)) return null;
+    return url;
+}
+
+function nasaPlainText(html) {
+    if (!html) return "";
+    return String(html)
+        .replace(/<br\s*\/?>/gi, " ")
+        .replace(/<\/(p|div|li)>/gi, " ")
+        .replace(/<[^>]*>/g, "")
+        .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&quot;/gi, '"')
+        .replace(/&apos;/gi, "'")
+        .replace(/&mdash;/gi, "\u2014")
+        .replace(/&ndash;/gi, "\u2013")
+        .replace(/&amp;/gi, "&")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
 async function callNasaApi(dateStr) {
+    // _fields trims the payload: the default also inlines the whole article HTML.
+    const fields = "date,title,media_type,hdurl,url,permalink,credit,copyright,explanation,alt";
     let response;
     try {
-        response = await fetch(`https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true&date=${dateStr}`);
+        response = await fetch(`https://science.nasa.gov/wp-json/wp/v2/apod-basic/${nasaApodPathKey(dateStr)}?_fields=${fields}`);
     } catch (error) {
         console.error("[CanvasRefined] Failed to fetch NASA APOD:", error);
         return null;
@@ -281,9 +335,9 @@ async function callNasaApi(dateStr) {
 
     if (response.status === 429) return "ratelimited";
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData.code === 404 && (errorData.msg || "").toLowerCase().includes("no data available")) {
-            return "missing";
+        if (response.status === 404) {
+            const errorData = await response.json().catch(() => null);
+            if (errorData?.code === "apod_basic_not_found") return "missing";
         }
         return null;
     }
