@@ -542,6 +542,9 @@
     "export_toggles": {
         "message": "On/off toggles"
     },
+    "export_widgets": {
+        "message": "Widgets"
+    },
     "extra_spacing": {
         "message": "Extra Card Spacing"
     },

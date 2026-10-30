@@ -17,6 +17,7 @@ const syncedSubOptions = [
 	"hide_completed_cards",
 	"equal_height_cards",
 	"gpa_calc_prepend",
+	"gpa_calc_position",
 	"gpa_calc_cumulative",
 	"gpa_calc_weighted",
 	"gpa_calc_show_on_hover",
@@ -32,6 +33,7 @@ const syncedSubOptions = [
 	"daily_quotes_position",
 	"quick_links_position",
 	"heatmap_position",
+	"dashboard_notes_position",
 	"widget_top_height",
 	"widget_bottom_height",
 	"widget_row_height",
@@ -220,6 +222,23 @@ const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_he
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover", "gpa_calc_align"];
+// Widgets tab: every dashboard widget's layout (toggles, positions, heights, row
+// heights, order, timer presets, quick link sizing). Personal data (quick link items,
+// heatmap course filters) stays out of themes. GPA grade-scale math lives in exportGpa.
+const exportWidgets = [
+	"dashboard_notes", "dashboard_notes_position", "dashboard_notes_height",
+	"gpa_calc", "gpa_calc_position", "gpa_calc_height", "gpa_calc_align",
+	"focus_timer", "focus_timer_position", "focus_timer_height",
+	"focus_timer_preset_1", "focus_timer_preset_2", "focus_timer_preset_3",
+	"breathing", "breathing_position", "breathing_height",
+	"breathing_preset_1", "breathing_preset_2", "breathing_preset_3",
+	"daily_quotes", "daily_quotes_position", "daily_quotes_height",
+	"quick_links", "quick_links_position", "quick_links_height",
+	"quick_links_font_size", "quick_links_icon_size",
+	"heatmap", "heatmap_position", "heatmap_height",
+	"widget_top_height", "widget_bottom_height", "widget_row_height",
+	"widget_order",
+];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "customBackgroundColor", "customBackgroundColorTransparent", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles": every visual toggle, minus GPA/schedule/productivity.
 const exportToggles = ["dark_mode", "quiz_safe_mode", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
@@ -2662,7 +2681,7 @@ async function setup() {
 
     document.querySelectorAll(".export-details input").forEach(input => {
         input.addEventListener("change", () => {
-            chrome.storage.sync.get(syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "custom_styles"]), async storage => {
+            chrome.storage.sync.get(syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "custom_styles", "widget_order"]), async storage => {
                 let final = {};
                 for await (item of document.querySelectorAll(".export-details input")) {
                     if (item.checked) {
@@ -2702,6 +2721,9 @@ async function setup() {
                                 break;
                             case "export-gpa":
                                 final = { ...final, ...(await getExport(storage, [...exportGpa, "gpa_calc_bounds"])) };
+                                break;
+                            case "export-widgets":
+                                final = { ...final, ...(await getExport(storage, exportWidgets)) };
                                 break;
                         }
                     }
@@ -3060,7 +3082,7 @@ let fallback = false;
 
 
 function saveCurrentTheme() {
-    const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
+    const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles", "widget_order"]);
     chrome.storage.local.get(["saved_themes", "custom_styles"], local => {
         chrome.storage.sync.get(allOptions, async sync => {
             if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
@@ -3155,7 +3177,7 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
             makeElement("p", themeBtn, {"className": "theme-button-title", "textContent":  split[0] });
             makeElement("p", themeBtn, {"className": "theme-button-creator", "textContent": split[1] });
             themeBtn.addEventListener("click", () => {
-                const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
+                const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles", "widget_order"]);
                 chrome.storage.sync.get(allOptions, sync => {
                     chrome.storage.local.get(["previous_theme", "custom_styles"], async local => {
                         if (local["previous_theme"] === null) {
