@@ -76,6 +76,7 @@ function setupNavigationListener() {
         watchSequenceFooter();
         applyHideSidebar();
         applyHideAssignmentSidebar();
+        applyNotesSuppressor();
         watchSubmissionPageButton();
         watchProfileLogoutPageButton();
         watchGradeAnalytics();
@@ -1084,6 +1085,7 @@ function startExtension() {
         checkDashboardReady();
         loadCustomFont();
         applyAestheticChanges();
+        applyNotesSuppressor();
         watchNewCanvasButton();
         changeFavicon();
         updateReminders();
@@ -1529,6 +1531,9 @@ function applyOptionsChanges(changes) {
                 // Feature gating changes on quiz pages; reload to apply cleanly.
                 if (isQuizPage()) window.location.reload();
                 break;
+            case "notes_suppressor":
+                applyNotesSuppressor();
+                break;
             case "sidebar_scale": {
                 const existingSidebar = document.getElementById("better-sidebar-container");
                 if (existingSidebar) {
@@ -1959,6 +1964,28 @@ async function applyCustomBackground() {
     // TODO: liquid glass?
     
     document.documentElement.appendChild(style);
+}
+
+/*
+Canvas Notes Suppressor
+
+Canvas' built-in notes feature pops a "Mark unclear / Mark important" toolbar
+(#notebook-inline-reaction-menu) over selected text. On by default (notes_suppressor);
+a plain stylesheet toggle hides it, and quiz safe mode yields to default Canvas.
+*/
+function applyNotesSuppressor() {
+    const on = options.notes_suppressor !== false && !quizSafeModeActive();
+    let style = document.getElementById("canvasrefined-notes-suppressor");
+    if (!on) {
+        if (style) style.remove();
+        return;
+    }
+    if (!style) {
+        style = document.createElement("style");
+        style.id = "canvasrefined-notes-suppressor";
+        document.documentElement.appendChild(style);
+    }
+    style.textContent = "#notebook-inline-reaction-menu{display:none !important;visibility:hidden !important;}";
 }
 
 function applyBetterSidebarLayoutFix() {

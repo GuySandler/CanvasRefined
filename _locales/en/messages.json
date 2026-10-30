@@ -1082,6 +1082,15 @@
     "next_timeframe": {
         "message": "Look ahead to the next timeframe"
     },
+    "notes_suppressor": {
+        "message": "Canvas Notes Suppressor"
+    },
+    "notes_suppressor_desc": {
+        "message": "Hides Canvas' \"Mark unclear / Mark important\" popup that appears when you select text."
+    },
+    "notes_suppressor_info_label": {
+        "message": "Canvas Notes Suppressor info"
+    },
     "no_auto_detect": {
         "message": "Don't auto detect canvases"
     },
