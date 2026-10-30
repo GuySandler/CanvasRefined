@@ -17,6 +17,15 @@
     "ago": {
         "message": "ago"
     },
+    "align_center": {
+        "message": "Center"
+    },
+    "align_left": {
+        "message": "Left"
+    },
+    "align_right": {
+        "message": "Right"
+    },
     "always_show_likes": {
         "message": "Always show like count"
     },
@@ -820,6 +829,9 @@
     },
     "gpa_settings": {
         "message": "GPA Settings"
+    },
+    "gpa_text_align": {
+        "message": "Text alignment"
     },
     "gpa_type_away": {
         "message": "Type away!"

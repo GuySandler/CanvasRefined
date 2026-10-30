@@ -497,7 +497,7 @@
     --cr-gpa-course-cols: 30px minmax(0,1fr) 80px 58px 118px 16px minmax(88px,auto);
     --cr-gpa-accent: var(--ic-brand-primary,#0374b5);
     position:fixed;inset:0;z-index:2147483100;background:rgba(15,25,40,.5);backdrop-filter:blur(3px);
-    display:flex;align-items:flex-start;justify-content:center;padding:7vh 16px 16px;
+    display:flex;align-items:center;justify-content:center;padding:16px;
 }
 .cr-gpa-modal {width:min(1080px,96vw);max-height:86vh;display:flex;flex-direction:column;background:var(--bcbackground-0,#fff);color:var(--bctext-0,#2d3b45);border:1px solid var(--bcborders,#c7cdd1);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.4);overflow:hidden;font-size:13px;}
 .cr-gpa-head {display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--bcborders,#c7cdd1);}
@@ -557,7 +557,7 @@
 .cr-gpa-suffix {flex:none;padding:0 8px 0 2px;font-size:11px;color:var(--bctext-2,#9aa3ab);}
 .cr-gpa-note {color:var(--bctext-2,#9aa3ab);font-size:12px;line-height:1.5;margin:14px 0 0;padding-top:12px;border-top:1px solid var(--bcborders,#c7cdd1);}
 @media (max-width:720px) {
-    #canvasrefined-gpa-modal {--cr-gpa-course-cols:26px minmax(0,1fr) 72px 52px 108px 15px 88px;padding:4vh 8px 8px;}
+    #canvasrefined-gpa-modal {--cr-gpa-course-cols:26px minmax(0,1fr) 72px 52px 108px 15px 88px;padding:8px;}
     .cr-gpa-body {grid-template-columns:1fr;}
     .cr-gpa-pane-scale {border-left:none;border-top:1px solid var(--bcborders,#c7cdd1);}
 }
@@ -659,11 +659,21 @@
 .canvasrefined-breathing.container-mode .cr-breath-display {align-self:stretch;padding-left:var(--cr-breath-gap);padding-right:0;}
 .canvasrefined-breathing.container-mode .cr-timer-presets {padding-top:0;}
 .canvasrefined-breathing.container-mode .cr-timer-controls {padding-bottom:0;}
+/* Daily Quote (height on auto): the original width-driven sizes. The wrapper is
+   display:contents, so mark/quote/author lay out exactly as before the fit mode. */
 .canvasrefined-quotes {container-type:inline-size;background:linear-gradient(150deg, color-mix(in srgb, #b98cff 14%, var(--bcbackground-1,#fff)), var(--bcbackground-1,#fff));}
 .cr-quote-body {padding:clamp(12px,4.5cqw,26px);display:flex;flex-direction:column;gap:clamp(4px,1.6cqw,12px);flex:1;justify-content:center;}
+.cr-quote-content {display:contents;}
 .cr-quote-mark {font-size:clamp(20px,11cqw,44px);line-height:.5;font-weight:800;color:color-mix(in srgb, var(--bclinks,#0374b5) 55%, transparent);}
 .cr-quote-text {margin:0;font-size:clamp(14px,7.5cqw,26px);line-height:1.45;font-style:italic;color:var(--bctext-0,#2d3b45);}
 .cr-quote-author {font-size:clamp(14px,4.2cqw,20px);font-weight:700;color:var(--bctext-2,#9aa3ab);align-self:flex-end;letter-spacing:0.01em;}
+/* Daily Quote (fixed height): constant base sizes; the content script scales the
+   whole group with a transform so the mark, quote and author use the whole widget. */
+.canvasrefined-quotes.cr-quote-fit .cr-quote-body {padding:18px;display:flex;align-items:center;justify-content:center;flex:1;min-height:0;overflow:hidden;}
+.canvasrefined-quotes.cr-quote-fit .cr-quote-content {display:flex;flex-direction:column;gap:10px;flex:none;transform-origin:center center;}
+.canvasrefined-quotes.cr-quote-fit .cr-quote-mark {font-size:44px;line-height:.5;font-weight:800;color:color-mix(in srgb, var(--bclinks,#0374b5) 55%, transparent);}
+.canvasrefined-quotes.cr-quote-fit .cr-quote-text {margin:0;font-size:26px;line-height:1.45;font-style:italic;color:var(--bctext-0,#2d3b45);}
+.canvasrefined-quotes.cr-quote-fit .cr-quote-author {font-size:20px;font-weight:700;color:var(--bctext-2,#9aa3ab);align-self:flex-end;letter-spacing:0.01em;}
 
 /* Quick Links: editable link grid with theme-tinted preset icons */
 .canvasrefined-quick-links .cr-widget-head {gap:8px;}

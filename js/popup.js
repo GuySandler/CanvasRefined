@@ -20,6 +20,7 @@ const syncedSubOptions = [
 	"gpa_calc_cumulative",
 	"gpa_calc_weighted",
 	"gpa_calc_show_on_hover",
+	"gpa_calc_align",
 	"focus_timer_position",
 	"focus_timer_preset_1",
 	"focus_timer_preset_2",
@@ -218,7 +219,7 @@ const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "ima
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "hide_sidebar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
-const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover"];
+const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover", "gpa_calc_align"];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "customBackgroundColor", "customBackgroundColorTransparent", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles": every visual toggle, minus GPA/schedule/productivity.
 const exportToggles = ["dark_mode", "quiz_safe_mode", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
@@ -268,6 +269,7 @@ const defaultOptions = {
         "dashboard_notes_mode": "edit",
         "dashboard_notes_position": "top",
         "gpa_calc_position": "cards_end",
+        "gpa_calc_align": "left",
         "gpa_calc_show_on_hover": false,
         "focus_timer": false,
         "focus_timer_position": "cards_end",
@@ -1528,6 +1530,7 @@ function setupWidgetPosition() {
     [
         { select: "dashboard_notes_position", key: "dashboard_notes_position" },
         { select: "gpa_calc_position", key: "gpa_calc_position" },
+        { select: "gpa_calc_align", key: "gpa_calc_align" },
         { select: "focus_timer_position", key: "focus_timer_position" },
         { select: "breathing_position", key: "breathing_position" },
         { select: "daily_quotes_position", key: "daily_quotes_position" },

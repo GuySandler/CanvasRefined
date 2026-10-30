@@ -1351,6 +1351,7 @@ function applyOptionsChanges(changes) {
 			case "gpa_calc_prepend":
 			case "gpa_calc_position":
 			case "gpa_calc_height":
+			case "gpa_calc_align":
 			case "gpa_calc_weighted":
 			case "gpa_calc_cumulative":
 			case "gpa_calc_show_on_hover":
@@ -7772,6 +7773,8 @@ function setupGPACalc() {
         }
 
         container2.style.display = options.gpa_calc === true ? "inline-block" : "none";
+        // Text alignment dropdown (Widgets tab): default stays left.
+        container2.style.textAlign = options.gpa_calc_align === "center" || options.gpa_calc_align === "right" ? options.gpa_calc_align : "";
 
         if (!alreadyRendered) {
             // Render the shell now (with "--") and fill the numbers once grades resolve.
@@ -8588,9 +8591,11 @@ function dailyQuoteDefault() {
 function dailyQuoteHtml() { return `
     <div class="cr-widget-head"><span class="cr-widget-title">${getMsg("daily_quote", "Daily Quote")}</span></div>
     <div class="cr-quote-body">
-        <span class="cr-quote-mark" aria-hidden="true">&#8220;</span>
-        <p class="cr-quote-text">${dailyQuoteDefault().quote}</p>
-        <span class="cr-quote-author">&mdash; ${dailyQuoteDefault().author}</span>
+        <div class="cr-quote-content">
+            <span class="cr-quote-mark" aria-hidden="true">&#8220;</span>
+            <p class="cr-quote-text">${dailyQuoteDefault().quote}</p>
+            <span class="cr-quote-author">&mdash; ${dailyQuoteDefault().author}</span>
+        </div>
     </div>
 `; }
 
@@ -8603,6 +8608,61 @@ function renderDailyQuote(el, data) {
     const authorEl = el.querySelector(".cr-quote-author");
     if (textEl) textEl.textContent = quote;
     if (authorEl) authorEl.textContent = author ? "\u2014 " + author : "";
+    // New text means new metrics: refit so the group fills the widget again.
+    requestAnimationFrame(() => fitDailyQuote(el));
+}
+
+/* Scale the whole quote group (mark, quote, author) so it uses the widget's space.
+   The base sizes are the constants in content.css; the fit spends the available
+   width up front by laying the text out at availW/scale, then binary-searches the
+   largest scale whose scaled height still fits. */
+const CR_QUOTE_MIN_SCALE = 0.15;
+const CR_QUOTE_MAX_SCALE = 2.5;
+
+let crQuoteResizeObserver = null;
+function crQuoteObserver() {
+    if (!crQuoteResizeObserver) {
+        crQuoteResizeObserver = new ResizeObserver(entries => {
+            for (const entry of entries) fitDailyQuote(entry.target);
+        });
+    }
+    return crQuoteResizeObserver;
+}
+
+// Fixed-height mode only. With auto height the widget's height comes from the
+// content itself, so a fit would feed its own height back in — keep the original
+// width-driven sizing instead. Read the heights the layout code actually applied
+// (crApplyCardHeight for in-cards, applyWidgetRowLayout for Top/Bottom rows).
+function crQuoteFitEnabled(el) {
+    if (el.classList.contains("container-mode")) {
+        const row = el.closest(".canvasrefined-widget-row");
+        return !!(row && parseInt(row.style.height, 10) > 0);
+    }
+    return parseInt(el.style.height, 10) > 0;
+}
+
+function fitDailyQuote(el) {
+    const body = el.querySelector(".cr-quote-body");
+    const content = el.querySelector(".cr-quote-content");
+    if (!body || !content) return;
+    const fit = crQuoteFitEnabled(el);
+    el.classList.toggle("cr-quote-fit", fit);
+    content.style.transform = "";
+    content.style.width = "";
+    if (!fit || !el.isConnected || el.style.display === "none") return;
+    const cs = getComputedStyle(body);
+    const availW = body.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const availH = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    if (availW < 40 || availH < 40) return;
+    let lo = CR_QUOTE_MIN_SCALE, hi = CR_QUOTE_MAX_SCALE, best = CR_QUOTE_MIN_SCALE;
+    while (hi - lo > 0.01) {
+        const mid = (lo + hi) / 2;
+        content.style.width = (availW / mid) + "px";
+        if (content.offsetHeight * mid <= availH) { best = mid; lo = mid; }
+        else hi = mid;
+    }
+    content.style.width = (availW / best) + "px";
+    content.style.transform = "scale(" + best + ")";
 }
 
 // Ask the background worker to refresh; it caches per calendar day.
@@ -8631,7 +8691,13 @@ function loadDailyQuotesWidget() {
     crLoadWidget("daily_quotes", {
         className: "canvasrefined-quotes",
         html: dailyQuoteHtml(),
-        wire: refreshDailyQuoteWidget,
+        wire: (el) => {
+            // Refit on every size change (height setting, row height, window resize).
+            crQuoteObserver().observe(el);
+            // Web fonts land after first paint and change the metrics.
+            try { document.fonts.ready.then(() => fitDailyQuote(el)); } catch (e) {}
+            refreshDailyQuoteWidget(el);
+        },
         update: refreshDailyQuoteWidget,
     });
 }
