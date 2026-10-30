@@ -55,6 +55,7 @@ const syncedSubOptions = [
 	"assignment_date_format",
 	"todo_hr24",
 	"todo_separate_scrollbar",
+	"todo_sections_persist",
 	"todo_alternate_colors",
 	"todo_ignore_card_colors",
 	"todo_remove_icons",
@@ -220,7 +221,7 @@ const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding", "card_grid", "card_grid_columns", "card_grid_rows", "card_grid_column_gap", "card_grid_row_gap", "card_grid_center_rows", "card_grid_flex"];
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "hide_sidebar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
-const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview", "todo_sections_persist"];
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover", "gpa_calc_align"];
 // Widgets tab: every dashboard widget's layout (toggles, positions, heights, row
 // heights, order, timer presets, quick link sizing). Personal data (quick link items,
@@ -335,6 +336,7 @@ const defaultOptions = {
         "card_opacity": 80,
         "card_blur": 8,
         "todo_hr24": false,
+        "todo_sections_persist": false,
         "anon_grade_level": "high",
         "anon_grade_seed": 0,
         "anon_fake_todo": false,
@@ -2055,6 +2057,7 @@ async function setup() {
 			"custom_font_skip_p",
 			"todo_hr24",
 			"todo_separate_scrollbar",
+			"todo_sections_persist",
 			"todo_alternate_colors",
 			"todo_ignore_card_colors",
 			"todo_remove_icons",

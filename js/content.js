@@ -1288,6 +1288,13 @@ function applyOptionsChanges(changes) {
 			case "custom_cards_3":
 				customizeCards();
 				break;
+			case "todo_sections_persist":
+				// Persistence is opt-in: the moment it turns on, adopt the session's collapses;
+				// turned off, stored state stays put but is simply not read on the next load.
+				if (options.todo_sections_persist === true) {
+					chrome.storage.sync.set({ "todo_collapsed_sections": { ...todoCollapsedSections } });
+				}
+				break;
 			case "todo_hr24":
 			case "todo_separate_scrollbar":
 			case "num_todo_items":
@@ -3818,10 +3825,20 @@ async function createTodoSections(location) {
             else if (key >= 7 && key < 30) label = replaceCountPlaceholder(getMsg("due_weeks", "Due <strong>{{COUNT}} weeks</strong>"), Math.floor(key / 7));
             else if (key == "30") label = getMsg("due_one_month", "Due <strong>1 month</strong>");
             else label = "<strong>" + dueGroupLabel(key) + "</strong>";
-            makeElement("div", wrapper, {
-                innerHTML: "<span>" + label + "</span>",
-                style: "display:flex;flex-direction:column;gap:10px;font-size:12px;color:var(--bctext-0);"
-            })
+            // Clickable section header: chevron + label + live item count (user suggestion:
+            // collapsible due-date sections with a per-section item indicator).
+            const sectionHeader = makeElement("div", wrapper, { "className": "better-todo-section-header" });
+            sectionHeader.setAttribute("role", "button");
+            sectionHeader.setAttribute("tabindex", "0");
+            sectionHeader.setAttribute("aria-expanded", "true");
+            sectionHeader.innerHTML =
+                '<svg class="better-todo-chevron" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>' +
+                '<span class="better-todo-section-label">' + label + '</span>' +
+                '<span class="better-todo-section-count" aria-hidden="true"></span>';
+            sectionHeader.addEventListener("click", () => toggleTodoSection(key, wrapper));
+            sectionHeader.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleTodoSection(key, wrapper); }
+            });
 
             let listContainer = makeElement("div", wrapper, { className: "todo-group-list" });
             listContainer.style = "display:flex;flex-direction:column;gap:10px;";
@@ -3839,6 +3856,8 @@ async function createTodoSections(location) {
         if (betterTodoFilter == "completed") {
             populateAssignments(true);
         }
+
+        refreshTodoSections();
 
         const feedbackElement = location.querySelector(".recent_feedback");
 
@@ -3952,6 +3971,61 @@ function clearTodoList() {
 	document.querySelectorAll(".better-todo-dueheader").forEach(header => {
 		header.remove();
 	});
+}
+
+/*
+Collapsible due-date sections
+
+The collapse state is session-only by default: it lives in todoCollapsedSections and
+dies with the reload. "Remember collapsed sections" (todo_sections_persist, off by
+default) seeds the map from chrome.storage once per load and writes every toggle
+back, so collapses survive reloads only while that checkbox is on.
+*/
+let todoCollapsedSections = {};
+let todoCollapsedSeeded = false;
+
+function seedTodoCollapsedSections() {
+    if (todoCollapsedSeeded) return;
+    todoCollapsedSeeded = true;
+    if (options.todo_sections_persist === true && options.todo_collapsed_sections && typeof options.todo_collapsed_sections === "object") {
+        todoCollapsedSections = { ...options.todo_collapsed_sections };
+    }
+}
+
+function toggleTodoSection(key, wrapper) {
+    const collapsed = !wrapper.classList.contains("better-todo-collapsed");
+    applyTodoSectionCollapsed(key, wrapper, collapsed);
+    if (collapsed) todoCollapsedSections[key] = true;
+    else delete todoCollapsedSections[key];
+    if (options.todo_sections_persist === true) {
+        chrome.storage.sync.set({ "todo_collapsed_sections": { ...todoCollapsedSections } });
+    }
+}
+
+function applyTodoSectionCollapsed(key, wrapper, collapsed) {
+    wrapper.classList.toggle("better-todo-collapsed", collapsed);
+    const header = wrapper.querySelector(".better-todo-section-header");
+    if (header) header.setAttribute("aria-expanded", collapsed ? "false" : "true");
+}
+
+// Re-apply collapse state and refresh the per-section item counts after each render.
+// Headers are rebuilt on every render, so this is what carries the state across the
+// clearTodoList/createTodoSections cycle.
+function refreshTodoSections() {
+    seedTodoCollapsedSections();
+    Object.keys(domContainers).forEach(key => {
+        const entry = domContainers[key];
+        if (!entry || !entry.wrapper || !entry.wrapper.isConnected) return;
+        const collapsed = todoCollapsedSections[key] === true;
+        applyTodoSectionCollapsed(key, entry.wrapper, collapsed);
+        // Every row the section holds (hidden "view more" rows included). The rows are
+        // created with a `class:` property assignment that never becomes a real class
+        // attribute, so query the list's children instead of the row classes; the
+        // celebration preview's disposable card must not bump the count.
+        const count = [...entry.listContainer.children].filter(el => el.id !== "canvasrefined-celebration-preview").length;
+        const countEl = entry.wrapper.querySelector(".better-todo-section-count");
+        if (countEl) countEl.textContent = count > 0 ? String(count) : "";
+    });
 }
 
 // "Alternate colors" (light mode only): icon fill goes white for lighter course strips.
@@ -5026,9 +5100,12 @@ function runCelebrationPreview() {
                 wrapper: todayContainer.wrapper,
                 display: todayContainer.wrapper.style.display,
                 hadVisible: todayContainer.wrapper.hasAttribute("data-has-visible"),
+                wasCollapsed: todayContainer.wrapper.classList.contains("better-todo-collapsed"),
             };
             todayContainer.wrapper.style.display = "block";
             todayContainer.wrapper.setAttribute("data-has-visible", "true");
+            // A collapsed section would hide the preview card; expand it for the run.
+            todayContainer.wrapper.classList.remove("better-todo-collapsed");
         } else {
             card.style.cssText += "position:fixed;top:70px;right:16px;width:300px;z-index:2147483646;box-shadow:0 2px 10px rgba(0,0,0,.25);";
             document.body.appendChild(card);
@@ -5046,6 +5123,7 @@ function runCelebrationPreview() {
             if (restoreWrapper) {
                 try {
                     restoreWrapper.wrapper.style.display = restoreWrapper.display;
+                    restoreWrapper.wrapper.classList.toggle("better-todo-collapsed", restoreWrapper.wasCollapsed);
                     if (!restoreWrapper.hadVisible) restoreWrapper.wrapper.removeAttribute("data-has-visible");
                 } catch (e) { /* wrapper re-rendered away already */ }
             }

@@ -1877,6 +1877,9 @@
     "todo_separate_scrollbar": {
         "message": "Separate Scrollbar"
     },
+    "todo_sections_persist": {
+        "message": "Remember collapsed sections"
+    },
     "todo_show_scores": {
         "message": "Show assignment scores"
     },

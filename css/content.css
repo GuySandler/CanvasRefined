@@ -103,6 +103,15 @@
 #canvasrefined-todo-list, #canvasrefined-announcement-list {font-size: 12px}
 .canvasrefined-todo-container, .canvasrefined-todo-container:hover {color:#777}
 .canvasrefined-todo-container p {margin: 0!important;}
+/* Better Todo: collapsible due-date sections (chevron + live item count) */
+.better-todo-section-header {display:flex;align-items:center;gap:6px;font-size:12px;color:var(--bctext-0);cursor:pointer;user-select:none;}
+.better-todo-section-header:hover {color:var(--bclinks);}
+.better-todo-section-header .better-todo-chevron {flex:none;transform:rotate(90deg);transition:transform .2s ease;}
+.better-todo-dueheader.better-todo-collapsed .better-todo-section-header .better-todo-chevron {transform:rotate(0deg);}
+.better-todo-dueheader.better-todo-collapsed .todo-group-list {display:none!important;}
+/* count badge: theme "Background Alt" surface with the theme's Text Main number;
+   in light mode (no --bc vars) it falls back to the dark-mode palette pill */
+.better-todo-section-count {flex:none;margin-left:auto;background:var(--bcbackground-1,#161616);color:var(--bctext-0,#f5f5f5);border-radius:8px;padding:1px 7px;font-size:10.5px;font-weight:700;}
 .canvasrefined-todo-icon svg {height: 18px; width: 18px;margin:0}
 .canvasrefined-todoitem-course {overflow: hidden; text-overflow: ellipsis;white-space: nowrap;}
 .canvasrefined-todoitem-title {font-size: 14px;font-weight:bold;display:inline;margin-top:2px;}
