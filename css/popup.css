@@ -131,6 +131,16 @@ h2 {margin-top: 20px;font-weight:600}
 .github-button {display: flex;align-items: center;justify-content: center;gap: 7px;padding: 9px 10px;border: none;border-radius: 8px;background: #30363d;color: #fff;font-family: inherit;font-size: 13px;font-weight: 600;text-decoration: none;transition: .15s background}
 .github-button:hover {background: #21262d;cursor: pointer}
 .github-button:active {filter: brightness(85%)}
+/* Update announcement box: blue attention banner at the very top of the main popup */
+.update-box {margin-bottom:14px;padding:14px 16px 12px;border:1px solid #2f81f7;border-radius:12px;background:linear-gradient(165deg, rgba(47,129,247,.28), rgba(47,129,247,.10) 70%, rgba(47,129,247,.05));box-shadow:0 0 0 1px rgba(47,129,247,.18), 0 4px 16px rgba(47,129,247,.28);}
+.update-box-title {margin:0 0 6px;font-size:15px;font-weight:700;color:#58a6ff;letter-spacing:.02em;}
+.update-box-body {display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:#e2e2e2;font-size:13px;}
+.update-box-body p {margin:0;flex:1;min-width:130px;}
+.update-box-body .github-button {flex:none;padding:6px 12px;font-size:12px;}
+.update-box-actions {display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+/* fit-content, one line each: no stretching across the box */
+.update-box-actions .customization-button {flex:0 0 auto;padding:4px 12px;white-space:nowrap;}
+.update-box-actions .customization-button:hover {background:#2f81f73a;}
 .discord-button svg, .github-button svg {flex-shrink: 0}
 .social-toggle {text-align: center;font-size: 12px;color: #9a9a9a;cursor: pointer;user-select: none;transition: .15s color;text-decoration: underline;text-underline-offset: 3px;padding: 4px 10px;border-radius: 6px;}
 .social-toggle:hover {color: #e2e2e2;background: #ffffff0a;}

@@ -2035,8 +2035,46 @@ function setupFeatureSearch(menu) {
     });
 }
 
+/*
+Update announcement box
+
+The box at the top of the main popup shows while the current announcement is unseen.
+- Dismiss: marks UPDATE_BOX_ID seen (hidden until a new announcement gets a new id).
+- "Never show these ever again": opts out of every future announcement too.
+- The Report issue tab button opts back in and marks the current one unseen again.
+Demo title/body live in popup.html; bump UPDATE_BOX_ID when they change.
+*/
+const UPDATE_BOX_ID = "release-1.2.0";
+
+function initUpdateBox() {
+    const box = document.getElementById("update-box");
+    if (!box) return;
+    const refresh = () => {
+        chrome.storage.sync.get(["update_box_enabled", "update_box_seen"], sync => {
+            const enabled = sync.update_box_enabled !== false;
+            const seen = sync.update_box_seen === UPDATE_BOX_ID;
+            box.style.display = enabled && !seen ? "" : "none";
+        });
+    };
+    refresh();
+    document.getElementById("update-box-dismiss")?.addEventListener("click", () => {
+        chrome.storage.sync.set({ "update_box_seen": UPDATE_BOX_ID });
+        box.style.display = "none";
+    });
+    document.getElementById("update-box-never")?.addEventListener("click", () => {
+        chrome.storage.sync.set({ "update_box_enabled": false, "update_box_seen": UPDATE_BOX_ID });
+        box.style.display = "none";
+    });
+    // Report issue tab: "Mark announcement as unseen and show these in the future".
+    document.getElementById("update-box-restore")?.addEventListener("click", () => {
+        chrome.storage.sync.set({ "update_box_enabled": true, "update_box_seen": "" });
+        refresh();
+    });
+}
+
 async function setup() {
     await initLanguageSelector();
+    initUpdateBox();
     const menu = {
 		switches: syncedSwitches,
 		checkboxes: [

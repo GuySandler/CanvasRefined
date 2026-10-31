@@ -556,13 +556,21 @@
 .cr-gpa-preset:hover {color:var(--bctext-0,#2d3b45);}
 .cr-gpa-preset.active {background:var(--bcbackground-0,#fff);color:var(--bctext-0,#2d3b45);border-color:var(--bctext-2,#9aa3ab);}
 .cr-gpa-scale-head {display:grid;grid-template-columns:40px 1fr 1fr;gap:8px;padding:0 2px 4px;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--bctext-2,#9aa3ab);}
-.cr-gpa-row {display:grid;grid-template-columns:40px 1fr 1fr;gap:8px;align-items:center;padding:2px 0;}
+.cr-gpa-row {display:grid;grid-template-columns:40px 1fr 1fr;gap:8px;align-items:center;padding:2px 0 0;}
 .cr-gpa-row:hover {background:color-mix(in srgb, var(--bctext-0,#2d3b45) 4%, transparent);border-radius:8px;}
 .cr-gpa-chip {display:flex;align-items:center;justify-content:center;height:24px;border-radius:7px;background:color-mix(in srgb, var(--bctext-0,#2d3b45) 7%, transparent);font-weight:700;font-size:12px;}
-.cr-gpa-field {display:flex;align-items:center;min-width:0;border:1px solid var(--bcborders,#c7cdd1);border-radius:8px;height:28px;background:transparent;overflow:hidden;}
+.cr-gpa-field {display:flex;align-items:center;min-width:0;border:1px solid var(--bcborders,#c7cdd1);border-radius:8px;height:24px;background:transparent;overflow:hidden;}
 .cr-gpa-field:focus-within {border-color:var(--cr-gpa-accent,var(--ic-brand-primary,#0374b5));box-shadow:0 0 0 2px color-mix(in srgb, var(--cr-gpa-accent,var(--ic-brand-primary,#0374b5)) 22%, transparent);}
-.cr-gpa-input {width:100%;min-width:0;border:none;background:transparent;color:inherit;height:100%;padding:0 4px 0 8px;font:inherit;font-size:13px;text-align:right;box-sizing:border-box;}
-.cr-gpa-input:focus {outline:none;box-shadow:none;}
+/* The wrapper draws the only border. Canvas' dark-mode sheet styles input[type=text]
+   with !important border/background/radius, which at (0,1,1) out-specifies a plain
+   .cr-gpa-input rule (0,1,0) and painted a second border inside the field — so we match
+   its attribute selector to win outright. */
+.cr-gpa-input {width:100%;min-width:0;appearance:none;-webkit-appearance:none;background:transparent;color:inherit;height:100%;padding:0;font:inherit;font-size:13px;text-align:right;box-sizing:border-box;}
+input.cr-gpa-input[type="text"] {border:0 !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;appearance:none !important;-webkit-appearance:none !important;/* Canvas' own input[type=text] rules (padding ~11px, margins) out-specify a bare
+   .cr-gpa-input rule, so force them off here too or the box grows under the text. */
+    padding:0 !important;margin:0 !important;min-height:0 !important;}
+input.cr-gpa-input[type="text"]:focus,
+input.cr-gpa-input[type="text"]:focus-visible {outline:none !important;box-shadow:none !important;border-color:transparent !important;}
 .cr-gpa-suffix {flex:none;padding:0 8px 0 2px;font-size:11px;color:var(--bctext-2,#9aa3ab);}
 .cr-gpa-note {color:var(--bctext-2,#9aa3ab);font-size:12px;line-height:1.5;margin:14px 0 0;padding-top:12px;border-top:1px solid var(--bcborders,#c7cdd1);}
 @media (max-width:720px) {

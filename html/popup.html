@@ -22,6 +22,22 @@
     <div id="gradientbg"></div>
     <div id="alert"></div>
     <div class="main">
+        <!-- Update announcement: shown until dismissed; "Never show" opts out of all
+             future ones (opt back in from the Report issue tab). Demo content for now. -->
+        <div class="update-box" id="update-box" style="display:none;">
+            <h3 class="update-box-title">New update!</h3>
+            <div class="update-box-body">
+                <p>This is the new update alert system!<br>Go read the patch notes and please leave a review or join the discord server!</p>
+                <a class="github-button" href="https://github.com/GuySandler/CanvasRefined/releases/tag/Release1.2.0" target="_blank" rel="noopener noreferrer" data-i18n-title="view_on_github" title="View on GitHub">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12z"/></svg>
+                    <span>GitHub</span>
+                </a>
+            </div>
+            <div class="update-box-actions">
+                <button type="button" class="customization-button" id="update-box-dismiss" data-i18n="dismiss">Dismiss</button>
+                <button type="button" class="customization-button" id="update-box-never" data-i18n="never_show_updates">Never show these ever again</button>
+            </div>
+        </div>
         <div class="header">
             <img id="bclogo" src="../icon/icon-128.png">
             <h1 data-i18n="Canvas_Refined">Canvas Refined</h1>
@@ -1637,6 +1653,10 @@
                 </a>
             </div>
             <p class="sub-text" style="margin:0;font-size:11px;opacity:0.85;">Email is still available at <strong>sandlerguy5@gmail.com</strong> for private matters.</p>
+        </div>
+        <div class="option-container">
+            <h3 class="header-small" data-i18n="announcements_header">Announcements</h3>
+            <button type="button" class="customization-button" id="update-box-restore" data-i18n="show_updates_future">Mark announcement as unseen and show these in the future</button>
         </div>
         <div class="option-container">
             <h3 class="header-small" data-i18n="dev_tools">Dev tools</h3>

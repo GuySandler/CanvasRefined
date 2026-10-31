@@ -416,6 +416,9 @@
     "disable_high_contrast": {
         "message": "Disable High Contrast UI"
     },
+    "dismiss": {
+        "message": "Dismiss"
+    },
     "do_you_want_submit": {
         "message": "Do you want to submit your theme for others to use?"
     },
@@ -1595,8 +1598,14 @@
     "show_past_due": {
         "message": "Show Past Due"
     },
+    "show_updates_future": {
+        "message": "Mark announcement as unseen and show these in the future"
+    },
     "showing_submissions": {
         "message": "Showing your latest 3 submissions"
+    },
+    "never_show_updates": {
+        "message": "Never show these ever again"
     },
     "sidebar_blur": {
         "message": "Sidebar blur"
