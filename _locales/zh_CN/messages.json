@@ -1,260 +1,1916 @@
 {
-  "better_canvas": {
-    "message": "更好的画布"
-  },
-  "updates": {
-    "message": "更新"
-  },
-  "dark_mode": {
-    "message": "暗色模式"
-  },
-  "automatic_dark_mode": {
-    "message": "预定的深色模式"
-  },
-  "auto_start_time": {
-    "message": "开始时间"
-  },
-  "auto_end_time": {
-    "message": "结束时间"
-  },
-  "edit_dark_mode": {
-    "message": "深色模式"
-  },
-  "enter_url": {
-    "message": "您的画布网址:"
-  },
-  "card_grades": {
-    "message": "卡牌等级"
-  },
-  "gradient_cards": {
-    "message": "渐变卡"
-  },
-  "condensed_cards": {
-    "message": "浓缩卡"
-  },
-  "disable_color": {
-    "message": "禁用颜色叠加"
-  },
-  "card_assignments": {
-    "message": "卡分配"
-  },
-  "card_customization": {
-    "message": "牌"
-  },
-  "styles": {
-    "message": "样式"
-  },
-  "useddmm": {
-    "message": "使用日/毫米"
-  },
-  "better_todo": {
-    "message": "更好的待办事项列表"
-  },
-  "max_items": {
-    "message": "最大物品数: "
-  },
-  "hover_preview": {
-    "message": "悬停预览"
-  },
-  "hide_completed": {
-    "message": "隐藏已完成"
-  },
-  "24hrformat": {
-    "message": "使用 24 小时格式"
-  },
-  "dashboard_notes": {
-    "message": "仪表板注释"
-  },
-  "gpa_calculator": {
-    "message": "平均绩点计算器"
-  },
-  "gpa_settings": {
-    "message": "平均绩点设置"
-  },
-  "grade_hover": {
-    "message": "仅在悬停时显示"
-  },
-  "card_letter": {
-    "message": "显示字母成绩"
-  },
-  "due": {
-    "message": "到期的"
-  },
-  "card_colors": {
-    "message": "卡片颜色"
-  },
-  "back": {
-    "message": "后退"
-  },
-  "more_options": {
-    "message": "更多选择"
-  },
-  "manual_customization": {
-    "message": "手动定制"
-  },
-  "background_colors": {
-    "message": "背景"
-  },
-  "text_colors": {
-    "message": "文本"
-  },
-  "full_width": {
-    "message": "仪表板全宽"
-  },
-  "report_issue": {
-    "message": "报告问题"
-  },
-  "themes": {
-    "message": "主题"
-  },
-  "move_top": {
-    "message": "移至顶部"
-  },
-  "show_past_due": {
-    "message": "显示逾期"
-  },
-  "relative_due_dates": {
-    "message": "相对到期日"
-  },
-  "equal_height_cards": {
-    "message": "等高"
-  },
-  "enter_multiple": {
-    "message": "(用逗号输入多个)"
-  },
-  "todo_remind": {
-    "message": "待办事项提醒"
-  },
-  "remlogo": {
-    "message": "删除侧边栏徽标"
-  },
-  "hide_feedback": {
-    "message": "隐藏最近的反馈"
-  },
-  "tab_icons": {
-    "message": "颜色编码选项卡图标"
-  },
-  "todo_colors": {
-    "message": "使用卡片颜色"
-  },
-  "gpa_calc_cumulative": {
-    "message": "显示累积GPA"
-  },
-  "gpa_calc_weighted": {
-    "message": "显示权重GPA"
-  },
-  "device_dark": {
-    "message": "使用设备暗色模式设置"
-  },
-  "presets": {
-    "message": "预设值"
-  },
-  "dark_lighter": {
-    "message": "灯光"
-  },
-  "dark_light": {
-    "message": "亮色的"
-  },
-  "dark_default": {
-    "message": "默认设置"
-  },
-  "dark_dark": {
-    "message": "深色"
-  },
-  "dark_darker": {
-    "message": "较暗的"
-  },
-  "dark_mint": {
-    "message": "分钟数"
-  },
-  "dark_blue": {
-    "message": "蓝色调"
-  },
-  "dark_burn": {
-    "message": "眼球烧伤"
-  },
-  "dark_unicorn": {
-    "message": "独角兽人"
-  },
-  "dark_lightmode": {
-    "message": "浅色模式"
-  },
-  "dark_catppuccin": {
-    "message": "卡普布辛\n 由天使"
-  },
-  "dark_sage": {
-    "message": "萨比亚\n 通过 LivDoesDevStuf"
-  },
-  "dark_pink": {
-    "message": "粉色的\n 通过赛德"
-  },
-  "dark_coral": {
-    "message": "珊瑚\n 通过 超级奇多"
-  },
-  "dp_sidebar_text": {
-    "message": "侧边栏文本"
-  },
-  "dp_sidebar": {
-    "message": "侧边栏"
-  },
-  "radio_sidebar_solid": {
-    "message": "坚硬的"
-  },
-  "radio_sidebar_gradient": {
-    "message": "渐变"
-  },
-  "radio_sidebar_image": {
-    "message": "图片"
-  },
-  "dp_background_0": {
-    "message": "主要背景"
-  },
-  "dp_background_1": {
-    "message": "背景Alt"
-  },
-  "dp_background_2": {
-    "message": "其它背景"
-  },
-  "dp_borders": {
-    "message": "边框"
-  },
-  "dp_links": {
-    "message": "链接"
-  },
-  "dp_text_0": {
-    "message": "主要文本"
-  },
-  "dp_text_1": {
-    "message": "其它文本"
-  },
-  "dp_text_2": {
-    "message": "文本Alt"
-  },
-  "dark_mode_fixer": {
-    "message": "深色模式修复程序 (测试版)"
-  },
-  "dark_mode_fixer_text": {
-    "message": "这将尝试修复当前页面上的任何暗模式间隙。"
-  },
-  "fix_dm_btn": {
-    "message": "去"
-  },
-  "fix_dm_text": {
-    "message": "修复程序会自动在这些页面上运行:"
-  },
-  "hide_links": {
-    "message": "隐藏链接"
-  },
-  "show_links": {
-    "message": "显示链接"
-  },
-  "center_cards": {
-    "message": "居中卡片"
-  },
-  "hide_new_canvas": {
-    "message": "隐藏新版 Canvas"
-  },
-  "hide_completed_cards": {
-    "message": "隐藏已完成的作业"
-  }
+    "24hrformat": {
+        "message": "使用 24 小时格式"
+    },
+    "abc": {
+        "message": "ABC"
+    },
+    "add_canvas": {
+        "message": "+ 添加 Canvas"
+    },
+    "add_task": {
+        "message": "+ 添加任务"
+    },
+    "add_to_list": {
+        "message": "添加到列表"
+    },
+    "ago": {
+        "message": "前"
+    },
+    "always_show_likes": {
+        "message": "始终显示点赞数"
+    },
+    "assignment_avg": {
+        "message": "— 平均 {{AVG}}%，共 {{COUNT}} 项作业："
+    },
+    "assignment_due_in": {
+        "message": "作业将在 {{TIME}} 后到期"
+    },
+    "auto": {
+        "message": "自动"
+    },
+    "auto_end_time": {
+        "message": "结束时间"
+    },
+    "auto_start_time": {
+        "message": "开始时间"
+    },
+    "automatic_dark_mode": {
+        "message": "预定的深色模式"
+    },
+    "back": {
+        "message": "后退"
+    },
+    "back_to_assignment": {
+        "message": "返回作业"
+    },
+    "background_colors": {
+        "message": "背景"
+    },
+    "background_opacity": {
+        "message": "背景不透明度"
+    },
+    "better_sidebar": {
+        "message": "更好的侧边栏"
+    },
+    "hide_sidebar": {
+        "message": "隐藏侧边栏"
+    },
+    "sidebar": {
+        "message": "侧边栏"
+    },
+    "better_todo": {
+        "message": "更好的待办事项列表"
+    },
+    "bg_blur": {
+        "message": "背景模糊"
+    },
+    "breathing_breaks": {
+        "message": "呼吸休息"
+    },
+    "breathing_in": {
+        "message": "吸气"
+    },
+    "breathing_out": {
+        "message": "呼气"
+    },
+    "breathing_ready": {
+        "message": "准备就绪"
+    },
+    "button_1": {
+        "message": "按钮 1"
+    },
+    "button_2": {
+        "message": "按钮 2"
+    },
+    "button_3": {
+        "message": "按钮 3"
+    },
+    "cancel": {
+        "message": "取消"
+    },
+    "Canvas_Refined": {
+        "message": "Canvas Refined"
+    },
+    "canvas_rejected_create": {
+        "message": "Canvas 拒绝了任务创建。"
+    },
+    "canvas_rejected_delete": {
+        "message": "Canvas 拒绝了任务删除。"
+    },
+    "canvas_rejected_update": {
+        "message": "Canvas 拒绝了任务更新。"
+    },
+    "card_assignments": {
+        "message": "卡分配"
+    },
+    "card_blur": {
+        "message": "卡片模糊"
+    },
+    "card_colors": {
+        "message": "卡片颜色"
+    },
+    "card_customization": {
+        "message": "牌"
+    },
+    "card_grades": {
+        "message": "卡牌等级"
+    },
+    "card_grid": {
+        "message": "卡片网格"
+    },
+    "card_grid_preview": {
+        "message": "卡片网格预览"
+    },
+    "card_height": {
+        "message": "卡片高度"
+    },
+    "card_hide_toggle": {
+        "message": "在仪表板上隐藏/显示"
+    },
+    "card_letter": {
+        "message": "显示字母成绩"
+    },
+    "card_limit": {
+        "message": "卡片上限"
+    },
+    "card_limit_desc": {
+        "message": "调整此数字会重置你的卡片，并可能导致存储问题。"
+    },
+    "card_method": {
+        "message": "卡片方式"
+    },
+    "card_method_desc": {
+        "message": "通常不需要开启这些选项。"
+    },
+    "card_none": {
+        "message": "无"
+    },
+    "card_opacity": {
+        "message": "卡片不透明度"
+    },
+    "card_padding": {
+        "message": "卡片内边距"
+    },
+    "card_reset_default": {
+        "message": "卡片已重置为默认设置！"
+    },
+    "card_roundness": {
+        "message": "卡片圆角"
+    },
+    "card_settings_saved": {
+        "message": "卡片设置已保存！"
+    },
+    "card_transparency": {
+        "message": "卡片透明度"
+    },
+    "card_width": {
+        "message": "卡片宽度"
+    },
+    "cards_height": {
+        "message": "卡片高度"
+    },
+    "celebration": {
+        "message": "庆祝效果"
+    },
+    "celebration_amount": {
+        "message": "数量"
+    },
+    "celebration_confetti": {
+        "message": "彩纸"
+    },
+    "celebration_crazy": {
+        "message": "疯狂"
+    },
+    "celebration_fireworks": {
+        "message": "烟花"
+    },
+    "celebration_hearts": {
+        "message": "上升爱心"
+    },
+    "celebration_less": {
+        "message": "较少"
+    },
+    "celebration_more": {
+        "message": "更多"
+    },
+    "celebration_none": {
+        "message": "无"
+    },
+    "celebration_normal": {
+        "message": "正常"
+    },
+    "celebration_preview": {
+        "message": "预览庆祝效果"
+    },
+    "celebration_rocket": {
+        "message": "火箭"
+    },
+    "celebration_sparkles": {
+        "message": "闪光爆发"
+    },
+    "celebration_type": {
+        "message": "庆祝效果类型"
+    },
+    "center_cards": {
+        "message": "居中卡片"
+    },
+    "center_uneven": {
+        "message": "居中不均匀的行"
+    },
+    "check_all": {
+        "message": "全选"
+    },
+    "check_none": {
+        "message": "全不选"
+    },
+    "clear_background": {
+        "message": "清除背景"
+    },
+    "clear_cache": {
+        "message": "清除计划器缓存"
+    },
+    "clear_cache_desc": {
+        "message": "这会删除缓存的待办列表数据（作业、公告、提醒），以便从 Canvas 重新获取最新数据。已打开的 Canvas 标签页会自动更新。"
+    },
+    "click_eye": {
+        "message": "点击课程上的眼睛图标以隐藏或显示其卡片。"
+    },
+    "close": {
+        "message": "关闭"
+    },
+    "close_label": {
+        "message": "关闭"
+    },
+    "column_spacing": {
+        "message": "列间距"
+    },
+    "complete": {
+        "message": "完成"
+    },
+    "completed_total": {
+        "message": "{{DONE}}/{{TOTAL}} 已完成"
+    },
+    "condensed_cards": {
+        "message": "浓缩卡"
+    },
+    "copied": {
+        "message": "已复制！"
+    },
+    "copy": {
+        "message": "复制"
+    },
+    "could_not_delete": {
+        "message": "无法删除任务。"
+    },
+    "could_not_load_preview": {
+        "message": "无法加载预览"
+    },
+    "could_not_save": {
+        "message": "无法保存任务。"
+    },
+    "create": {
+        "message": "创建"
+    },
+    "created_by": {
+        "message": "创建者"
+    },
+    "created_by_hint": {
+        "message": "可以填写任何内容，包括你的名字、社交媒体账号、匿名等。"
+    },
+    "custom_background": {
+        "message": "自定义背景"
+    },
+    "solid_color": {
+        "message": "纯色"
+    },
+    "solid_color_hex": {
+        "message": "#1e2a38"
+    },
+    "bg_transparency": {
+        "message": "元素透明"
+    },
+    "custom_background_desc": {
+        "message": "选择预设，或使用你自己的图片 URL。"
+    },
+    "custom_card_styles": {
+        "message": "自定义卡片样式"
+    },
+    "custom_fonts": {
+        "message": "自定义字体"
+    },
+    "custom_fonts_desc": {
+        "message": "你可以在这里使用 Google Fonts 的自定义字体。请确保只输入 \"?family=\" 后面的粗体部分"
+    },
+    "custom_styles": {
+        "message": "自定义样式"
+    },
+    "custom_styles_desc": {
+        "message": "你可以在此区域编写自定义 CSS 样式。你可能需要添加 !important 规则以强制生效。"
+    },
+    "daily_quote": {
+        "message": "每日名言"
+    },
+    "daily_quote_default": {
+        "message": "取得进展的秘诀就是开始行动。"
+    },
+    "daily_quotes": {
+        "message": "每日名言"
+    },
+    "daily_random": {
+        "message": "每日随机图片"
+    },
+    "dark_blue": {
+        "message": "蓝色调"
+    },
+    "dark_burn": {
+        "message": "眼球烧伤"
+    },
+    "dark_catppuccin": {
+        "message": "卡普布辛\n 由天使"
+    },
+    "dark_coral": {
+        "message": "珊瑚\n 通过 超级奇多"
+    },
+    "dark_dark": {
+        "message": "深色"
+    },
+    "dark_darker": {
+        "message": "较暗的"
+    },
+    "dark_default": {
+        "message": "默认设置"
+    },
+    "dark_inspector": {
+        "message": "深色模式检查器"
+    },
+    "dark_inspector_desc": {
+        "message": "这会检查页面中是否有深色模式未覆盖的区域。"
+    },
+    "dark_light": {
+        "message": "亮色的"
+    },
+    "dark_lighter": {
+        "message": "灯光"
+    },
+    "dark_lightmode": {
+        "message": "浅色模式"
+    },
+    "dark_mint": {
+        "message": "分钟数"
+    },
+    "dark_mode": {
+        "message": "暗色模式"
+    },
+    "dark_mode_fixer": {
+        "message": "深色模式修复程序 (测试版)"
+    },
+    "dark_mode_fixer_text": {
+        "message": "这将尝试修复当前页面上的任何暗模式间隙。"
+    },
+    "dark_pink": {
+        "message": "粉色的\n 通过赛德"
+    },
+    "dark_sage": {
+        "message": "萨比亚\n 通过 LivDoesDevStuf"
+    },
+    "dark_unicorn": {
+        "message": "独角兽人"
+    },
+    "dashboard": {
+        "message": "仪表板"
+    },
+    "dashboard_font": {
+        "message": "仪表板字体"
+    },
+    "dashboard_notes": {
+        "message": "仪表板注释"
+    },
+    "date": {
+        "message": "日期"
+    },
+    "delete_confirm": {
+        "message": "删除这个自定义任务？此操作无法撤销。"
+    },
+    "delete_label": {
+        "message": "删除"
+    },
+    "delete_task_title": {
+        "message": "删除这个自定义任务"
+    },
+    "device_dark": {
+        "message": "使用设备暗色模式设置"
+    },
+    "disable_color": {
+        "message": "禁用颜色叠加"
+    },
+    "disable_high_contrast": {
+        "message": "禁用高对比度界面"
+    },
+    "do_you_want_submit": {
+        "message": "你想提交你的主题供他人使用吗？"
+    },
+    "dp_background_0": {
+        "message": "主要背景"
+    },
+    "dp_background_1": {
+        "message": "背景Alt"
+    },
+    "dp_background_2": {
+        "message": "其它背景"
+    },
+    "dp_borders": {
+        "message": "边框"
+    },
+    "dp_links": {
+        "message": "链接"
+    },
+    "dp_sidebar": {
+        "message": "侧边栏"
+    },
+    "dp_sidebar_text": {
+        "message": "侧边栏文本"
+    },
+    "dp_text_0": {
+        "message": "主要文本"
+    },
+    "dp_text_1": {
+        "message": "其它文本"
+    },
+    "dp_text_2": {
+        "message": "文本Alt"
+    },
+    "due": {
+        "message": "到期的"
+    },
+    "due_days": {
+        "message": "<strong>{{COUNT}} 天后</strong>到期"
+    },
+    "due_later": {
+        "message": "<strong>稍后</strong>到期"
+    },
+    "due_one_month": {
+        "message": "<strong>1 个月后</strong>到期"
+    },
+    "due_overdue": {
+        "message": "<strong>已逾期</strong>"
+    },
+    "due_today": {
+        "message": "<strong>今天</strong>到期"
+    },
+    "due_tomorrow": {
+        "message": "<strong>明天</strong>到期"
+    },
+    "due_weeks": {
+        "message": "<strong>{{COUNT}} 周后</strong>到期"
+    },
+    "edit_custom_task": {
+        "message": "编辑此自定义任务"
+    },
+    "edit_dark_mode": {
+        "message": "深色模式"
+    },
+    "enter_multiple": {
+        "message": "(用逗号输入多个)"
+    },
+    "enter_none": {
+        "message": "输入 \"none\" 可隐藏图片和链接。"
+    },
+    "enter_url": {
+        "message": "您的画布网址:"
+    },
+    "equal_height_cards": {
+        "message": "等高"
+    },
+    "error_log": {
+        "message": "错误日志"
+    },
+    "example_reminder_desc": {
+        "message": "此通知会在其他页面弹出，提醒你将在 6 小时内到期的未完成作业。"
+    },
+    "example_reminder_title": {
+        "message": "这是一条示例提醒"
+    },
+    "excused": {
+        "message": "免修"
+    },
+    "experimental": {
+        "message": "这是实验性功能。"
+    },
+    "export_background": {
+        "message": "背景与不透明度"
+    },
+    "export_card_colors": {
+        "message": "卡片颜色"
+    },
+    "export_card_images": {
+        "message": "卡片图片"
+    },
+    "export_card_styles": {
+        "message": "卡片样式"
+    },
+    "export_custom_css": {
+        "message": "自定义 CSS"
+    },
+    "export_custom_font": {
+        "message": "自定义字体"
+    },
+    "export_dark": {
+        "message": "深色模式"
+    },
+    "export_dark_schedule": {
+        "message": "深色模式计划"
+    },
+    "export_gpa": {
+        "message": "GPA 设置"
+    },
+    "export_settings": {
+        "message": "导出设置"
+    },
+    "export_todo": {
+        "message": "待办列表"
+    },
+    "export_toggles": {
+        "message": "开关选项"
+    },
+    "extra_spacing": {
+        "message": "额外卡片间距"
+    },
+    "fake_grade_high": {
+        "message": "高"
+    },
+    "fake_grade_level": {
+        "message": "虚假成绩等级"
+    },
+    "fake_grade_medhigh": {
+        "message": "中高"
+    },
+    "fake_grade_medium": {
+        "message": "中"
+    },
+    "fake_grade_medlow": {
+        "message": "中低"
+    },
+    "fake_progress": {
+        "message": "虚假进度显示："
+    },
+    "fake_rerolled": {
+        "message": "已重新随机生成虚假课程。"
+    },
+    "fake_tasks_completed": {
+        "message": "已完成的虚假任务："
+    },
+    "fake_todo": {
+        "message": "用虚假课程填充待办列表"
+    },
+    "final_assignments": {
+        "message": "项作业"
+    },
+    "final_assignments_plural": {
+        "message": "项作业"
+    },
+    "final_avg": {
+        "message": "— 平均 {{AVG}}% ..."
+    },
+    "final_waiting": {
+        "message": "正在等待成绩数据…"
+    },
+    "final_weight_prompt": {
+        "message": "输入期末考试的权重和目标成绩，看看你期末需要考多少分。"
+    },
+    "fit_image": {
+        "message": "图片适应屏幕"
+    },
+    "fix_dm_btn": {
+        "message": "去"
+    },
+    "fix_dm_text": {
+        "message": "修复程序会自动在这些页面上运行:"
+    },
+    "fix_took": {
+        "message": "修复耗时 {{TIME}}ms（评分：{{RATING}}）"
+    },
+    "flexible_grid": {
+        "message": "弹性网格"
+    },
+    "focus_timer": {
+        "message": "专注计时器"
+    },
+    "full_width": {
+        "message": "仪表板全宽"
+    },
+    "ga_add_assignment": {
+        "message": "+ 添加作业"
+    },
+    "ga_add_group": {
+        "message": "+ 添加分组"
+    },
+    "ga_already_there": {
+        "message": "你已经达到了！"
+    },
+    "ga_calc_desc": {
+        "message": "输入期末考试所占比例和目标总评成绩，查看期末考试需要考多少分。"
+    },
+    "ga_final_weight": {
+        "message": "期末考试权重（占总成绩 %）"
+    },
+    "ga_fit_y": {
+        "message": "自适应 Y 轴"
+    },
+    "ga_heatmap_assignments": {
+        "message": "{{COUNT}} 项作业："
+    },
+    "ga_heatmap_avg": {
+        "message": "平均"
+    },
+    "ga_heatmap_undated": {
+        "message": "{{COUNT}} 项有评分但无截止日期的作业未显示。"
+    },
+    "heatmap_exclude_courses": {
+        "message": "排除课程"
+    },
+    "ga_line_title": {
+        "message": "总评成绩变化"
+    },
+    "ga_new_assignment": {
+        "message": "新作业"
+    },
+    "ga_new_group": {
+        "message": "新分组"
+    },
+    "ga_no_grade_legend": {
+        "message": "无成绩/作业"
+    },
+    "ga_no_graded_short": {
+        "message": "暂无已评分作业"
+    },
+    "ga_not_counted": {
+        "message": "— 不计入 —"
+    },
+    "ga_out_of_reach": {
+        "message": "无法达到"
+    },
+    "ga_pie_title": {
+        "message": "成绩分布（已评分作业）"
+    },
+    "ga_remove_assignment": {
+        "message": "从方案中移除此作业"
+    },
+    "ga_remove_group": {
+        "message": "从方案中移除此分组（其作业在重新分配前不计入）"
+    },
+    "ga_secured": {
+        "message": "✓ 已达成"
+    },
+    "ga_show_goal": {
+        "message": "在概览中显示目标成绩"
+    },
+    "ga_stat_final_exam": {
+        "message": "期末考试"
+    },
+    "ga_stat_graded": {
+        "message": "已评分"
+    },
+    "ga_stat_overall": {
+        "message": "总评成绩"
+    },
+    "ga_stat_trend": {
+        "message": "成绩趋势（最近 5 次）"
+    },
+    "ga_stat_ungraded": {
+        "message": "未评分"
+    },
+    "ga_sub_secured": {
+        "message": "即使期末考 0 分，你的成绩仍有 <b>{{ZERO}}%</b>，高于 <b>{{TARGET}}%</b> 的目标。"
+    },
+    "ga_sub_unreachable": {
+        "message": "即使期末考满分，你的成绩也只能达到 <b>{{PERFECT}}%</b>，低于 <b>{{TARGET}}%</b> 的目标。"
+    },
+    "ga_tab_calc": {
+        "message": "期末计算器"
+    },
+    "ga_tab_heatmap": {
+        "message": "热力图"
+    },
+    "ga_tab_overview": {
+        "message": "概览"
+    },
+    "ga_target_grade": {
+        "message": "目标总评成绩（%）"
+    },
+    "ga_title_assignment_name": {
+        "message": "作业名称"
+    },
+    "ga_title_group_name": {
+        "message": "分组名称"
+    },
+    "ga_title_group_select": {
+        "message": "Imagine-If 作业分组"
+    },
+    "ga_title_group_weight": {
+        "message": "Imagine-If 分组权重（占总成绩 %）"
+    },
+    "ga_title_points": {
+        "message": "Imagine-If 可能得分（分母）"
+    },
+    "ga_title_score": {
+        "message": "Imagine-If 得分（分子）；留空 = 不计入"
+    },
+    "ga_tooltip_assignments": {
+        "message": "{{COUNT}} 项作业"
+    },
+    "ga_you_got_this": {
+        "message": "你能行！"
+    },
+    "ga_you_need": {
+        "message": "期末需要 ≥ {{PCT}}%"
+    },
+    "get_active_cards": {
+        "message": "从仪表板获取活动卡片"
+    },
+    "global_search": {
+        "message": "全局 Canvas 搜索"
+    },
+    "go": {
+        "message": "开始"
+    },
+    "go_to_grades": {
+        "message": "前往成绩"
+    },
+    "gpa_autosave": {
+        "message": "更改会自动保存"
+    },
+    "gpa_calc_cumulative": {
+        "message": "显示累积GPA"
+    },
+    "gpa_calc_weighted": {
+        "message": "显示权重GPA"
+    },
+    "gpa_calculator": {
+        "message": "平均绩点计算器"
+    },
+    "gpa_calculator_title": {
+        "message": "GPA 计算器"
+    },
+    "gpa_click_to_edit": {
+        "message": "点击编辑"
+    },
+    "gpa_col_course": {
+        "message": "课程"
+    },
+    "gpa_col_course_type": {
+        "message": "课程类型"
+    },
+    "gpa_col_credits": {
+        "message": "学分"
+    },
+    "gpa_col_custom_grade": {
+        "message": "自定义成绩"
+    },
+    "gpa_col_grade": {
+        "message": "成绩"
+    },
+    "gpa_courses": {
+        "message": "课程"
+    },
+    "gpa_credits": {
+        "message": "学分"
+    },
+    "gpa_cumulative": {
+        "message": "累计"
+    },
+    "gpa_current": {
+        "message": "当前"
+    },
+    "gpa_dashboard_notes_aria": {
+        "message": "仪表板备注 — 点击编辑"
+    },
+    "gpa_edit_calc": {
+        "message": "编辑计算器"
+    },
+    "gpa_edit_calculator": {
+        "message": "编辑计算器"
+    },
+    "gpa_grade_scale": {
+        "message": "成绩换算"
+    },
+    "gpa_header": {
+        "message": "GPA"
+    },
+    "gpa_min_pct": {
+        "message": "最低 %"
+    },
+    "gpa_pts_abbr": {
+        "message": "分"
+    },
+    "gpa_save_custom": {
+        "message": "保存自定义成绩"
+    },
+    "gpa_save_grade": {
+        "message": "保存自定义成绩"
+    },
+    "gpa_scale_letter": {
+        "message": "仅字母等级"
+    },
+    "gpa_scale_note": {
+        "message": "百分比会获得第一个最低 % 不高于它的行所对应的 GPA。如果你的学校不使用 +/- 等级，请将 +/- 行的最低 % 设为 101，以将其排除在计算之外。"
+    },
+    "gpa_scale_plusminus": {
+        "message": "+/- 换算"
+    },
+    "gpa_settings": {
+        "message": "平均绩点设置"
+    },
+    "gpa_type_away": {
+        "message": "随意输入！"
+    },
+    "gpa_weight_ap": {
+        "message": "AP/IB"
+    },
+    "gpa_weight_dnc": {
+        "message": "不计入"
+    },
+    "gpa_weight_do_not_count": {
+        "message": "不计入"
+    },
+    "gpa_weight_honors": {
+        "message": "荣誉课程"
+    },
+    "gpa_weight_regular": {
+        "message": "普通/大学"
+    },
+    "gpa_weighted": {
+        "message": "加权"
+    },
+    "grade_analytics": {
+        "message": "成绩分析"
+    },
+    "grade_analytics_desc": {
+        "message": "添加帮助你分析成绩的工具。"
+    },
+    "grade_analytics_failed": {
+        "message": "成绩分析加载失败：{{ERROR}}"
+    },
+    "grade_analytics_info_label": {
+        "message": "成绩分析信息"
+    },
+    "grade_analytics_toggle": {
+        "message": "切换成绩分析"
+    },
+    "grade_analytics_zones": {
+        "message": "彩色成绩区间"
+    },
+    "grade_hover": {
+        "message": "仅在悬停时显示"
+    },
+    "grade_settings": {
+        "message": "成绩设置"
+    },
+    "gradient": {
+        "message": "渐变"
+    },
+    "gradient_cards": {
+        "message": "渐变卡"
+    },
+    "gradient_desc": {
+        "message": "选择 2 种颜色以在它们之间创建渐变："
+    },
+    "grid_includes_widgets": {
+        "message": " （包括 {{NAMES}}）"
+    },
+    "grid_warning": {
+        "message": "你的网格可容纳 {{TOTAL}} 张卡片{{TOTAL_S}}，但你有 {{ACTIVE}} 张卡片{{ACTIVE_S}}{{GPA_NOTE}} - 部分卡片可能会被裁切。"
+    },
+    "group_graded": {
+        "message": "已评分"
+    },
+    "group_new": {
+        "message": "新"
+    },
+    "group_seen": {
+        "message": "已查看"
+    },
+    "group_ungraded": {
+        "message": "未评分"
+    },
+    "guideline_1": {
+        "message": "合适的图片/标题"
+    },
+    "guideline_2": {
+        "message": "不大量使用其他主题的组件"
+    },
+    "guideline_3": {
+        "message": "使用独特的自定义深色模式（非预设之一）"
+    },
+    "guideline_4": {
+        "message": "自定义图片不能来自 Discord 或 Gmail。这些图片不是公开的"
+    },
+    "height": {
+        "message": "高度"
+    },
+    "hide": {
+        "message": "隐藏"
+    },
+    "hide_completed": {
+        "message": "隐藏已完成"
+    },
+    "hide_completed_cards": {
+        "message": "隐藏已完成的作业"
+    },
+    "hide_feedback": {
+        "message": "隐藏最近的反馈"
+    },
+    "hide_images_temp": {
+        "message": "临时移除所有课程图片"
+    },
+    "hide_links": {
+        "message": "隐藏链接"
+    },
+    "hide_navbar": {
+        "message": "隐藏导航栏"
+    },
+    "hide_new_canvas": {
+        "message": "隐藏新版 Canvas"
+    },
+    "hide_personal_details": {
+        "message": "隐藏个人信息"
+    },
+    "hide_sequence_footer": {
+        "message": "隐藏上一个/下一个按钮"
+    },
+    "high_contrast_desc": {
+        "message": "如果你的颜色在刷新后变得暗淡！在侧边栏中，点击你的个人资料图标即可在那里关闭它。"
+    },
+    "high_contrast_full": {
+        "message": "如果你的颜色在刷新后变得暗淡，请禁用高对比度界面！在侧边栏中，点击你的个人资料图标即可在那里关闭它。"
+    },
+    "horizontal": {
+        "message": "水平"
+    },
+    "hover_preview": {
+        "message": "悬停预览"
+    },
+    "image_link_error": {
+        "message": "你提供的图片链接似乎无法使用。请右键点击要使用的图片并选择“复制图片地址”，以获取正确的链接。"
+    },
+    "image_roundness": {
+        "message": "图片圆角"
+    },
+    "image_scale": {
+        "message": "图片缩放"
+    },
+    "image_size": {
+        "message": "图片大小"
+    },
+    "image_url": {
+        "message": "图片网址"
+    },
+    "imagine_if": {
+        "message": "假设情景；不是你的实际成绩。"
+    },
+    "imagine_if_badge": {
+        "message": "Imagine-If"
+    },
+    "imagine_if_mode": {
+        "message": "Imagine-If 模式"
+    },
+    "imagine_if_toggle": {
+        "message": "切换 Imagine-If 模式"
+    },
+    "import_hint": {
+        "message": "在此处粘贴导出的主题："
+    },
+    "import_label": {
+        "message": "导入"
+    },
+    "invalid_url": {
+        "message": "你输入的 URL 似乎无效，可能无法使用。"
+    },
+    "join_discord": {
+        "message": "加入我们的 Discord"
+    },
+    "keep_font": {
+        "message": "保留原始作业字体"
+    },
+    "language": {
+        "message": "语言"
+    },
+    "language_auto": {
+        "message": "自动（浏览器）"
+    },
+    "liked": {
+        "message": "已点赞"
+    },
+    "loading": {
+        "message": "加载中…"
+    },
+    "logout": {
+        "message": "退出登录"
+    },
+    "manual_customization": {
+        "message": "手动定制"
+    },
+    "mark_as_seen": {
+        "message": "标记为已查看"
+    },
+    "max_items": {
+        "message": "最大物品数: "
+    },
+    "missing_cards": {
+        "message": "缺少卡片？"
+    },
+    "missing_task_id": {
+        "message": "缺少任务 ID。"
+    },
+    "more_card_styles": {
+        "message": "更多卡片样式"
+    },
+    "more_options": {
+        "message": "更多选择"
+    },
+    "my_saved_themes": {
+        "message": "我保存的主题"
+    },
+    "my_submissions": {
+        "message": "我的提交"
+    },
+    "nasa_apod": {
+        "message": "NASA 每日天文图片"
+    },
+    "nasa_credit": {
+        "message": "图片来源：{{CREDIT}}"
+    },
+    "nasa_date": {
+        "message": "日期：{{DATE}}"
+    },
+    "need_refresh": {
+        "message": "你可能需要刷新页面才能看到某些更改。"
+    },
+    "new_canvas_desc": {
+        "message": "Canvas Refined 在 {{HOST}} 检测到 Canvas 页面。要将它添加到你的 Canvas 列表吗？"
+    },
+    "new_canvas_detected": {
+        "message": "检测到新的 Canvas"
+    },
+    "new_label": {
+        "message": "新"
+    },
+    "next": {
+        "message": "下一个"
+    },
+    "next_timeframe": {
+        "message": "查看下一个时间段"
+    },
+    "no_auto_detect": {
+        "message": "不要自动检测 Canvas"
+    },
+    "no_course_cards": {
+        "message": "未找到课程卡片。请访问你的 Canvas 仪表板以加载课程。"
+    },
+    "no_description": {
+        "message": "暂无描述。"
+    },
+    "no_details": {
+        "message": "未提供详情"
+    },
+    "no_features": {
+        "message": "未找到功能"
+    },
+    "no_graded_assignments": {
+        "message": "尚无带截止日期的已评分作业。"
+    },
+    "no_tasks": {
+        "message": "此时间段内没有任务"
+    },
+    "no_tasks_yet": {
+        "message": "暂无任务"
+    },
+    "no_thanks": {
+        "message": "不用了"
+    },
+    "not_for_request": {
+        "message": "这不是用于请求主题的。我不按请求制作主题。"
+    },
+    "notes_bold": {
+        "message": "粗体（Ctrl/Cmd+B）"
+    },
+    "notes_bullet_list": {
+        "message": "项目符号列表"
+    },
+    "notes_codeblock": {
+        "message": "代码块"
+    },
+    "notes_format": {
+        "message": "格式化笔记"
+    },
+    "notes_h1": {
+        "message": "一级标题"
+    },
+    "notes_h2": {
+        "message": "二级标题"
+    },
+    "notes_hr": {
+        "message": "分隔线"
+    },
+    "notes_inline_code": {
+        "message": "行内代码"
+    },
+    "notes_italic": {
+        "message": "斜体（Ctrl/Cmd+I）"
+    },
+    "notes_link": {
+        "message": "插入链接"
+    },
+    "notes_numbered_list": {
+        "message": "编号列表"
+    },
+    "notes_quote": {
+        "message": "引用"
+    },
+    "notes_strike": {
+        "message": "删除线"
+    },
+    "notes_task_list": {
+        "message": "任务列表"
+    },
+    "nothing_to_copy": {
+        "message": "没有可复制的内容 — 请先选择要导出的内容。"
+    },
+    "old_label": {
+        "message": "旧"
+    },
+    "opacity_only_background": {
+        "message": "仅在使用自定义背景时可用"
+    },
+    "opacity_options": {
+        "message": "不透明度与模糊"
+    },
+    "open_canvas_preview": {
+        "message": "打开 Canvas 页面以预览庆祝效果。"
+    },
+    "optin_desc": {
+        "message": "这会重新显示选择提示，以便你选择其他选项。"
+    },
+    "options_click_extension": {
+        "message": "点击 Canvas Refined"
+    },
+    "options_click_puzzle": {
+        "message": "点击右上角的拼图图标"
+    },
+    "options_contact": {
+        "message": "如果你有任何问题或建议，我的邮箱是 {{EMAIL}}，欢迎反馈！"
+    },
+    "options_how_to_access": {
+        "message": "以后如何打开此菜单："
+    },
+    "options_pin": {
+        "message": "你也可以将它固定以便更快访问"
+    },
+    "options_refresh_note": {
+        "message": "请刷新你的 Canvas 页面以完成设置"
+    },
+    "options_welcome": {
+        "message": "欢迎使用"
+    },
+    "output": {
+        "message": "输出"
+    },
+    "overall": {
+        "message": "总体"
+    },
+    "palette_army": {
+        "message": "军绿"
+    },
+    "palette_base": {
+        "message": "基础"
+    },
+    "palette_berries": {
+        "message": "浆果"
+    },
+    "palette_blues": {
+        "message": "蓝色"
+    },
+    "palette_candy": {
+        "message": "糖果"
+    },
+    "palette_chess": {
+        "message": "棋盘"
+    },
+    "palette_fade": {
+        "message": "淡雅"
+    },
+    "palette_fade2": {
+        "message": "淡雅 2"
+    },
+    "palette_fruit": {
+        "message": "水果"
+    },
+    "palette_greens": {
+        "message": "绿色"
+    },
+    "palette_mesa": {
+        "message": "台地"
+    },
+    "palette_muted": {
+        "message": "柔和"
+    },
+    "palette_night": {
+        "message": "夜晚"
+    },
+    "palette_ocean": {
+        "message": "海洋"
+    },
+    "palette_oranges": {
+        "message": "橙色"
+    },
+    "palette_pastels": {
+        "message": "粉彩"
+    },
+    "palette_pinks": {
+        "message": "粉色"
+    },
+    "palette_popsicle": {
+        "message": "冰棒"
+    },
+    "palette_purples": {
+        "message": "紫色"
+    },
+    "palette_rainbow": {
+        "message": "彩虹"
+    },
+    "palette_reds": {
+        "message": "红色"
+    },
+    "palette_sunset": {
+        "message": "日落"
+    },
+    "palette_watermelon": {
+        "message": "西瓜"
+    },
+    "percent_done": {
+        "message": "{{PERCENT}}%"
+    },
+    "personal_task": {
+        "message": "个人任务"
+    },
+    "personal_task_label": {
+        "message": "个人任务"
+    },
+    "placeholder_example": {
+        "message": "canvas.myschool.edu"
+    },
+    "planner_cleared": {
+        "message": "计划器缓存已清除。"
+    },
+    "popular": {
+        "message": "热门"
+    },
+    "popular_palettes": {
+        "message": "热门调色板"
+    },
+    "pos_below": {
+        "message": "底部"
+    },
+    "pos_cards_end": {
+        "message": "卡片之后"
+    },
+    "pos_cards_start": {
+        "message": "卡片之前"
+    },
+    "pos_top": {
+        "message": "顶部"
+    },
+    "presets": {
+        "message": "预设值"
+    },
+    "prev_timeframe": {
+        "message": "上一个时间段"
+    },
+    "preview": {
+        "message": "预览"
+    },
+    "preview_creator_default": {
+        "message": "鸣谢"
+    },
+    "preview_hidden": {
+        "message": "隐藏个人信息时预览已隐藏。"
+    },
+    "preview_title_default": {
+        "message": "标题"
+    },
+    "preview_unavailable": {
+        "message": "没有可用的预览"
+    },
+    "dev_tools": {
+        "message": "开发者工具"
+    },
+    "progress_done": {
+        "message": "{{DONE}}/{{TOTAL}} 已完成"
+    },
+    "progress_overall": {
+        "message": "{{PCT}}%（{{DONE}}/{{TOTAL}}）"
+    },
+    "progress_pct": {
+        "message": "{{PCT}}%（{{DONE}}/{{TOTAL}}）"
+    },
+    "quiz_dont_show": {
+        "message": "不再显示"
+    },
+    "quiz_dont_show_title": {
+        "message": "永久隐藏此提醒。你仍然可以在扩展弹窗中切换测验安全模式。"
+    },
+    "quiz_enable": {
+        "message": "启用测验安全模式"
+    },
+    "quiz_safe_desc": {
+        "message": "此扩展尚未获得测验的 100% 认可。某些功能可能会干扰测验功能。是否启用测验安全模式以临时禁用视觉更改？"
+    },
+    "quiz_safe_info_label": {
+        "message": "测验安全模式信息"
+    },
+    "quiz_safe_mode": {
+        "message": "测验安全模式"
+    },
+    "quiz_safe_mode_desc": {
+        "message": "在测验页面关闭大多数 Canvas Refined 功能，让你获得默认的 Canvas 测验体验"
+    },
+    "quiz_safe_title": {
+        "message": "Canvas Refined — 测验安全模式"
+    },
+    "radio_gradient": {
+        "message": "渐变"
+    },
+    "radio_image": {
+        "message": "图片"
+    },
+    "radio_sidebar_gradient": {
+        "message": "渐变"
+    },
+    "radio_sidebar_image": {
+        "message": "图片"
+    },
+    "radio_sidebar_solid": {
+        "message": "坚硬的"
+    },
+    "radio_solid": {
+        "message": "纯色"
+    },
+    "reading_grade_data": {
+        "message": "正在读取成绩数据…"
+    },
+    "relative_ago": {
+        "message": "{{TIME}}前"
+    },
+    "relative_due_dates": {
+        "message": "相对到期日"
+    },
+    "relative_in": {
+        "message": "{{TIME}}后"
+    },
+    "remlogo": {
+        "message": "删除侧边栏徽标"
+    },
+    "remove_label": {
+        "message": "移除"
+    },
+    "report_desc": {
+        "message": "如有任何问题、反馈或建议，请加入 Discord 服务器或创建 GitHub issue。谢谢！"
+    },
+    "report_issue": {
+        "message": "报告问题"
+    },
+    "reroll_classes": {
+        "message": "重新随机课程"
+    },
+    "reset_default": {
+        "message": "恢复默认"
+    },
+    "reset_optin": {
+        "message": "重置选择状态"
+    },
+    "revert": {
+        "message": "还原"
+    },
+    "revert_desc": {
+        "message": "这会将自定义设置还原到你首次安装扩展时的状态。"
+    },
+    "revert_original": {
+        "message": "还原为原始"
+    },
+    "revert_theme": {
+        "message": "还原主题更改"
+    },
+    "row_spacing": {
+        "message": "行间距"
+    },
+    "save": {
+        "message": "保存"
+    },
+    "save_current": {
+        "message": "+ 保存当前"
+    },
+    "search": {
+        "message": "搜索"
+    },
+    "search_building": {
+        "message": "正在建立搜索索引…"
+    },
+    "search_canvas": {
+        "message": "搜索 Canvas"
+    },
+    "search_canvas_ctrlk": {
+        "message": "搜索 Canvas (Ctrl+K)"
+    },
+    "search_close": {
+        "message": "关闭"
+    },
+    "search_close_title": {
+        "message": "关闭 (Esc)"
+    },
+    "search_features": {
+        "message": "搜索功能..."
+    },
+    "search_hint": {
+        "message": "开始输入以搜索你的模块和作业。\n@课程名（例如 @chemistry chapter 5 test）可搜索特定课程或其主页\n@grades 打开课程的成绩页面\n@home 跳转到你的仪表板"
+    },
+    "search_navigate": {
+        "message": "导航"
+    },
+    "search_new_tab": {
+        "message": "新标签页"
+    },
+    "search_no_course": {
+        "message": "没有匹配 \"{{QUERY}}\" 的课程。"
+    },
+    "search_no_courses_grades": {
+        "message": "未找到可打开成绩的课程。"
+    },
+    "search_no_match": {
+        "message": "未找到 \"{{QUERY}}\" 的结果。"
+    },
+    "search_no_match_hint": {
+        "message": "未找到 \"{{QUERY}}\" 的结果。请尝试其他关键词。"
+    },
+    "search_no_modules": {
+        "message": "未找到模块或作业..."
+    },
+    "search_no_modules_found": {
+        "message": "未找到模块或作业。如果你的课程仍在加载，请稍后重新打开搜索。"
+    },
+    "search_no_results": {
+        "message": "未找到 \"{{QUERY}}\" 的结果。"
+    },
+    "search_open": {
+        "message": "打开"
+    },
+    "search_placeholder": {
+        "message": "搜索模块和作业…（@课程名 可按课程筛选）"
+    },
+    "search_start_typing": {
+        "message": "开始输入以搜索..."
+    },
+    "search_title": {
+        "message": "搜索 Canvas (Ctrl+K)"
+    },
+    "search_toggle": {
+        "message": "切换搜索"
+    },
+    "search_type_assignment": {
+        "message": "作业"
+    },
+    "search_type_discussion": {
+        "message": "讨论"
+    },
+    "search_type_external_tool": {
+        "message": "外部工具"
+    },
+    "search_type_file": {
+        "message": "文件"
+    },
+    "search_type_home": {
+        "message": "主页"
+    },
+    "search_type_item": {
+        "message": "项目"
+    },
+    "search_type_link": {
+        "message": "链接"
+    },
+    "search_type_page": {
+        "message": "页面"
+    },
+    "search_type_quiz": {
+        "message": "测验"
+    },
+    "search_type_section": {
+        "message": "章节"
+    },
+    "selected_count": {
+        "message": "已选择 {{COUNT}} 项"
+    },
+    "show": {
+        "message": "显示"
+    },
+    "show_links": {
+        "message": "显示链接"
+    },
+    "show_past_due": {
+        "message": "显示逾期"
+    },
+    "showing_submissions": {
+        "message": "显示你最近 3 次提交"
+    },
+    "sidebar_blur": {
+        "message": "侧边栏模糊"
+    },
+    "sidebar_opacity": {
+        "message": "侧边栏不透明度"
+    },
+    "sidebar_opacity_auto": {
+        "message": "在开启更好侧边栏时应用于它，否则应用于普通侧边栏。"
+    },
+    "sidebar_scale": {
+        "message": "侧边栏缩放： "
+    },
+    "single_color": {
+        "message": "单色"
+    },
+    "single_color_desc": {
+        "message": "选择一种颜色，将所有卡片设为该颜色："
+    },
+    "storage_cache_label": {
+        "message": "计划器缓存："
+    },
+    "storage_dump": {
+        "message": "存储转储"
+    },
+    "storage_dump_desc": {
+        "message": "这会检索扩展保存的所有设置。"
+    },
+    "storage_empty": {
+        "message": "空"
+    },
+    "storage_items": {
+        "message": " （{{COUNT}} 项）"
+    },
+    "storage_limit_error": {
+        "message": "输入的数据超出存储限制，因此无法保存。请尝试使用更短的链接，并确保按“复制图片地址”而不是“复制图片”来获取链接。"
+    },
+    "storage_other_label": {
+        "message": "其他本地数据："
+    },
+    "storage_quota_100kb": {
+        "message": " / 100 KB 配额"
+    },
+    "storage_quota_label": {
+        "message": "本地配额："
+    },
+    "storage_reset": {
+        "message": "重置存储"
+    },
+    "storage_reset_desc": {
+        "message": "这会将所有设置重置为默认值。之后你需要刷新页面。"
+    },
+    "storage_sync_label": {
+        "message": "设置（同步）："
+    },
+    "storage_unknown": {
+        "message": "未知"
+    },
+    "storage_usage": {
+        "message": "存储使用情况"
+    },
+    "styles": {
+        "message": "样式"
+    },
+    "submission_confirmation": {
+        "message": "提交确认"
+    },
+    "submission_includes": {
+        "message": "你的提交将包含你当前的主题设置，例如卡片图片、深色模式和字体。"
+    },
+    "submit": {
+        "message": "提交"
+    },
+    "submit_your_theme": {
+        "message": "提交你的主题"
+    },
+    "submitted_return_title": {
+        "message": "已提交至 Canvas — 点击会将其送回任务（仅本地）"
+    },
+    "tab_icons": {
+        "message": "颜色编码选项卡图标"
+    },
+    "task_created": {
+        "message": "任务已创建。"
+    },
+    "task_date_invalid": {
+        "message": "任务日期无效。"
+    },
+    "task_date_time_required": {
+        "message": "请同时选择日期和时间。"
+    },
+    "task_details_placeholder": {
+        "message": "详情（可选）"
+    },
+    "task_link_placeholder": {
+        "message": "链接（可选）"
+    },
+    "task_title_placeholder": {
+        "message": "任务标题"
+    },
+    "task_title_required": {
+        "message": "任务标题为必填项。"
+    },
+    "task_updated": {
+        "message": "任务已更新。"
+    },
+    "tasks_header": {
+        "message": "任务"
+    },
+    "text_colors": {
+        "message": "文本"
+    },
+    "theme_browser_settings": {
+        "message": "主题浏览器设置"
+    },
+    "theme_guidelines": {
+        "message": "确保你的主题遵循以下准则："
+    },
+    "theme_number": {
+        "message": "主题 {{NUM}}"
+    },
+    "theme_optin_reset": {
+        "message": "主题浏览器选择已重置"
+    },
+    "themes": {
+        "message": "主题"
+    },
+    "time_day": {
+        "message": "天"
+    },
+    "time_day_plural": {
+        "message": "天"
+    },
+    "time_day_short": {
+        "message": "天"
+    },
+    "time_hour": {
+        "message": "小时"
+    },
+    "time_hour_plural": {
+        "message": "小时"
+    },
+    "time_hour_short": {
+        "message": "小时"
+    },
+    "time_min": {
+        "message": "分钟"
+    },
+    "time_min_short": {
+        "message": "分钟"
+    },
+    "time_week": {
+        "message": "周"
+    },
+    "time_week_plural": {
+        "message": "周"
+    },
+    "time_week_short": {
+        "message": "周"
+    },
+    "timeframe_next": {
+        "message": "查看下一个时间段"
+    },
+    "timeframe_prev": {
+        "message": "上一个时间段"
+    },
+    "timer_custom": {
+        "message": "自定义"
+    },
+    "timer_hours": {
+        "message": "小时"
+    },
+    "timer_minutes": {
+        "message": "分钟"
+    },
+    "timer_pause": {
+        "message": "暂停"
+    },
+    "timer_reset": {
+        "message": "重置"
+    },
+    "timer_seconds": {
+        "message": "秒"
+    },
+    "timer_set": {
+        "message": "设置"
+    },
+    "timer_start": {
+        "message": "开始"
+    },
+    "timer_unit_h": {
+        "message": "小时"
+    },
+    "timer_unit_m": {
+        "message": "分"
+    },
+    "timer_unit_min": {
+        "message": "分钟"
+    },
+    "timer_unit_s": {
+        "message": "秒"
+    },
+    "title_hint": {
+        "message": "尽量保持简短且相关，以便人们可以搜索到它。"
+    },
+    "title_label": {
+        "message": "标题"
+    },
+    "toast_close": {
+        "message": "关闭"
+    },
+    "todo_alternate_colors": {
+        "message": "交替颜色"
+    },
+    "todo_click_to_edit": {
+        "message": "点击编辑"
+    },
+    "todo_close_title": {
+        "message": "关闭"
+    },
+    "todo_cross_off": {
+        "message": "划掉"
+    },
+    "todo_date_format": {
+        "message": "{{DATE}} {{TIME}}（{{RELATIVE}}）"
+    },
+    "todo_delete": {
+        "message": "删除"
+    },
+    "todo_delete_confirm": {
+        "message": "删除这个自定义任务？此操作无法撤销。"
+    },
+    "todo_delete_title": {
+        "message": "删除这个自定义任务"
+    },
+    "todo_full_height": {
+        "message": "强制全高"
+    },
+    "todo_graded": {
+        "message": "已评分"
+    },
+    "todo_hide_feedback": {
+        "message": "隐藏最近反馈"
+    },
+    "todo_hide_read": {
+        "message": "隐藏已读公告"
+    },
+    "todo_ignore_colors": {
+        "message": "忽略卡片颜色"
+    },
+    "todo_label": {
+        "message": "标签："
+    },
+    "todo_label_placeholder": {
+        "message": "标签"
+    },
+    "todo_none": {
+        "message": "无"
+    },
+    "todo_progress_display": {
+        "message": "进度显示"
+    },
+    "todo_progress_line": {
+        "message": "单行"
+    },
+    "todo_progress_lines": {
+        "message": "多行"
+    },
+    "todo_progress_none": {
+        "message": "无"
+    },
+    "todo_progress_rainbow": {
+        "message": "彩虹"
+    },
+    "todo_progress_rings": {
+        "message": "圆环"
+    },
+    "todo_remind": {
+        "message": "待办事项提醒"
+    },
+    "todo_remove": {
+        "message": "移除"
+    },
+    "todo_remove_icons": {
+        "message": "移除图标"
+    },
+    "todo_separate_scrollbar": {
+        "message": "独立滚动条"
+    },
+    "todo_show_scores": {
+        "message": "显示作业成绩"
+    },
+    "todo_task_details": {
+        "message": "详情（可选）"
+    },
+    "todo_task_link": {
+        "message": "链接（可选）"
+    },
+    "todo_task_title": {
+        "message": "任务标题"
+    },
+    "todo_timeframe": {
+        "message": "时间范围"
+    },
+    "todo_timeframe_1week": {
+        "message": "1 周"
+    },
+    "todo_timeframe_2month": {
+        "message": "2 个月"
+    },
+    "todo_timeframe_2week": {
+        "message": "2 周"
+    },
+    "todo_timeframe_all": {
+        "message": "全部时间"
+    },
+    "todo_timeframe_custom": {
+        "message": "自定义"
+    },
+    "todo_timeframe_days_ago": {
+        "message": "天前"
+    },
+    "todo_timeframe_days_future": {
+        "message": "天后"
+    },
+    "todo_timeframe_from": {
+        "message": "从"
+    },
+    "todo_timeframe_month": {
+        "message": "1 个月"
+    },
+    "todo_timeframe_to": {
+        "message": "到"
+    },
+    "todo_type_away": {
+        "message": "随意输入！"
+    },
+    "top_bottom_height": {
+        "message": "顶部 / 底部高度"
+    },
+    "trending": {
+        "message": "热门"
+    },
+    "updates": {
+        "message": "更新"
+    },
+    "useddmm": {
+        "message": "使用日/毫米"
+    },
+    "user_made_themes": {
+        "message": "用户制作的主题"
+    },
+    "vertical": {
+        "message": "垂直"
+    },
+    "view_less": {
+        "message": "查看更少"
+    },
+    "view_more": {
+        "message": "查看更多"
+    },
+    "view_more_count": {
+        "message": "查看更多（{{COUNT}}）"
+    },
+    "view_on_github": {
+        "message": "在 GitHub 上查看"
+    },
+    "widget_order_title": {
+        "message": "小组件顺序"
+    },
+    "widget_position": {
+        "message": "位置"
+    },
+    "widget_short_breathing": {
+        "message": "呼吸"
+    },
+    "widget_short_focus": {
+        "message": "专注"
+    },
+    "widget_short_gpa": {
+        "message": "GPA"
+    },
+    "widget_short_notes": {
+        "message": "备注"
+    },
+    "widget_short_quotes": {
+        "message": "名言"
+    },
+    "widgets": {
+        "message": "小组件"
+    },
+    "gpa_show_on_hover": {
+        "message": "Show on hover"
+    }
 }

@@ -1,22 +1,52 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'better_todo', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'grade_analytics', 'hide_personal_details'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'quick_links', 'heatmap', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'notes_suppressor', 'grade_analytics', 'hide_personal_details', 'hide_sidebar'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
 	"hide_course_images",
 	"todo_hide_feedback",
 	"todo_hide_read",
 	"todo_full_height",
-    "todo_confetti",
-    "todo_progress_rings",
+	"todo_celebrations",
+	"todo_celebration_amount",
+	"todo_progress_rings",
     "todo_timeframe",
+    "todo_timeframe_custom_past",
+    "todo_timeframe_custom_future",
 	"device_dark",
 	"relative_dues",
 	"card_overdues",
 	"hide_completed_cards",
 	"equal_height_cards",
-	// "todo_overdues",
 	"gpa_calc_prepend",
+	"gpa_calc_position",
 	"gpa_calc_cumulative",
 	"gpa_calc_weighted",
+	"gpa_calc_show_on_hover",
+	"gpa_calc_align",
+	"focus_timer_position",
+	"focus_timer_preset_1",
+	"focus_timer_preset_2",
+	"focus_timer_preset_3",
+	"breathing_position",
+	"breathing_preset_1",
+	"breathing_preset_2",
+	"breathing_preset_3",
+	"daily_quotes_position",
+	"quick_links_position",
+	"heatmap_position",
+	"dashboard_notes_position",
+	"widget_top_height",
+	"widget_bottom_height",
+	"widget_row_height",
+	"dashboard_notes_height",
+	"gpa_calc_height",
+	"focus_timer_height",
+	"breathing_height",
+	"daily_quotes_height",
+	"quick_links_height",
+	"heatmap_height",
+	"heatmap_excluded_courses",
+	"quick_links_font_size",
+	"quick_links_icon_size",
 	"auto_dark",
 	"auto_dark_start",
 	"auto_dark_end",
@@ -25,6 +55,8 @@ const syncedSubOptions = [
 	"assignment_date_format",
 	"todo_hr24",
 	"todo_separate_scrollbar",
+	"todo_sections_persist",
+	"todo_hide_filter_notice",
 	"todo_alternate_colors",
 	"todo_ignore_card_colors",
 	"todo_remove_icons",
@@ -32,7 +64,6 @@ const syncedSubOptions = [
 	"grade_hover",
 	"card_letter",
 	"auto_detect_disabled",
-	// "hide_completed",
 	"num_todo_items",
 	"hover_preview",
 	"customCardStyles",
@@ -43,9 +74,7 @@ const syncedSubOptions = [
 	"cardWidth",
 	"cardHeight",
 	"cardPadding",
-	// Card Grid settings — included here so theme exports, saved themes and
-	// previous-theme snapshots actually read them from storage (getExport
-	// drops keys it wasn't given).
+	// Card Grid settings: included so theme exports/snapshots pick them up.
 	"card_grid",
 	"card_grid_columns",
 	"card_grid_rows",
@@ -67,20 +96,154 @@ const syncedSubOptions = [
     "card_blur",
 ];
 const localSwitches = [];
+const LANGUAGES = {
+    "auto": "Auto (browser)",
+    "en": "English",
+    "de": "Deutsch",
+    "es": "Español",
+    "fr": "Français",
+    "it": "Italiano",
+    "ja": "日本語",
+    "pt_PT": "Português",
+    "ru": "Русский",
+    "sv": "Svenska",
+    "zh_CN": "中文 (简体)",
+    "zh_TW": "中文 (繁體)"
+};
+const LANGUAGE_STORAGE_KEY = "selected_locale";
+let overrideMessages = null;
 
-// Theme export only carries visual settings, never personal productivity data.
+async function loadOverrideMessages(locale) {
+    if (!locale || locale === "auto") { overrideMessages = null; return; }
+    try {
+        const url = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("fetch failed");
+        overrideMessages = await res.json();
+        // monkey-patch chrome.i18n so any later getMsg respects override
+        if (!chrome.i18n._origGetMessage) {
+            chrome.i18n._origGetMessage = chrome.i18n.getMessage.bind(chrome.i18n);
+            chrome.i18n.getMessage = (key) => getMsg(key) || chrome.i18n._origGetMessage(key) || "";
+        }
+    } catch (e) {
+        console.warn("Failed to load locale", locale, e);
+        overrideMessages = null;
+    }
+}
+
+function getMsg(key, fallback) {
+    if (overrideMessages && overrideMessages[key] && overrideMessages[key].message) {
+        return overrideMessages[key].message;
+    }
+    const orig = chrome.i18n._origGetMessage || chrome.i18n.getMessage.bind(chrome.i18n);
+    const m = orig(key);
+    if (m) return m;
+    return fallback !== undefined ? fallback : "";
+}
+
+const PLACEHOLDER_RE = /\{\{([A-Z][A-Z0-9_]*)\}\}/g;
+
+function replaceCountPlaceholder(msg, count, token) {
+    if (!msg) return msg;
+    const name = token || "COUNT";
+    return String(msg).split("{{" + name + "}}").join(String(count));
+}
+
+function fillPlaceholders(msg, values) {
+    if (!msg) return msg;
+    return String(msg).replace(PLACEHOLDER_RE, (m, name) => (
+        values && Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : m
+    ));
+}
+
+function applyI18nOverride() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        const msg = getMsg(key);
+        if (!msg) return;
+        // textContent would destroy interactive or non-text children (the font
+        // dropdown's arrow and its "keep font" checkbox live inside a label).
+        if (el.querySelector("input,select,button,a,img,picture,svg,iframe,video,canvas")) return;
+        el.textContent = msg;
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const msg = getMsg(el.dataset.i18nPlaceholder);
+        if (msg) el.placeholder = msg;
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const msg = getMsg(el.dataset.i18nTitle);
+        if (msg) el.title = msg;
+    });
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+        const msg = getMsg(el.dataset.i18nAriaLabel);
+        if (msg) el.setAttribute("aria-label", msg);
+    });
+}
+
+async function initLanguageSelector() {
+    const sel = document.getElementById("language-select");
+    if (!sel) return;
+    // populate
+    for (const [code, label] of Object.entries(LANGUAGES)) {
+        const opt = document.createElement("option");
+        opt.value = code;
+        opt.textContent = getMsg(code === "auto" ? "language_auto" : code, label) || label;
+        // keep native label for non-auto, but allow translation for auto
+        if (code !== "auto") opt.textContent = label;
+        else opt.textContent = getMsg("language_auto") || label;
+        sel.appendChild(opt);
+    }
+    const stored = await chrome.storage.local.get(LANGUAGE_STORAGE_KEY);
+    const current = stored[LANGUAGE_STORAGE_KEY] || "auto";
+    sel.value = current;
+    await loadOverrideMessages(current);
+    if (current !== "auto") applyI18nOverride();
+    sel.addEventListener("change", async () => {
+        const next = sel.value;
+        await chrome.storage.local.set({ [LANGUAGE_STORAGE_KEY]: next });
+        await loadOverrideMessages(next);
+        applyI18nOverride();
+        // also update dynamic celebration labels etc that use getMsg
+        const label = document.getElementById("todo_celebrations_label");
+        if (label) {
+            // trigger rerender via storage event or just reload popup text
+            // easiest: reload popup
+            location.reload();
+        } else {
+            location.reload();
+        }
+    });
+}
+
+
+// Theme export carries visual settings only, never productivity data.
 const exportDarkSchedule = ["auto_dark", "auto_dark_start", "auto_dark_end", "device_dark"];
 const exportCardColorToggles = ["gradient_cards", "disable_color_overlay"];
 const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "imageRoundness", "cardSpacing", "cardWidth", "cardHeight", "cardPadding", "card_grid", "card_grid_columns", "card_grid_rows", "card_grid_column_gap", "card_grid_row_gap", "card_grid_center_rows", "card_grid_flex"];
-const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "tab_icons"];
+const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "hide_sidebar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
-const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_confetti", "todo_progress_rings", "todo_timeframe", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview"];
-const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted"];
-const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
-// Master "On/off toggles" = every visual toggle (no GPA, no dark-mode schedule,
-// no personal productivity features). Includes the former separate Layout and
-// Sidebar groups, plus Grade Analytics and its colored-zones sub-toggle.
-const exportToggles = ["dark_mode", "quiz_safe_mode", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
+const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview", "todo_sections_persist", "todo_hide_filter_notice"];
+const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover", "gpa_calc_align"];
+// Widgets tab: every dashboard widget's layout (toggles, positions, heights, row
+// heights, order, timer presets, quick link sizing). Personal data (quick link items,
+// heatmap course filters) stays out of themes. GPA grade-scale math lives in exportGpa.
+const exportWidgets = [
+	"dashboard_notes", "dashboard_notes_position", "dashboard_notes_height",
+	"gpa_calc", "gpa_calc_position", "gpa_calc_height", "gpa_calc_align",
+	"focus_timer", "focus_timer_position", "focus_timer_height",
+	"focus_timer_preset_1", "focus_timer_preset_2", "focus_timer_preset_3",
+	"breathing", "breathing_position", "breathing_height",
+	"breathing_preset_1", "breathing_preset_2", "breathing_preset_3",
+	"daily_quotes", "daily_quotes_position", "daily_quotes_height",
+	"quick_links", "quick_links_position", "quick_links_height",
+	"quick_links_font_size", "quick_links_icon_size",
+	"heatmap", "heatmap_position", "heatmap_height",
+	"widget_top_height", "widget_bottom_height", "widget_row_height",
+	"widget_order",
+];
+const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "customBackgroundColor", "customBackgroundColorTransparent", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
+// Master "On/off toggles": every visual toggle, minus GPA/schedule/productivity.
+const exportToggles = ["dark_mode", "quiz_safe_mode", "notes_suppressor", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
 const fontsDropdownStateKey = "fonts_dropdown_open";
 
 const apiurl = "none";
@@ -125,6 +288,44 @@ const defaultOptions = {
         "dashboard_notes": false,
         "dashboard_notes_text": "",
         "dashboard_notes_mode": "edit",
+        "dashboard_notes_position": "top",
+        "gpa_calc_position": "cards_end",
+        "gpa_calc_align": "left",
+        "gpa_calc_show_on_hover": false,
+        "focus_timer": false,
+        "focus_timer_position": "cards_end",
+        "focus_timer_preset_1": { "h": 0, "m": 15, "s": 0 },
+        "focus_timer_preset_2": { "h": 0, "m": 25, "s": 0 },
+        "focus_timer_preset_3": { "h": 0, "m": 45, "s": 0 },
+        "breathing": false,
+        "breathing_position": "cards_end",
+        "breathing_preset_1": { "h": 0, "m": 3, "s": 0 },
+        "breathing_preset_2": { "h": 0, "m": 5, "s": 0 },
+        "breathing_preset_3": { "h": 0, "m": 10, "s": 0 },
+        "daily_quotes": false,
+        "daily_quotes_position": "top",
+        "quick_links": false,
+        "quick_links_position": "cards_end",
+        "heatmap": false,
+        "heatmap_position": "below",
+        // Row height in px (0 = auto) for the Top and Bottom widget rows.
+        // widget_row_height is the pre-split shared value (legacy only).
+        "widget_top_height": 0,
+        "widget_bottom_height": 0,
+        "widget_row_height": 0,
+        "dashboard_notes_height": 0,
+        "gpa_calc_height": 0,
+        "focus_timer_height": 0,
+        "breathing_height": 0,
+        "daily_quotes_height": 0,
+        "quick_links_height": 0,
+        "heatmap_height": 0,
+        // Courses left out of the heatmap widget (course ids as strings).
+        "heatmap_excluded_courses": [],
+        // Quick Links tile label font size in px.
+        "quick_links_font_size": 12,
+        // Quick Links tile icon box size in px.
+        "quick_links_icon_size": 36,
         "better_todo": true,
         "better_sidebar": false,
         "sidebar_scale": 100,
@@ -136,6 +337,15 @@ const defaultOptions = {
         "card_opacity": 80,
         "card_blur": 8,
         "todo_hr24": false,
+        "todo_sections_persist": false,
+        "todo_hide_filter_notice": false,
+        "anon_grade_level": "high",
+        "anon_grade_seed": 0,
+        "anon_fake_todo": false,
+        "anon_fake_completed": 2,
+        "anon_progress_enabled": false,
+        "anon_progress_done": 12,
+        "anon_progress_total": 18,
 		"todo_separate_scrollbar": false,
 		"todo_alternate_colors": false,
 		"todo_ignore_card_colors": false,
@@ -151,7 +361,6 @@ const defaultOptions = {
         "custom_assignments_overflow": ["custom_assignments"],
         "grade_hover": false,
         "card_letter": true,
-        // "hide_completed": false,
         "num_todo_items": 10,
         "custom_font": { "link": "", "family": "" },
         "custom_font_skip_p": false,
@@ -173,7 +382,6 @@ const defaultOptions = {
             "D-": { "cutoff": 60, "gpa": .7 },
             "F": { "cutoff": 0, "gpa": 0 }
         },
-        // "todo_overdues": false,
         "card_overdues": false,
         "hide_completed_cards": false,
         "relative_dues": false,
@@ -181,8 +389,10 @@ const defaultOptions = {
         "hide_new_canvas": true,
         "hide_sequence_footer": false,
         "hide_navbar": false,
+        "hide_sidebar": false,
         "grade_analytics_zones": false,
         "quiz_safe_mode": false,
+        "notes_suppressor": true,
         "dark_mode_fix": [],
         "assignment_states": {},
         "tab_icons": false,
@@ -190,11 +400,14 @@ const defaultOptions = {
 		"todo_full_height": false,
         "todo_progress_rings": "rings",
 		"todo_timeframe": "all",
+		"todo_timeframe_custom_past": 7,
+		"todo_timeframe_custom_future": 14,
 		"todo_more_expanded": false,
-		"todo_confetti": true,
+		"todo_celebrations_enabled": true,
+		"todo_celebrations": ["confetti"],
+		"todo_celebration_amount": "normal",
         "device_dark": false,
         "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
-        // "show_updates": false,
         "card_method_date": false,
         "card_method_dashboard": true,
         "card_limit": 25,
@@ -214,6 +427,8 @@ const defaultOptions = {
         "card_grid_flex": false,
         "customCardStyles": false,
         "customBackgroundLink": "",
+        "customBackgroundColor": "",
+        "customBackgroundColorTransparent": false,
         "customBackgroundScale": 100,
         "customBackgroundDaily": false,
         "customBackgroundNasaDaily": false,
@@ -224,23 +439,24 @@ const defaultOptions = {
 
 sendFromPopup("getCards");
 
-// refresh the cards if new ones were just recieved
 chrome.storage.onChanged.addListener((changes) => {
     if (changes["custom_cards"]) {
         if (Object.keys(changes["custom_cards"].oldValue || {}).length !== Object.keys(changes["custom_cards"].newValue || {}).length) {
             displayAdvancedCards();
         }
-        // Hidden-card edits from the card menu change how many cells the
-        // grid preview should mark as filled.
+        updateCardGridPreview();
+        scheduleGridPreviewFollowUp();
+        return;
+    }
+    // Widget toggles/positions decide which widgets take grid cells in the preview.
+    if (cardGridWidgetKeys().some(key => changes[key])) {
         updateCardGridPreview();
         scheduleGridPreviewFollowUp();
     }
 });
 
-// The live card count is read from the dashboard tab's DOM, which applies
-// display:none for a newly hidden card in its own storage listener — a race
-// against the popup's. One debounced follow-up render re-syncs the preview
-// (and the cut-off warning) right after a card edit settles.
+// Live count comes from the dashboard DOM, which races the popup's storage
+// listener; one debounced follow-up render re-syncs the preview.
 let gridPreviewFollowUpTimer = null;
 function scheduleGridPreviewFollowUp() {
     if (gridPreviewFollowUpTimer) clearTimeout(gridPreviewFollowUpTimer);
@@ -263,7 +479,6 @@ function displayDarkModeFixUrls() {
     output.textContent = "";
     chrome.storage.sync.get("dark_mode_fix", sync => {
         sync["dark_mode_fix"].forEach(url => {
-            //let div = makeElement("div", "customization-button", output, url);
             let div = makeElement("div", output, { "className": "customization-button", "textContent": url });
             div.classList.add("fixed-url");
             let btn = makeElement("button", div, { "className": "dd", "textContent": "x" });
@@ -283,15 +498,29 @@ function displayDarkModeFixUrls() {
 
 document.addEventListener("DOMContentLoaded", setup);
 
-// toggle visibility of the Discord/GitHub social links (persists locally)
 document.addEventListener("DOMContentLoaded", () => {
     const toggle = document.getElementById("social-toggle");
     const buttons = document.querySelector(".social-buttons");
+    const rateLink = document.getElementById("rate-link");
     if (!toggle || !buttons) return;
+
+    // One review link, pointed at whichever store this browser installs from.
+    if (rateLink) {
+        const isFirefox = /firefox/i.test(navigator.userAgent);
+        const key = isFirefox ? "rate_us_firefox" : "rate_us_chrome";
+        rateLink.href = isFirefox
+            ? "https://addons.mozilla.org/en-US/firefox/addon/canvas-refined/reviews/"
+            : "https://chromewebstore.google.com/detail/canvas-refined/ihienfbdfdamhmhhiokjnjmpjgbenedg/reviews";
+        rateLink.dataset.i18n = key;
+        const msg = getMsg(key);
+        if (msg) rateLink.textContent = msg;
+    }
+
     const KEY = "hide_socials";
     const render = (hidden) => {
         buttons.classList.toggle("hidden", hidden);
-        toggle.textContent = chrome.i18n.getMessage(hidden ? "show_links" : "hide_links");
+        if (rateLink) rateLink.classList.toggle("hidden", hidden);
+        toggle.textContent = getMsg(hidden ? "show_links" : "hide_links") || (hidden ? "Show links" : "Hide links");
     };
     chrome.storage.local.get(KEY, (res) => render(!!res[KEY]));
     const flip = () => chrome.storage.local.get(KEY, (res) => {
@@ -336,14 +565,13 @@ function setupSidebarScaleSlider(initial) {
     });
 }
 
-// Generic range slider (0..max). `key` is the storage id, `valueId` is the
-// <span> that shows the live value, `resetId` is the small reset button that
-// restores `defaultValue`. `unit` is appended to the displayed value ("%" or "px").
-function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, unit, initial) {
+// Slider min..max; `unit` is appended to the displayed value ("%" / "px").
+function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, unit, initial, min) {
     const el = document.querySelector("#" + sliderId);
     const out = document.querySelector("#" + valueId);
     if (!el || !out) return;
-    const value = Math.max(0, Math.min(max, parseInt(initial)));
+    const floor = Number.isFinite(parseInt(min, 10)) ? parseInt(min, 10) : 0;
+    const value = Math.max(floor, Math.min(max, parseInt(initial)));
     if (isNaN(value)) return;
     el.value = value;
     out.textContent = `${value}${unit}`;
@@ -354,7 +582,7 @@ function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, un
     const reset = document.querySelector("#" + resetId);
     if (reset) {
         reset.addEventListener("click", () => {
-            const v = Math.max(0, Math.min(max, parseInt(defaultValue)));
+            const v = Math.max(floor, Math.min(max, parseInt(defaultValue)));
             el.value = v;
             out.textContent = `${v}${unit}`;
             chrome.storage.sync.set({ [key]: v });
@@ -362,8 +590,7 @@ function setupRangeSlider(key, sliderId, valueId, resetId, defaultValue, max, un
     }
 }
 
-// Progress display dropdown. Normalizes legacy boolean values:
-// true -> rings, false/undefined -> none.
+// Legacy booleans: true -> rings, false/undefined -> none.
 function setupProgressRingsSelect(initial) {
     const el = document.querySelector("#todo_progress_rings");
     if (!el) return;
@@ -378,8 +605,169 @@ function setupProgressRingsSelect(initial) {
     });
 }
 
-// Collapsible "More options" section for the Better Todo List sub-options.
-// Persists whether it's expanded so the popup reopens in the same state.
+// `todo_celebrations`: multi-select effect ids, one picked at random per
+// completion. `todo_celebration_amount` scales intensity.
+const CELEBRATION_TYPES = [
+    { id: "confetti", label: getMsg("celebration_confetti") || "Confetti" },
+    { id: "fireworks", label: getMsg("celebration_fireworks") || "Fireworks" },
+    { id: "sparkles", label: getMsg("celebration_sparkles") || "Sparkle burst" },
+    { id: "hearts", label: getMsg("celebration_hearts") || "Rising hearts" },
+    { id: "rocket", label: getMsg("celebration_rocket") || "Rocket" },
+];
+
+// Accepts the legacy todo_confetti boolean and drops unknown ids.
+function resolveCelebrations(raw, legacyConfetti) {
+    if (Array.isArray(raw)) {
+        return [...new Set(raw.filter(id => CELEBRATION_TYPES.some(t => t.id === id)))];
+    }
+    return legacyConfetti === false ? [] : ["confetti"];
+}
+
+// Labels are rendered through innerHTML, so escape user-provided text (course names).
+function escapePopupHtml(value) {
+    return String(value === null || value === undefined ? "" : value)
+        .replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Checkbox dropdown ("select all that apply") shared by the todo celebrations and the
+// heatmap's course filter. Options are { id, label } pairs; every change is handed back
+// through onChange so the caller decides what to persist.
+function setupPopupMultiSelect({ wrapId, btnId, menuId, labelId, emptyText, onChange }) {
+    const wrap = document.getElementById(wrapId);
+    const btn = document.getElementById(btnId);
+    const menu = document.getElementById(menuId);
+    const label = document.getElementById(labelId);
+    if (!wrap || !btn || !menu || !label) return null;
+
+    const noneLabel = getMsg("celebration_none") || "None";
+    let items = [];
+    let selected = [];
+
+    const updateLabel = () => {
+        if (selected.length === 0) label.textContent = noneLabel;
+        else if (selected.length === 1) {
+            const item = items.find(i => i.id === selected[0]);
+            label.textContent = item ? item.label : noneLabel;
+        } else {
+            label.textContent = replaceCountPlaceholder(getMsg("selected_count") || "{{COUNT}} selected", selected.length);
+        }
+    };
+    const renderMenu = () => {
+        if (!items.length) {
+            menu.innerHTML = `<p class="cr-multiselect-empty">${escapePopupHtml(emptyText || noneLabel)}</p>`;
+            return;
+        }
+        menu.innerHTML = items.map(item => `
+            <label class="cr-multiselect-option">
+                <input type="checkbox" value="${escapePopupHtml(item.id)}" ${selected.includes(item.id) ? "checked" : ""}>
+                <span>${escapePopupHtml(item.label)}</span>
+            </label>
+        `).join("");
+        menu.querySelectorAll("input").forEach(input => {
+            input.addEventListener("change", () => {
+                if (input.checked) {
+                    if (!selected.includes(input.value)) selected.push(input.value);
+                } else {
+                    selected = selected.filter(id => id !== input.value);
+                }
+                updateLabel();
+                if (onChange) onChange(selected.slice());
+            });
+        });
+    };
+
+    btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const open = wrap.classList.toggle("open");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        // The box sits low in the popup; flip the menu up when it would overflow.
+        if (open) {
+            const mr = menu.getBoundingClientRect();
+            if (mr.bottom > window.innerHeight - 8) wrap.classList.add("flip-up");
+            else wrap.classList.remove("flip-up");
+        }
+    });
+    menu.addEventListener("click", (e) => e.stopPropagation());
+    document.addEventListener("click", (e) => {
+        if (!wrap.contains(e.target)) {
+            wrap.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+        }
+    });
+
+    return {
+        // Replacing the option list keeps any still-valid selection.
+        setItems(list) {
+            items = Array.isArray(list) ? list : [];
+            const ids = new Set(items.map(i => i.id));
+            selected = selected.filter(id => ids.has(id));
+            renderMenu();
+            updateLabel();
+        },
+        setSelected(ids) {
+            const valid = new Set(items.map(i => i.id));
+            selected = (Array.isArray(ids) ? ids : []).map(String).filter(id => !valid.size || valid.has(id));
+            renderMenu();
+            updateLabel();
+        },
+        getSelected() { return selected.slice(); },
+        close() {
+            wrap.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+        },
+    };
+}
+
+function setupCelebrationsSelect(initial) {
+    const control = setupPopupMultiSelect({
+        wrapId: "todo_celebrations",
+        btnId: "todo_celebrations_btn",
+        menuId: "todo_celebrations_menu",
+        labelId: "todo_celebrations_label",
+        onChange: (selected) => chrome.storage.sync.set({ "todo_celebrations": selected }),
+    });
+    if (!control) return;
+    control.setItems(CELEBRATION_TYPES.map(t => ({ id: t.id, label: (getMsg("celebration_" + t.id) || t.label) })));
+    // Legacy key: the special handler only passes the new one.
+    chrome.storage.sync.get("todo_confetti", legacy => {
+        control.setSelected(resolveCelebrations(initial, legacy && legacy["todo_confetti"]));
+    });
+}
+
+function setupCelebrationAmount(initial) {
+    const el = document.getElementById("todo_celebration_amount");
+    if (!el) return;
+    const allowed = ["less", "normal", "more", "crazy"];
+    el.value = allowed.includes(initial) ? initial : "normal";
+    el.addEventListener("change", function () {
+        chrome.storage.sync.set({ "todo_celebration_amount": this.value });
+    });
+}
+
+// Asks Canvas tabs to run the effect on a fake task; no reply means no tab open.
+function setupCelebrationPreview() {
+    const btn = document.getElementById("celebration-preview-btn");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+        const res = await sendFromPopup("previewCelebration");
+        if (!res || res.ok !== true) {
+            displayAlert(true, getMsg("open_canvas_preview") || "Open a Canvas page to preview celebrations.");
+        }
+    });
+}
+
+function toggleCelebrationOptionsVisibility(enabled) {
+    document.querySelectorAll("#celebrations-container .celebration-sub").forEach(row => {
+        row.style.display = enabled ? "" : "none";
+    });
+}
+
+function toggleCelebrationsVisibility(betterTodoOn) {
+    const el = document.getElementById("celebrations-container");
+    if (el) el.style.display = betterTodoOn ? "" : "none";
+}
+
+// Expanded state is persisted so the popup reopens the same way.
 function setupTodoMoreOptions(initial) {
     const wrap = document.getElementById("todo-more-options");
     const toggle = document.getElementById("todo-more-toggle");
@@ -403,16 +791,83 @@ function setupTodoMoreOptions(initial) {
     });
 }
 
-// Timeframe dropdown for the upcoming Tasks tab. Persisted so the Better Todo
-// List remembers the selected range across sessions.
+// Persisted across sessions; "custom" reveals the two day inputs.
+function setTimeframeCustomVisibility(value) {
+    const wrap = document.getElementById("todo_timeframe_custom");
+    if (wrap) wrap.classList.toggle("visible", value === "custom");
+}
+
 function setupTimeframeSelect(initial) {
     const el = document.querySelector("#todo_timeframe");
     if (!el) return;
-    const allowed = ["all", "1week", "2week", "month", "2month"];
+    const allowed = ["all", "1week", "2week", "month", "2month", "custom"];
     let value = allowed.includes(initial) ? initial : "all";
     el.value = value;
+    setTimeframeCustomVisibility(value);
     el.addEventListener("change", function () {
         chrome.storage.sync.set({ "todo_timeframe": this.value });
+        setTimeframeCustomVisibility(this.value);
+    });
+}
+
+// Clamped to 0-365 so a typo can't hide every task.
+function setupCustomTimeframeInput(key, initial, fallback) {
+    const el = document.querySelector("#" + key);
+    if (!el) return;
+    const clamp = (v) => Math.max(0, Math.min(365, v));
+    const parsed = parseInt(initial);
+    el.value = isNaN(parsed) ? fallback : clamp(parsed);
+    el.addEventListener("change", function () {
+        const v = clamp(parseInt(this.value));
+        this.value = v;
+        chrome.storage.sync.set({ [key]: v });
+    });
+}
+
+function setupAnonGradeSelect(initial) {
+    const el = document.querySelector("#anon_grade_preset");
+    if (!el) return;
+    const allowed = ["high", "medhigh", "med", "medlow"];
+    el.value = allowed.includes(initial) ? initial : "high";
+    el.addEventListener("change", function () {
+        chrome.storage.sync.set({ "anon_grade_level": this.value });
+    });
+}
+
+function setupAnonFakeCompleted(initial) {
+    const el = document.querySelector("#anon_fake_completed");
+    if (!el) return;
+    const clamp = (v) => Math.max(0, Math.min(7, v));
+    const parsed = parseInt(initial);
+    el.value = isNaN(parsed) ? 2 : clamp(parsed);
+    el.addEventListener("change", function () {
+        const v = clamp(parseInt(this.value));
+        this.value = v;
+        chrome.storage.sync.set({ "anon_fake_completed": v });
+    });
+}
+
+function toggleAnonFakeCompletedVisibility(show) {
+    const wrap = document.getElementById("anon_fake_completed_wrap");
+    if (wrap) wrap.style.display = show ? "flex" : "none";
+}
+
+function setupAnonProgressInput(key, initial, isDone) {
+    const el = document.querySelector("#" + key);
+    if (!el) return;
+    const clamp = (v) => {
+        if (isDone) {
+            const total = parseInt(document.querySelector("#anon_progress_total")?.value) || 18;
+            return Math.max(0, Math.min(999, Math.min(total, v)));
+        }
+        return Math.max(1, Math.min(999, v));
+    };
+    const parsed = parseInt(initial);
+    el.value = isNaN(parsed) ? (isDone ? 12 : 18) : clamp(parsed);
+    el.addEventListener("change", function () {
+        const v = clamp(parseInt(this.value));
+        this.value = v;
+        chrome.storage.sync.set({ [key]: v });
     });
 }
 
@@ -447,13 +902,8 @@ function setupDashboardMethod(initial) {
     });
 }
 
-// Custom card style inputs (image size, roundness, spacing, width, height,
-// padding) fire `chrome.storage.sync.set` on every keystroke/arrow press.
-// chrome.storage.sync caps writes at MAX_WRITE_OPERATIONS_PER_MINUTE (120/min),
-// so rapidly adjusting these number inputs used to hit the quota and surface
-// a "quota exceeded" error. Coalesce rapid edits into a single write with a
-// short (200ms) debounce — barely noticeable to the user, but stays well
-// under the write quota even when dragging arrows or typing fast.
+// Debounced 200ms: storage.sync allows only 120 writes/min per key set.
+// Applied to every card-style number input.
 const cardStyleSetTimers = {};
 function debouncedCardStyleSet(key, value, delay = 200) {
     if (cardStyleSetTimers[key]) clearTimeout(cardStyleSetTimers[key]);
@@ -518,38 +968,28 @@ function setupCardPaddingInput(initial) {
     });
 }
 
-// Card Grid (dashboard card layout). The toggle lives in menu.checkboxes;
-// this wires the reveal of the options panel plus the squares preview and
-// the "some cards may be cut off" warning.
+// Wires the options panel reveal, squares preview and cut-off warning.
 function setupCardGrid(initial) {
     const panel = document.getElementById("card-grid-options");
     if (!panel) return;
     panel.style.display = initial === true ? "" : "none";
-    // Defer the first render: setupCardGrid runs inside the special-options
-    // loop BEFORE the column/row/gap inputs get their stored values
-    // (setupCardGridCountInput), so an immediate render would use the HTML
-    // defaults and look wrong until a value changes. A 0ms timeout runs once
-    // the whole synchronous setup pass is done.
+    // Deferred: a synchronous render would run before the count inputs get their
+    // stored values and would preview the HTML defaults.
     setTimeout(() => updateCardGridPreview(), 0);
     document.getElementById("card_grid").addEventListener("change", (e) => {
         panel.style.display = e.target.checked ? "" : "none";
         if (e.target.checked) updateCardGridPreview();
     });
-    // Row-centering only affects the preview's last-row offset.
     document.getElementById("card_grid_center_rows").addEventListener("change", () => {
         updateCardGridPreview();
     });
-    // Flexible grid changes what the warning means (cards wrap instead of
-    // being cut off), so re-render it on toggle.
     document.getElementById("card_grid_flex")?.addEventListener("change", () => {
         updateCardGridPreview();
     });
 }
 
-// Grid count/spacing inputs for the card grid. Update the preview
-// immediately on every keystroke, but debounce the storage write like the
-// other card style number inputs. `fallback` is used when the field is
-// cleared/invalid — 1 for counts, 0 for spacings.
+// Preview updates on every keystroke, the storage write is debounced.
+// `fallback` applies when the field is cleared or invalid.
 function setupCardGridCountInput(id, initial, fallback = 1) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -561,18 +1001,46 @@ function setupCardGridCountInput(id, initial, fallback = 1) {
     });
 }
 
-// Fallback count of dashboard cards that will occupy grid cells, used only
-// when no dashboard tab answered the live "getGridCardCount" query (e.g. the
-// options page was opened outside a Canvas window). Every stored card that
-// isn't hidden via the card menu would be shown, so it doesn't take up a
-// grid slot. Treated as truthy so legacy string values ("true") count too.
+// Used when no dashboard tab answered "getGridCardCount" (popup opened
+// outside Canvas). Treated as truthy so legacy "true" strings count.
 function countActiveDashboardCards(cards) {
     return Object.values(cards || {}).filter(c => c && typeof c === "object" && !c.hidden && !c.hide).length;
 }
 
-// Squares preview: one square per grid cell. Filled squares = cells covered
-// by an active (non-hidden) card; dim squares = empty cells. Warns when the
-// grid can't fit every active card.
+// Card cells are blue, in-grid widgets yellow, empty slots grey.
+const CARD_GRID_CARD_COLOR = "#56Caf0";
+const CARD_GRID_WIDGET_COLOR = "#f5c451";
+const CARD_GRID_EMPTY_COLOR = "#3c3c3c";
+
+// Storage keys the preview needs to know which widgets land inside the grid.
+function cardGridWidgetKeys() {
+    return WIDGET_LIST
+        .reduce((keys, w) => keys.concat([w.id, w.id + "_position"]), [])
+        .concat(["gpa_calc_prepend", "widget_order"]);
+}
+
+// Enabled widgets rendered before/after the cards, split by anchor. They take grid
+// cells just like course cards (see content.js cardGridWidgets).
+function cardGridWidgetCells(sync) {
+    const saved = Array.isArray(sync.widget_order && sync.widget_order.cards) ? sync.widget_order.cards : [];
+    const savedIds = saved.map(e => (typeof e === "string" ? e : (e && e.id) || null)).filter(Boolean);
+    const rank = id => {
+        const i = savedIds.indexOf(id);
+        return i === -1 ? savedIds.length : i;
+    };
+    const cells = { start: [], end: [] };
+    WIDGET_LIST.forEach(w => {
+        if (sync[w.id] !== true) return;
+        const pos = widgetPosFromSync(w.id, sync);
+        if (pos === "cards_start") cells.start.push(w.id);
+        else if (pos === "cards_end") cells.end.push(w.id);
+    });
+    // The saved order wins; WIDGET_LIST order breaks ties (sort is stable).
+    cells.start.sort((a, b) => rank(a) - rank(b));
+    cells.end.sort((a, b) => rank(a) - rank(b));
+    return cells;
+}
+
 function updateCardGridPreview() {
     const panel = document.getElementById("card-grid-options");
     const preview = document.getElementById("card-grid-preview");
@@ -581,46 +1049,58 @@ function updateCardGridPreview() {
     const rows = Math.max(1, parseInt(document.getElementById("card_grid_rows").value, 10) || 1);
     const colGapRaw = parseInt(document.getElementById("card_grid_column_gap").value, 10);
     const colGap = Math.max(0, Math.min(10, isNaN(colGapRaw) ? 12 : colGapRaw));
-    const total = cols * rows;
     preview.style.gridTemplateColumns = `repeat(${cols}, 18px)`;
-    // Echo the chosen column spacing in the preview (clamped so extreme
-    // values don't blow the layout out).
+    // Clamped so extreme values don't blow the layout out.
     preview.style.columnGap = `${colGap}px`;
     preview.style.rowGap = "4px";
     preview.innerHTML = "";
-    chrome.storage.sync.get(["custom_cards", "gpa_calc"], async s => {
-        // Grid may have been toggled off while the storage read was pending.
+    chrome.storage.sync.get(["custom_cards", "card_grid_flex"].concat(cardGridWidgetKeys()), async s => {
         if (document.getElementById("card-grid-options").style.display === "none") return;
-        // Prefer the live count from an open dashboard tab: the page itself
-        // knows exactly which cards are rendered and not display:none (hidden
-        // via the card menu), so the preview/warning can't drift out of sync
-        // with stored data (stale entries, other-domain cards, legacy values).
-        // Fall back to the storage-derived count when no dashboard answers.
+        // Widgets in the cards area occupy cells too, so they count against the grid.
+        const widgetCells = cardGridWidgetCells(s);
+        const widgetIds = widgetCells.start.concat(widgetCells.end);
+        const gpaInGrid = widgetIds.includes("gpa_calc");
+        // Same row budget as content.js cardGridMetrics: nothing may rely on implicit
+        // rows (the grid clips those), so each in-grid widget gets rows of its own.
+        // The flexible grid grows rows on its own, so there it is the plain rows x cols.
+        const spareRows = s.card_grid_flex === true
+            ? 0
+            : Math.ceil((widgetIds.filter(id => id !== "gpa_calc").length + (gpaInGrid ? 1 : 0)) / cols) + (gpaInGrid ? 1 : 0);
+        const total = cols * (rows + spareRows);
+        // Prefer the live count from a dashboard tab; it knows which cards are
+        // actually rendered. Falls back to the storage-derived count.
         const live = await sendFromPopup("getGridCardCount");
-        let active = (live && typeof live.count === "number" && live.count >= 0)
+        const cardCount = (live && typeof live.count === "number" && live.count >= 0)
             ? live.count
             : countActiveDashboardCards(s.custom_cards);
-        // The GPA calculator card occupies one card slot in the grid too.
-        if (s.gpa_calc === true) active += 1;
-        // Uneven-row centering: the real grid shifts the last partial row in
-        // half-card steps (double sub-columns — see centerUnevenGridRows).
-        // In the preview that's a margin on every square of that row; since
-        // the squares shift into space where no neighbor sits, nothing
-        // overlaps.
+        // Auto-placement order: before-card widgets, the cards, after-card widgets.
+        const cells = widgetCells.start.map(id => ({ kind: "widget", id }))
+            .concat(Array.from({ length: cardCount }, () => ({ kind: "card" })),
+                widgetCells.end.map(id => ({ kind: "widget", id })));
+        const active = cells.length;
+        // The flexible grid grows rows on its own, so nothing is cut off there: draw
+        // every cell. The fixed grid clips, so it stays within its template.
+        const cellCount = s.card_grid_flex === true ? Math.max(total, active) : total;
         let lastRowStart = -1, offset = 0;
         if (document.getElementById("card_grid_center_rows")?.checked === true && active > 0 && active < total) {
             lastRowStart = Math.floor((active - 1) / cols) * cols;
             const inLastRow = active - lastRowStart;
             if (inLastRow < cols) offset = cols - inLastRow;
         }
-        for (let i = 0; i < total; i++) {
+        for (let i = 0; i < cellCount; i++) {
             const inShiftedRow = lastRowStart !== -1 && i >= lastRowStart;
-            // The shifted row's empty cells aren't rendered — the row's filled
-            // squares carry the offset, so the empties would misrepresent it.
             if (inShiftedRow && i >= active) continue;
+            const cell = cells[i];
             const square = document.createElement("div");
             square.style.cssText = "width:18px;height:18px;border-radius:4px;box-sizing:border-box;";
-            square.style.background = i < active ? "#56Caf0" : "#3c3c3c";
+            if (!cell) {
+                square.style.background = CARD_GRID_EMPTY_COLOR;
+            } else if (cell.kind === "widget") {
+                square.style.background = CARD_GRID_WIDGET_COLOR;
+                square.title = widgetFullName(cell.id);
+            } else {
+                square.style.background = CARD_GRID_CARD_COLOR;
+            }
             if (inShiftedRow && offset > 0) {
                 square.style.marginLeft = `${offset * (18 + colGap) / 2}px`;
             }
@@ -628,14 +1108,13 @@ function updateCardGridPreview() {
         }
         const warning = document.getElementById("card-grid-warning");
         if (warning) {
-            if (s.card_grid_flex === true) {
-                // Flexible grid never clips: cards wrap into new rows as the
-                // window narrows, so the cut-off warning doesn't apply.
-                warning.textContent = "Flexible grid is on - cards wrap to fit narrow windows instead of being cut off.";
-                warning.style.display = "block";
-            } else if (active > total) {
-                const gpaNote = s.gpa_calc === true ? " (including the GPA calculator)" : "";
-                warning.textContent = `\u26A0 Your grid holds ${total} card${total === 1 ? "" : "s"} but you have ${active} card${active === 1 ? "" : "s"}${gpaNote} - some cards may be cut off.`;
+            // The flexible grid wraps instead of clipping, so only the fixed grid can
+            // overflow its template.
+            if (s.card_grid_flex !== true && active > total) {
+                const widgetNote = widgetIds.length
+                    ? (getMsg("grid_includes_widgets", " (including {{NAMES}})")).replace("{{NAMES}}", widgetIds.map(widgetFullName).join(", "))
+                    : "";
+                warning.textContent = "\u26A0 " + (getMsg("grid_warning") || "Your grid holds {{TOTAL}} card{{TOTAL_S}} but you have {{ACTIVE}} card{{ACTIVE_S}}{{GPA_NOTE}} - some cards may be cut off.").replace("{{TOTAL}}", total).replace("{{TOTAL_S}}", total === 1 ? "" : "s").replace("{{ACTIVE}}", active).replace("{{ACTIVE_S}}", active === 1 ? "" : "s").replace("{{GPA_NOTE}}", widgetNote);
                 warning.style.display = "block";
             } else {
                 warning.style.display = "none";
@@ -653,6 +1132,73 @@ function setupCustomBackgroundLink(initial) {
         renderBackgroundPresetSelection();
         toggleOpacityOptions();
     });
+}
+
+// Accepts "#1e2a38", "1e2a38" or "#abc"; anything else means "no colour".
+function normalizeBackgroundColor(value) {
+    const hex = String(value || "").trim().replace(/^#/, "");
+    if (/^[0-9a-f]{3}$/i.test(hex)) return "#" + hex.split("").map(c => c + c).join("").toLowerCase();
+    if (/^[0-9a-f]{6}$/i.test(hex)) return "#" + hex.toLowerCase();
+    return "";
+}
+
+function currentBackgroundColor() {
+    return normalizeBackgroundColor(document.querySelector("#customBackgroundColorHex")?.value || "");
+}
+
+// Solid colour area: hex field + picker, either one sets it. The colour outranks the
+// presets and the image URL, so those are greyed out while it is set.
+function setupCustomBackgroundColor(initial) {
+    const hexEl = document.querySelector("#customBackgroundColorHex");
+    const picker = document.querySelector("#customBackgroundColorPicker");
+    const clearBtn = document.querySelector("#clearCustomBackgroundColor");
+    const transparency = document.querySelector("#customBackgroundColorTransparent");
+    if (!hexEl || !picker) return;
+
+    const initialColor = normalizeBackgroundColor(initial);
+    if (initialColor) {
+        hexEl.value = initialColor;
+        picker.value = initialColor;
+    }
+    chrome.storage.sync.get("customBackgroundColorTransparent", sync => {
+        if (transparency) transparency.checked = sync.customBackgroundColorTransparent === true;
+    });
+
+    const commit = (raw, { writeField = false } = {}) => {
+        const color = normalizeBackgroundColor(raw);
+        if (color) {
+            if (writeField || !hexEl.value) hexEl.value = color;
+            picker.value = color;
+        } else if (writeField) {
+            hexEl.value = "";
+        }
+        chrome.storage.sync.set({ "customBackgroundColor": color });
+        syncSolidBackgroundState();
+        toggleOpacityOptions();
+    };
+
+    hexEl.addEventListener("input", (e) => commit(e.target.value));
+    hexEl.addEventListener("blur", (e) => commit(e.target.value, { writeField: true }));
+    picker.addEventListener("input", (e) => commit(e.target.value, { writeField: true }));
+    clearBtn?.addEventListener("click", () => {
+        hexEl.value = "";
+        chrome.storage.sync.set({ "customBackgroundColor": "" });
+        syncSolidBackgroundState();
+        toggleOpacityOptions();
+    });
+    transparency?.addEventListener("change", function () {
+        chrome.storage.sync.set({ "customBackgroundColorTransparent": this.checked });
+    });
+    syncSolidBackgroundState();
+}
+
+// Grey the presets out while a colour is set, and only offer transparency with one.
+function syncSolidBackgroundState() {
+    const hasColor = currentBackgroundColor() !== "";
+    const presets = document.getElementById("background-presets");
+    if (presets) presets.classList.toggle("is-disabled", hasColor);
+    const transparencyRow = document.getElementById("customBackgroundColorTransparencyRow");
+    if (transparencyRow) transparencyRow.style.display = hasColor ? "flex" : "none";
 }
 
 function setupCustomBackgroundScale(initial) {
@@ -688,7 +1234,7 @@ function syncCustomBackgroundDailyState(isDaily) {
         manualControls.style.filter = isDaily ? "grayscale(1)" : "none";
     }
 
-    ["customBackgroundLink", "customBackgroundScale", "clearCustomBackground"].forEach(id => {
+    ["customBackgroundLink", "customBackgroundScale", "clearCustomBackground", "customBackgroundColorHex", "customBackgroundColorPicker", "clearCustomBackgroundColor"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = isDaily;
     });
@@ -701,6 +1247,7 @@ function syncCustomBackgroundDailyState(isDaily) {
 }
 
 function renderBackgroundPresetSelection() {
+    syncSolidBackgroundState();
     const isDaily = document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true;
     const dailyPreset = isDaily ? getDailyBackgroundPreset() : null;
     const currentLink = isDaily ? (dailyPreset?.url || "") : (document.querySelector("#customBackgroundLink")?.value || "");
@@ -745,20 +1292,22 @@ function toggleBetterSidebarSubOptions(betterSidebarOn) {
     if (remlogoEl) {
         remlogoEl.style.display = betterSidebarOn ? "none" : "flex";
     }
+    // "Hide sidebar" only makes sense without the replacement rail.
+    const hideSidebarRow = document.getElementById("hide_sidebar_row");
+    if (hideSidebarRow) {
+        hideSidebarRow.style.display = betterSidebarOn ? "none" : "flex";
+    }
     const sidebarScaleEl = document.getElementById("sidebarScaleSub");
     if (sidebarScaleEl) {
         sidebarScaleEl.style.display = betterSidebarOn ? "block" : "none";
     }
 }
 
-// The opacity sliders live under "Edit dark mode" but only make sense (and
-// only show) when a custom background is active, since transparency without a
-// background image behind these surfaces would just expose the dark body.
 function customBackgroundActive() {
     const link = document.querySelector("#customBackgroundLink");
     const daily = document.querySelector("#customBackgroundDaily");
     const nasa = document.querySelector("#customBackgroundNasaDaily");
-    return (link && link.value.trim() !== "") || (daily && daily.checked) || (nasa && nasa.checked);
+    return (currentBackgroundColor() !== "") || (link && link.value.trim() !== "") || (daily && daily.checked) || (nasa && nasa.checked);
 }
 
 function toggleOpacityOptions() {
@@ -767,8 +1316,6 @@ function toggleOpacityOptions() {
     toggleCardTransparencyOptions();
 }
 
-// Card opacity/blur sliders only show when both a custom background is active
-// (so #opacity-options is visible) and the "Card transparency" checkbox is on.
 function toggleCardTransparencyOptions() {
     const on = document.getElementById("card_transparency")?.checked === true;
     const opacityRow = document.getElementById("card-transparency-options");
@@ -777,16 +1324,377 @@ function toggleCardTransparencyOptions() {
     if (blurRow) blurRow.style.display = on ? "" : "none";
 }
 
-// "Alternate colors" (Better Todo List sub-option) only makes sense in light
-// mode, so hide its checkbox whenever dark mode is on.
 function toggleAlternateColorsVisibility(darkModeOn) {
     const wrap = document.getElementById("todo_alternate_colors_wrap");
     if (wrap) wrap.style.display = darkModeOn ? "none" : "";
 }
 
-// Hide a toggle's sub-options when it's off; auto_dark only hides its time clocks.
+const WIDGET_LIST = [
+    { id: "dashboard_notes", nameKey: "dashboard_notes", shortKey: "widget_short_notes" },
+    { id: "gpa_calc", nameKey: "gpa_calculator", shortKey: "widget_short_gpa" },
+    { id: "focus_timer", nameKey: "focus_timer", shortKey: "widget_short_focus" },
+    { id: "breathing", nameKey: "breathing_breaks", shortKey: "widget_short_breathing" },
+    { id: "daily_quotes", nameKey: "daily_quotes", shortKey: "widget_short_quotes" },
+    { id: "quick_links", nameKey: "quick_links", shortKey: "widget_short_links" },
+    { id: "heatmap", nameKey: "heatmap_widget", shortKey: "widget_short_heatmap" },
+];
+
+function widgetPosFromSync(id, sync) {
+    if (id === "dashboard_notes") return sync.dashboard_notes_position || "top";
+    if (id === "gpa_calc") {
+        if (sync.gpa_calc_position !== undefined) return sync.gpa_calc_position;
+        return sync.gpa_calc_prepend === true ? "cards_start" : "cards_end";
+    }
+    return sync[id + "_position"] || (defaultOptions.sync[id + "_position"]) || "top";
+}
+
+const WIDGET_ORDER_MIN_PCT = 15;
+const WIDGET_ORDER_SNAP_PCT = 4;
+
+// {id, size} entries; legacy plain-id arrays mean equal sizes.
+function parseWidgetOrderEntries(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.map(e => {
+        if (typeof e === "string") return { id: e, size: null };
+        if (e && typeof e === "object" && e.id) {
+            const n = Number(e.size);
+            return { id: e.id, size: Number.isFinite(n) && n > 0 ? n : null };
+        }
+        return null;
+    }).filter(e => e && WIDGET_LIST.some(w => w.id === e.id));
+}
+
+function widgetDisplayName(id) {
+    const info = WIDGET_LIST.find(w => w.id === id);
+    const msg = info && getMsg(info.shortKey || info.nameKey);
+    if (msg) return msg;
+    return id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Unabbreviated name, for sentences (the preview warning lists widget names).
+function widgetFullName(id) {
+    const info = WIDGET_LIST.find(w => w.id === id);
+    const msg = info && getMsg(info.nameKey);
+    return msg || widgetDisplayName(id);
+}
+
+let refreshWidgetOrder = null;
+
+function setupWidgetOrder() {
+    const wrap = document.getElementById("widget-order-container");
+    if (!wrap) return;
+
+    const KEYS = WIDGET_LIST.map(w => w.id)
+        .concat(WIDGET_LIST.map(w => w.id + "_position"))
+        .concat(["gpa_calc_prepend", "widget_order"]);
+
+    const AREAS = ["top", "cards_start", "cards_end", "below"];
+
+    const render = (sync) => {
+        const areas = { top: [], cards_start: [], cards_end: [], below: [] };
+        WIDGET_LIST.forEach(w => {
+            if (sync[w.id] !== true) return;
+            const pos = widgetPosFromSync(w.id, sync);
+            if (areas[pos]) areas[pos].push(w.id);
+        });
+        let any = false;
+        AREAS.forEach(area => {
+            const strip = document.getElementById("widget-order-" + area);
+            const wrapEl = document.getElementById("widget-order-" + area + "-wrap");
+            if (!strip || !wrapEl) return;
+            strip.dataset.area = area;
+            const ids = areas[area];
+            if (ids.length < 2) {
+                wrapEl.style.display = "none";
+                return;
+            }
+            any = true;
+            wrapEl.style.display = "";
+            // Saved order first, then newcomers; before/after share one "cards" order.
+            const saved = (sync.widget_order || {})[area.startsWith("cards") ? "cards" : area];
+            const entries = parseWidgetOrderEntries(saved).filter(e => ids.includes(e.id));
+            ids.forEach(id => { if (!entries.some(e => e.id === id)) entries.push({ id, size: null }); });
+            renderWidgetOrderStrip(strip, entries);
+        });
+        wrap.style.display = any ? "" : "none";
+    };
+
+    AREAS.forEach(area => {
+        const strip = document.getElementById("widget-order-" + area);
+        if (!strip) return;
+        strip.addEventListener("dragover", e => {
+            e.preventDefault();
+            const dragging = strip.querySelector(".wos-item.dragging");
+            if (!dragging) return;
+            let ref = null;
+            for (const el of strip.querySelectorAll(".wos-item:not(.dragging)")) {
+                const box = el.getBoundingClientRect();
+                if (e.clientX < box.left + box.width / 2) { ref = el; break; }
+            }
+            if (ref) strip.insertBefore(dragging, ref);
+            else strip.appendChild(dragging);
+        });
+        strip.addEventListener("drop", e => e.preventDefault());
+    });
+
+    const refresh = () => chrome.storage.sync.get(KEYS, render);
+    refreshWidgetOrder = refresh;
+
+    refresh();
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "sync") return;
+        if (KEYS.some(k => changes[k])) refresh();
+    });
+}
+
+function renderWidgetOrderStrip(strip, entries) {
+    strip.textContent = "";
+    const resizable = !strip.dataset.area.startsWith("cards");
+    // Normalized to exactly 100%: an unsized widget borrows the average, which
+    // otherwise made 50/50 + a third widget overflow the strip.
+    let sizes = entries.map(e => (Number.isFinite(e.size) && e.size > 0) ? e.size : null);
+    const known = sizes.filter(v => v !== null);
+    const fallback = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 100 / Math.max(1, entries.length);
+    sizes = sizes.map(v => v === null ? fallback : v);
+    const total = sizes.reduce((a, b) => a + b, 0) || 1;
+    const pcts = sizes.map(v => v / total * 100);
+    entries.forEach((entry, i) => {
+        if (resizable && i > 0) {
+            const divider = document.createElement("div");
+            divider.className = "wos-divider";
+            wireWidgetOrderDivider(strip, divider);
+            strip.appendChild(divider);
+        }
+        const item = document.createElement("div");
+        item.className = "wos-item";
+        item.dataset.id = entry.id;
+        if (resizable) {
+            item.dataset.size = pcts[i];
+            item.style.flexBasis = pcts[i] + "%";
+        }
+        item.draggable = true;
+        item.textContent = widgetDisplayName(entry.id);
+        item.addEventListener("dragstart", e => {
+            item.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+            try { e.dataTransfer.setData("text/plain", entry.id); } catch (_) {}
+        });
+        item.addEventListener("dragend", () => {
+            item.classList.remove("dragging");
+            saveWidgetStrip(strip.dataset.area, strip);
+        });
+        strip.appendChild(item);
+    });
+}
+
+function wireWidgetOrderDivider(strip, divider) {
+    divider.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        try { divider.setPointerCapture(e.pointerId); } catch (_) {}
+        const idx = [...strip.children].indexOf(divider);
+        const prev = strip.children[idx - 1];
+        const next = strip.children[idx + 1];
+        if (!prev || !next || !prev.classList.contains("wos-item") || !next.classList.contains("wos-item")) return;
+        const stripWidth = strip.getBoundingClientRect().width || 1;
+        const startX = e.clientX;
+        const p0 = parseFloat(prev.dataset.size);
+        const n0 = parseFloat(next.dataset.size);
+        const onMove = ev => {
+            const dx = (ev.clientX - startX) / stripWidth * 100;
+            let p = p0 + dx;
+            p = Math.max(WIDGET_ORDER_MIN_PCT, Math.min(p, p0 + n0 - WIDGET_ORDER_MIN_PCT));
+            const count = strip.querySelectorAll(".wos-item").length;
+            for (let k = 1; k < count; k++) {
+                const mark = k / count * 100;
+                if (Math.abs(p - mark) < WIDGET_ORDER_SNAP_PCT) { p = mark; break; }
+            }
+            const n = p0 + n0 - p;
+            prev.dataset.size = p;
+            next.dataset.size = n;
+            prev.style.flexBasis = p + "%";
+            next.style.flexBasis = n + "%";
+        };
+        const onUp = () => {
+            divider.removeEventListener("pointermove", onMove);
+            divider.removeEventListener("pointerup", onUp);
+            divider.removeEventListener("pointercancel", onUp);
+            saveWidgetStrip(strip.dataset.area, strip);
+        };
+        divider.addEventListener("pointermove", onMove);
+        divider.addEventListener("pointerup", onUp);
+        divider.addEventListener("pointercancel", onUp);
+    });
+}
+
+function saveWidgetStrip(area, strip) {
+    const items = [...strip.querySelectorAll(".wos-item")];
+    if (items.length < 2) return;
+    const order = items.map(el => ({ id: el.dataset.id }));
+    const storageArea = area.startsWith("cards") ? "cards" : area;
+    chrome.storage.sync.get(["widget_order"], sync => {
+        const wo = Object.assign({}, sync.widget_order || {});
+        if (storageArea === "cards") {
+            const ids = new Set(order.map(e => e.id));
+            const other = (sync.widget_order && Array.isArray(sync.widget_order.cards) ? sync.widget_order.cards : [])
+                .filter(e => e && !ids.has(e.id));
+            wo.cards = other.concat(order);
+        } else {
+            let sizes = items.map(el => parseFloat(el.dataset.size) || 100 / items.length);
+            const total = sizes.reduce((a, b) => a + b, 0) || 100;
+            sizes = sizes.map(v => v / total * 100);
+            const rounded = sizes.map(v => Math.round(v));
+            rounded[rounded.length - 1] += 100 - rounded.reduce((a, b) => a + b, 0);
+            wo[storageArea] = items.map((el, i) => ({ id: el.dataset.id, size: rounded[i] }));
+        }
+        chrome.storage.sync.set({ widget_order: wo });
+    });
+}
+
+function setupWidgetPosition() {
+    [
+        { select: "dashboard_notes_position", key: "dashboard_notes_position" },
+        { select: "gpa_calc_position", key: "gpa_calc_position" },
+        { select: "gpa_calc_align", key: "gpa_calc_align" },
+        { select: "focus_timer_position", key: "focus_timer_position" },
+        { select: "breathing_position", key: "breathing_position" },
+        { select: "daily_quotes_position", key: "daily_quotes_position" },
+        { select: "quick_links_position", key: "quick_links_position" },
+        { select: "heatmap_position", key: "heatmap_position" },
+    ].forEach(({ select, key }) => {
+        const el = document.getElementById(select);
+        if (!el) return;
+        chrome.storage.sync.get([key, "gpa_calc_prepend"], sync => {
+            let value = sync[key];
+            if (value === undefined && key === "gpa_calc_position") {
+                value = sync["gpa_calc_prepend"] === true ? "cards_start" : "cards_end";
+                chrome.storage.sync.set({ [key]: value });
+            }
+            el.value = value || defaultOptions.sync[key] || "top";
+        });
+        el.addEventListener("change", function () {
+            chrome.storage.sync.set({ [key]: this.value });
+        });
+    });
+}
+
+// Height fields (px; empty = auto). `legacyKey` seeds an empty field from a key that
+// has since been split in two (the Top/Bottom row height used to be shared), so users
+// who set it keep their value until they edit the field.
+function setupWidgetHeightInput(id, initial, legacyKey) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const parse = (v) => {
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+    };
+    const apply = (v) => { el.value = parse(v) || ""; };
+    apply(initial);
+    if (legacyKey) {
+        chrome.storage.sync.get([id, legacyKey], sync => {
+            // A stored 0 means "auto" and must not be overwritten by the old value.
+            if (sync[id] !== undefined) { if (!parse(el.value)) apply(sync[id]); return; }
+            if (!parse(el.value)) apply(sync[legacyKey]);
+        });
+    }
+    el.addEventListener("change", function () {
+        const n = Math.min(2000, Math.max(0, parseInt(this.value, 10) || 0));
+        this.value = n > 0 ? n : "";
+        chrome.storage.sync.set({ [id]: n });
+    });
+}
+
+// Heatmap course filter: ticked courses are left out of the widget completely.
+function setupHeatmapExcludedCourses(initial) {
+    const control = setupPopupMultiSelect({
+        wrapId: "heatmap_excluded",
+        btnId: "heatmap_excluded_btn",
+        menuId: "heatmap_excluded_menu",
+        labelId: "heatmap_excluded_label",
+        emptyText: getMsg("no_course_cards", "Visit your Canvas dashboard to load courses."),
+        onChange: (selected) => chrome.storage.sync.set({ "heatmap_excluded_courses": selected }),
+    });
+    if (!control) return;
+
+    // Only the courses still on the dashboard, labelled the way the user knows them
+    // (custom name, then the Canvas nickname) — same list as the Cards tab.
+    const renderList = (cards) => {
+        const entries = Object.entries(cards || {})
+            .filter(([, card]) => card && card.hidden !== true && card.hide !== true)
+            .map(([id, card]) => ({
+                id: String(id),
+                label: card.name || card.fullName || card.default || card.code || `Course ${id}`,
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+        control.setItems(entries);
+    };
+
+    chrome.storage.sync.get("custom_cards", sync => {
+        renderList(sync.custom_cards);
+        // The stored ids only survive setItems if their course is still listed.
+        control.setSelected(Array.isArray(initial) ? initial : []);
+    });
+
+    // A dashboard tab writes the card list; keep the dropdown in sync when it lands.
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "sync" || !changes["custom_cards"]) return;
+        if (!document.getElementById("heatmap_excluded")) return;
+        const selected = control.getSelected();
+        renderList(changes["custom_cards"].newValue);
+        control.setSelected(selected);
+    });
+}
+
+// h:mm:ss fields: click to edit a segment, a second digit auto-advances, and
+// the value is saved zero-padded on blur. The hours field is optional.
+function setupWidgetTimeInput(prefix, initial) {
+    const hEl = document.getElementById(prefix + "_h");
+    const mEl = document.getElementById(prefix + "_m");
+    const sEl = document.getElementById(prefix + "_s");
+    if (!mEl || !sEl) return;
+    let v = initial;
+    if (!v || typeof v !== "object") {
+        const n = parseInt(v, 10);
+        v = Number.isFinite(n) && n > 0 ? { h: 0, m: n, s: 0 } : (defaultOptions.sync[prefix] || { h: 0, m: 0, s: 0 });
+    }
+    const fields = [hEl, mEl, sEl].filter(Boolean);
+    const pad = (n) => String(Math.max(0, parseInt(n, 10) || 0)).padStart(2, "0");
+    if (hEl) hEl.value = pad(v.h);
+    mEl.value = pad(v.m);
+    sEl.value = pad(v.s);
+
+    const save = () => {
+        const clamp = (el, max) => Math.min(max, Math.max(0, parseInt(el.value, 10) || 0));
+        let h = hEl ? clamp(hEl, 99) : 0;
+        let m = clamp(mEl, 59);
+        let s = clamp(sEl, 59);
+        if (h === 0 && m === 0 && s === 0) {
+            const d = defaultOptions.sync[prefix] || { h: 0, m: 5, s: 0 };
+            h = hEl ? d.h : 0; m = d.m; s = d.s;
+        }
+        if (hEl) hEl.value = pad(h);
+        mEl.value = pad(m);
+        sEl.value = pad(s);
+        chrome.storage.sync.set({ [prefix]: { h, m, s } });
+    };
+
+    fields.forEach((inp, i) => {
+        inp.addEventListener("focus", () => inp.select());
+        inp.addEventListener("input", () => {
+            inp.value = inp.value.replace(/[^0-9]/g, "").slice(0, 2);
+            if (inp.value.length >= 2 && i < fields.length - 1) fields[i + 1].focus();
+        });
+        inp.addEventListener("keydown", e => {
+            if (e.key === "Enter") { e.preventDefault(); save(); inp.blur(); }
+            else if (e.key === "ArrowRight" && i < fields.length - 1) { e.preventDefault(); fields[i + 1].focus(); }
+            else if (e.key === "ArrowLeft" && i > 0) { e.preventDefault(); fields[i - 1].focus(); }
+        });
+        inp.addEventListener("change", save);
+        inp.addEventListener("blur", save);
+    });
+}
+
 function toggleSubOptionsVisibility(option, isOn) {
-    const togglesWithSubOptions = ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
+    const togglesWithSubOptions = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "quick_links", "heatmap", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
     if (!togglesWithSubOptions.includes(option)) return;
     const optionEl = document.getElementById(option);
     if (!optionEl) return;
@@ -806,8 +1714,7 @@ function setupFeatureSearch(menu) {
     const headerSearch = document.querySelector("#header-search");
     if (!searchInput || !resultsEl || !headerSearch) return;
 
-    // Map (reference-keyed) each .tab element -> the button id that opens it.
-    // A plain object won't work: DOM elements stringify to the same key.
+    // A Map, not an object: DOM elements stringify to the same key.
     const tabElToBtnId = new Map();
     Object.entries(menu.tabs).forEach(([btnId, info]) => {
         const tabEl = document.querySelector(info.tab);
@@ -815,9 +1722,7 @@ function setupFeatureSearch(menu) {
     });
 
     function shouldSkip(el) {
-        // Skip overlays / scrapped containers that aren't real features
         if (el.closest('#submit-popup, #browser-settings-popup, #opt-in, #card-edit-menu')) return true;
-        // Skip statically-hidden containers but keep dynamically-hidden sub-options.
         let node = el;
         while (node && node !== document.body) {
             if (node.classList && node.classList.contains('option-container') && node.style.display === 'none') return true;
@@ -831,7 +1736,7 @@ function setupFeatureSearch(menu) {
         if (label) return label.textContent.trim();
         const st = sub.querySelector(".sub-text");
         if (st) return st.textContent.trim();
-        // Bare <span> label (e.g. Export Settings checkboxes have no label/.sub-text).
+        // Bare <span> label: checkboxes like Export Settings have no .sub-text.
         const span = sub.querySelector("span");
         if (span) return span.textContent.trim();
         return "";
@@ -876,8 +1781,6 @@ function setupFeatureSearch(menu) {
         if (back) back.click();
     }
 
-    // Reveal any hidden sub-option blocks between el and .main so the target
-    // is visible (purely visual; doesn't change stored settings).
     function revealAncestors(el) {
         const main = document.querySelector(".main");
         let node = el;
@@ -885,7 +1788,6 @@ function setupFeatureSearch(menu) {
             if (node.style && node.style.display === "none") node.style.display = "";
             node = node.parentElement;
         }
-        // Expand the Better Todo "More options" collapsible if the target lives inside it.
         const moreWrap = el.closest ? el.closest("#todo-more-options") : null;
         if (moreWrap && !moreWrap.classList.contains("expanded")) {
             const toggle = document.getElementById("todo-more-toggle");
@@ -930,13 +1832,11 @@ function setupFeatureSearch(menu) {
             index.push(entry);
         }
 
-        // Big section buttons (Edit Dark Mode, Cards, Themes, Styles, GPA Settings, Report issue)
         document.querySelectorAll(".more-options-container .tab-btn").forEach(btn => {
             const span = btn.querySelector("span");
             add({ key: "tab:" + btn.id, text: span ? span.textContent.trim() : "", el: btn, action: () => openTab(btn.id) });
         });
 
-        // Home: option toggles
         document.querySelectorAll(".options .option").forEach(opt => {
             if (!opt.id) return;
             const name = opt.querySelector(".option-name");
@@ -945,17 +1845,22 @@ function setupFeatureSearch(menu) {
             add({ key: "option:" + opt.id, text: name.textContent.trim(), el: opt, action: () => goToMainElement(opt) });
         });
 
-        // Home: sub-options / timesets / labelled rows (e.g. "Use dd/mm", "Start time", max-items)
+        document.querySelectorAll(".tab .option").forEach(opt => {
+            if (!opt.id) return;
+            const name = opt.querySelector(".option-name");
+            if (!name) return;
+            if (shouldSkip(opt)) return;
+            add({ key: "option:" + opt.id, text: name.textContent.trim(), el: opt, action: () => goToTabElement(opt) });
+        });
+
         document.querySelectorAll(".options .sub-option, .options .timeset, .options .sub-options > div").forEach(sub => {
             if (shouldSkip(sub)) return;
-            // Skip statically-hidden sub-options; dynamically-hidden ones stay indexed.
             if (sub.classList.contains("sub-option") && sub.style.display === "none") return;
             const text = labelOf(sub);
             if (!text) return;
             add({ key: "sub:" + keyIdOf(sub), text, el: sub, action: () => goToMainElement(sub) });
         });
 
-        // Home: custom Canvas URLs
         const customDomain = document.querySelector(".customDomain");
         if (customDomain && !shouldSkip(customDomain)) {
             const wrap = customDomain.closest(".customDomain");
@@ -963,7 +1868,6 @@ function setupFeatureSearch(menu) {
             add({ key: "custom:customDomain", text: label ? label.textContent.trim() : "Canvas URL", el: wrap || customDomain, action: () => goToMainElement(wrap || customDomain) });
         }
 
-        // Tabs: section headings (e.g. "Presets", "Custom styles", "Popular Palettes", "Custom Background")
         document.querySelectorAll(".tab .header-small").forEach(h => {
             if (shouldSkip(h)) return;
             const text = h.textContent.trim();
@@ -972,7 +1876,6 @@ function setupFeatureSearch(menu) {
             add({ key: "heading:" + (btnId || "?") + ":" + text, text, el: h, action: () => goToTabElement(h) });
         });
 
-        // Tabs: checkbox sub-options (e.g. "Daily Random Image", "Custom Card Styles")
         document.querySelectorAll(".tab .sub-option").forEach(sub => {
             if (shouldSkip(sub)) return;
             const text = labelOf(sub);
@@ -981,7 +1884,6 @@ function setupFeatureSearch(menu) {
             add({ key: "tabsub:" + (btnId || "?") + ":" + keyIdOf(sub), text, el: sub, action: () => goToTabElement(sub) });
         });
 
-        // Dark mode color fields (e.g. "Sidebar Text", "Background Main")
         document.querySelectorAll(".tab .color-type-header").forEach(h => {
             if (shouldSkip(h)) return;
             const text = h.textContent.trim();
@@ -990,8 +1892,6 @@ function setupFeatureSearch(menu) {
             add({ key: "color:" + (btnId || "?") + ":" + text, text, el: h, action: () => goToTabElement(h) });
         });
 
-        // Tab: range sliders that live in dedicated rows (Opacity & Blur, Image scale).
-        // These aren't .sub-option, so the generic blocks above miss them.
         document.querySelectorAll(".tab .opacity-slider-row, .tab .background-scale-row").forEach(row => {
             if (shouldSkip(row)) return;
             const label = row.querySelector(".sub-text");
@@ -1003,7 +1903,6 @@ function setupFeatureSearch(menu) {
             add({ key: "slider:" + (btnId || "?") + ":" + (input.id || text), text, el: row, action: () => goToTabElement(row) });
         });
 
-        // Tab: preset buttons (dark mode presets + popular color palettes).
         document.querySelectorAll(".tab .preset-button").forEach(btn => {
             if (shouldSkip(btn)) return;
             const text = btn.textContent.trim().replace(/\s+/g, " ");
@@ -1012,8 +1911,7 @@ function setupFeatureSearch(menu) {
             add({ key: "preset:" + (btnId || "?") + ":" + (btn.id || text), text, el: btn, action: () => goToTabElement(btn) });
         });
 
-        // Tab: standalone action buttons with distinct labels (GPA scale presets, revert colors).
-        ["gpa-plus-minus", "gpa-by-letter", "revert-colors", "clearCustomBackground"].forEach(id => {
+        ["revert-colors", "clearCustomBackground"].forEach(id => {
             const btn = document.getElementById(id);
             if (!btn || shouldSkip(btn)) return;
             const text = btn.textContent.trim();
@@ -1021,9 +1919,6 @@ function setupFeatureSearch(menu) {
             add({ key: "action:" + id, text, el: btn, action: () => goToTabElement(btn) });
         });
 
-        // Tab: checkbox/radio controls whose label is a bare sibling span and that
-        // aren't wrapped in .sub-option (e.g. "Get Active Cards From Dashboard",
-        // sidebar background "Solid/Gradient/Image").
         document.querySelectorAll(".tab input[type='checkbox'], .tab input[type='radio']").forEach(input => {
             if (!input.id) return;
             if (input.closest(".sub-option") || input.closest(".option")) return;
@@ -1065,7 +1960,7 @@ function setupFeatureSearch(menu) {
         if (!matches.length) {
             const empty = document.createElement("div");
             empty.className = "search-result empty";
-            empty.textContent = "No features found";
+            empty.textContent = getMsg("no_features") || "No features found";
             resultsEl.appendChild(empty);
             resultsEl.classList.add("open");
             return;
@@ -1142,8 +2037,46 @@ function setupFeatureSearch(menu) {
     });
 }
 
-function setup() {
+/*
+Update announcement box
 
+The box at the top of the main popup shows while the current announcement is unseen.
+- Dismiss: marks UPDATE_BOX_ID seen (hidden until a new announcement gets a new id).
+- "Never show these ever again": opts out of every future announcement too.
+- The Report issue tab button opts back in and marks the current one unseen again.
+Demo title/body live in popup.html; bump UPDATE_BOX_ID when they change.
+*/
+const UPDATE_BOX_ID = "release-1.2.0";
+
+function initUpdateBox() {
+    const box = document.getElementById("update-box");
+    if (!box) return;
+    const refresh = () => {
+        chrome.storage.sync.get(["update_box_enabled", "update_box_seen"], sync => {
+            const enabled = sync.update_box_enabled !== false;
+            const seen = sync.update_box_seen === UPDATE_BOX_ID;
+            box.style.display = enabled && !seen ? "" : "none";
+        });
+    };
+    refresh();
+    document.getElementById("update-box-dismiss")?.addEventListener("click", () => {
+        chrome.storage.sync.set({ "update_box_seen": UPDATE_BOX_ID });
+        box.style.display = "none";
+    });
+    document.getElementById("update-box-never")?.addEventListener("click", () => {
+        chrome.storage.sync.set({ "update_box_enabled": false, "update_box_seen": UPDATE_BOX_ID });
+        box.style.display = "none";
+    });
+    // Report issue tab: "Mark announcement as unseen and show these in the future".
+    document.getElementById("update-box-restore")?.addEventListener("click", () => {
+        chrome.storage.sync.set({ "update_box_enabled": true, "update_box_seen": "" });
+        refresh();
+    });
+}
+
+async function setup() {
+    await initLanguageSelector();
+    initUpdateBox();
     const menu = {
 		switches: syncedSwitches,
 		checkboxes: [
@@ -1151,23 +2084,22 @@ function setup() {
 			"browser_show_likes",
 			"gpa_calc_weighted",
 			"gpa_calc_cumulative",
-			// /*'card_method_date',*/ "show_updates",
+			"gpa_calc_show_on_hover",
             "todo_hide_feedback",
             "todo_hide_read",
-            "todo_confetti",
 			"todo_full_height",
 			"device_dark",
 			"relative_dues",
 			"card_overdues",
 			"hide_completed_cards",
 			"equal_height_cards",
-			// "todo_overdues",
-			"gpa_calc_prepend",
 			"auto_dark",
 			"assignment_date_format",
 			"custom_font_skip_p",
 			"todo_hr24",
 			"todo_separate_scrollbar",
+			"todo_sections_persist",
+			"todo_hide_filter_notice",
 			"todo_alternate_colors",
 			"todo_ignore_card_colors",
 			"todo_remove_icons",
@@ -1176,7 +2108,8 @@ function setup() {
 			"card_letter",
 			"auto_detect_disabled",
 			"hide_course_images",
-			// "hide_completed",
+			"anon_fake_todo",
+			"anon_progress_enabled",
 			"hover_preview",
             "customBackgroundDaily",
             "customBackgroundNasaDaily",
@@ -1193,13 +2126,14 @@ function setup() {
 				setup: displayAdvancedCards,
 				tab: ".advanced",
 			},
-			"gpa-bounds-btn": {
-				setup: displayGPABounds,
-				tab: ".gpa-bounds-container",
-			},
+			
 			"custom-font-btn": {
 				setup: displayCustomFont,
 				tab: ".custom-font-container",
+			},
+			"gpa-bounds-btn": {
+				setup: null,
+				tab: ".gpa-bounds-container",
 			},
 			"card-colors-btn": { setup: null, tab: ".card-colors-container" },
 			"customize-dark-btn": {
@@ -1331,6 +2265,22 @@ function setup() {
                 identifier: "customBackgroundScale",
                 setup: (initial) => setupCustomBackgroundScale(initial),
             },
+            {
+                identifier: "customBackgroundColor",
+                setup: (initial) => setupCustomBackgroundColor(initial),
+            },
+			{
+				identifier: "todo_celebrations",
+				setup: (initial) => setupCelebrationsSelect(initial),
+			},
+			{
+				identifier: "todo_celebration_amount",
+				setup: (initial) => setupCelebrationAmount(initial),
+			},
+			{
+				identifier: "celebration_preview",
+				setup: () => setupCelebrationPreview(),
+			},
 			{
 				identifier: "todo_progress_rings",
 				setup: (initial) => setupProgressRingsSelect(initial),
@@ -1338,6 +2288,102 @@ function setup() {
 			{
 				identifier: "todo_timeframe",
 				setup: (initial) => setupTimeframeSelect(initial),
+			},
+			{
+				identifier: "todo_timeframe_custom_past",
+				setup: (initial) => setupCustomTimeframeInput("todo_timeframe_custom_past", initial, 7),
+			},
+			{
+				identifier: "todo_timeframe_custom_future",
+				setup: (initial) => setupCustomTimeframeInput("todo_timeframe_custom_future", initial, 14),
+			},
+			{
+				identifier: "anon_grade_level",
+				setup: (initial) => setupAnonGradeSelect(initial),
+			},
+			{
+				identifier: "anon_fake_completed",
+				setup: (initial) => setupAnonFakeCompleted(initial),
+			},
+			{
+				identifier: "anon_progress_done",
+				setup: (initial) => setupAnonProgressInput("anon_progress_done", initial, true),
+			},
+			{
+				identifier: "anon_progress_total",
+				setup: (initial) => setupAnonProgressInput("anon_progress_total", initial, false),
+			},
+			{
+				identifier: "widget_top_height",
+				setup: (initial) => setupWidgetHeightInput("widget_top_height", initial, "widget_row_height"),
+			},
+			{
+				identifier: "widget_bottom_height",
+				setup: (initial) => setupWidgetHeightInput("widget_bottom_height", initial, "widget_row_height"),
+			},
+			{
+				identifier: "dashboard_notes_height",
+				setup: (initial) => setupWidgetHeightInput("dashboard_notes_height", initial),
+			},
+			{
+				identifier: "gpa_calc_height",
+				setup: (initial) => setupWidgetHeightInput("gpa_calc_height", initial),
+			},
+			{
+				identifier: "focus_timer_height",
+				setup: (initial) => setupWidgetHeightInput("focus_timer_height", initial),
+			},
+			{
+				identifier: "breathing_height",
+				setup: (initial) => setupWidgetHeightInput("breathing_height", initial),
+			},
+			{
+				identifier: "daily_quotes_height",
+				setup: (initial) => setupWidgetHeightInput("daily_quotes_height", initial),
+			},
+			{
+				identifier: "quick_links_height",
+				setup: (initial) => setupWidgetHeightInput("quick_links_height", initial),
+			},
+			{
+				identifier: "heatmap_height",
+				setup: (initial) => setupWidgetHeightInput("heatmap_height", initial),
+			},
+			{
+				identifier: "heatmap_excluded_courses",
+				setup: (initial) => setupHeatmapExcludedCourses(initial),
+			},
+			{
+				identifier: "quick_links_font_size",
+				setup: (initial) => setupRangeSlider("quick_links_font_size", "quickLinksFontSizeSlider", "quickLinksFontSizeValue", null, 12, 24, "px", initial, 8),
+			},
+			{
+				identifier: "quick_links_icon_size",
+				setup: (initial) => setupRangeSlider("quick_links_icon_size", "quickLinksIconSizeSlider", "quickLinksIconSizeValue", null, 36, 64, "px", initial, 20),
+			},
+			{
+				identifier: "focus_timer_preset_1",
+				setup: (initial) => setupWidgetTimeInput("focus_timer_preset_1", initial),
+			},
+			{
+				identifier: "focus_timer_preset_2",
+				setup: (initial) => setupWidgetTimeInput("focus_timer_preset_2", initial),
+			},
+			{
+				identifier: "focus_timer_preset_3",
+				setup: (initial) => setupWidgetTimeInput("focus_timer_preset_3", initial),
+			},
+			{
+				identifier: "breathing_preset_1",
+				setup: (initial) => setupWidgetTimeInput("breathing_preset_1", initial),
+			},
+			{
+				identifier: "breathing_preset_2",
+				setup: (initial) => setupWidgetTimeInput("breathing_preset_2", initial),
+			},
+			{
+				identifier: "breathing_preset_3",
+				setup: (initial) => setupWidgetTimeInput("breathing_preset_3", initial),
 			},
 			{
 				identifier: "todo_more_expanded",
@@ -1349,7 +2395,7 @@ function setup() {
     chrome.storage.sync.get(menu.switches, sync => {
         menu.switches.forEach(option => {
             let optionSwitch = document.getElementById(option);
-            let status = sync[option] === true ? "#on" : "#off";
+            let status = (sync[option] !== undefined ? sync[option] === true : defaultOptions.sync[option] === true) ? "#on" : "#off";
             optionSwitch.querySelector(status).checked = true;
             optionSwitch.querySelector(status).classList.add('checked');
 
@@ -1365,27 +2411,40 @@ function setup() {
                 if (option === "better_sidebar") {
                     toggleBetterSidebarSubOptions(status);
                 }
+                if (option === "better_todo") {
+                    toggleCelebrationsVisibility(status);
+                }
+                if (option === "todo_celebrations_enabled") {
+                    toggleCelebrationOptionsVisibility(status);
+                }
                 if (option === "dark_mode") {
                     toggleAlternateColorsVisibility(status);
                 }
                 if (option === "hide_personal_details" && status === false) {
-                    // "Temporarily remove all course images" is a sub-option of
-                    // the privacy mode: switching the mode off restores the
-                    // images too (the content script listens for this key and
-                    // removes its hiding stylesheet).
+                    // Content script watches this key and drops its hiding stylesheet.
                     const imgCheckbox = document.getElementById("hide_course_images");
                     if (imgCheckbox) imgCheckbox.checked = false;
                     chrome.storage.sync.set({ "hide_course_images": false });
                 }
                 toggleSubOptionsVisibility(option, status);
+                if (option === "dashboard_notes" || option === "gpa_calc" || option === "focus_timer" || option === "breathing" || option === "daily_quotes" || option === "quick_links" || option === "heatmap") {
+                    if (refreshWidgetOrder) refreshWidgetOrder();
+                }
             });
         });
         toggleBetterSidebarSubOptions(sync["better_sidebar"] === true);
-        ["gpa_calc", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
+        toggleCelebrationsVisibility(sync["better_todo"] === true);
+        chrome.storage.sync.get("todo_celebrations_enabled", v => {
+            toggleCelebrationOptionsVisibility(v["todo_celebrations_enabled"] !== false);
+        });
+        ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "quick_links", "heatmap", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"].forEach(opt => {
             toggleSubOptionsVisibility(opt, sync[opt] === true);
         });
         toggleAlternateColorsVisibility(sync["dark_mode"] === true);
     });
+
+    setupWidgetPosition();
+    setupWidgetOrder();
 
     chrome.storage.sync.get(menu.checkboxes, sync => {
         menu.checkboxes.forEach(option => {
@@ -1402,6 +2461,9 @@ function setup() {
                 } else {
                     chrome.storage.sync.set(JSON.parse(`{"${option}": ${status}}`));
                 }
+                if (option === "anon_fake_todo") {
+                    toggleAnonFakeCompletedVisibility(status);
+                }
                 syncCustomBackgroundDailyState(document.querySelector("#customBackgroundDaily")?.checked === true || document.querySelector("#customBackgroundNasaDaily")?.checked === true);
                 toggleOpacityOptions();
             });
@@ -1409,6 +2471,7 @@ function setup() {
             document.querySelector("#" + option).checked = value;
         });
         syncCustomBackgroundDailyState(sync.customBackgroundDaily === true || sync.customBackgroundNasaDaily === true);
+        toggleAnonFakeCompletedVisibility(sync["anon_fake_todo"] === true);
         toggleDarkModeDisable(sync.auto_dark);
         displayBackgroundPresets();
         toggleOpacityOptions();
@@ -1426,7 +2489,6 @@ function setup() {
     })
 
 
-    // activate tab buttons
     document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             if (menu.tabs[btn.id].setup !== null) menu.tabs[btn.id].setup();
@@ -1436,7 +2498,6 @@ function setup() {
         });
     });
 
-    // activate the back buttons on each tab
     document.querySelectorAll(".back-btn").forEach(btn => {
         btn.addEventListener("click", function () {
             document.querySelectorAll(".tab").forEach(tab => {
@@ -1446,30 +2507,14 @@ function setup() {
         });
     });
 
-    // give everything the appropirate i18n text
-    document.querySelectorAll('[data-i18n]').forEach(text => {
-        const msg = chrome.i18n.getMessage(text.dataset.i18n);
-        // keep the in-HTML fallback text when a key is missing instead of blanking it
-        if (msg) text.innerText = msg;
-    });
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-        const msg = chrome.i18n.getMessage(el.dataset.i18nPlaceholder);
-        if (msg) el.placeholder = msg;
-    });
-    document.querySelectorAll('[data-i18n-title]').forEach(el => {
-        const msg = chrome.i18n.getMessage(el.dataset.i18nTitle);
-        if (msg) el.title = msg;
-    });
+    applyI18nOverride();
 
-    // header feature search (search bar that jumps to features)
     setupFeatureSearch(menu);
 
-    // activate dark mode inspector button
     document.querySelector("#inspector-btn").addEventListener("click", async function () {
         document.querySelector("#inspector-output").textContent = (await sendFromPopup("inspect"))["selectors"];
     });
 
-    // activate dark mode fixer button
     document.querySelector("#fix-dm-btn").addEventListener("click", async function () {
         let output = await sendFromPopup("fixdm");
         if (output.path === "canvasrefined-none" || output.path === "canvasrefined-darkmode_off") return;
@@ -1479,7 +2524,7 @@ function setup() {
         } else if (output.time < 250) {
             rating = "ok";
         }
-        document.getElementById("fix-dm-output").textContent = "Fix took " + Math.round(output.time) + "ms (rating: " + rating + ")";
+        document.getElementById("fix-dm-output").textContent = (getMsg("fix_took") || "Fix took {{TIME}}ms (rating: {{RATING}})").replace("{{TIME}}", Math.round(output.time)).replace("{{RATING}}", rating);
         chrome.storage.sync.get("dark_mode_fix", sync => {
             if (sync["dark_mode_fix"].includes(output.path)) return;
             sync["dark_mode_fix"].push(output.path);
@@ -1487,7 +2532,6 @@ function setup() {
         })
     });
 
-    // activate storage dump button
     document.querySelector("#rk_btn").addEventListener("click", () => {
         chrome.storage.local.get(null, local => {
             chrome.storage.sync.get(null, sync => {
@@ -1496,18 +2540,20 @@ function setup() {
         })
     });
 
-    // activate storage reset button
     document.querySelector("#storage-reset-btn").addEventListener("click", () => {
         chrome.storage.sync.set(defaultOptions["sync"]);
         updateStorageUsage();
     });
 
-    // activate planner cache clear button (Report issue tab). Clears the
-    // cached planner items locally, then tells any open Canvas tabs to
-    // re-fetch fresh data so the clear takes effect without a refresh.
-    // Keep the key in sync with PLANNER_CACHE_KEY in content.js.
+    // Bumps the fake-data seed; every open Canvas tab re-shuffles without a reload.
+    document.querySelector("#anon-reroll-btn").addEventListener("click", () => {
+        chrome.storage.sync.set({ "anon_grade_seed": Math.floor(Math.random() * 1000000) });
+        displayAlert(false, getMsg("fake_rerolled") || "Fake classes rerolled.");
+    });
+
+    // Key must stay in sync with PLANNER_CACHE_KEY in content.js.
     document.querySelector("#planner-cache-clear-btn").addEventListener("click", async () => {
-        displayAlert(false, "Planner cache cleared.");
+        displayAlert(false, getMsg("planner_cleared") || "Planner cache cleared.");
         try {
             await chrome.storage.local.remove("planner_cache_v1");
         } catch (e) { /* nothing stored yet */ }
@@ -1515,9 +2561,6 @@ function setup() {
         updateStorageUsage();
     });
 
-    // ---- Storage usage display (Report issue tab) ----
-    // Shows how much space the extension's settings, planner cache, and
-    // other local data take, plus the storage quota available to it.
     function formatStorageBytes(bytes) {
         if (bytes == null) return "unknown";
         if (bytes < 1024) return bytes + " B";
@@ -1525,8 +2568,7 @@ function setup() {
         return (bytes / 1048576).toFixed(2) + " MB";
     }
 
-    // getBytesInUse is exact but not implemented everywhere (older Firefox),
-    // so fall back to measuring the serialized data as a Blob.
+    // getBytesInUse is missing on older Firefox; measure a serialized Blob instead.
     async function storageBytesInUse(area, keys) {
         try {
             const bytes = await area.getBytesInUse(keys ?? null);
@@ -1546,38 +2588,30 @@ function setup() {
             if (el) el.textContent = text;
         };
 
-        // Sync settings vs the 100 KB chrome.storage.sync quota.
         const syncBytes = await storageBytesInUse(chrome.storage.sync);
-        set("#storage-usage-sync", syncBytes == null ? "unknown" : formatStorageBytes(syncBytes) + " of 100 KB quota");
+        set("#storage-usage-sync", syncBytes == null ? getMsg("storage_unknown", "unknown") : formatStorageBytes(syncBytes) + getMsg("storage_quota_100kb", " of 100 KB quota"));
 
-        // Planner cache: size plus item count, so users can see what the
-        // to-do cache actually costs (and that clearing it worked).
         const cacheBytes = await storageBytesInUse(chrome.storage.local, "planner_cache_v1");
-        let cacheText = "empty";
+        let cacheText = getMsg("storage_empty", "empty");
         if (cacheBytes) {
             try {
                 const result = await chrome.storage.local.get("planner_cache_v1");
                 const count = result?.["planner_cache_v1"]?.items?.length;
-                cacheText = formatStorageBytes(cacheBytes) + (typeof count === "number" ? ` (${count} items)` : "");
+                cacheText = formatStorageBytes(cacheBytes) + (typeof count === "number" ? replaceCountPlaceholder(getMsg("storage_items", " ({{COUNT}} items)"), count) : "");
             } catch (e) {
                 cacheText = formatStorageBytes(cacheBytes);
             }
         }
         set("#storage-usage-cache", cacheText);
 
-        // Everything else in local storage (settings the extension keeps
-        // locally, state like the analytics toggle, etc.).
         const localBytes = await storageBytesInUse(chrome.storage.local);
         if (localBytes == null) {
-            set("#storage-usage-local", "unknown");
+            set("#storage-usage-local", getMsg("storage_unknown", "unknown"));
         } else {
             const other = cacheBytes != null ? Math.max(localBytes - cacheBytes, 0) : null;
             set("#storage-usage-local", other == null ? formatStorageBytes(localBytes) : formatStorageBytes(other));
         }
 
-        // Quota available to the extension. With the unlimitedStorage
-        // permission this is a large slice of free disk space, so it reads
-        // big — that is expected.
         try {
             const est = await navigator.storage.estimate();
             if (est && est.quota) {
@@ -1587,14 +2621,11 @@ function setup() {
     }
     updateStorageUsage();
 
-    // Canvas URL list — each school gets its own text box
     const domainListEl = document.querySelector("#custom-domain-list");
     const addDomainBtn = document.querySelector("#add-domain-btn");
 
-    // Normalize a single entry: a full URL becomes its hostname, anything else
-    // is kept as typed. Idempotent — rows store bare hostnames
-    // ("canvas.school.edu"), which fail new URL() without a scheme, so they're
-    // validated as hostnames instead of re-flagged as invalid on every save.
+    // Idempotent: rows store bare hostnames, which fail new URL() without a
+    // scheme, so they are validated as hostnames instead.
     function sanitizeDomainEntry(val, showAlert = true) {
         let trimmed = val.trim().replace(/ /g, "");
         if (trimmed === "") return "";
@@ -1605,13 +2636,12 @@ function setup() {
                 return host;
             }
         } catch (e) { /* not a full URL — may still be a bare hostname */ }
-        // strip scheme/path if new URL couldn't parse it, then validate as a hostname
         const host = trimmed.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
         if (host && /^[a-z0-9][a-z0-9.-]*$/i.test(host)) {
             clearAlert();
             return host;
         }
-        if (showAlert) displayAlert(true, "The URL you entered appears to be invalid, so it might not work.");
+        if (showAlert) displayAlert(true, getMsg("invalid_url") || "The URL you entered appears to be invalid, so it might not work.");
         return trimmed;
     }
 
@@ -1621,7 +2651,6 @@ function setup() {
             const val = sanitizeDomainEntry(input.value);
             if (val !== "") domains.push(val);
         });
-        // keep the legacy [""]-when-empty shape the rest of the code expects
         chrome.storage.sync.set({ custom_domain: domains.length ? domains : [""] });
     }
 
@@ -1630,12 +2659,11 @@ function setup() {
         row.className = "domain-row";
         const input = document.createElement("input");
         input.type = "text";
-        input.placeholder = "canvas.myschool.edu";
+        input.placeholder = getMsg("placeholder_example") || "canvas.myschool.edu";
         input.value = value || "";
         input.spellcheck = false;
         input.addEventListener("input", saveDomainList);
         input.addEventListener("blur", () => {
-            // normalize what's shown and drop rows left empty
             if (input.value.trim() === "") {
                 if (domainListEl.querySelectorAll(".domain-row").length > 1) row.remove();
             } else {
@@ -1647,13 +2675,11 @@ function setup() {
         remove.className = "domain-remove";
         remove.type = "button";
         remove.textContent = "\u2715";
-        remove.title = "Remove";
+        remove.title = getMsg("remove_label") || "Remove";
         remove.addEventListener("click", () => {
             const val = sanitizeDomainEntry(input.value, false);
             row.remove();
             saveDomainList();
-            // clear any past "no thanks" for this canvas so the detection
-            // prompt can ask again if it's visited later
             if (val) {
                 chrome.storage.sync.get(["custom_domain_denied"], storage => {
                     const denied = (storage.custom_domain_denied || []).filter(d => d !== val);
@@ -1677,19 +2703,17 @@ function setup() {
         rows[rows.length - 1].focus();
     });
 
-    // activate import input box
     document.querySelector("#import-input").addEventListener("input", (e) => {
         const obj = JSON.parse(e.target.value);
         importTheme(obj);
     });
 
-    // copy export output to clipboard
     document.querySelector("#export-copy").addEventListener("click", async () => {
         const output = document.querySelector("#export-output");
         const btn = document.querySelector("#export-copy");
         const text = output.value;
-        if (!text) { displayAlert(true, "Nothing to copy — select what to export first."); return; }
-        const flash = () => { const old = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = old; }, 1200); };
+        if (!text) { displayAlert(true, getMsg("nothing_to_copy") || "Nothing to copy — select what to export first."); return; }
+        const flash = () => { const old = btn.textContent; btn.textContent = getMsg("copied") || "Copied!"; setTimeout(() => { btn.textContent = old; }, 1200); };
         try {
             await navigator.clipboard.writeText(text);
             flash();
@@ -1700,10 +2724,9 @@ function setup() {
         }
     });
 
-    // activate export checkbox
     document.querySelectorAll(".export-details input").forEach(input => {
         input.addEventListener("change", () => {
-            chrome.storage.sync.get(syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "custom_styles"]), async storage => {
+            chrome.storage.sync.get(syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "custom_styles", "widget_order"]), async storage => {
                 let final = {};
                 for await (item of document.querySelectorAll(".export-details input")) {
                     if (item.checked) {
@@ -1727,9 +2750,6 @@ function setup() {
                                 final = { ...final, ...(await getExport(storage, exportCardStyles)) };
                                 break;
                             case "export-customStyles": {
-                                // custom_styles is stored in storage.local
-                                // (see setupCustomStyle); fall back to the
-                                // legacy sync value for pre-migration themes.
                                 const localStyles = await chrome.storage.local.get("custom_styles");
                                 const styleSource = localStyles && localStyles["custom_styles"] !== undefined ? localStyles : storage;
                                 final = { ...final, ...(await getExport(styleSource, ["custom_styles"])) };
@@ -1747,6 +2767,9 @@ function setup() {
                             case "export-gpa":
                                 final = { ...final, ...(await getExport(storage, [...exportGpa, "gpa_calc_bounds"])) };
                                 break;
+                            case "export-widgets":
+                                final = { ...final, ...(await getExport(storage, exportWidgets)) };
+                                break;
                         }
                     }
                 }
@@ -1755,7 +2778,6 @@ function setup() {
         });
     });
 
-    // Toggle all export checkboxes and dispatch one change event to refresh output.
     const exportCheckboxes = () => document.querySelectorAll(".export-details input");
     const refreshExport = () => {
         const first = exportCheckboxes()[0];
@@ -1770,7 +2792,6 @@ function setup() {
         refreshExport();
     });
 
-    // activate revert to original button
     document.querySelector("#theme-revert").addEventListener("click", () => {
         chrome.storage.local.get("previous_theme", local => {
             if (local["previous_theme"] !== null) {
@@ -1783,7 +2804,6 @@ function setup() {
     // TODO: maybe fix this at some point, idk what is causing the error here
     document.querySelectorAll(".preset-button.customization-button").forEach(btn => btn.addEventListener("click", changeToPresetCSS));
 
-    // activate card color inputs
     document.querySelector("#singleColorInput").addEventListener("change", e => document.querySelector("#singleColorText").value = e.target.value);
     document.querySelector("#singleColorText").addEventListener("change", e => document.querySelector("#singleColorInput").value = e.target.value);
     document.querySelector("#gradientColorFrom").addEventListener("change", e => document.querySelector("#gradientColorFromText").value = e.target.value);
@@ -1810,19 +2830,15 @@ function setup() {
         });
     });
 
-    // activate revert to original card colors button
     document.querySelector("#revert-colors").addEventListener("click", () => {
         chrome.storage.local.get("previous_colors", local => {
             const prev = local["previous_colors"];
-            // Guard against unset/expired-shape entries and the empty lists
-            // old list-mode runs stored — sending [] would be a silent no-op.
             if (prev && Array.isArray(prev.colors) && prev.colors.length > 0) {
                 sendFromPopup("setcolors", prev.colors);
             }
         })
     })
 
-    // activate every card color palette button
     document.querySelectorAll(".preset-button.colors-button").forEach(btn => {
         const colors = getPalette(btn.querySelector("p").textContent);
         let preview = btn.querySelector(".colors-preview");
@@ -1836,7 +2852,6 @@ function setup() {
     });
 
 
-    // activate sidebar tool radio
     ["#radio-sidebar-image", "#radio-sidebar-gradient", "#radio-sidebar-solid"].forEach(radio => {
         document.querySelector(radio).addEventListener("click", () => {
             chrome.storage.sync.get(["dark_preset"], storage => {
@@ -1846,7 +2861,6 @@ function setup() {
         })
     });
 
-    // theme browser controls
     document.getElementById("premade-themes-left").addEventListener("click", () => changePage(-1));
     document.getElementById("premade-themes-right").addEventListener("click", () => changePage(1));
     document.getElementById("theme-sorts").addEventListener("click", () => {
@@ -1863,7 +2877,6 @@ function setup() {
     document.getElementById("theme-search").addEventListener("change", async (e) => {
         searchFor = e.target.value;
         console.log(searchFor);
-        // linear search
         let themesToShow = [];
         for (let i = 0; i < themes.length; i++) {
             if (themes[i].title.toLowerCase().includes(searchFor.toLowerCase())) {
@@ -1874,10 +2887,8 @@ function setup() {
         displayThemeSearchList(themesToShow);
     });
 
-    // activate theme save button
     document.getElementById("save-theme").addEventListener("click", saveCurrentTheme);
 
-    // activate submit theme button
 
     document.getElementById("submit-theme-btn-1").addEventListener("click", () => {
         document.getElementById("submit-popup").classList.add("open");
@@ -1887,31 +2898,26 @@ function setup() {
         document.getElementById("submit-popup").classList.remove("open");
     })
 
-    // update theme button preview on input
     document.getElementById("submit-title").addEventListener("input", (e) => {
         document.getElementById("theme-button-title-preview").textContent = e.target.value.replaceAll(" ", "");
     });
 
-    // update theme button preview on input
     document.getElementById("submit-credits").addEventListener("input", (e) => {
         document.getElementById("theme-button-creator-preview").textContent = e.target.value;
     });
 
-    // activate the show button to open the theme submission drawer
     document.getElementById("show-submit-form").addEventListener("click",  (e) => {
         const drawer = document.getElementById("submit-drawer");
         if (drawer.style.display === "none") {
             drawer.style.display = "block";
-            e.target.textContent = "Hide";
+            e.target.textContent = getMsg("hide") || "Hide";
         } else {
             drawer.style.display = "none";
-            e.target.textContent = "Show";
+            e.target.textContent = getMsg("show") || "Show";
         }
     });
 
-    // activate theme browser opt out
 
-    // activate theme browser opt in
 
     document.querySelectorAll(".theme-sort-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -1919,7 +2925,6 @@ function setup() {
         });
     });
 
-    // browser settings buttons
     document.getElementById("browser-settings-btn").addEventListener("click", () => {
         document.getElementById("browser-settings-popup").classList.add("open");
     });
@@ -1932,52 +2937,12 @@ function setup() {
 
     document.getElementById("submit-form-btn").addEventListener("click", displayThemeSubmissionForm);
 
-    document.getElementById("gpa-plus-minus").addEventListener("click", () => {
-        applyGPAPreset({
-            "A+": { "cutoff": 97, "gpa": 4.0 },
-            "A": { "cutoff": 93, "gpa": 4.0 },
-            "A-": { "cutoff": 90, "gpa": 3.7 },
-            "B+": { "cutoff": 87, "gpa": 3.3 },
-            "B": { "cutoff": 83, "gpa": 3.0 },
-            "B-": { "cutoff": 80, "gpa": 2.7 },
-            "C+": { "cutoff": 77, "gpa": 2.3 },
-            "C": { "cutoff": 73, "gpa": 2.0 },
-            "C-": { "cutoff": 70, "gpa": 1.7 },
-            "D+": { "cutoff": 67, "gpa": 1.3 },
-            "D": { "cutoff": 63, "gpa": 1.0 },
-            "D-": { "cutoff": 60, "gpa": 0.7 },
-            "F": { "cutoff": 0, "gpa": 0 }
-        });
-    });
-    document.getElementById("gpa-by-letter").addEventListener("click", () => {
-        applyGPAPreset({
-            "A+": { "cutoff": 97, "gpa": 4.0 },
-            "A": { "cutoff": 93, "gpa": 4.0 },
-            "A-": { "cutoff": 90, "gpa": 4.0 },
-            "B+": { "cutoff": 87, "gpa": 3.0 },
-            "B": { "cutoff": 83, "gpa": 3.0 },
-            "B-": { "cutoff": 80, "gpa": 3.0 },
-            "C+": { "cutoff": 77, "gpa": 2.0 },
-            "C": { "cutoff": 73, "gpa": 2.0 },
-            "C-": { "cutoff": 70, "gpa": 2.0 },
-            "D+": { "cutoff": 67, "gpa": 1.0 },
-            "D": { "cutoff": 63, "gpa": 1.0 },
-            "D-": { "cutoff": 60, "gpa": 1.0 },
-            "F": { "cutoff": 0, "gpa": 0 }
-        });
-    });
-
-    // Note: the card-style number inputs (imageSize, cardRoundness,
-    // imageRoundness, cardSpacing, cardWidth, cardHeight, cardPadding) are wired
-    // via their setup*Input
-    // handlers in menu.special above, which debounce the storage writes. The
-    // duplicate listeners that used to live here referenced nonexistent
-    // #*Value spans (threw on every input) and double-wrote to storage, which
-    // is what blew the sync write quota when adjusting card styles quickly.
 
     document.getElementById("clearCustomBackground").addEventListener("click", () => {
-                chrome.storage.sync.set({ "customBackgroundLink": "", "customBackgroundScale": 100 });
+                chrome.storage.sync.set({ "customBackgroundLink": "", "customBackgroundScale": 100, "customBackgroundColor": "" });
         document.querySelector("#customBackgroundLink").value = "";
+        document.querySelector("#customBackgroundColorHex").value = "";
+        syncSolidBackgroundState();
 		document.querySelector("#customBackgroundScale").value = 100;
 		document.querySelector("#customBackgroundScaleValue").textContent = "100%";
 		renderBackgroundPresetSelection();
@@ -2010,27 +2975,16 @@ function setup() {
         chrome.storage.local.set({ [fontsDropdownStateKey]: nextOpen });
     });
 
-    // The "Keep original assignment font" toggle sits inline in the dropdown
-    // header; clicking it must not also collapse/expand the font dropdown.
     const skipPToggle = document.getElementById("custom_font_skip_p");
     if (skipPToggle) {
         skipPToggle.closest("span").addEventListener("click", (e) => e.stopPropagation());
     }
-
-}
-
-function applyGPAPreset(bounds) {
-    chrome.storage.sync.set({ "gpa_calc_bounds": bounds }, () => {
-        displayGPABounds();
-    });
 }
 
 function setupCustomStyle(initial) {
     const el = document.getElementById("custom-styles");
-    // Custom CSS lives in storage.local (unlimitedStorage) — storage.sync's
-    // 8KB per-item quota silently dropped long stylesheets. `initial` is the
-    // legacy sync value, used until the user saves again (migrated to local
-    // on first save; content.js also self-migrates on page load).
+    // storage.local: storage.sync's 8KB per-item quota dropped long stylesheets.
+    // `initial` is the legacy sync value, used until the user saves again.
     chrome.storage.local.get("custom_styles", local => {
         el.value = local && local["custom_styles"] !== undefined ? local["custom_styles"] : (initial || "");
     });
@@ -2137,7 +3091,6 @@ function themeSortFn(method) {
 
 let cache = {};
 
-// new theme sort button
 function themeSort(sort) {
     current_sort = sort;
     current_page_num = 1;
@@ -2152,7 +3105,7 @@ function clickout() {
     }, 10);
 }
 
-// shuffle function for the score sorting so theres no order bias
+// shuffled so equal scores get no fixed order
 function shuffle (arr) {
     var j, x, index;
     for (index = arr.length - 1; index > 0; index--) {
@@ -2174,11 +3127,9 @@ let fallback = false;
 
 
 function saveCurrentTheme() {
-    const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
+    const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles", "widget_order"]);
     chrome.storage.local.get(["saved_themes", "custom_styles"], local => {
         chrome.storage.sync.get(allOptions, async sync => {
-            // custom_styles is stored in storage.local (sync's 8KB per-item
-            // quota drops long stylesheets); merge it over the legacy sync one.
             if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
             let current = await getExport(sync, allOptions);
             let trimmed = { 
@@ -2194,9 +3145,13 @@ function saveCurrentTheme() {
                 "todo_hide_feedback": current["todo_hide_feedback"],
                 "todo_hide_read": current["todo_hide_read"] !== false,
                 "todo_full_height": current["todo_full_height"],
-                "todo_confetti": current["todo_confetti"],
+                "todo_celebrations_enabled": current["todo_celebrations_enabled"],
+                "todo_celebrations": current["todo_celebrations"],
+                "todo_celebration_amount": current["todo_celebration_amount"],
                 "todo_progress_rings": current["todo_progress_rings"],
                 "todo_timeframe": current["todo_timeframe"],
+                "todo_timeframe_custom_past": current["todo_timeframe_custom_past"],
+                "todo_timeframe_custom_future": current["todo_timeframe_custom_future"],
                 "todo_hr24": current["todo_hr24"],
                 "todo_separate_scrollbar": current["todo_separate_scrollbar"],
                 "todo_alternate_colors": current["todo_alternate_colors"],
@@ -2212,8 +3167,6 @@ function saveCurrentTheme() {
 				"cardWidth": current["cardWidth"],
 				"cardHeight": current["cardHeight"],
 				"cardPadding": current["cardPadding"],
-				// Card Grid (part of card styles): layout toggle, counts,
-				// spacing and uneven-row centering.
 				"card_grid": current["card_grid"],
 				"card_grid_columns": current["card_grid_columns"],
 				"card_grid_rows": current["card_grid_rows"],
@@ -2243,7 +3196,6 @@ function saveCurrentTheme() {
 
 
 function displayThemeList(direction = 0) {
-    // Render the sorted theme list, filtered by any active search.
     let themesToShow = allThemes;
     if (searchFor) {
         themesToShow = allThemes.filter(theme => theme.title.toLowerCase().includes(searchFor.toLowerCase()));
@@ -2270,12 +3222,10 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
             makeElement("p", themeBtn, {"className": "theme-button-title", "textContent":  split[0] });
             makeElement("p", themeBtn, {"className": "theme-button-creator", "textContent": split[1] });
             themeBtn.addEventListener("click", () => {
-                const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles"]);
+                const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles", "widget_order"]);
                 chrome.storage.sync.get(allOptions, sync => {
                     chrome.storage.local.get(["previous_theme", "custom_styles"], async local => {
                         if (local["previous_theme"] === null) {
-                            // custom_styles is stored in storage.local; merge it
-                            // in so saved themes keep the user's CSS.
                             if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
                             let previous = await getExport(sync, allOptions);
                             chrome.storage.local.set({ "previous_theme": previous });
@@ -2291,22 +3241,35 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
 function getRelativeDate(date, short = false) {
     let now = new Date();
     let timeSince = (now.getTime() - date.getTime()) / 60000;
-    let time = "min";
+    let unitKey = short ? "time_min_short" : "time_min";
+    let unitFallback = "min";
+    let pluralKey = null;
+    let pluralFallback = "";
     timeSince = Math.abs(timeSince);
     if (timeSince >= 60) {
         timeSince /= 60;
-        time = short ? "h" : "hour";
+        unitKey = short ? "time_hour_short" : "time_hour";
+        unitFallback = short ? "h" : "hour";
+        pluralKey = short ? null : "time_hour_plural";
+        pluralFallback = "hours";
         if (timeSince >= 24) {
             timeSince /= 24;
-            time = short ? "d" : "day";
+            unitKey = short ? "time_day_short" : "time_day";
+            unitFallback = short ? "d" : "day";
+            pluralKey = short ? null : "time_day_plural";
+            pluralFallback = "days";
             if (timeSince >= 7) {
                 timeSince /= 7;
-                time = short ? "w" : "week";
+                unitKey = short ? "time_week_short" : "time_week";
+                unitFallback = short ? "w" : "week";
+                pluralKey = short ? null : "time_week_plural";
+                pluralFallback = "weeks";
             }
         }
     }
     timeSince = Math.round(timeSince);
-    let relative = timeSince + (short ? "" : " ") + time + (timeSince > 1 && !short ? "s" : "");
+    const unit = getMsg(timeSince > 1 && pluralKey ? pluralKey : unitKey, timeSince > 1 && pluralKey ? pluralFallback : unitFallback);
+    let relative = short ? timeSince + unit : timeSince + " " + unit;
     return { time: relative, ms: now.getTime() - date.getTime() };
 }
 
@@ -2317,8 +3280,8 @@ function displaySavedThemes() {
         Object.keys(local["saved_themes"]).forEach((key, index) => {
             const created = new Date(parseInt(key));
             let btn = makeElement("div", target, { "className": "saved-theme" });
-            let title = makeElement("p", btn, { "className": "theme-button-title", "textContent": `Theme ${index + 1}`});
-            let date = makeElement("p", btn, { "className": "theme-button-creator", "textContent": `${getRelativeDate(created).time} ago` });
+            let title = makeElement("p", btn, { "className": "theme-button-title", "textContent": (getMsg("theme_number") || "Theme {{NUM}}").replace("{{NUM}}", index + 1)});
+            let date = makeElement("p", btn, { "className": "theme-button-creator", "textContent": (getMsg("relative_ago", "{{TIME}} ago")).replace("{{TIME}}", getRelativeDate(created).time) });
             let remove = makeElement("div", btn, { "className": "theme-button-remove", "textContent": "x" });
             btn.style.backgroundImage = `linear-gradient(rgba(0, 0, 0, 0.44), rgba(0, 0, 0, 0.44)), url(${local["saved_themes"][key]["custom_cards"]?.[0] || ""})`;
             btn.addEventListener("click", () => {
@@ -2338,7 +3301,6 @@ function displaySavedThemes() {
 
 function getTheme(name) {
 
-    // get localThemes from themes.js
     console.log(themes);
 
     if (name === "all") return themes;
@@ -2361,11 +3323,8 @@ function importTheme(theme) {
                         sendFromPopup("setcolors", theme["card_colors"]);
                         break;
                     case "custom_cards": {
-                        // "none" is a legacy placeholder meaning "this theme has
-                        // no custom card images" — treat it as such instead of
-                        // writing the literal string into every card (which hides
-                        // the card image on the dashboard). Fall back to "" so
-                        // cards keep their default Canvas images.
+                        // Legacy "none" placeholder meant "no custom card images"; writing it
+                        // literally would hide the card images.
                         const themeImgs = (theme["custom_cards"] || []).filter(u => u && u !== "none" && u.trim() !== "");
                         if (theme["custom_cards"].length > 0) {
                             let pos = 0;
@@ -2377,13 +3336,14 @@ function importTheme(theme) {
                         }
                         break;
                     }
+                    case "todo_confetti":
+                        final["todo_celebrations"] = theme["todo_confetti"] === false ? [] : ["confetti"];
+                        break;
                     default:
                         final[key] = theme[key];
                         break;
                 }
             });
-            // custom_styles must go to storage.local — sync's 8KB per-item
-            // quota rejects (or truncates) large stylesheets from themes.
             if (Object.prototype.hasOwnProperty.call(final, "custom_styles")) {
                 localFinal = { "custom_styles": final["custom_styles"] };
                 delete final["custom_styles"];
@@ -2400,7 +3360,7 @@ function updateCards(key, value) {
     chrome.storage.sync.get(["custom_cards"], result => {
         chrome.storage.sync.set({ "custom_cards": { ...result["custom_cards"], [key]: { ...result["custom_cards"][key], ...value } } }, () => {
             if (chrome.runtime.lastError) {
-                displayAlert(true, "The data you're entering is exceeding the storage limit, so it won't save. Try using shorter links, and make sure to press \"copy image address\" and not \"copy image\" for links.");
+                displayAlert(true, getMsg("storage_limit_error", "The data you're entering is exceeding the storage limit, so it won't save. Try using shorter links, and make sure to press \"copy image address\" and not \"copy image\" for links."));
             }
         })
     });
@@ -2426,7 +3386,7 @@ function displayCustomFont() {
         const popularFonts = ["Arimo", "Barriecito", "Barlow", "Caveat", "Cinzel", "Comfortaa", "Corben", "DM Sans", "Expletus Sans", "Gluten", "Happy Monkey", "Inconsolata", "Inria Sans", "Jost", "Kanit", "Karla", "Kode Mono", "Lobster", "Lora", "Madimi One", "Mali", "Montserrat", "Nanum Myeongjo", "Open Sans", "Oswald", "Permanent Marker", "Playfair Display", "Poetsen One", "Poppins", "Quicksand", "Rakkas", "Redacted Script", "Roboto Mono", "Rubik", "Silkscreen", "Sixtyfour", "Syne Mono", "Tektur", "Texturina", "Ysabeau Infant", "Yuji Syuku"];
         let quickFonts = document.querySelector("#quick-fonts");
         quickFonts.textContent = "";
-        let noFont = makeElement("button", quickFonts, { "className": "customization-button", "textContent": "None" });
+        let noFont = makeElement("button", quickFonts, { "className": "customization-button", "textContent": getMsg("todo_progress_none") || "None" });
         noFont.addEventListener("click", () => {
             chrome.storage.sync.set({ "custom_font": { "link": "", "family": "" } });
             link.value = "";
@@ -2437,33 +3397,6 @@ function displayCustomFont() {
                 let linkVal = font.replace(" ", "+") + ":wght@400;700";
                 chrome.storage.sync.set({ "custom_font": { "link": linkVal, "family": "'" + font + "'" } });
                 link.value = linkVal;
-            });
-        });
-    });
-}
-
-function displayGPABounds() {
-    chrome.storage.sync.get(["gpa_calc_bounds"], storage => {
-        const order = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"];
-        const el = document.querySelector(".gpa-bounds");
-        el.textContent = "";
-        order.forEach(key => {
-            let inputs = makeElement("div", el, { "className": "gpa-bounds-item" });
-            inputs.innerHTML += '<div><span class="gpa-bounds-grade"></span><input class="gpa-bounds-input gpa-bounds-cutoff" type="text"></input><span style="margin-left:6px;margin-right:6px;">%</span><input class="gpa-bounds-input gpa-bounds-gpa" type="text" value=></input><span style="margin-left:6px">GPA</span></div>';
-            inputs.querySelector(".gpa-bounds-grade").textContent = key;
-            inputs.querySelector(".gpa-bounds-cutoff").value = storage["gpa_calc_bounds"][key].cutoff;
-            inputs.querySelector(".gpa-bounds-gpa").value = storage["gpa_calc_bounds"][key].gpa;
-
-            inputs.querySelector(".gpa-bounds-cutoff").addEventListener("change", function (e) {
-                chrome.storage.sync.get(["gpa_calc_bounds"], existing => {
-                    chrome.storage.sync.set({ "gpa_calc_bounds": { ...existing["gpa_calc_bounds"], [key]: { ...existing["gpa_calc_bounds"][key], "cutoff": parseFloat(e.target.value) } } });
-                });
-            });
-
-            inputs.querySelector(".gpa-bounds-gpa").addEventListener("change", function (e) {
-                chrome.storage.sync.get(["gpa_calc_bounds"], existing => {
-                    chrome.storage.sync.set({ "gpa_calc_bounds": { ...existing["gpa_calc_bounds"], [key]: { ...existing["gpa_calc_bounds"][key], "gpa": parseFloat(e.target.value) } } });
-                });
             });
         });
     });
@@ -2490,7 +3423,7 @@ function setCustomImage(key, val) {
     if (val !== "" && val !== "none") {
         let test = new Image();
         test.onerror = () => {
-            displayAlert(true, "It seems that the image link you provided isn't working. Make sure to right click on any images you want to use and select \"copy image address\" to get the correct link.");
+            displayAlert(true, getMsg("image_link_error", "It seems that the image link you provided isn't working. Make sure to right click on any images you want to use and select \"copy image address\" to get the correct link."));
             updateCards(key, { "img": val });
         }
         test.onload = clearAlert;
@@ -2500,9 +3433,7 @@ function setCustomImage(key, val) {
 }
 
 async function displayAdvancedCards() {
-    // Sync from Canvas only when needed: when there are no cards yet (fresh
-    // install) or when older cards predate the stored fullName field. Once
-    // every card has a fullName this is a no-op and the grid renders instantly.
+    // Syncs only on fresh install or when a stored card lacks fullName.
     const needsSync = await new Promise(resolve => {
         chrome.storage.sync.get("custom_cards", s => {
             const c = s.custom_cards || {};
@@ -2538,7 +3469,7 @@ async function displayAdvancedCards() {
 		});
 
         if (Object.keys(allCards).length === 0) {
-            cardGrid.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No course cards found. Visit your Canvas dashboard to load courses.</p>';
+            cardGrid.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">' + (getMsg("no_course_cards") || "No course cards found. Visit your Canvas dashboard to load courses.") + '</p>';
             return;
         }
 
@@ -2550,8 +3481,7 @@ async function displayAdvancedCards() {
             }
         });
 
-        // showCardEditMenu sets an inline display:none on the grid; clear it
-        // so reopening the menu shows the cards again (CSS default = grid).
+        // showCardEditMenu leaves an inline display:none; clear it to show cards.
         cardGrid.style.display = "";
         const editMenu = document.getElementById("card-edit-menu");
         if (editMenu) {
@@ -2559,6 +3489,8 @@ async function displayAdvancedCards() {
         }
     });
 }
+
+const CARD_EYE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-eye"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg>';
 
 function createCourseButton(courseId, courseData) {
 	const button = document.createElement("button");
@@ -2582,7 +3514,18 @@ function createCourseButton(courseId, courseData) {
 		showCardEditMenu(courseId, courseData);
 	});
 
-	return button;
+	const tile = document.createElement("div");
+	tile.className = "course-card-tile";
+	tile.classList.toggle("card-hidden", courseData.hidden === true);
+	tile.appendChild(button);
+	makeElement("button", tile, { className: "course-card-hide-toggle", title: getMsg("card_hide_toggle", "Hide/show on dashboard"), innerHTML: CARD_EYE_SVG }).addEventListener("click", () => {
+		const hidden = courseData.hidden !== true;
+        courseData.hidden = courseData.hide = hidden;
+		updateCards(courseId, { hidden, hide: hidden });
+		tile.classList.toggle("card-hidden", hidden);
+	});
+
+	return tile;
 }
 
 function showCardEditMenu(courseId, courseData) {
@@ -2699,7 +3642,7 @@ function saveCardChanges(courseId) {
 		updateCards(courseId, updates);
 	}
 
-	displayAlert(false, "Card settings saved successfully!");
+	displayAlert(false, getMsg("card_settings_saved", "Card settings saved successfully!"));
 
 	hideCardEditMenu();
 
@@ -2711,7 +3654,7 @@ function saveCardChanges(courseId) {
 
 function resetCardToDefault(courseId) {
 	updateCards(courseId, { name: "", code: "", img: "", hidden: false, hide: false, hide_todo: false });
-	displayAlert(false, "Card reset to default settings!");
+	displayAlert(false, getMsg("card_reset_default", "Card reset to default settings!"));
 
 	setTimeout(() => {
 		displayAdvancedCards();
@@ -2741,7 +3684,6 @@ function toggleDarkModeDisable(disabled) {
     }
 }
 
-// customization tab
 
 function getPalette(name) {
     const colors = {

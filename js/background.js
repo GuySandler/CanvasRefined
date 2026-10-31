@@ -40,6 +40,37 @@ chrome.runtime.onInstalled.addListener(function () {
             "dashboard_notes": false,
             "dashboard_notes_text": "",
             "dashboard_notes_mode": "edit",
+            "dashboard_notes_position": "top",
+            "widget_order": {},
+            "focus_timer": false,
+            "focus_timer_position": "cards_end",
+            "focus_timer_preset_1": { "h": 0, "m": 15, "s": 0 },
+            "focus_timer_preset_2": { "h": 0, "m": 25, "s": 0 },
+            "focus_timer_preset_3": { "h": 0, "m": 45, "s": 0 },
+            "breathing": false,
+            "breathing_position": "cards_end",
+            "breathing_preset_1": { "h": 0, "m": 3, "s": 0 },
+            "breathing_preset_2": { "h": 0, "m": 5, "s": 0 },
+            "breathing_preset_3": { "h": 0, "m": 10, "s": 0 },
+            "daily_quotes": false,
+            "daily_quotes_position": "top",
+            "quick_links": false,
+            "quick_links_position": "cards_end",
+            "heatmap": false,
+            "heatmap_position": "below",
+            "heatmap_excluded_courses": [],
+            "widget_top_height": 0,
+            "widget_bottom_height": 0,
+            "widget_row_height": 0,
+            "dashboard_notes_height": 0,
+            "gpa_calc_height": 0,
+            "focus_timer_height": 0,
+            "breathing_height": 0,
+            "daily_quotes_height": 0,
+            "quick_links_height": 0,
+            "heatmap_height": 0,
+            "quick_links_font_size": 12,
+            "quick_links_icon_size": 36,
             "better_todo": true,
             "todo_hr24": false,
 			"todo_separate_scrollbar": false,
@@ -52,7 +83,6 @@ chrome.runtime.onInstalled.addListener(function () {
             "custom_assignments_overflow": ["custom_assignments"],
             "grade_hover": false,
             "card_letter": true,
-            // "hide_completed": false,
             "hide_completed_cards": false,
             "num_todo_items": 10,
             "custom_font": { "link": "", "family": "" },
@@ -74,13 +104,13 @@ chrome.runtime.onInstalled.addListener(function () {
                 "D-": { "cutoff": 60, "gpa": .7 },
                 "F": { "cutoff": 0, "gpa": 0 }
             },
-            // "todo_overdues": false,
             "card_overdues": false,
             "relative_dues": false,
             "equal_height_cards": false,
             "hide_new_canvas": true,
             "hide_sequence_footer": false,
             "hide_navbar": false,
+            "hide_sidebar": false,
             "quiz_safe_mode": false,
             "dark_mode_fix": [],
             "assignment_states": {},
@@ -88,12 +118,16 @@ chrome.runtime.onInstalled.addListener(function () {
             "todo_hide_feedback": false,
             "todo_full_height": true,
             "todo_progress_rings": "rings",
-            "todo_confetti": true,
+            "todo_timeframe": "all",
+            "todo_timeframe_custom_past": 7,
+            "todo_timeframe_custom_future": 14,
+            "todo_celebrations_enabled": true,
+            "todo_celebrations": ["confetti"],
+            "todo_celebration_amount": "normal",
             "todo_show_scores": false,
             "custom_font_skip_p": false,
             "device_dark": false,
             "cumulative_gpa": { "name": "Cumulative GPA", "hidden": false, "weight": "dnc", "credits": 999, "gr": 3.21 },
-            // "show_updates": false,
             "card_method_date": false,
             "card_method_dashboard": true,
             "card_limit": 25,
@@ -105,6 +139,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "new_browser": null,
             "gpa_calc_cumulative": false,
             "gpa_calc_weighted": true,
+            "gpa_calc_show_on_hover": false,
             "browser_show_likes": false,
             "custom_styles": "",
             "imageSize": 100,
@@ -115,6 +150,8 @@ chrome.runtime.onInstalled.addListener(function () {
             "cardHeight": 146,
             "customCardStyles": false,
             "customBackgroundLink": "",
+            "customBackgroundColor": "",
+            "customBackgroundColorTransparent": false,
             "customBackgroundScale": 100,
             "customBackgroundDaily": false,
             "customBackgroundNasaDaily": false,
@@ -145,9 +182,18 @@ chrome.runtime.onInstalled.addListener(function () {
                 newLocalOptions[option] = default_options["local"][option];
             })
 
-            // migrate old setting name
             if (sync["nasaFitToScreen"] !== undefined && sync["fitImageToScreen"] === undefined) {
                 newSyncOptions["fitImageToScreen"] = sync["nasaFitToScreen"];
+            }
+
+            // The Top/Bottom widget rows used to share one height: give both rows the
+            // user's old value instead of dropping it to "auto".
+            if (sync["widget_top_height"] === undefined && sync["widget_bottom_height"] === undefined) {
+                const legacyRowHeight = Number(sync["widget_row_height"]);
+                if (Number.isFinite(legacyRowHeight) && legacyRowHeight > 0) {
+                    newSyncOptions["widget_top_height"] = legacyRowHeight;
+                    newSyncOptions["widget_bottom_height"] = legacyRowHeight;
+                }
             }
 
             if (Object.keys(newLocalOptions).length > 0) {
@@ -167,11 +213,16 @@ chrome.runtime.onInstalled.addListener(function () {
     });
 });
 
-// The NASA APOD API with the demo key is limited to 30 requests/hour and 50/day.
-// Calls are serialized through this worker; the API's own 429 responses handle limiting.
+// NASA serves APOD from its own site now: /wp-json/wp/v2/apod-basic/<YYMMDD>.
+// No API key and no per-key quota, but the response carries no usable CORS
+// header, so science.nasa.gov needs a host permission (see manifest.json).
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "getNasaBackground") {
         getNasaBackground().then(sendResponse);
+        return true;
+    }
+    if (message?.type === "getDailyQuote") {
+        getDailyQuote().then(sendResponse);
         return true;
     }
 });
@@ -186,6 +237,7 @@ function queuedNasaTask(task) {
 async function getNasaBackground() {
     return queuedNasaTask(async () => {
         const date = new Date();
+        const todayStr = date.toISOString().slice(0, 10);
         for (let i = 0; i < 7; i++) {
             const dateStr = date.toISOString().slice(0, 10);
             const cacheKey = `nasa_apod_${dateStr}`;
@@ -193,7 +245,7 @@ async function getNasaBackground() {
             const cached = await chrome.storage.local.get([cacheKey, metadataKey]);
             if (cached[cacheKey]) return cached[cacheKey];
 
-            // Don't re-probe dates the API already told us don't exist
+            // never re-probe dates the API reported as missing
             const missingKey = `nasa_apod_missing_${dateStr}`;
             const missing = await chrome.storage.local.get(missingKey);
             if (missing[missingKey]) {
@@ -203,18 +255,29 @@ async function getNasaBackground() {
 
             const data = await callNasaApi(dateStr);
             if (data === "ratelimited" || data === null) return null;
-            if (data === "missing") {
-                await chrome.storage.local.set({ [missingKey]: true });
+            const url = nasaApodImageUrl(data);
+            if (data === "missing" || !url) {
+                // Video days carry only a generic NASA card in hdurl, so they make a
+                // poor wallpaper; skip them like a missing date. Only persist the
+                // marker for past dates: today's APOD may simply not be posted yet,
+                // and a permanent marker would hide it for good.
+                if (dateStr < todayStr || data !== "missing") {
+                    await chrome.storage.local.set({ [missingKey]: true });
+                }
                 date.setDate(date.getDate() - 1);
                 continue;
             }
 
-            const url = data.thumbnail_url || data.hdurl || data.url;
-            if (!url) return null;
             const result = { url, scale: 100, date: dateStr };
-            const meta = { title: data.title || "", date: data.date || dateStr, copyright: data.copyright || "", explanation: data.explanation || "" };
-            // Write image + metadata atomically so the info overlay never sees a
-            // cached image with missing metadata.
+            // The feed ships HTML (links, <strong>, entities) where the old API
+            // sent plain text; the overlay renders textContent, so strip it.
+            const meta = {
+                title: nasaPlainText(data.title),
+                date: data.date || dateStr,
+                copyright: nasaPlainText(data.copyright || data.credit),
+                explanation: nasaPlainText(data.explanation)
+            };
+            // one write, so the overlay never sees an image without its metadata
             await chrome.storage.local.set({ [cacheKey]: result, [metadataKey]: meta });
             return result;
         }
@@ -222,10 +285,49 @@ async function getNasaBackground() {
     });
 }
 
+// "2026-10-27" -> "261027", the date path this endpoint expects.
+function nasaApodPathKey(dateStr) {
+    return String(dateStr).replace(/-/g, "").slice(2);
+}
+
+// Video entries point hdurl at a generic placeholder, not a still frame.
+const NASA_APOD_PLACEHOLDER = /news-thumbnail\.png/i;
+
+function nasaApodImageUrl(data) {
+    if (!data || typeof data !== "object") return null;
+    if (data.media_type && data.media_type !== "image") return null;
+    // hdurl is the asset itself; url is the article page, so only trust it when
+    // it actually points at a picture.
+    const url = data.hdurl || (/\/\S*\.(jpe?g|png|webp|gif)(\?|$)/i.test(data.url || "") ? data.url : null);
+    if (typeof url !== "string" || !/^https?:\/\//i.test(url)) return null;
+    if (NASA_APOD_PLACEHOLDER.test(url)) return null;
+    return url;
+}
+
+function nasaPlainText(html) {
+    if (!html) return "";
+    return String(html)
+        .replace(/<br\s*\/?>/gi, " ")
+        .replace(/<\/(p|div|li)>/gi, " ")
+        .replace(/<[^>]*>/g, "")
+        .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&quot;/gi, '"')
+        .replace(/&apos;/gi, "'")
+        .replace(/&mdash;/gi, "\u2014")
+        .replace(/&ndash;/gi, "\u2013")
+        .replace(/&amp;/gi, "&")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
 async function callNasaApi(dateStr) {
+    // _fields trims the payload: the default also inlines the whole article HTML.
+    const fields = "date,title,media_type,hdurl,url,permalink,credit,copyright,explanation,alt";
     let response;
     try {
-        response = await fetch(`https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true&date=${dateStr}`);
+        response = await fetch(`https://science.nasa.gov/wp-json/wp/v2/apod-basic/${nasaApodPathKey(dateStr)}?_fields=${fields}`);
     } catch (error) {
         console.error("[CanvasRefined] Failed to fetch NASA APOD:", error);
         return null;
@@ -233,12 +335,53 @@ async function callNasaApi(dateStr) {
 
     if (response.status === 429) return "ratelimited";
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData.code === 404 && (errorData.msg || "").toLowerCase().includes("no data available")) {
-            return "missing";
+        if (response.status === 404) {
+            const errorData = await response.json().catch(() => null);
+            if (errorData?.code === "apod_basic_not_found") return "missing";
         }
         return null;
     }
 
     return await response.json().catch(() => null);
+}
+
+// Cached in storage.local for one day; fetched from the worker (no CORS headers).
+function dailyQuoteTodayKey() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+let dailyQuoteInFlight = null;
+async function getDailyQuote() {
+    const today = dailyQuoteTodayKey();
+    let cached = null;
+    try {
+        const st = await chrome.storage.local.get("daily_quote");
+        cached = st && st.daily_quote;
+    } catch (e) { /* ignore storage issues */ }
+
+    if (cached && cached.date === today && cached.quote) return cached;
+    if (dailyQuoteInFlight) return dailyQuoteInFlight;
+
+    const request = (async () => {
+        try {
+            const response = await fetch("https://stoic.tekloon.net/stoic-quote", { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const json = await response.json();
+            const data = (json && json.data) || {};
+            const quote = String(data.quote || "").replace(/\s+/g, " ").trim();
+            const author = String(data.author || "").trim();
+            if (!quote) throw new Error("empty quote");
+            const entry = { date: today, quote, author };
+            await chrome.storage.local.set({ daily_quote: entry });
+            return entry;
+        } catch (e) {
+            console.warn("[CanvasRefined] Daily quote fetch failed:", e);
+            return cached || null;
+        } finally {
+            dailyQuoteInFlight = null;
+        }
+    })();
+    dailyQuoteInFlight = request;
+    return request;
 }

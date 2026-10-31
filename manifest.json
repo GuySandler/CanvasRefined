@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Canvas Refined",
-  "description": "Even More Feature packed extension for Canvas.",
-  "version": "7.1.0",
+  "name": "Canvas Refined: Dark Mode, Themes & Tools for Canvas LMS",
+  "description": "Level up Canvas LMS with dark mode, custom themes, a GPA calculator, a better todo list, and dashboard widgets. Built for students.",
+  "version": "7.2.0",
   "icons": {
     "16": "icon/icon-16.png",
     "32": "icon/icon-32.png",
@@ -31,6 +31,7 @@
     }
   ],
   "permissions": ["storage", "unlimitedStorage"],
+  "host_permissions": ["https://stoic.tekloon.net/*", "https://science.nasa.gov/*"],
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {

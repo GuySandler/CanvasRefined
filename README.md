@@ -49,7 +49,7 @@ The original introduces improvements to the Canvas user interface:
 
 ## Newly added features
 
-Canvas Refined adds more with more to come!
+Canvas Refined adds more with more to come! (This list will no longer be updated due to too many features)
 
 - GPA presets
 - backend stuff:
@@ -74,31 +74,6 @@ Canvas Refined adds more with more to come!
   - Equal height cards for card assignments
   - Center cards
   - Hide new dashboard button
-
-## Planned Features
-- mail assistant + ui revamp
-- better calender (+ calender sync)
-- better what if grade
-- fix darkmode fixer (and automatic)
-- grade history with graph
-
-## Extra features that might be added:
-- card grade position, card outline
-- streaks
-- maybe find a way for faster loading
-- rotating background, time/weather background overlay
-- custom side logo
-- goals
-- Scheduled Reminder Popups
-- preview font
-- button to remove all card images and undo
-- auto dark mode based on background
-
-## Community suggestions (maybe will be done at some point)
-- when opening assignments it will show you "if you get a 0 on this your grade will be _"
-- module sorting (newest, oldest) (maybe grid view)
-- grade leaderboard per class (opt in)
-- sticky notes
 
 ## Dev Installation
 
@@ -219,6 +194,8 @@ If nobody is working on the feature, you can clone the dev branch and make your 
 
 #### Fork Contributers
 - [TabulateJarl8](https://github.com/TabulateJarl8)
+- [dhogenson](https://github.com/dhogenson)
+- [Y2Kwastaken](https://github.com/Y2Kwastaken)
 
 #### Original Owner
 

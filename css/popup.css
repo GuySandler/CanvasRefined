@@ -6,7 +6,7 @@ h1, h2, p, body{margin:0;padding:0}
 h1 {font-size:30px;}
 h2 {font-size:24px;}
 .option input{display:none;}
-/* Knob state for every big toggle (main options AND tab pages like Report issue) */
+/* knob state for every big toggle (main options and tab pages) */
 .option input:nth-of-type(1).checked ~ .slider .sliderknob{background-color:#e1e1e12e;}
 .option input:nth-of-type(2).checked ~ .slider .sliderknob{transform:translate(18px);background-color:#8dd28d;}
 .option{display:flex;align-items:center;}
@@ -22,8 +22,8 @@ h2 {font-size:24px;}
 .header {font-size: 16px;display: flex;align-items: center;gap:12px; margin-bottom:14px;}
 .header h1 { font-weight: 600; font-size:24px; }
 #bclogo {height: 30px;width:30px;filter: none}
-#numAssignmentsSlider, #numTodoItemsSlider, #sidebarScaleSlider, #customBackgroundScale, #bgOpacitySlider, #sidebarOpacitySlider, #bgBlurSlider, #sidebarBlurSlider, #cardOpacitySlider, #cardBlurSlider {display: block;margin-top: 14px;width: 100%;-webkit-appearance: none; appearance: none;background:var(--inputbg);outline: none;height:6px;border-radius:20px;}
-#numAssignmentsSlider::-webkit-slider-thumb,  #numTodoItemsSlider::-webkit-slider-thumb, #sidebarScaleSlider::-webkit-slider-thumb, #customBackgroundScale::-webkit-slider-thumb, #bgOpacitySlider::-webkit-slider-thumb, #sidebarOpacitySlider::-webkit-slider-thumb, #bgBlurSlider::-webkit-slider-thumb, #sidebarBlurSlider::-webkit-slider-thumb, #cardOpacitySlider::-webkit-slider-thumb, #cardBlurSlider::-webkit-slider-thumb {-webkit-appearance: none; appearance: none;height: 18px; width: 18px;background: #727272;cursor: pointer;border-radius:30px;}
+#numAssignmentsSlider, #numTodoItemsSlider, #sidebarScaleSlider, #customBackgroundScale, #bgOpacitySlider, #sidebarOpacitySlider, #bgBlurSlider, #sidebarBlurSlider, #cardOpacitySlider, #cardBlurSlider, #quickLinksFontSizeSlider, #quickLinksIconSizeSlider {display: block;margin-top: 14px;width: 100%;-webkit-appearance: none; appearance: none;background:var(--inputbg);outline: none;height:6px;border-radius:20px;}
+#numAssignmentsSlider::-webkit-slider-thumb,  #numTodoItemsSlider::-webkit-slider-thumb, #sidebarScaleSlider::-webkit-slider-thumb, #customBackgroundScale::-webkit-slider-thumb, #bgOpacitySlider::-webkit-slider-thumb, #sidebarOpacitySlider::-webkit-slider-thumb, #bgBlurSlider::-webkit-slider-thumb, #sidebarBlurSlider::-webkit-slider-thumb, #cardOpacitySlider::-webkit-slider-thumb, #cardBlurSlider::-webkit-slider-thumb, #quickLinksFontSizeSlider::-webkit-slider-thumb, #quickLinksIconSizeSlider::-webkit-slider-thumb {-webkit-appearance: none; appearance: none;height: 18px; width: 18px;background: #727272;cursor: pointer;border-radius:30px;}
 .option-container {font-size: 14px; margin-top: 8px;background: var(--containerbg);padding: 18px;border-radius: 14px;box-sizing:border-box}
 .options .option-container {padding: 14px;}
 .options .option-container > .option + .option {margin-top: 10px;}
@@ -36,7 +36,6 @@ a.option-container:hover {background: #333}
 .options-left, .options-right {width: 50%;}
 .customDomain {font-weight:600}
 
-/* Canvas URL list — one text box per school */
 #custom-domain-list {display: flex;flex-direction: column;gap: 6px;margin-top: 8px}
 .domain-row {display: flex;gap: 6px;align-items: center}
 .domain-row input {flex: 1;min-width: 0;box-sizing: border-box;font-size: 12px;background: var(--inputbg);border: none;padding: 8px;color: #e2e2e2;border-radius: 7px;font-family: inherit}
@@ -76,16 +75,42 @@ h2 {margin-top: 20px;font-weight:600}
 .custom-card-hide {display: flex; align-items: center;}
 .option-name {font-weight: 600}
 .sub-text {font-size: 12px;color: #c7c7c7}
-#todo_progress_rings {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
-#todo_progress_rings option {background:#1e1e1e;color:#e2e2e2;}
+#todo_progress_rings, #anon_grade_preset {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
+#todo_progress_rings option, #anon_grade_preset option {background:#1e1e1e;color:#e2e2e2;}
 #todo_progress_rings option:checked,
-#todo_progress_rings option:hover {background:#2e2e2e;color:#fff;}
-#todo_timeframe {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;color-scheme:dark;}
+#todo_progress_rings option:hover,
+#anon_grade_preset option:checked,
+#anon_grade_preset option:hover {background:#2e2e2e;color:#fff;}
+#todo_timeframe {font-size: 12px;background: var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
 #todo_timeframe option {background:#1e1e1e;color:#e2e2e2;}
 #todo_timeframe option:checked,
 #todo_timeframe option:hover {background:#2e2e2e;color:#fff;}
-/* Collapsible "More options" section for the Better Todo List sub-options */
+.custom-tf-wrap {display:none;flex-direction:column;gap:6px;}
+.custom-tf-wrap.visible {display:flex;}
+.custom-tf-row {display:flex;align-items:center;gap:6px;}
+.custom-tf-row input {flex:none;width:58px;font-size:12px;background:var(--inputbg);border:none;padding:6px;color:#e2e2e2;border-radius:6px;font-family:inherit;text-align:right;box-sizing:border-box;color-scheme:dark;}
+.custom-tf-row input::-webkit-outer-spin-button, .custom-tf-row input::-webkit-inner-spin-button {opacity:1;}
 .todo-more-options {margin-top: 7px;}
+/* Checkbox dropdown shared by todo celebrations and the heatmap's course filter. */
+.cr-multiselect {position:relative;}
+.cr-multiselect-btn {display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;cursor:pointer;text-align:left;}
+/* the current selection stays on one line; the menu is where long names wrap */
+.cr-multiselect-btn > span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cr-multiselect-btn svg {flex:none;transition:transform .15s ease;}
+.cr-multiselect.open .cr-multiselect-btn svg {transform:rotate(-180deg);}
+/* grows past a narrow trigger (widget cards) instead of clipping the labels */
+.cr-multiselect-menu {display:none;position:absolute;top:calc(100% + 4px);left:0;right:auto;z-index:60;background:#1e1e1e;border-radius:7px;padding:5px 0;max-height:200px;overflow-y:auto;overflow-x:hidden;box-shadow:0 6px 18px rgba(0,0,0,.45);box-sizing:border-box;width:max-content;min-width:100%;max-width:min(320px, calc(100vw - 32px));}
+.cr-multiselect.open .cr-multiselect-menu {display:block;}
+.cr-multiselect.flip-up .cr-multiselect-menu {top:auto;bottom:calc(100% + 4px);}
+.cr-multiselect-option {display:flex;align-items:flex-start;gap:7px;padding:5px 10px;font-size:12px;line-height:1.3;color:#e2e2e2;cursor:pointer;user-select:none;}
+.cr-multiselect-option:hover {background:#2e2e2e;color:#fff;}
+.cr-multiselect-option span {overflow-wrap:anywhere;}
+.cr-multiselect-option input {accent-color:#56caf0;cursor:pointer;margin:1px 0 0;}
+.cr-multiselect-empty {padding:6px 10px;font-size:12px;line-height:1.3;color:#9aa3ab;}
+#todo_celebration_amount {font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
+#todo_celebration_amount option {background:#1e1e1e;color:#e2e2e2;}
+#todo_celebration_amount option:checked,
+#todo_celebration_amount option:hover {background:#2e2e2e;color:#fff;}
 .todo-more-toggle {display: flex;align-items:center;gap:5px;font-size:12px;color:#a7a7a7;cursor:pointer;user-select:none;padding:3px 0;border-radius:5px;transition:color .1s;}
 .todo-more-toggle:hover {color:#e2e2e2;}
 .todo-more-toggle svg {flex:none;transition:transform .15s ease;}
@@ -94,25 +119,37 @@ h2 {margin-top: 20px;font-weight:600}
 .todo-more-options.expanded .todo-expanded-label {display:inline;}
 .todo-more-items {display:none;flex-direction:column;}
 .todo-more-options.expanded .todo-more-items {display:flex;padding-left:2px;}
-#advanced-settings, #gpa-bounds-btn, #custom-font-btn, #customize-dark-btn, #card-colors-btn {width: 100%;}
+#advanced-settings, #custom-font-btn, #customize-dark-btn, #card-colors-btn {width: 100%;}
 .back-btn {width: 120px;height:100%;margin-top:0}
 .big-button {border: none;border-radius: 7px;background: var(--containerbg);color: #fff;font-family: inherit;padding: 12px 10px;font-weight:600}
-.social-buttons {display: flex;gap: 8px;margin-top: 8px;}
+.social-footer {display: flex;flex-direction: column;align-items: center;gap: 6px;margin-top: 16px;padding-top: 14px;border-top: 1px solid #ffffff0f;}
+.social-footer .social-buttons {display: flex;gap: 8px;width: 100%;max-width: 300px;margin-top: 0;}
 .social-buttons a {flex: 1;box-sizing: border-box;}
-.discord-button {display: flex;align-items: center;justify-content: center;gap: 8px;padding: 12px 10px;border: none;border-radius: 7px;background: #5865F2;color: #fff;font-family: inherit;font-size: 14px;font-weight: 600;text-decoration: none;transition: .15s background}
+.discord-button {display: flex;align-items: center;justify-content: center;gap: 7px;padding: 9px 10px;border: none;border-radius: 8px;background: #5865F2;color: #fff;font-family: inherit;font-size: 13px;font-weight: 600;text-decoration: none;transition: .15s background}
 .discord-button:hover {background: #4752c4;cursor: pointer}
 .discord-button:active {filter: brightness(85%)}
-.github-button {display: flex;align-items: center;justify-content: center;gap: 8px;padding: 12px 10px;border: none;border-radius: 7px;background: #30363d;color: #fff;font-family: inherit;font-size: 14px;font-weight: 600;text-decoration: none;transition: .15s background}
+.github-button {display: flex;align-items: center;justify-content: center;gap: 7px;padding: 9px 10px;border: none;border-radius: 8px;background: #30363d;color: #fff;font-family: inherit;font-size: 13px;font-weight: 600;text-decoration: none;transition: .15s background}
 .github-button:hover {background: #21262d;cursor: pointer}
 .github-button:active {filter: brightness(85%)}
+/* Update announcement box: blue attention banner at the very top of the main popup */
+.update-box {margin-bottom:14px;padding:14px 16px 12px;border:1px solid #2f81f7;border-radius:12px;background:linear-gradient(165deg, rgba(47,129,247,.28), rgba(47,129,247,.10) 70%, rgba(47,129,247,.05));box-shadow:0 0 0 1px rgba(47,129,247,.18), 0 4px 16px rgba(47,129,247,.28);}
+.update-box-title {margin:0 0 6px;font-size:15px;font-weight:700;color:#58a6ff;letter-spacing:.02em;}
+.update-box-body {display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:#e2e2e2;font-size:13px;}
+.update-box-body p {margin:0;flex:1;min-width:130px;}
+.update-box-body .github-button {flex:none;padding:6px 12px;font-size:12px;}
+.update-box-actions {display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+/* fit-content, one line each: no stretching across the box */
+.update-box-actions .customization-button {flex:0 0 auto;padding:4px 12px;white-space:nowrap;}
+.update-box-actions .customization-button:hover {background:#2f81f73a;}
 .discord-button svg, .github-button svg {flex-shrink: 0}
-.social-toggle {text-align: center;font-size: 12px;color: #9a9a9a;margin-top: 6px;cursor: pointer;user-select: none;transition: .15s color;text-decoration: none}
-.social-toggle:hover {color: #e2e2e2}
+.social-toggle {text-align: center;font-size: 12px;color: #9a9a9a;cursor: pointer;user-select: none;transition: .15s color;text-decoration: underline;text-underline-offset: 3px;padding: 4px 10px;border-radius: 6px;}
+.social-toggle:hover {color: #e2e2e2;background: #ffffff0a;}
 .social-buttons.hidden {display: none}
+.rate-link {font-size: 12px;color: #9a9a9a;text-align: center;text-decoration: underline;text-underline-offset: 3px;font-weight: 600;padding: 2px 8px;border-radius: 6px;transition: .15s color, .15s background;}
+.rate-link:hover {color: #e2e2e2;background: #ffffff0a;}
+.rate-link.hidden {display: none}
+.social-footer:has(.social-buttons.hidden) {padding-top: 8px;border-top-color: transparent;margin-top: 8px;}
 #setSingleColor, #setGradientColor {padding: 8px 20px;margin-top:5px;}
-.gpa-bounds-input {font-size: 14px;background: var(--inputbg); border: none;padding:6px;color: #e2e2e2;margin-top: 6px;border-radius: 6px; font-family: inherit; width: 55px; box-sizing: border-box;text-align: right}
-.gpa-bounds span {font-size: 16px; width: 25px;display: inline-block}
-.gpa-bounds-explanation {width:200px;height:100%;flex: 1;}
 .tab-header {display: flex;justify-content: space-between;gap:20px;align-items:center}
 .custom-font-flex {display: flex; align-items: center;font-size: 11px;}
 #custom-font-family, #custom-font-link {width:150px}
@@ -152,6 +189,11 @@ h2 {margin-top: 20px;font-weight:600}
 .theme-button-creator {font-size:10px;white-space:nowrap}
 .theme-button-title {font-weight: 600;font-size:12px;white-space:nowrap;}
 .background-preset-grid {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px;}
+/* a solid colour outranks the presets, so they are inert until it is cleared */
+.background-preset-grid.is-disabled {opacity: .45; filter: grayscale(1); pointer-events: none;}
+.background-color-picker {width: 38px; height: 30px; padding: 0; border: none; border-radius: 7px; background: var(--inputbg); cursor: pointer;}
+.background-color-picker::-webkit-color-swatch-wrapper {padding: 2px;}
+.background-color-picker::-webkit-color-swatch {border: none; border-radius: 5px;}
 .background-preset-card {min-height: 96px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; border-radius: 8px;}
 .background-preset-card.selected {outline: 2px solid #56Caf0; outline-offset: 2px;}
 .background-preset-scale {font-size:10px;white-space:nowrap;opacity:0.9;}
@@ -266,6 +308,13 @@ input[type="checkbox"]:checked {background: #8dd28d;}
 .course-card-button {background: var(--inputbg);border: 1px solid var(--borders);border-radius: 8px;padding: 15px 10px;color: #e2e2e2;font-family: inherit;font-size: 12px;font-weight: 600;cursor: pointer;transition: 0.2s all ease;text-align: center;min-height: 60px;display: flex;align-items: center;justify-content: center;}
 .course-card-button:hover {background: #adbcc724;border-color: #56Caf0;}
 .course-card-button.active {background: #56Caf0;color: #000;}
+.course-card-tile {position: relative;display: flex;}
+.course-card-tile .course-card-button {flex: 1;padding: 15px 26px;}
+.course-card-hide-toggle {position: absolute;top: 5px;right: 5px;width: 22px;height: 22px;padding: 3px;border: none;border-radius: 5px;background: none;color: #a0a0a0;cursor: pointer;transition: 0.2s all ease;}
+.course-card-hide-toggle:hover {background: #adbcc724;color: #fff;}
+.course-card-hide-toggle svg {width: 100%;height: 100%;display: block;}
+.course-card-tile.card-hidden .course-card-button {opacity: 0.45;text-decoration: line-through;}
+.course-card-tile.card-hidden .course-card-hide-toggle {color: #56Caf0;}
 .card-edit-menu {background: var(--containerbg);border-radius: 10px;padding: 20px;margin-top: 15px;}
 .card-edit-header {display: flex;justify-content: space-between;align-items: center;margin-bottom: 15px;}
 .card-edit-title {font-size: 16px;font-weight: 600;color: #fff;}
@@ -297,7 +346,6 @@ input[type="checkbox"]:checked {background: #8dd28d;}
     }
 }
 
-/* ===== Header feature search ===== */
 .header-search { position: relative; margin-left: auto; display: flex; align-items: center; gap: 8px; width: 170px; max-width: 42%; background: var(--inputbg); border-radius: 8px; padding: 7px 10px; box-sizing: border-box; }
 .header-search-icon { color: #9a9a9a; flex: none; }
 .header-search:focus-within { box-shadow: 0 0 0 1.5px #56Caf0; }
@@ -313,7 +361,6 @@ input[type="checkbox"]:checked {background: #8dd28d;}
 .search-result.empty:hover { background: none; }
 .search-highlight { outline: 2px solid #56Caf0; outline-offset: 2px; border-radius: 8px; animation: search-pulse 1.8s ease-out; }
 @keyframes search-pulse { 0% { box-shadow: 0 0 0 0 #56Caf099; } 40% { box-shadow: 0 0 0 6px #56Caf000; } 100% { box-shadow: 0 0 0 0 #56Caf000; } }
-/* ===== Quiz Safe Mode info bubble ===== */
 .cr-info-bubble {
     display: inline-flex;
     align-items: center;
@@ -353,3 +400,31 @@ input[type="checkbox"]:checked {background: #8dd28d;}
 }
 .cr-info-bubble:hover .cr-info-bubble-text,
 .cr-info-bubble:focus .cr-info-bubble-text { visibility: visible; opacity: 1; }
+
+.widget-order-strip {display:flex;align-items:stretch;width:100%;height:44px;margin-top:6px;}
+.wos-item {border:1px solid #ffffff2e;background:var(--inputbg);border-radius:7px;display:flex;align-items:center;padding:0 10px;font-size:12px;color:#e2e2e2;min-width:0;overflow:hidden;white-space:nowrap;cursor:grab;user-select:none;}
+.wos-item.dragging {opacity:.45;}
+.wos-divider {flex:0 0 6px;width:6px;align-self:stretch;margin:0 5px;border-radius:3px;background:#8a8a8a;cursor:col-resize;}
+.wos-divider:hover {background:#e2e2e2;}
+.widget-order-section + .widget-order-section {margin-top: 16px;}
+.widget-order-label {font-size: 12px;color: #c7c7c7;}
+.widget-order-strip {margin-top: 6px;}
+.widget-order-strip[data-area="cards_start"],
+.widget-order-strip[data-area="cards_end"] {column-gap: 8px;}
+.widget-order-strip[data-area="cards_start"] .wos-item,
+.widget-order-strip[data-area="cards_end"] .wos-item {flex: 1 1 0;}
+.widgets-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch;margin-top:8px;}
+.widgets-grid .option-container {margin-top:0;box-sizing:border-box;min-width:0;}
+.widget-pos {font-size:12px;background:var(--inputbg);color:#e2e2e2;border:none;border-radius:7px;padding:6px 8px;font-family:inherit;width:100%;box-sizing:border-box;margin-top:2px;margin-bottom:6px;color-scheme:dark;}
+.widget-pos option {background:#1e1e1e;color:#e2e2e2;}
+.widget-pos option:checked,
+.widget-pos option:hover {background:#2e2e2e;color:#fff;}
+.widget-inline-row {display:flex;align-items:center;gap:8px;}
+.widget-inline-label {flex:none;}
+.widget-inline-select {flex:1;min-width:0;margin-top:0;margin-bottom:0;}
+/* compact clock entry, matching the on-canvas widget */
+.popup-time-input {display:flex;align-items:center;justify-content:center;gap:1px;flex:1;min-width:0;background:var(--inputbg);border-radius:7px;padding:4px 6px;}
+.popup-time-input:focus-within {box-shadow:0 0 0 2px rgba(86,202,240,.35);}
+.popup-tf {width:2.2ch;min-width:0;border:none;background:transparent;color:#e2e2e2;font:inherit;font-size:13px;font-weight:700;text-align:center;padding:0;border-radius:4px;}
+.popup-tf:focus {outline:none;background:rgba(127,127,127,.28);}
+.popup-tf-colon {font-size:13px;font-weight:700;color:#9aa3ab;}

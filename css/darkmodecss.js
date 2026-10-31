@@ -757,7 +757,6 @@ h6,
 .canvasrefined-todo-actions,
 .css-md78hg-colHeader,
 .css-ywdg6k-view-rowHeader,
-/* Assignment page rubric styling */
 [data-testid="rubric-assessment-traditional-view"] > div:first-of-type [class$="-text"],
 [id^="rubric-header-"] [class$="-text"],
 [data-testid="rubric-assessment-traditional-view"] tbody tr td:first-child > div > div:first-child [class$="-text"] {
@@ -990,7 +989,6 @@ ul#question_list li.current_question,
 [data-testid="rubric-tab"] [class$="-baseButton__content"],
 [data-testid="rubric-tab"] [class$="-text"],
 button[data-cid~="CloseButton"] > [class$="-baseButton__content"],
-/* sidebar course listing */
 .css-8bodfv-text {
     color:var(--bctext-2)!important
 }
@@ -1217,43 +1215,27 @@ hr {
 .event-details strong {
 	color: var(--bctext-0) !important;
 }
-/* Theme the native date/time picker icons so they stay visible on the dark
-   sidebar surface. Applied in dark mode only — light mode keeps the default
-   dark glyphs (see css/content.css).
-   color-scheme: dark is the cross-browser way to flip the native picker icon
-   to a light glyph. Firefox 109+ ignores ::-webkit-calendar-picker-indicator
-   (the icon lives in a closed Shadow DOM), so a filter alone does nothing
-   there; color-scheme fixes both Firefox and modern Chrome. Do NOT also apply
-   an invert filter — color-scheme already makes the glyph light, and inverting
-   would flip it back to dark in Chrome. */
+/* color-scheme flips the native picker glyph; Firefox ignores the webkit
+   pseudo-element, so don't also invert it. */
 #better-todo-new-task-date,
 #better-todo-new-task-time {
     color-scheme: dark !important;
     color: var(--bctext-0) !important;
 }
-/* Dashboard list view header (Today / Add To Do / Show My Grades /
-   opportunities): Canvas paints the icon glyphs a dark ink color that
-   disappears on the dark glass header bar. Recolor the header text and
-   its icon SVGs to the theme text color. */
+/* header glyphs are painted dark ink; recolor text + icon SVGs */
 .PlannerHeader-styles__root {
     color: var(--bctext-0) !important;
 }
 .PlannerHeader-styles__root svg {
     fill: var(--bctext-0) !important;
 }
-/* The "Today" button's label span carries Canvas's dark ink color from its
-   emotion class, which beats the inherited root color above — dark text on
-   the dark header bar. Force the whole button chain to the theme text color. */
+/* the label span's emotion class out-specifies the inherited color */
 .PlannerHeader-styles__root button,
 .PlannerHeader-styles__root button span {
     color: var(--bctext-0) !important;
 }
-/* Solid themed surfaces for the header buttons. Canvas leaves the icon
-   buttons (Add To Do / Show My Grades / opportunities) fully transparent
-   and paints the Today button an unthemed color — on the dark header bar
-   they need solid backgrounds to read as buttons. #planner-today-btn:hover
-   is listed separately because the ID selector on the base background rule
-   above would otherwise out-specify the class-only :hover rule. */
+/* icon buttons are transparent and Today is unthemed; both need a surface.
+   The :hover rule is split out because the ID rule would out-specify it. */
 .PlannerHeader-styles__root button {
     background: var(--bcbackground-1) !important;
     border: 1px solid var(--bcborders) !important;
@@ -1263,57 +1245,40 @@ hr {
 #planner-today-btn:hover {
     background: var(--bcbackground-2) !important;
 }
-/* The "Today" button keeps its filled surface (from the rule above) but
-   gets no outline. Two borders were boxing it in: the themed border the
-   rule above paints on the button itself, and — the sneaky one —
-   Instructure's Button variant draws its own light-gray border
-   (rgb(232,234,236)) on the inner [class$="-baseButton__content"] span,
-   which reads as a bright 1px ring on the dark chip. The icon buttons'
-   content spans carry no border, so only Today needs this. Transparent
-   (instead of border: none) keeps the button's exact dimensions. */
+/* InstUI draws its own light border on the inner baseButton__content span;
+   transparent instead of none keeps the button's size. */
 #planner-today-btn,
 #planner-today-btn [class$="-baseButton__content"] {
     border-color: transparent !important;
 }
-/* Instructure's Button variant paints its inner content span white (and a
-   light gray on hover / white + inset shadow on active). That span covers
-   the themed button background painted above, so the "Today" button still
-   rendered as a white box. Flatten the content span in every state so the
-   button's own surface shows through. */
+/* the content span paints white in every state, hiding the themed surface */
 .PlannerHeader-styles__root button [class$="-baseButton__content"],
 .PlannerHeader-styles__root button:hover [class$="-baseButton__content"],
 .PlannerHeader-styles__root button:active [class$="-baseButton__content"] {
     background: transparent !important;
     box-shadow: none !important;
 }
-/* InstUI Button whose inner content span ships a light background and its
-   own border, which reads as a bright chip on the dark theme. Paint it with
-   the themed button surface, drop the border entirely, and force the theme
-   text color: Canvas sets its own dark ink color on the content span, which
-   left labels/icons dark-on-dark inside the dark chip. */
+/* InstUI flex View ships an opaque surface that stays light in dark mode */
+.css-43gqe2-view--flex-flex {
+    background: transparent !important;
+}
+/* content span ships a light background + border and sets dark ink */
 .css-1ta5ds2-baseButton__content {
     background: var(--bcbackground-1) !important;
     border: none !important;
     color: var(--bctext-0) !important;
 }
-/* Dashboard list-view trays ("Add To Do" / "My Grades" opened from the
-   header buttons): Instructure UI renders Tray panels as body-level
-   portals — body > span > span[...-tray] — with a hardcoded white
-   background. Paint the tray panel with the theme background; the tray
-   contents already pick up the theme text color. */
+/* trays are body-level portals (body > span > span[...-tray]) with a hardcoded
+   white background */
 body > span > span[class*="-tray"] {
     background: var(--bcbackground-0) !important;
 }
-/* The Add To Do form ships its own <style> tag hardcoding background
-   #FFFFFF on its root. */
+/* the form ships its own <style> hardcoding #FFFFFF on its root */
 .UpdateItemTray-styles__root {
     background: var(--bcbackground-0) !important;
 }
-/* Immersive Reader button (in the nav-toggle + breadcrumbs bar): an InstUI
-   Button whose emotion class hashes change between Canvas releases, so
-   target the stable mount point and attribute-suffix class names instead.
-   The button and its inner content span carry a light surface, dark ink
-   text and a black icon glyph, which are unreadable on the dark theme. */
+/* target the stable mount point + attribute-suffix classes: emotion hashes
+   change between Canvas releases */
 #immersive_reader_mount_point button[class$="-baseButton"],
 #immersive_reader_mount_point button[class$="-baseButton"] > span:first-child {
     background: var(--bcbackground-1) !important;
@@ -1321,44 +1286,32 @@ body > span > span[class*="-tray"] {
     border: 1px solid var(--bcborders) !important;
     box-shadow: none !important;
 }
-/* The icon glyph is hardcoded black (fill="#000000" attribute); recolor it
-   to the theme text color. The blue accent paths stay as-is — they read
-   fine on dark. */
+/* glyph is hardcoded fill="#000000"; the blue accent paths stay as-is */
 #immersive_reader_mount_point button[class$="-baseButton"] svg path[fill="#000000"] {
     fill: var(--bctext-0) !important;
 }
-/* InstUI TextInput / Select facades (Title, Date, Time, Course fields):
-   white surface, dark ink, gray border. Repaint with the theme surface,
-   text, and border colors — the calendar / arrow icons inside use
-   currentColor, so they follow. Attribute-contains matching because
-   emotion appends animation-state classes (e.g. transition--*) after the
-   component class. */
+/* TextInput/Select facades: repaint surface/text/border; inner icons use
+   currentColor. Attribute-contains because emotion appends state classes. */
 [class*="-textInput__facade"] {
     background: var(--bcbackground-1) !important;
     border-color: var(--bcborders) !important;
     color: var(--bctext-0) !important;
 }
-/* Field labels (Title / Date / Time / Course / Details) and the date-time
-   summary message keep Canvas's dark ink. */
+/* field labels and the date-time summary keep Canvas's dark ink */
 [class$="-formFieldLayout__label"],
 [class$="-formFieldMessage"] {
     color: var(--bctext-1) !important;
 }
-/* InstUI ContextView popovers — the opportunities popup behind "Show My
-   Grades" and the date-picker calendar behind the Date field: white card
-   with dark text. Theme the card; descendants without their own ink
-   color (weekday headers, month label) inherit from here. */
+/* ContextView popovers (opportunities, date picker): theme the card,
+   descendants without their own ink inherit from it */
 [class*="-contextView__content"] {
     background: var(--bcbackground-0) !important;
     color: var(--bctext-0) !important;
 }
-/* The opportunities popup's tab labels carry their own dark ink. */
 [class*="-contextView__content"] [class$="-view-tab"] {
     color: var(--bctext-0) !important;
 }
-/* Flatten the white InstUI View surfaces nested inside those popovers
-   (the calendar body, the opportunities tab strip, the panel content) so
-   the themed card shows through. */
+/* flatten the white View wrappers so the themed card shows through */
 [class*="-contextView__content"] [class*="-view--inlineBlock"],
 [class*="-contextView__content"] [class*="-view--block"],
 [class*="-contextView__content"] [class*="-view-tabs__container"],
@@ -1366,9 +1319,7 @@ body > span > span[class*="-tray"] {
 [class*="-contextView__content"] [class*="-calendar__navigation"] {
     background: transparent !important;
 }
-/* Calendar day chips: white squares with dark numbers. Flatten them and
-   recolor; the selected day keeps a filled chip (matched structurally via
-   aria-selected, since the chip's emotion class is a content hash). */
+/* day chips are white squares; the selected one is matched via aria-selected */
 [class*="-calendarDay__day"] {
     background: transparent !important;
     color: var(--bctext-0) !important;
@@ -1377,11 +1328,8 @@ button[aria-selected="true"] > [class*="-calendarDay__day"] {
     background: var(--bclinks) !important;
     color: #ffffff !important;
 }
-/* InstUI Select dropdowns (Time / Course) open body-level popover portals
-   with white View wrappers and white option rows around the options list.
-   Theme the list, flatten the wrappers and rows; the wrappers' emotion
-   classes carry no semantic suffix, so they are matched structurally with
-   :has() on the options list they contain (portal pattern: body > span). */
+/* Select dropdowns open body-level portals; wrappers are matched structurally
+   with :has() on the options list (their emotion classes carry no suffix) */
 [class*="-options__list"] {
     background: var(--bcbackground-0) !important;
     color: var(--bctext-0) !important;
@@ -1400,17 +1348,12 @@ button[aria-selected="true"] > [class*="-calendarDay__day"] {
 body > span span:has([class*="-options__list"]) {
     background: transparent !important;
 }
-/* Planner "Submitted" pill in the completed-items row: InstUI renders it
-   as a white chip with gray text. */
+/* "Submitted" pill renders as a white chip with gray text */
 .BadgeList-styles__item [class*="-pill"] {
     background: var(--bcbackground-2) !important;
     color: var(--bctext-1) !important;
 }
-/* Flash alert toasts (.flashalert-message, e.g. "Nothing planned today.
-   Selecting next item."): Canvas renders them as white cards with dark
-   text, unthemed in dark mode. Paint them with the theme background and
-   text color; the inner div[open] is the alert card itself. The close X
-   glyph inherits currentColor from the button. */
+/* flash toasts render as white cards; the inner div[open] is the card */
 .flashalert-message > div {
     background: var(--bcbackground-0) !important;
     color: var(--bctext-0) !important;
@@ -1425,29 +1368,10 @@ body > span span:has([class*="-options__list"]) {
 .flashalert-message > div button svg {
     fill: var(--bctext-0) !important;
 }
-/* Global Announcements page (…/account_notifications): the Current/Recent
-   tabs come from Instructure UI. Canvas paints the tab labels ("Current" /
-   "Recent") and the panel caption ("Announcements from the past four
-   months") with its dark ink, and the active tab panel's content wrapper
-   (the direct div child of #currentTab/#pastTab) gets a white surface —
-   all unreadable in dark mode. The panel ids and aria-controls values are
-   stable; the emotion class hashes are not, so they are not used.
-   The white surface actually comes from the outer tabs container
-   (.css-gpxu0l-view-tabs__container, style background:#fff) that wraps
-   both the tab strip (.css-1baf0tq-view-tabs) and the panels — it is
-   themed via the stable "view-tabs__container" class fragment, scoped
-   to this page's panels with :has() so other Instructure UI tabs
-   elsewhere in Canvas are untouched.
-   .notification_account_content is the account notification card used on
-   this page and in the dashboard announcement banner: Canvas sets dark
-   ink on the card chain (.ic-notification down through
-   .notification_message and .notification_account_content_text), leaving
-   the announcement body and the "This is an announcement from…" line
-   invisible on the themed dark card background. Recolor the body text to
-   the theme text color, keep the h2 title at the brighter heading color
-   (an ancestor rule below would otherwise dim it), and mute the meta
-   line. These class rules also fix the same markup in the dashboard
-   banner. */
+/* Global Announcements page: tab labels, panel caption and the white tabs
+   container are unthemed. The stable "view-tabs__container" class fragment is
+   scoped with :has() so other InstUI tabs are untouched. The account
+   notification card rules here also fix the dashboard announcement banner. */
 div[class*='view-tabs__container']:has(#currentTab, #pastTab),
 #currentTab>div,
 #pastTab>div {
@@ -1487,52 +1411,38 @@ div[class*='view-tabs__container']:has(#currentTab, #pastTab),
 .notification_account_content a {
     color: var(--bclinks) !important;
 }
-/* Grades page: opening the comment tray marks the row with
-   .selected-assignment, which Canvas paints light blue (#e0ebf5) with a
-   .3s background transition — reads as a white row in dark mode. Repaint
-   it as the theme's raised surface so the highlight stays visible but
-   dark. */
+/* opening the comment tray paints .selected-assignment light blue */
 #grades_summary tr.selected-assignment {
     background-color: var(--bcbackground-2) !important;
 }
-/* Grades page (…/courses/:id/grades): the comment chip in each assignment
-   row (speech-bubble icon + count, .toggle_comments_link) keeps Canvas's
-   light-gray pill background and border in dark mode; repaint it as a
-   theme chip. */
+/* comment chip keeps Canvas's light-gray pill background + border */
 .toggle_comments_link,
 .toggle_comments_link:hover {
     background: var(--bcbackground-2) !important;
     border-color: var(--bcborders) !important;
 }
-/* Grades page rubric table borders are white by default. */
 .rating-tier,
 .react-rubric td,
 .react-rubric th,
 .rating-all-footer,
-/* Assignment page rubric table borders */
 [data-testid="rubric-assessment-traditional-view"],
 [data-testid="rubric-assessment-traditional-view"] thead td,
 [data-testid="rubric-assessment-traditional-view"] tbody tr,
 [data-testid="rubric-assessment-traditional-view"] tbody td,
 [data-testid="traditional-view-criterion-ratings"] > div > div,
-/* Modals */
 [class$="-modal"],
 [class$="-modalHeader"]
 {
     border-color: var(--bcborders) !important;
 }
-/* Grades page "late"/"missing" status pills: InstUI renders the inner pill
-   as a white chip with colored text. The emotion class hashes change between
-   Canvas releases, so match the stable "-pill" fragment scoped under the
-   server-rendered status cell. */
+/* inner pill is a white chip; match the stable "-pill" fragment under the
+   server-rendered status cell (emotion hashes change per release) */
 td.status [class*="-pill"],
 td.status [class*="-pill"]:hover,
-/* Assignment page rubric table body */
 [data-testid="rubric-assessment-traditional-view"] tbody {
     background: var(--bcbackground-2) !important;
     color: var(--bctext-1) !important;
 }
-/* Assignment page rubric headers and modal styling */
 [data-testid="rubric-assessment-traditional-view"] > div:first-of-type,
 [id^="rubric-header-"],
 [class$="-modal"],
@@ -1540,8 +1450,61 @@ td.status [class*="-pill"]:hover,
   background: var(--bcbackground-1) !important;
   color: var(--bctext-0) !important;
 }
-/* Modal overlay */
+/* CanvasRefined's global search overlay is a full-screen scrim, not a panel.
+   The [class$="-modal"] rule above would otherwise paint it solid chrome and
+   cover the whole page in an opaque block. Keep it a light dim instead; the
+   dialog card inside carries its own background. */
+.canvasrefined-gs-modal {
+  background: rgba(0, 0, 0, 0.52) !important;
+  border-color: transparent !important;
+}
 [class*="-mask"] {
   background: rgba(0, 0, 0, 0.60) !important;
+}
+
+[data-testid="similarity-pledge"] label,
+[data-testid="similarity-pledge"] label span,
+[data-testid="similarity-pledge"] label div,
+[data-testid="similarity-pledge-comments"],
+[data-testid="similarity-pledge-comments"] :is(span, p, strong, b, em),
+label:has(input:is([name="turnitin_pledge"], [name="vericite_pledge"])),
+label:has(input:is([name="turnitin_pledge"], [name="vericite_pledge"])) :is(span, div, p, strong, b, em) {
+    color: var(--bctext-1) !important;
+}
+[data-testid="similarity-pledge"] a,
+label:has(input:is([name="turnitin_pledge"], [name="vericite_pledge"])) a {
+    color: var(--bclinks) !important;
+}
+input[type="checkbox"]:is([name="turnitin_pledge"], [name="vericite_pledge"]) {
+    color-scheme: light !important;
+    accent-color: #000000 !important;
+}
+[data-testid="similarity-pledge"] [class*="-checkboxFacade__facade"] {
+    background: #ffffff !important;
+    border-color: var(--bctext-1) !important;
+    color: #ffffff !important;
+}
+[data-testid="similarity-pledge"] [class*="-checkboxFacade__facade"]:has(svg) {
+    background: #000000 !important;
+}
+[data-testid="similarity-pledge"] [class*="-checkboxFacade__facade"] svg {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+[data-testid="similarity-pledge"] [class*="-checkboxFacade__facade"]::before {
+    border-color: var(--bclinks) !important;
+}
+/* the footer's full-width surface leaves a bare strip between Previous and Next */
+.module-sequence-footer,
+.module-sequence-footer .module-sequence-footer-content {
+    background: none !important;
+    border-top: none !important;
+    box-shadow: none !important;
+}
+/* with the surface gone the buttons need their own outline */
+.module-sequence-footer .module-sequence-footer-button--previous a,
+.module-sequence-footer .module-sequence-footer-button--next a {
+    border: 1px solid var(--bcborders) !important;
+    border-radius: 6px !important;
 }
 `;
