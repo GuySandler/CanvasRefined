@@ -1898,6 +1898,15 @@
     "todo_sections_persist": {
         "message": "Remember collapsed sections"
     },
+    "todo_filter_active": {
+        "message": "Filtered by course"
+    },
+    "todo_filter_clear": {
+        "message": "Show all courses again"
+    },
+    "todo_hide_filter_notice": {
+        "message": "Hide course filter notice"
+    },
     "todo_show_scores": {
         "message": "Show assignment scores"
     },

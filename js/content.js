@@ -1299,6 +1299,7 @@ function applyOptionsChanges(changes) {
 				break;
 			case "todo_hr24":
 			case "todo_separate_scrollbar":
+			case "todo_hide_filter_notice":
 			case "num_todo_items":
 			case "hover_preview":
 			case "todo_timeframe":
@@ -3671,6 +3672,23 @@ async function createTodoSections(location) {
                 <h2 style="border:none !important;padding: 0">${todayString}</h2>
             `;
 
+        // "Filtered by course" chip: visible while the list is scoped to one class
+        // (clicking a progress ring/line). Click it to clear the filter.
+        const filterIndicator = makeElement("div", location, { id: "better-todo-filter-indicator" });
+        filterIndicator.style.cssText = "display:none;align-items:center;flex-wrap:nowrap;gap:6px;margin-top:8px;padding:4px 10px;border-radius:999px;background:var(--bcbackground-2);color:var(--bctext-0);font-size:11.5px;font-weight:600;cursor:pointer;width:100%;box-sizing:border-box;white-space:nowrap;user-select:none;transition:background .15s ease;";
+        filterIndicator.title = getMsg("todo_filter_clear", "Show all courses again");
+        filterIndicator.innerHTML =
+            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>' +
+            '<span>' + getMsg("todo_filter_active", "Filtered by course") + ':</span>' +
+            '<span class="cr-todo-filter-name" style="flex:1 1 auto;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>' +
+            '<span style="color:var(--bctext-2);font-weight:400;" aria-hidden="true">&#10005;</span>';
+        filterIndicator.addEventListener("click", () => {
+            if (betterTodoProgressFilter == null) return;
+            betterTodoProgressFilter = null;
+            const loc = document.querySelector("#canvasrefined-todo-list");
+            if (loc) { clearTodoList(); createTodoSections(loc); }
+        });
+
         // Timeframe pager: arrows (or arrow keys while hovering) page the timeframe window.
         const timeframeNav = makeElement("div", location, { id: "better-todo-timeframe-nav" });
         timeframeNav.style = "display:none;align-items:center;justify-content:center;width:100%;margin-top:8px;user-select:none;";
@@ -3885,6 +3903,7 @@ async function createTodoSections(location) {
         }
 
         refreshTodoSections();
+        updateTodoFilterIndicator();
 
         const feedbackElement = location.querySelector(".recent_feedback");
 
@@ -4053,6 +4072,24 @@ function refreshTodoSections() {
         const countEl = entry.wrapper.querySelector(".better-todo-section-count");
         if (countEl) countEl.textContent = count > 0 ? String(count) : "";
     });
+}
+
+// "Filtered by course" chip: shows/hides and re-labels after every todo render.
+// Hidden entirely when "Hide course filter notice" is checked.
+function updateTodoFilterIndicator() {
+    const el = document.getElementById("better-todo-filter-indicator");
+    if (!el) return;
+    const active = betterTodoProgressFilter != null && options.todo_hide_filter_notice !== true;
+    el.style.display = active ? "flex" : "none";
+    const nameEl = el.querySelector(".cr-todo-filter-name");
+    if (active && nameEl) nameEl.textContent = todoFilterCourseName(betterTodoProgressFilter);
+}
+
+// The name the user knows the course by: their chosen card name first, then the
+// Canvas full name, then the defaults (same precedence as the Cards tab).
+function todoFilterCourseName(courseId) {
+    const card = options.custom_cards?.[String(courseId)] || options.custom_cards?.[courseId];
+    return card?.name || card?.fullName || card?.default || card?.code || `Course ${courseId}`;
 }
 
 // "Alternate colors" (light mode only): icon fill goes white for lighter course strips.
