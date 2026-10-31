@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Canvas Refined: Dark Mode, Themes & Tools for Canvas LMS",
   "description": "Level up Canvas LMS with dark mode, custom themes, a GPA calculator, a better todo list, and dashboard widgets. Built for students.",
-  "version": "7.1.1",
+  "version": "7.2.0",
   "icons": {
     "16": "icon/icon-16.png",
     "32": "icon/icon-32.png",
