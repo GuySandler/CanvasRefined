@@ -179,6 +179,70 @@
   .support-card a.link:hover { text-decoration: underline; }
   .support-card a.link svg { width: 15px; height: 15px; }
 
+  /* ---------- Reviews ---------- */
+  .rating-hero {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px;
+    margin-bottom: 40px;
+  }
+  .rating-line { display: flex; align-items: baseline; gap: 6px; }
+  .rating-score { font-size: 3.2rem; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+  .rating-outof { color: var(--muted); font-size: 1.1rem; font-weight: 600; }
+  .stars { position: relative; display: inline-block; line-height: 0; }
+  .stars-bg, .stars-fill { display: flex; flex-wrap: nowrap; gap: 5px; }
+  .stars svg { width: 30px; height: 30px; flex: 0 0 30px; }
+  .stars-bg svg { fill: #353540; }
+  .stars-fill { position: absolute; top: 0; left: 0; overflow: hidden; }
+  .stars-fill svg { fill: #ffb400; }
+
+  .carousel { position: relative; }
+  .car-viewport {
+    display: flex; gap: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 4px;
+    margin: -4px;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30px, #000 calc(100% - 30px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 30px, #000 calc(100% - 30px), transparent 100%);
+  }
+  .car-viewport::-webkit-scrollbar { display: none; }
+  .review-card {
+    flex: 0 0 min(360px, 82vw);
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .review-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .store-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .74rem; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .store-badge svg { width: 14px; height: 14px; }
+  .store-badge.chrome { background: rgba(66,133,244,.14); color: #8ab4f8; }
+  .store-badge.chrome svg { fill: #8ab4f8; }
+  .store-badge.firefox { background: rgba(255,113,57,.14); color: #ff9a5c; }
+  .store-badge.firefox svg { fill: #ff9a5c; }
+  .review-stars svg { width: 15px; height: 15px; fill: #ffb400; }
+  .review-body { color: var(--text); font-size: .95rem; flex: 1; }
+  .review-author { color: var(--muted); font-size: .85rem; font-weight: 600; }
+
+  .car-btn {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #232329; border: 1px solid #3a3a44;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 2;
+    transition: background .15s, border-color .15s, opacity .15s;
+  }
+  .car-btn:hover { background: #2c2c34; border-color: #4a4a56; }
+  .car-btn svg { width: 18px; height: 18px; stroke: var(--text); fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .car-prev { left: -20px; }
+  .car-next { right: -20px; }
+
   /* ---------- Comparison table ---------- */
   .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
   table { width: 100%; border-collapse: collapse; min-width: 560px; background: var(--card); }
@@ -217,6 +281,7 @@
 
   @media (max-width: 760px) {
     .nav-links a span { display: none; }
+    .car-btn { display: none; }
     .feat { grid-template-columns: 1fr; gap: 20px; }
     .feat.flip .feat-text { order: 1; }
     .feat.flip .feat-img { order: 2; }
@@ -225,6 +290,10 @@
 </style>
 </head>
 <body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="star" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></symbol>
+</svg>
 
 <nav>
   <div class="wrap">
@@ -235,6 +304,7 @@
     <div class="nav-links">
       <a href="#features"><span>Features</span></a>
       <a href="#free"><span>Free???</span></a>
+      <a href="#reviews"><span>Reviews</span></a>
       <a href="#support"><span>Support</span></a>
       <a href="#compare"><span>Comparison</span></a>
       <a href="https://github.com/GuySandler/CanvasRefined/" target="_blank" rel="noopener" title="GitHub">
@@ -368,6 +438,112 @@
   </div>
 </section>
 
+<section id="reviews">
+  <div class="wrap">
+    <h2>What students are saying</h2>
+    <div class="rating-hero">
+      <div class="rating-line">
+        <span class="rating-score">4.8</span>
+        <span class="rating-outof">/ 5</span>
+      </div>
+      <div class="stars" role="img" aria-label="Rated 4.8 out of 5 stars">
+        <div class="stars-bg">
+          <svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg>
+        </div>
+        <div class="stars-fill" style="width:96%">
+          <svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="carousel">
+      <button class="car-btn car-prev" id="reviewPrev" aria-label="Previous reviews"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+      <div class="car-viewport" id="reviewTrack">
+        <article class="review-card">
+          <div class="review-top">
+            <span class="store-badge chrome"><svg viewBox="0 0 24 24"><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z"/></svg>Chrome Web Store</span>
+            <span class="review-stars"><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg></span>
+          </div>
+          <p class="review-body">“Thank you so much for making this! It's a lifesaver after BetterCanvas got gutted.”</p>
+          <div class="review-author">Josh Nelson</div>
+        </article>
+        <article class="review-card">
+          <div class="review-top">
+            <span class="store-badge firefox"><svg viewBox="0 0 24 24"><path d="M20.452 3.445a11.002 11.002 0 00-2.482-1.908C16.944.997 15.098.093 12.477.032c-.734-.017-1.457.03-2.174.144-.72.114-1.398.292-2.118.56-1.017.377-1.996.975-2.574 1.554.583-.349 1.476-.733 2.55-.992a10.083 10.083 0 013.729-.167c2.341.34 4.178 1.381 5.48 2.625a8.066 8.066 0 011.298 1.587c1.468 2.382 1.33 5.376.184 7.142-.85 1.312-2.67 2.544-4.37 2.53-.583-.023-1.438-.152-2.25-.566-2.629-1.343-3.021-4.688-1.118-6.306-.632-.136-1.82.13-2.646 1.363-.742 1.107-.7 2.816-.242 4.028a6.473 6.473 0 01-.59-1.895 7.695 7.695 0 01.416-3.845A8.212 8.212 0 019.45 5.399c.896-1.069 1.908-1.72 2.75-2.005-.54-.471-1.411-.738-2.421-.767C8.31 2.583 6.327 3.061 4.7 4.41a8.148 8.148 0 00-1.976 2.414c-.455.836-.691 1.659-.697 1.678.122-1.445.704-2.994 1.248-4.055-.79.413-1.827 1.668-2.41 3.042C.095 9.37-.2 11.608.14 13.989c.966 5.668 5.9 9.982 11.843 9.982C18.62 23.971 24 18.591 24 11.956a11.93 11.93 0 00-3.548-8.511z"/></svg>Firefox Add-ons</span>
+            <span class="review-stars"><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg></span>
+          </div>
+          <p class="review-body">“So much better than 'BetterCanvas,' and doesn't force you to use AI or paid services.”</p>
+          <div class="review-author">VR</div>
+        </article>
+        <article class="review-card">
+          <div class="review-top">
+            <span class="store-badge chrome"><svg viewBox="0 0 24 24"><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z"/></svg>Chrome Web Store</span>
+            <span class="review-stars"><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg></span>
+          </div>
+          <p class="review-body">“SO MUCH BETTER THAN BETTERCAMPUS. All I want is to customize my cards and it does exactly that, and it's not complicated.”</p>
+          <div class="review-author">Kristina Nguyen</div>
+        </article>
+        <article class="review-card">
+          <div class="review-top">
+            <span class="store-badge firefox"><svg viewBox="0 0 24 24"><path d="M20.452 3.445a11.002 11.002 0 00-2.482-1.908C16.944.997 15.098.093 12.477.032c-.734-.017-1.457.03-2.174.144-.72.114-1.398.292-2.118.56-1.017.377-1.996.975-2.574 1.554.583-.349 1.476-.733 2.55-.992a10.083 10.083 0 013.729-.167c2.341.34 4.178 1.381 5.48 2.625a8.066 8.066 0 011.298 1.587c1.468 2.382 1.33 5.376.184 7.142-.85 1.312-2.67 2.544-4.37 2.53-.583-.023-1.438-.152-2.25-.566-2.629-1.343-3.021-4.688-1.118-6.306-.632-.136-1.82.13-2.646 1.363-.742 1.107-.7 2.816-.242 4.028a6.473 6.473 0 01-.59-1.895 7.695 7.695 0 01.416-3.845A8.212 8.212 0 019.45 5.399c.896-1.069 1.908-1.72 2.75-2.005-.54-.471-1.411-.738-2.421-.767C8.31 2.583 6.327 3.061 4.7 4.41a8.148 8.148 0 00-1.976 2.414c-.455.836-.691 1.659-.697 1.678.122-1.445.704-2.994 1.248-4.055-.79.413-1.827 1.668-2.41 3.042C.095 9.37-.2 11.608.14 13.989c.966 5.668 5.9 9.982 11.843 9.982C18.62 23.971 24 18.591 24 11.956a11.93 11.93 0 00-3.548-8.511z"/></svg>Firefox Add-ons</span>
+            <span class="review-stars"><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg></span>
+          </div>
+          <p class="review-body">“The perfect replacement for BetterCanvas after it became the much worse BetterCampus. Has everything BetterCanvas had plus more!”</p>
+          <div class="review-author">FunniFox</div>
+        </article>
+        <article class="review-card">
+          <div class="review-top">
+            <span class="store-badge chrome"><svg viewBox="0 0 24 24"><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z"/></svg>Chrome Web Store</span>
+            <span class="review-stars"><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg></span>
+          </div>
+          <p class="review-body">“Thank you so much, it works great and it's so much simpler than the new BetterCampus update!!”</p>
+          <div class="review-author">CASSIDY YEE</div>
+        </article>
+        <article class="review-card">
+          <div class="review-top">
+            <span class="store-badge firefox"><svg viewBox="0 0 24 24"><path d="M20.452 3.445a11.002 11.002 0 00-2.482-1.908C16.944.997 15.098.093 12.477.032c-.734-.017-1.457.03-2.174.144-.72.114-1.398.292-2.118.56-1.017.377-1.996.975-2.574 1.554.583-.349 1.476-.733 2.55-.992a10.083 10.083 0 013.729-.167c2.341.34 4.178 1.381 5.48 2.625a8.066 8.066 0 011.298 1.587c1.468 2.382 1.33 5.376.184 7.142-.85 1.312-2.67 2.544-4.37 2.53-.583-.023-1.438-.152-2.25-.566-2.629-1.343-3.021-4.688-1.118-6.306-.632-.136-1.82.13-2.646 1.363-.742 1.107-.7 2.816-.242 4.028a6.473 6.473 0 01-.59-1.895 7.695 7.695 0 01.416-3.845A8.212 8.212 0 019.45 5.399c.896-1.069 1.908-1.72 2.75-2.005-.54-.471-1.411-.738-2.421-.767C8.31 2.583 6.327 3.061 4.7 4.41a8.148 8.148 0 00-1.976 2.414c-.455.836-.691 1.659-.697 1.678.122-1.445.704-2.994 1.248-4.055-.79.413-1.827 1.668-2.41 3.042C.095 9.37-.2 11.608.14 13.989c.966 5.668 5.9 9.982 11.843 9.982C18.62 23.971 24 18.591 24 11.956a11.93 11.93 0 00-3.548-8.511z"/></svg>Firefox Add-ons</span>
+            <span class="review-stars"><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg></span>
+          </div>
+          <p class="review-body">“This version is much better than the “updated” version of BetterCanvas. This guy is a hero.”</p>
+          <div class="review-author">Firefox user</div>
+        </article>
+        <article class="review-card">
+          <div class="review-top">
+            <span class="store-badge chrome"><svg viewBox="0 0 24 24"><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z"/></svg>Chrome Web Store</span>
+            <span class="review-stars"><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg></span>
+          </div>
+          <p class="review-body">“Fire asf, so many options for customization and tons of themes. I might've spent an hour designing my dashboard :'0”</p>
+          <div class="review-author">ayebeeceedi</div>
+        </article>
+        <article class="review-card">
+          <div class="review-top">
+            <span class="store-badge firefox"><svg viewBox="0 0 24 24"><path d="M20.452 3.445a11.002 11.002 0 00-2.482-1.908C16.944.997 15.098.093 12.477.032c-.734-.017-1.457.03-2.174.144-.72.114-1.398.292-2.118.56-1.017.377-1.996.975-2.574 1.554.583-.349 1.476-.733 2.55-.992a10.083 10.083 0 013.729-.167c2.341.34 4.178 1.381 5.48 2.625a8.066 8.066 0 011.298 1.587c1.468 2.382 1.33 5.376.184 7.142-.85 1.312-2.67 2.544-4.37 2.53-.583-.023-1.438-.152-2.25-.566-2.629-1.343-3.021-4.688-1.118-6.306-.632-.136-1.82.13-2.646 1.363-.742 1.107-.7 2.816-.242 4.028a6.473 6.473 0 01-.59-1.895 7.695 7.695 0 01.416-3.845A8.212 8.212 0 019.45 5.399c.896-1.069 1.908-1.72 2.75-2.005-.54-.471-1.411-.738-2.421-.767C8.31 2.583 6.327 3.061 4.7 4.41a8.148 8.148 0 00-1.976 2.414c-.455.836-.691 1.659-.697 1.678.122-1.445.704-2.994 1.248-4.055-.79.413-1.827 1.668-2.41 3.042C.095 9.37-.2 11.608.14 13.989c.966 5.668 5.9 9.982 11.843 9.982C18.62 23.971 24 18.591 24 11.956a11.93 11.93 0 00-3.548-8.511z"/></svg>Firefox Add-ons</span>
+            <span class="review-stars"><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg></span>
+          </div>
+          <p class="review-body">“The official BetterCampus Firefox add-on hasn't been updated since 2024, so funnily enough this add-on has more features (on Firefox) than BetterCampus… thank you Guy for essentially making better-bettercampus.”</p>
+          <div class="review-author">Firefox user</div>
+        </article>
+        <article class="review-card">
+          <div class="review-top">
+            <span class="store-badge chrome"><svg viewBox="0 0 24 24"><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z"/></svg>Chrome Web Store</span>
+            <span class="review-stars"><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg></span>
+          </div>
+          <p class="review-body">“Amazing!!! Such a relief to not be hassled to buy premium every time I change my theme. I can complete my semester in peace now 😊”</p>
+          <div class="review-author">Bruce Wayne</div>
+        </article>
+        <article class="review-card">
+          <div class="review-top">
+            <span class="store-badge firefox"><svg viewBox="0 0 24 24"><path d="M20.452 3.445a11.002 11.002 0 00-2.482-1.908C16.944.997 15.098.093 12.477.032c-.734-.017-1.457.03-2.174.144-.72.114-1.398.292-2.118.56-1.017.377-1.996.975-2.574 1.554.583-.349 1.476-.733 2.55-.992a10.083 10.083 0 013.729-.167c2.341.34 4.178 1.381 5.48 2.625a8.066 8.066 0 011.298 1.587c1.468 2.382 1.33 5.376.184 7.142-.85 1.312-2.67 2.544-4.37 2.53-.583-.023-1.438-.152-2.25-.566-2.629-1.343-3.021-4.688-1.118-6.306-.632-.136-1.82.13-2.646 1.363-.742 1.107-.7 2.816-.242 4.028a6.473 6.473 0 01-.59-1.895 7.695 7.695 0 01.416-3.845A8.212 8.212 0 019.45 5.399c.896-1.069 1.908-1.72 2.75-2.005-.54-.471-1.411-.738-2.421-.767C8.31 2.583 6.327 3.061 4.7 4.41a8.148 8.148 0 00-1.976 2.414c-.455.836-.691 1.659-.697 1.678.122-1.445.704-2.994 1.248-4.055-.79.413-1.827 1.668-2.41 3.042C.095 9.37-.2 11.608.14 13.989c.966 5.668 5.9 9.982 11.843 9.982C18.62 23.971 24 18.591 24 11.956a11.93 11.93 0 00-3.548-8.511z"/></svg>Firefox Add-ons</span>
+            <span class="review-stars"><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg><svg><use href="#star"/></svg></span>
+          </div>
+          <p class="review-body">“just as beautiful as the day i downloaded it like 2 years ago”</p>
+          <div class="review-author">oompalucca</div>
+        </article>
+      </div>
+      <button class="car-btn car-next" id="reviewNext" aria-label="Next reviews"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+    </div>
+  </div>
+</section>
+
 <section id="support">
   <div class="wrap">
     <h2>Found a bug? Have an idea? Need help?</h2>
@@ -400,7 +576,6 @@
 <section id="compare">
   <div class="wrap">
     <h2>Canvas Refined vs the competition</h2>
-    <p class="sub">A straight-up comparison with the other popular Canvas extension. Rows are grouped: things they have that we don't, things we both have, then things we have that they don't.</p>
     <div class="table-scroll">
       <table>
         <thead>
@@ -449,10 +624,30 @@
             <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
             <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
           </tr>
+          <tr>
+            <td>Widgets</td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+          </tr>
 
           <!-- We have it, they don't -->
           <tr>
             <td>Modifying themes for free</td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
+          </tr>
+          <tr>
+            <td><span class="row-label">Custom todo list timeframes<small>for free</small></span></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
+          </tr>
+          <tr>
+            <td><span class="row-label">Celebration amount control<small>for free</small></span></td>
+            <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
+            <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
+          </tr>
+          <tr>
+            <td><span class="row-label">Focus Timer &amp; Breathing Break custom intervals<small>for free</small></span></td>
             <td class="check yes"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></td>
             <td class="check no"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></td>
           </tr>
@@ -490,6 +685,103 @@
   </div>
   <div>Canvas Refined - free, forever, for everyone.</div>
 </footer>
+
+<script>
+(function () {
+  var track = document.getElementById('reviewTrack');
+  var prev = document.getElementById('reviewPrev');
+  var next = document.getElementById('reviewNext');
+  if (!track || !prev || !next) return;
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Clone the cards twice so the strip can loop forever in both directions. */
+  var originals = Array.prototype.slice.call(track.children);
+  if (!originals.length) return;
+  for (var pass = 0; pass < 2; pass++) {
+    originals.forEach(function (card) {
+      var clone = card.cloneNode(true);
+      clone.setAttribute('aria-hidden', 'true');
+      track.appendChild(clone);
+    });
+  }
+
+  var groupW = 0;        // width of one full set of cards (incl. gaps)
+  var paused = false;
+  var idleUntil = 0;     // auto-scroll stays off briefly after user interaction
+  var SPEED = 0.85;      // px per frame
+
+  function gapPx() {
+    var cs = getComputedStyle(track);
+    return parseFloat(cs.columnGap || cs.gap) || 0;
+  }
+
+  function measure() {
+    var card = track.firstElementChild;
+    if (!card) return;
+    groupW = (card.getBoundingClientRect().width + gapPx()) * originals.length;
+    if (groupW < 1) groupW = 0;
+  }
+
+  /* Keep the viewport inside the middle copy of the set; the copies are
+     identical so the correction is invisible. */
+  function normalize() {
+    if (!groupW) return;
+    var x = track.scrollLeft;
+    if (x > groupW * 1.9) track.scrollLeft = x - groupW;
+    else if (x < groupW * 0.1) track.scrollLeft = x + groupW;
+  }
+
+  function holdAuto(ms) {
+    idleUntil = performance.now() + (ms || 2200);
+  }
+
+  function step() {
+    var card = track.firstElementChild;
+    return card ? card.getBoundingClientRect().width + gapPx() : 360;
+  }
+
+  prev.addEventListener('click', function () {
+    holdAuto();
+    track.scrollBy({ left: -step(), behavior: reduceMotion ? 'auto' : 'smooth' });
+  });
+  next.addEventListener('click', function () {
+    holdAuto();
+    track.scrollBy({ left: step(), behavior: reduceMotion ? 'auto' : 'smooth' });
+  });
+
+  track.addEventListener('scroll', normalize, { passive: true });
+  track.addEventListener('wheel', function () { holdAuto(); }, { passive: true });
+
+  ['pointerenter', 'focusin'].forEach(function (evt) {
+    track.addEventListener(evt, function () { paused = true; });
+  });
+  ['pointerleave', 'focusout'].forEach(function (evt) {
+    track.addEventListener(evt, function () { paused = false; });
+  });
+  track.addEventListener('touchstart', function () { paused = true; }, { passive: true });
+  track.addEventListener('touchend', function () { paused = false; }, { passive: true });
+
+  window.addEventListener('resize', function () {
+    measure();
+    track.scrollLeft = groupW;
+  });
+
+  /* Start in the middle copy. */
+  measure();
+  if (groupW) track.scrollLeft = groupW;
+
+  if (!reduceMotion && SPEED > 0) {
+    (function tick() {
+      var now = performance.now();
+      if (!paused && now > idleUntil && groupW && !document.hidden) {
+        track.scrollLeft += SPEED;
+      }
+      requestAnimationFrame(tick);
+    })();
+  }
+})();
+</script>
 
 </body>
 </html>
