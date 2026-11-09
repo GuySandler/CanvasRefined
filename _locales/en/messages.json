@@ -5,6 +5,12 @@
     "abc": {
         "message": "ABC"
     },
+    "admire_background": {
+        "message": "Admire background"
+    },
+    "admire_background_exit": {
+        "message": "Show Canvas again"
+    },
     "add_canvas": {
         "message": "+ Add canvas"
     },
@@ -25,9 +31,6 @@
     },
     "align_right": {
         "message": "Right"
-    },
-    "always_show_likes": {
-        "message": "Always show like count"
     },
     "assignment_avg": {
         "message": "— avg {{AVG}}% over {{COUNT}} assignment(s):"
@@ -109,6 +112,9 @@
     },
     "canvas_rejected_update": {
         "message": "Canvas rejected task update."
+    },
+    "canvas_refined_themes": {
+        "message": "Canvas Refined themes"
     },
     "card_assignments": {
         "message": "Card Assignments"
@@ -1001,6 +1007,39 @@
     "imagine_if_toggle": {
         "message": "Toggle Imagine-If mode"
     },
+    "import_apply": {
+        "message": "Import"
+    },
+    "import_done": {
+        "message": "Theme imported — press Revert to undo it."
+    },
+    "import_empty": {
+        "message": "Paste an exported theme first."
+    },
+    "import_failed": {
+        "message": "Could not apply that theme."
+    },
+    "import_invalid_json": {
+        "message": "That is not valid JSON — paste the whole export and try again."
+    },
+    "import_no_settings": {
+        "message": "That export does not contain any settings."
+    },
+    "import_not_theme": {
+        "message": "That does not look like a theme export."
+    },
+    "import_placeholder": {
+        "message": "Paste a theme export (JSON) here"
+    },
+    "import_revert": {
+        "message": "Revert"
+    },
+    "import_reverted": {
+        "message": "Import reverted — your previous settings are back."
+    },
+    "import_working": {
+        "message": "Importing…"
+    },
     "import_hint": {
         "message": "Copy and paste exported themes here:"
     },
@@ -1093,6 +1132,9 @@
     },
     "notes_suppressor_info_label": {
         "message": "Canvas Notes Suppressor info"
+    },
+    "no_themes_found": {
+        "message": "No themes match this filter."
     },
     "no_auto_detect": {
         "message": "Don't auto detect canvases"
@@ -1431,7 +1473,7 @@
         "message": "Revert"
     },
     "revert_desc": {
-        "message": "This will revert customizations back to when you first installed the extension."
+        "message": "This undoes everything the last theme you applied changed: colors, card images, font and settings."
     },
     "revert_original": {
         "message": "Revert to original"
@@ -1718,9 +1760,6 @@
     "text_colors": {
         "message": "Text"
     },
-    "theme_browser_settings": {
-        "message": "Theme browser settings"
-    },
     "theme_guidelines": {
         "message": "Make sure your theme follows these guidelines:"
     },
@@ -1729,6 +1768,15 @@
     },
     "theme_optin_reset": {
         "message": "Theme browser opt-in reset"
+    },
+    "theme_revert_empty": {
+        "message": "There is nothing to revert yet — apply a theme first."
+    },
+    "theme_revert_failed": {
+        "message": "Could not revert the theme changes."
+    },
+    "theme_reverted": {
+        "message": "Theme changes reverted!"
     },
     "themes": {
         "message": "Themes"
@@ -1907,8 +1955,14 @@
     "todo_hide_filter_notice": {
         "message": "Hide course filter notice"
     },
+    "todo_needs_grading": {
+        "message": "Needs grading"
+    },
     "todo_show_scores": {
         "message": "Show assignment scores"
+    },
+    "todo_to_grade": {
+        "message": "{{COUNT}} to grade"
     },
     "todo_task_details": {
         "message": "Details (optional)"

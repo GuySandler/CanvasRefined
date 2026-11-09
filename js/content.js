@@ -565,19 +565,105 @@ function isDashboardPage() {
     return !!document.querySelector("#DashboardCard_Container");
 }
 
+// Both overlay buttons live in one fixed host appended to <body>: outside the Canvas
+// layout so "admire background" can fade the whole UI out while they (and the NASA info
+// panel) stay visible, but positioned at the bottom-right corner *of the #content area*
+// (never over the right sidebar) and kept in sync as that area resizes or scrolls.
+const OVERLAY_HOST_INSET = 24;
+
+// Where the host should sit: inside the content box, clamped to the viewport so it can
+// never be scrolled out of sight.
+function overlayHostOffsets() {
+    const content = getContentMainEl();
+    const rect = content && content.getBoundingClientRect ? content.getBoundingClientRect() : null;
+    if (!rect || rect.width === 0) {
+        // No content column (or it is hidden): plain viewport corner.
+        return { right: OVERLAY_HOST_INSET, bottom: OVERLAY_HOST_INSET };
+    }
+    // clientWidth/Height (not innerWidth) exclude the scrollbar, matching the coordinate
+    // space fixed elements are positioned in.
+    const viewportW = document.documentElement.clientWidth || window.innerWidth;
+    const viewportH = document.documentElement.clientHeight || window.innerHeight;
+    const right = viewportW - rect.right + OVERLAY_HOST_INSET;
+    const bottom = viewportH - rect.bottom + OVERLAY_HOST_INSET;
+    return {
+        right: Math.max(OVERLAY_HOST_INSET, Math.round(right)),
+        bottom: Math.max(OVERLAY_HOST_INSET, Math.round(bottom)),
+    };
+}
+
+function positionOverlayHost() {
+    const host = document.getElementById("canvasrefined-overlay-host");
+    if (!host) return;
+    const offsets = overlayHostOffsets();
+    host.style.right = offsets.right + "px";
+    host.style.bottom = offsets.bottom + "px";
+}
+
+let overlayHostPositionFrame = null;
+function scheduleOverlayHostPosition() {
+    if (overlayHostPositionFrame !== null) return;
+    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    overlayHostPositionFrame = raf(() => {
+        overlayHostPositionFrame = null;
+        positionOverlayHost();
+    });
+}
+
+// Viewport listeners are bound once, however often the host is rebuilt.
+let overlayHostListenersBound = false;
+function bindOverlayHostListeners() {
+    if (overlayHostListenersBound) return;
+    overlayHostListenersBound = true;
+    window.addEventListener("resize", scheduleOverlayHostPosition, { passive: true });
+    // Capture: Canvas scrolls inner containers, not only the page.
+    window.addEventListener("scroll", scheduleOverlayHostPosition, { passive: true, capture: true });
+}
+
+// Re-position whenever the content column changes size (sidebar toggles, widgets, SPA
+// navigation). Re-observes when Canvas swaps the content element out.
+let overlayHostResizeObserver = null;
+let overlayHostObservedEl = null;
+function watchOverlayHostLayout() {
+    if (typeof ResizeObserver !== "function") return;
+    const content = getContentMainEl();
+    if (!content) return;
+    if (overlayHostResizeObserver && overlayHostObservedEl === content) return;
+    if (overlayHostResizeObserver) {
+        try { overlayHostResizeObserver.disconnect(); } catch (e) { /* ignore */ }
+    }
+    overlayHostResizeObserver = new ResizeObserver(() => scheduleOverlayHostPosition());
+    try {
+        overlayHostResizeObserver.observe(content);
+        overlayHostObservedEl = content;
+    } catch (e) { /* not observable */ }
+}
+
+function crOverlayHost() {
+    let host = document.getElementById("canvasrefined-overlay-host");
+    if (host) return host;
+    // At document_start the <body> may not exist yet.
+    const attachTo = document.body || document.documentElement;
+    if (!attachTo) return null;
+    host = document.createElement("div");
+    host.id = "canvasrefined-overlay-host";
+    host.style.cssText = `right:${OVERLAY_HOST_INSET}px;bottom:${OVERLAY_HOST_INSET}px;`;
+    attachTo.appendChild(host);
+    positionOverlayHost();
+    watchOverlayHostLayout();
+    bindOverlayHostListeners();
+    return host;
+}
+
 function createNasaInfoOverlay() {
     if (options.customBackgroundNasaDaily !== true) return;
     if (nasaInfoOverlayEl || !isDashboardPage()) return;
-    
-    const contentMain = document.querySelector("#content.ic-Layout-contentMain, .ic-Layout-contentMain");
-    if (!contentMain) return;
-    if (getComputedStyle(contentMain).position === "static") {
-        contentMain.style.position = "relative";
-    }
+    const host = crOverlayHost();
+    if (!host) return;
 
     nasaInfoOverlayEl = document.createElement("div");
     nasaInfoOverlayEl.id = "canvasrefined-nasa-info-overlay";
-    nasaInfoOverlayEl.style.cssText = "position:absolute;right:24px;bottom:24px;z-index:9999;";
+    nasaInfoOverlayEl.style.cssText = "position:relative;";
     nasaInfoOverlayEl.innerHTML = `
         <div id="nasa-info-icon" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:rgba(30,30,30,0.85);border:1px solid rgba(255,255,255,0.15);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4);">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e2e2e2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -615,7 +701,9 @@ function createNasaInfoOverlay() {
             document.getElementById("nasa-info-title").textContent = meta.title || "";
             document.getElementById("nasa-info-date").textContent = (chrome.i18n.getMessage("nasa_date") || "Date: {{DATE}}").replace("{{DATE}}", meta.date);
             document.getElementById("nasa-info-credit").textContent = meta.copyright ? (chrome.i18n.getMessage("nasa_credit") || "Credit: {{CREDIT}}").replace("{{CREDIT}}", meta.copyright) : "";
-            document.getElementById("nasa-info-explanation").textContent = meta.explanation || chrome.i18n.getMessage("no_description") || "No description available.";
+            // Cached entries (and older builds) carry the feed's "Explanation:" label.
+            const explanation = String(meta.explanation || "").replace(/^\s*explanation\s*:\s*/i, "");
+            document.getElementById("nasa-info-explanation").textContent = explanation || chrome.i18n.getMessage("no_description") || "No description available.";
             return true;
         }
         return false;
@@ -648,8 +736,14 @@ function createNasaInfoOverlay() {
     panel.addEventListener("mouseenter", showPanel);
     panel.addEventListener("mouseleave", hidePanel);
     icon.addEventListener("click", togglePanel);
-    
-    contentMain.appendChild(nasaInfoOverlayEl);
+
+    host.insertBefore(nasaInfoOverlayEl, admireOverlayEl || null);
+    scheduleOverlayHostPosition();
+}
+
+function pruneOverlayHost() {
+    const host = document.getElementById("canvasrefined-overlay-host");
+    if (host && host.children.length === 0) host.remove();
 }
 
 function removeNasaInfoOverlay() {
@@ -657,6 +751,104 @@ function removeNasaInfoOverlay() {
         nasaInfoOverlayEl.remove();
         nasaInfoOverlayEl = null;
     }
+    pruneOverlayHost();
+}
+
+// ===================== Admire background =====================
+// A button that fades the whole Canvas UI away, leaving the wallpaper, this button and
+// the NASA info panel — a "just look at my background" view.
+let admireOverlayEl = null;
+let admireActive = false;
+let admireHiddenEls = [];
+
+const ADMIRE_EXPAND_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e2e2e2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+const ADMIRE_COLLAPSE_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e2e2e2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+
+const admireEscapeHandler = (e) => {
+    if (e.key === "Escape") setAdmireMode(false);
+};
+const admireClickHandler = (e) => {
+    // Clicks on the overlay buttons (and the NASA panel) keep the view open.
+    if (e.target && e.target.closest && e.target.closest("#canvasrefined-overlay-host")) return;
+    setAdmireMode(false);
+};
+
+function setAdmireMode(on) {
+    const next = on === true;
+    if (next === admireActive) return;
+    admireActive = next;
+    scheduleOverlayHostPosition();
+    document.documentElement.classList.toggle("cr-admire-mode", next);
+    if (admireOverlayEl) {
+        admireOverlayEl.innerHTML = next ? ADMIRE_COLLAPSE_SVG : ADMIRE_EXPAND_SVG;
+        admireOverlayEl.classList.toggle("is-active", next);
+        admireOverlayEl.title = next
+            ? (getMsg("admire_background_exit", "Show Canvas again") + " (Esc)")
+            : getMsg("admire_background", "Admire background");
+    }
+    if (next) {
+        const root = document.getElementById("wrapper")
+            || document.getElementById("application")
+            || document.body;
+        const host = document.getElementById("canvasrefined-overlay-host");
+        admireHiddenEls = [...root.children].filter(el =>
+            el !== host &&
+            !/^(SCRIPT|STYLE|LINK|NOSCRIPT|TEMPLATE)$/.test(el.tagName)
+        );
+        admireHiddenEls.forEach(el => el.classList.add("cr-admire-fade"));
+        // Next frame, so the opacity transition actually runs.
+        requestAnimationFrame(() => {
+            if (!admireActive) return;
+            admireHiddenEls.forEach(el => el.classList.add("cr-admire-hidden"));
+        });
+        document.addEventListener("keydown", admireEscapeHandler);
+        document.addEventListener("click", admireClickHandler);
+    } else {
+        const els = admireHiddenEls;
+        admireHiddenEls = [];
+        els.forEach(el => el.classList.remove("cr-admire-hidden"));
+        // Keep the transition until the fade back in finishes.
+        setTimeout(() => els.forEach(el => el.classList.remove("cr-admire-fade")), 340);
+        document.removeEventListener("keydown", admireEscapeHandler);
+        document.removeEventListener("click", admireClickHandler);
+    }
+}
+
+function createAdmireOverlay() {
+    if (admireOverlayEl) return;
+    const host = crOverlayHost();
+    if (!host) {
+        // document_start: the <body> may not exist yet. Retry once the DOM is ready.
+        document.addEventListener("DOMContentLoaded", () => createAdmireOverlay(), { once: true });
+        return;
+    }
+    admireOverlayEl = document.createElement("div");
+    admireOverlayEl.id = "canvasrefined-admire-btn";
+    admireOverlayEl.setAttribute("role", "button");
+    admireOverlayEl.setAttribute("tabindex", "0");
+    admireOverlayEl.title = getMsg("admire_background", "Admire background");
+    admireOverlayEl.innerHTML = ADMIRE_EXPAND_SVG;
+    admireOverlayEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setAdmireMode(!admireActive);
+    });
+    admireOverlayEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setAdmireMode(!admireActive);
+        }
+    });
+    host.appendChild(admireOverlayEl);
+    scheduleOverlayHostPosition();
+}
+
+function removeAdmireOverlay() {
+    setAdmireMode(false);
+    if (admireOverlayEl) {
+        admireOverlayEl.remove();
+        admireOverlayEl = null;
+    }
+    pruneOverlayHost();
 }
 
 function getSidebarStateMode(mode = getSidebarLayoutMode()) {
@@ -795,6 +987,8 @@ function updateReminders() {
         data.forEach(item => {
             const due = (new Date(item.plannable_date)).getTime();
             if (item.plannable_type === "announcement") return;
+            // Grading rows are somebody else's deadline: never remind about them.
+            if (isGradingItem(item)) return;
             if (due < now) return;
             if (due > now + fiveDays * 2) return;
             // { due, title, href, hideCount }; hideCount -1 = has a submission.
@@ -1242,6 +1436,8 @@ function applyOptionsChanges(changes) {
 				document.querySelectorAll(".canvasrefined-widget-row").forEach(row => {
 					applyWidgetRowLayout(row, row.dataset.area);
 				});
+				// The notes cap depends on whether the row has a fixed height.
+				document.querySelectorAll(".canvasrefined-dashboard-notes").forEach(el => applyDashboardNotesHeight(el));
 				// The row height is the heatmap's height budget — refit its calendar.
 				crHeatmapRenderAll();
 				break;
@@ -1598,8 +1794,12 @@ async function applyCustomBackground() {
     const activeBackground = await getActiveCustomBackground();
     if (!activeBackground) {
         if (style.isConnected) style.remove();
+        // Nothing to admire any more.
+        removeAdmireOverlay();
         return;
     }
+    // Only worth showing while a wallpaper/colour is actually behind the UI.
+    createAdmireOverlay();
 
     const backgroundScale = Number(activeBackground.scale) || 100;
     const backgroundUrl = JSON.stringify(activeBackground.url);
@@ -2104,6 +2304,12 @@ function checkDashboardReady() {
 function recieveMessage(request, sender, sendResponse) {
     switch (request.message) {
         case ("getCards"):
+            // A caller may pass the method explicitly: right after the "Get Active Cards From
+            // Dashboard" toggle the storage change can land after this message, and the
+            // scan must use the method the user just picked.
+            if (request.options && typeof request.options.card_method_dashboard === "boolean") {
+                options = { ...options, card_method_dashboard: request.options.card_method_dashboard };
+            }
             if (options["card_method_dashboard"] === true) {
                 getCardsFromDashboard().then(() => sendResponse(true)).catch(() => sendResponse(true));
             } else {
@@ -2233,7 +2439,11 @@ function getCardsFromDashboard() {
 
                 if (!cards[id]) {
                     newCards = true;
-                    cards[id] = { "default": card.querySelector(".ic-DashboardCard__header-subtitle").textContent.substring(0, 20), "fullName": card.querySelector(".ic-DashboardCard__header-title")?.textContent?.trim() || "", "name": "", "code": "", "img": "", "hidden": false, "weight": "regular", "credits": 1, "eid": 100000 - count, "gr": null };
+                    const titleText = card.querySelector(".ic-DashboardCard__header-title")?.textContent?.trim() || "";
+                    const codeText = card.querySelector(".ic-DashboardCard__header-subtitle")?.textContent?.substring(0, 20) || "";
+                    // origName/origCode remember the real course text once, so clearing a
+                    // custom name/code puts it back instead of needing a page reload.
+                    cards[id] = { "default": codeText, "fullName": titleText, "origName": titleText, "origCode": codeText, "name": "", "code": "", "img": "", "hidden": false, "weight": "regular", "credits": 1, "eid": 100000 - count, "gr": null };
     
                     let links = [];
                     for (let i = 0; i < 4; i++) {
@@ -2248,32 +2458,29 @@ function getCardsFromDashboard() {
                         cards[id].fullName = full;
                         newCards = true;
                     }
+                    // Only trust the DOM as the "original" while no custom text was applied.
+                    if (!cards[id].origName && !cards[id].name && full) {
+                        cards[id].origName = cards[id].fullName || full;
+                        newCards = true;
+                    }
+                    if (!cards[id].origCode && !cards[id].code) {
+                        const codeText = card.querySelector(".ic-DashboardCard__header-subtitle")?.textContent?.trim() || "";
+                        if (codeText) {
+                            cards[id].origCode = codeText;
+                            newCards = true;
+                        }
+                    }
                 }
                 count++;
             });
 
             if (count === 0) return;
 
-            Object.keys(cards).forEach(key => {
-                let found = false;
-                if (cards_3[key] && cards_3[key].url !== domain) {
-                    found = true;
-                } else {
-                    dashboard_cards.forEach(card => {
-                        const id = card.querySelector(".ic-DashboardCard__link").href.split("courses/")[1];
-                        if (parseInt(key) === parseInt(id)) found = true;
-                    });
-                }
-
-                if (found === false) {
-                    console.log("Deleting " + key);
-                    cards[key] && delete cards[key];
-                    cards_2[key] && delete cards_2[key];
-                    cards_3[key] && delete cards_3[key];
-                    newCards = true;
-                }
-
-            });
+            // Card entries are never deleted from the DOM here. The dashboard can be
+            // mid-render or show fewer cards than the user has (card limit, hidden
+            // sections), and deleting the "missing" ones threw away their custom names,
+            // images, links and GPA data. Stale entries are pruned by getCards() below,
+            // which works from the full course list instead.
 
         } catch (e) {
             console.log("Error getting dashboard cards\n", e);
@@ -2296,6 +2503,9 @@ async function getCards(api = null) {
         let cards_3 = storage["custom_cards_3"] || {};
         let newCards = false;
         let count = 0;
+        // Same guard as above: a course skipped because of the card limit (or because it
+        // has no course code) is not a deleted course.
+        let skipped = 0;
         if (options["card_method_date"] === true) {
             dashboard_cards.sort((a, b) => (b?.created_at) > (a?.created_at) ? 1 : -1);
         } else {
@@ -2303,17 +2513,22 @@ async function getCards(api = null) {
         }
         try {
             dashboard_cards.forEach(card => {
-                if (!card.course_code || count >= (options["card_limit"] || 25)) return;
+                if (!card.course_code || count >= (options["card_limit"] || 25)) { skipped++; return; }
                 let id = card.id;
                 if (!cards || !cards[id]) {
                     newCards = true;
-                    cards[id] = { "default": card.course_code.substring(0, 20), "fullName": card.name || card.course_code || "", "name": "", "code": "", "img": "", "hidden": false, "weight": "regular", "credits": 1, "eid": card.enrollment_term_id || 0, "gr": null };
+                    cards[id] = { "default": card.course_code.substring(0, 20), "fullName": card.name || card.course_code || "", "origName": card.name || card.course_code || "", "origCode": card.course_code || "", "name": "", "code": "", "img": "", "hidden": false, "weight": "regular", "credits": 1, "eid": card.enrollment_term_id || 0, "gr": null };
                 } else if (cards && cards[id]) {
                     newCards = true;
                     cards[id].default = card.course_code.substring(0, 20);
                     cards[id].fullName = card.name || card.course_code || cards[id].fullName || "";
                     cards[id].eid = card.enrollment_term_id || 0;
                     if (!cards[id].code) cards[id].code = "";
+                    // The real course text from the API, kept so a cleared custom value can
+                    // fall back to it (this path is authoritative, keep it even if a custom
+                    // name is set).
+                    if (!cards[id].origName) cards[id].origName = card.name || cards[id].fullName || "";
+                    if (!cards[id].origCode) cards[id].origCode = card.course_code || cards[id].default || "";
                 }
                 if (!cards_2 || !cards_2[id]) {
                     newCards = true;
@@ -2334,25 +2549,30 @@ async function getCards(api = null) {
 
             });
 
-            Object.keys(cards).forEach(key => {
-                let found = false;
-                if (cards_3[key] && cards_3[key].url !== domain) {
-                    found = true;
-                } else {
-                    dashboard_cards.forEach(card => {
-                        if (parseInt(key) === card.id) found = true;
-                    });
-                }
+            // Prune from the API's full course list, but never from a list that may have
+            // been cut short (card limit, missing course codes, a full 100-course page).
+            const listMayBeTruncated = skipped > 0 || dashboard_cards.length >= 100;
+            if (!listMayBeTruncated) {
+                Object.keys(cards).forEach(key => {
+                    let found = false;
+                    if (cards_3[key] && cards_3[key].url !== domain) {
+                        found = true;
+                    } else {
+                        dashboard_cards.forEach(card => {
+                            if (parseInt(key) === card.id) found = true;
+                        });
+                    }
 
-                if (found === false) {
-                    console.log("Deleting " + key + " from custom_cards...", cards[key]);
-                    cards[key] && delete cards[key];
-                    cards_2[key] && delete cards_2[key];
-                    cards_3[key] && delete cards_3[key];
-                    newCards = true;
-                }
+                    if (found === false) {
+                        console.log("Deleting " + key + " from custom_cards...", cards[key]);
+                        cards[key] && delete cards[key];
+                        cards_2[key] && delete cards_2[key];
+                        cards_3[key] && delete cards_3[key];
+                        newCards = true;
+                    }
 
-            });
+                });
+            }
 
         } catch (e) {
             console.log(e);
@@ -2374,6 +2594,18 @@ function convertToDueDate(dueAt) {
 	final += date.toLocaleString("en-US", { month: "short", day: "numeric" });
 	final += " at " + date.toLocaleString("en-US", { hour: "numeric", minute: "numeric", hour12: !options.todo_hr24 });
 	return final;
+}
+
+// Row subtitle for work waiting to be graded: "3 to grade" plus the assignment's due
+// date when Canvas reports one (grading rows often have no due date at all).
+function gradingTodoSubtitle(item) {
+	const rawCount = item?.needs_grading_count ?? item?.plannable?.needs_grading_count;
+	const count = Number(rawCount);
+	const label = Number.isFinite(count) && count > 0
+		? replaceCountPlaceholder(getMsg("todo_to_grade", "{{COUNT}} to grade"), count)
+		: getMsg("todo_needs_grading", "Needs grading");
+	if (!item?.plannable?.due_at || isNaN(new Date(item.plannable.due_at).getTime())) return label;
+	return label + " \u00b7 " + convertToDueDate(item.plannable.due_at);
 }
 function updateIndicator(element) {
 	const indicator = document.getElementById("better-todo-indicator");
@@ -2465,10 +2697,12 @@ function applyTodoTimeframe(items, lenientPast) {
     const pastDays = getTodoTimeframePastDays();
     const cutoff = now + ((betterTodoTimeframeOffset + 1) * days - pastDays) * dayMs;
     if (lenientPast === true && betterTodoTimeframeOffset <= 0) {
-        return items.filter(item => new Date(item.plannable_date).getTime() <= cutoff);
+        return items.filter(item => isGradingItem(item) || new Date(item.plannable_date).getTime() <= cutoff);
     }
     const windowStart = now + (betterTodoTimeframeOffset * days - pastDays) * dayMs;
     return items.filter(item => {
+        // Grading work has no student-facing due date, so the timeframe never hides it.
+        if (isGradingItem(item)) return true;
         if (lenientPast !== true && isTodoOverdueItem(item)) return true;
         const t = new Date(item.plannable_date).getTime();
         return t > windowStart && t <= cutoff;
@@ -2525,14 +2759,21 @@ function progressFilterDim(courseId) {
 // sub_assignments which should also surface in the todo list.
 const TODO_PEER_REVIEW_TYPES = ["assessment_request", "peer_review_sub_assignment"];
 const TODO_SUB_ASSIGNMENT_TYPES = ["sub_assignment"];
+// Work waiting to be graded (teachers/TAs). It comes from Canvas' "to do" endpoint
+// and is cached next to the planner items, see the planner items section below.
+const TODO_GRADING_TYPE = "grading";
 function isTodoTaskType(item) {
     const t = String(item.plannable_type || "").toLowerCase();
     return t === "assignment"
         || t === "planner_note"
         || t === "quiz"
         || t === "discussion_topic"
+        || t === TODO_GRADING_TYPE
         || TODO_PEER_REVIEW_TYPES.includes(t)
         || TODO_SUB_ASSIGNMENT_TYPES.includes(t);
+}
+function isGradingItem(item) {
+    return String(item?.plannable_type || "").toLowerCase() === TODO_GRADING_TYPE;
 }
 function isPeerReviewType(item) {
     return TODO_PEER_REVIEW_TYPES.includes(String(item.plannable_type || "").toLowerCase());
@@ -4172,6 +4413,12 @@ async function getTodoPreviewText(item) {
     } else if (lowType === "discussion_topic" || lowType === "announcement") {
         url = `${domain}/api/v1/courses/${item.course_id}/discussion_topics/${id}`;
         field = "message";
+    } else if (lowType === TODO_GRADING_TYPE) {
+        // Grading rows carry the assignment description inline; skip the extra request.
+        const raw = item.plannable?.description || "";
+        const text = stripHtmlPreview(raw) || chrome.i18n.getMessage("no_details") || "No details given";
+        todoPreviewCache.set(key, text);
+        return text;
     } else if (TODO_PEER_REVIEW_TYPES.includes(lowType) || TODO_SUB_ASSIGNMENT_TYPES.includes(lowType)) {
         // Peer review / sub-assignment planner payloads already carry the
         // assignment description inline; avoid an extra API call.
@@ -4252,7 +4499,7 @@ function todoGradedBadgeHtml() { return `<svg class="better-todo-graded" viewBox
 
 function todoScoreBadgeHtml(item) {
     const _low = String(item.plannable_type || "").toLowerCase();
-    if (_low === "planner_note" || TODO_PEER_REVIEW_TYPES.includes(_low) || TODO_SUB_ASSIGNMENT_TYPES.includes(_low) || item.planner_override?.custom === true) return "";
+    if (_low === "planner_note" || _low === TODO_GRADING_TYPE || TODO_PEER_REVIEW_TYPES.includes(_low) || TODO_SUB_ASSIGNMENT_TYPES.includes(_low) || item.planner_override?.custom === true) return "";
     const points = item.plannable?.points_possible;
     if (points == null) return "";
     const pts = formatTodoScoreNumber(points);
@@ -4276,7 +4523,7 @@ async function loadTodoScores(items) {
     const byCourse = new Map();
     for (const item of items) {
         const _lt = String(item.plannable_type || "").toLowerCase();
-        if (_lt === "planner_note" || TODO_PEER_REVIEW_TYPES.includes(_lt) || TODO_SUB_ASSIGNMENT_TYPES.includes(_lt) || item.planner_override?.custom === true) continue;
+        if (_lt === "planner_note" || _lt === TODO_GRADING_TYPE || TODO_PEER_REVIEW_TYPES.includes(_lt) || TODO_SUB_ASSIGNMENT_TYPES.includes(_lt) || item.planner_override?.custom === true) continue;
         if (item.plannable?.points_possible == null) continue;
         const cid = item.course_id ?? item.context_id;
         if (cid == null) continue;
@@ -4350,18 +4597,25 @@ function populateAssignments(iscompleted = false) {
 	const maxElements = options.num_todo_items;
 
 	assignments.forEach((item) => {
+		const grading = isGradingItem(item);
 		let dueGroup = -1;
 		if (!iscompleted) {
-			let dueDate = new Date(item.plannable_date);
-			dueDate.setHours(0,0,0,0);
-			const diffDays = Math.round((dueDate - today) / (1000 * 60 * 60 * 24));
-			if (diffDays < 0) {dueGroup = -1;}
-			else if (diffDays <= 1) { dueGroup = diffDays.toString(); }
-			else if (diffDays <= 7) { dueGroup = diffDays.toString(); }
-			else if (diffDays <= 14) {dueGroup = 14;}
-			else if (diffDays <= 21) {dueGroup = 21;}
-			else if (diffDays <= 30) {dueGroup = 30;}
-			else {dueGroup = "Later"};
+			if (grading && !item.plannable?.due_at) {
+				// "Needs grading" has no student due date: park it in today's group so it
+				// stays visible instead of falling into "Later".
+				dueGroup = "0";
+			} else {
+				let dueDate = new Date(item.plannable_date);
+				dueDate.setHours(0,0,0,0);
+				const diffDays = Math.round((dueDate - today) / (1000 * 60 * 60 * 24));
+				if (diffDays < 0) {dueGroup = -1;}
+				else if (diffDays <= 1) { dueGroup = diffDays.toString(); }
+				else if (diffDays <= 7) { dueGroup = diffDays.toString(); }
+				else if (diffDays <= 14) {dueGroup = 14;}
+				else if (diffDays <= 21) {dueGroup = 21;}
+				else if (diffDays <= 30) {dueGroup = 30;}
+				else {dueGroup = "Later"};
+			}
 		} else {
 			dueGroup = item.submissions?.graded ? "Graded" : "Ungraded";
 		}
@@ -4421,6 +4675,9 @@ function populateAssignments(iscompleted = false) {
         // Optical centering: glyphs hug their viewBox's left edge; quiz needs less of a nudge.
         const iconLeftOffset = isCustomTask ? 2 : item.plannable_type == "quiz" ? 2 : 5;
         const scoreBadge = options.todo_show_scores === true ? todoScoreBadgeHtml(item) : "";
+        // Grading rows read "3 to grade" (plus the real due date when there is one)
+        // instead of pretending to be a student deadline.
+        const dueLabel = grading ? gradingTodoSubtitle(item) : convertToDueDate(item.plannable_date);
         const taskIcon = removeIcons ? "" : isCustomTask
             ? `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
                 <path d="M19.8201 14H15.6001C15.04 14 14.76 14 14.5461 14.109C14.3579 14.2049 14.2049 14.3578 14.1091 14.546C14.0001 14.7599 14.0001 15.0399 14.0001 15.6V19.82M20 12.7269V7.2C20 6.0799 20 5.51984 19.782 5.09202C19.5903 4.71569 19.2843 4.40973 18.908 4.21799C18.4802 4 17.9201 4 16.8 4H7.2C6.0799 4 5.51984 4 5.09202 4.21799C4.71569 4.40973 4.40973 4.71569 4.21799 5.09202C4 5.51984 4 6.0799 4 7.2V16.8C4 17.9201 4 18.4802 4.21799 18.908C4.40973 19.2843 4.71569 19.5903 5.09202 19.782C5.51984 20 6.0799 20 7.2 20H12.9496C13.4578 20 13.7118 20 13.9498 19.9407C14.1608 19.8882 14.3618 19.8016 14.5449 19.6844C14.7515 19.5522 14.926 19.3675 15.2751 18.9983L19.1254 14.9252C19.4486 14.5833 19.6101 14.4124 19.7255 14.2156C19.8278 14.041 19.903 13.8519 19.9486 13.6548C20 13.4325 20 13.1973 20 12.7269Z" stroke="var(--cr-todo-icon)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -4444,7 +4701,7 @@ function populateAssignments(iscompleted = false) {
 				<div style="display:flex;flex-direction:column;gap:3px;">
 					<span style="color:${classNameColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${anonCourseNameForItem(item)}</span>
 					<a href="${taskHref}" style="color:inherit;text-decoration:none;font-weight:bold;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;padding-right:28px;margin-top:-5px;">${anonTitleForItem(item)}</a>
-					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}${scoreBadge}</span>
+					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${dueLabel}${scoreBadge}</span>
 				</div>
 				${editButtonSvg}
 				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'"${(iscompleted && wasSubmitted) ? ` title="${getMsg("submitted_return_title", "Submitted to Canvas — clicking sends it back to Tasks (locally)")}"` : ""}>
@@ -4458,11 +4715,17 @@ function populateAssignments(iscompleted = false) {
 		</div>
 		`;
 		// On the Completed tab the checkmark un-completes; submitted items get a local pin.
-		assignment.querySelector(".better-todo-assignment-checkmark").addEventListener("click", () => {
-			if (item.anonFake === true) return; // fake items can't be completed in Canvas
-			console.log("marking ", item.plannable.title, iscompleted ? "as incomplete" : "as complete");
-			markAs(item, assignment.firstElementChild, !iscompleted);
-		});
+		const checkmarkEl = assignment.querySelector(".better-todo-assignment-checkmark");
+		if (grading && checkmarkEl) {
+			// No planner override exists for grading rows, so it cannot be checked off.
+			checkmarkEl.remove();
+		} else if (checkmarkEl) {
+			checkmarkEl.addEventListener("click", () => {
+				if (item.anonFake === true) return; // fake items can't be completed in Canvas
+				console.log("marking ", item.plannable.title, iscompleted ? "as incomplete" : "as complete");
+				markAs(item, assignment.firstElementChild, !iscompleted);
+			});
+		}
 		const editBtn = assignment.querySelector(".better-todo-assignment-edit");
 		if (editBtn) {
 			editBtn.addEventListener("click", (e) => {
@@ -7091,6 +7354,8 @@ function preloadAssignmentEls() {
             try {
                 data = combineAssignments(data);
                 data.forEach(item => {
+                    // Grading rows never render as a course card's "due" list.
+                    if (isGradingItem(item)) return;
                     let due = new Date(item.plannable_date);
                     item.overdue = now >= due;
                     let o = {
@@ -7217,6 +7482,72 @@ function getCardId(card) {
     return -1;
 }
 
+// Writes a custom card name/code, or the real course text when the custom value is
+// empty (a cleared name must not keep the previous one on screen).
+function applyCardCustomText(el, customValue, fallback) {
+    if (!el) return;
+    const target = el.querySelector("span") || el;
+    // "Hide personal details" wins: never write real course text over an anonymized one.
+    if (options.hide_personal_details === true && (target.dataset.crAnonOrig !== undefined || el.dataset.crAnonOrig !== undefined)) return;
+    const custom = typeof customValue === "string" ? customValue.trim() : "";
+    const text = custom !== "" ? custom : (fallback || "");
+    if (text === "") return;
+    if (target.textContent !== text) target.textContent = text;
+    // Canvas keeps the untruncated text in the title attribute (its ellipsis tooltip).
+    if (el.getAttribute("title") !== text) el.setAttribute("title", text);
+}
+
+// Remembers Canvas' own card image/hero styles the first time a custom image paints
+// over them, so the original look can be restored without a page reload.
+function rememberCardImageStyles(card) {
+    const container = card.querySelector(".ic-DashboardCard__header_image");
+    const hero = card.querySelector(".ic-DashboardCard__header_hero");
+    if (container && container.dataset.crOrigBg === undefined) container.dataset.crOrigBg = container.style.backgroundImage || "";
+    if (hero && hero.dataset.crOrigOpacity === undefined) hero.dataset.crOrigOpacity = hero.style.opacity || "";
+}
+
+function restoreCardImage(card) {
+    const container = card.querySelector(".ic-DashboardCard__header_image");
+    if (container && container.dataset.crOrigBg !== undefined) {
+        container.style.backgroundImage = container.dataset.crOrigBg;
+        delete container.dataset.crOrigBg;
+    }
+    const hero = card.querySelector(".ic-DashboardCard__header_hero");
+    if (hero && hero.dataset.crOrigOpacity !== undefined) {
+        hero.style.opacity = hero.dataset.crOrigOpacity;
+        delete hero.dataset.crOrigOpacity;
+    }
+}
+
+// Paints (or clears) a card's custom image. Every step is guarded: one unexpected
+// markup change used to abort the whole card loop, which also stopped names/codes
+// from being applied.
+function applyCardImage(card, img) {
+    const header = card.querySelector(".ic-DashboardCard__header");
+    const hero = card.querySelector(".ic-DashboardCard__header_hero");
+    if (img === "none") {
+        restoreCardImage(card);
+        // "none" = keep the plain color header, no picture.
+        if (hero) hero.style.opacity = 1;
+        return;
+    }
+    if (!img) {
+        // Empty image: put Canvas' own card image back. Without this, clearing an image
+        // (or reverting a theme that set one) needed a full page reload.
+        restoreCardImage(card);
+        return;
+    }
+    if (!header || !hero) return;
+    const container = card.querySelector(".ic-DashboardCard__header_image") || makeElement("div", card, { "className": "ic-DashboardCard__header_image" });
+    // Capture after the container exists so a container we injected has its (empty)
+    // original background remembered, i.e. clearing the image really clears it.
+    rememberCardImageStyles(card);
+    header.prepend(container);
+    container.appendChild(hero);
+    container.style.backgroundImage = "url(\"" + img + "\")";
+    hero.style.opacity = .5;
+}
+
 function customizeCards(c = null) {
     if (!options.custom_cards) return;
     try {
@@ -7230,33 +7561,30 @@ function customizeCards(c = null) {
             if (!cardOptions) return;
             card.style.display = cardOptions.hidden === true ? "none" : "inline-block";
 
-            if (cardOptions.img === "none") {
-                let currentImg = card.querySelector(".ic-DashboardCard__header_image");
-                if (currentImg) {
-                    card.querySelector(".ic-DashboardCard__header_hero").style.opacity = 1;
-                }
-            } else if (cardOptions.img !== "") {
-                let topColor = card.querySelector(".ic-DashboardCard__header_hero");
-                let container = card.querySelector(".ic-DashboardCard__header_image") || makeElement("div", card, { "className": "ic-DashboardCard__header_image" });
-                card.querySelector(".ic-DashboardCard__header").prepend(container);
-                container.appendChild(topColor);
-                container.style.backgroundImage = "url(\"" + cardOptions.img + "\")";
-                topColor.style.opacity = .5;
-            }
+            applyCardImage(card, cardOptions.img);
 
-            if (cardOptions.name !== "") {
-                card.querySelector(".ic-DashboardCard__header-title > span").textContent = cardOptions.name;
-            }
-
-            if (cardOptions.code !== "") {
-                card.querySelector(".ic-DashboardCard__header-subtitle").textContent = cardOptions.code;
-            }
+            // Canvas draws the name inside a <span> and the code as plain text, and older
+            // hosts omit the span entirely: a missing node used to throw and abort every
+            // remaining card, which is why custom names/codes looked unsaved.
+            applyCardCustomText(
+                card.querySelector(".ic-DashboardCard__header-title"),
+                cardOptions.name,
+                cardOptions.origName || cardOptions.fullName || ""
+            );
+            applyCardCustomText(
+                card.querySelector(".ic-DashboardCard__header-subtitle"),
+                cardOptions.code,
+                cardOptions.origCode || cardOptions.default || ""
+            );
 
             let links = card.querySelectorAll(".ic-DashboardCard__action");
-            for (let i = links.length; i < 4; i++) {
-                makeElement("a", card.querySelector(".ic-DashboardCard__action-container"), { "className": "ic-DashboardCard__action" });
+            const linkContainer = card.querySelector(".ic-DashboardCard__action-container");
+            if (linkContainer) {
+                for (let i = links.length; i < 4; i++) {
+                    makeElement("a", linkContainer, { "className": "ic-DashboardCard__action" });
+                }
+                links = card.querySelectorAll(".ic-DashboardCard__action");
             }
-            links = card.querySelectorAll(".ic-DashboardCard__action");
             for (let i = 0; i < 4; i++) {
                 let img = links[i].querySelector(".canvasrefined-link-image") || makeElement("img", links[i], { "className": "canvasrefined-link-image" });
                 links[i].style.display = "inherit";
@@ -8238,10 +8566,33 @@ function wireDashboardNotes(notes) {
     });
 }
 
+// Dashboard notes get a bounded box that scrolls internally: a long note used to
+// stretch the whole Top/Bottom widget row (and the card grid) with it.
+// An explicit height wins: the widget's own height in card form, or the row height.
+const NOTES_AUTO_MAX_HEIGHT = 220;
+// Card form is card-shaped by default (see .in-cards in content.css).
+const NOTES_CARD_HEIGHT = 260;
+function applyDashboardNotesHeight(notes, pos = null) {
+    if (!notes) return;
+    const position = pos || options.dashboard_notes_position || "top";
+    const inCards = position === "cards_start" || position === "cards_end";
+    let cap = NOTES_AUTO_MAX_HEIGHT;
+    if (inCards) {
+        // crApplyCardHeight pins the element height when the user set one.
+        const own = parseInt(options.dashboard_notes_height, 10);
+        cap = (Number.isFinite(own) && own > 0) ? 0 : NOTES_CARD_HEIGHT;
+    } else if (widgetRowHeight(position === "below" ? "below" : "top") > 0) {
+        // A fixed height row already bounds the slot, so let the notes fill it.
+        cap = 0;
+    }
+    notes.style.setProperty("--cr-notes-max", cap > 0 ? cap + "px" : "none");
+}
+
 // Mount at the Widgets-tab position: top / cards_start / cards_end / below.
 function placeDashboardNotes(notes, container) {
     const pos = options.dashboard_notes_position || "top";
     crApplyCardHeight("dashboard_notes", notes, pos === "cards_start" || pos === "cards_end");
+    applyDashboardNotesHeight(notes, pos);
     if (pos === "top" || pos === "below") {
         notes.classList.remove("in-cards");
         const slot = notes.closest && notes.closest(".canvasrefined-widget-slot");
@@ -11595,6 +11946,105 @@ function plannerItemKey(item) {
     return `${item.plannable_type}|${item.plannable_id}`;
 }
 
+// ===================== Grading items (teacher / TA) =====================
+// /api/v1/planner/items only covers the user's own coursework, so a course the user
+// grades for never contributes anything: the Better Todo list looked empty for TAs
+// while Canvas' own todo listed "needs grading". Those rows live in the legacy
+// /api/v1/users/self/todo endpoint, which is mapped into planner shape here so the
+// whole todo pipeline (timeframe, groups, course filter) handles them unchanged.
+function gradingTodoToPlannerItem(entry) {
+    const a = entry && entry.assignment;
+    if (!a || a.id == null) return null;
+    const courseId = a.course_id ?? entry.course_id ?? null;
+    const dueAt = a.due_at || entry.todo_date || null;
+    // The todo endpoint omits the course name, which the todo rows display; fall back to
+    // the name the dashboard cards already cached for that course.
+    const cards = options?.custom_cards || {};
+    const card = courseId != null ? (cards[String(courseId)] || cards[courseId]) : null;
+    const courseName = entry.context_name || a.context_name || card?.fullName || card?.default || "";
+    return {
+        plannable_type: TODO_GRADING_TYPE,
+        plannable_id: a.id,
+        course_id: courseId,
+        context_type: courseId != null ? "course" : undefined,
+        context_id: courseId,
+        context_name: courseName,
+        // Kept as-is (null when the assignment has no due date) so the row can say
+        // "N to grade" instead of inventing a student due date.
+        plannable_date: dueAt,
+        html_url: entry.html_url || a.html_url || "",
+        plannable: {
+            title: a.name || "",
+            course_id: courseId,
+            description: a.description || "",
+            points_possible: a.points_possible ?? null,
+            due_at: dueAt,
+        },
+        submissions: { submitted: false, graded: false },
+        needs_grading_count: Number(entry.needs_grading_count ?? a.needs_grading_count) || 0,
+    };
+}
+
+// Returns the grading rows, or null when the request failed so callers can tell
+// "nothing to grade" ([], cacheable) from "unknown" (retry later, never cache).
+async function fetchGradingTodoItems() {
+    const items = [];
+    const seen = new Set();
+    let url = `${domain}/api/v1/users/self/todo?per_page=100`;
+    for (let page = 0; page < 10 && url; page++) {
+        let response;
+        let data;
+        try {
+            response = await pageFetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+            data = await response.json();
+        } catch (e) {
+            return null;
+        }
+        if (!response.ok || !Array.isArray(data)) return null;
+        for (const entry of data) {
+            // Everything else in that list (submitting work) already comes from the planner.
+            if (!entry || String(entry.type || "").toLowerCase() !== TODO_GRADING_TYPE) continue;
+            const item = gradingTodoToPlannerItem(entry);
+            if (!item) continue;
+            const key = `${item.course_id}|${item.plannable_id}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            items.push(item);
+        }
+        url = getNextPageUrl(response.headers.get("Link"));
+    }
+    return items;
+}
+
+// Grading rows join the planner items for consumers. A course where the user is both
+// student and grader would list the same assignment twice, so planner rows win.
+function combineGradingItems(plannerItems, gradingItems, courseIds) {
+    if (!Array.isArray(gradingItems) || gradingItems.length === 0) return plannerItems;
+    const visible = filterPlannerItemsByActiveCourses(gradingItems, courseIds);
+    if (visible.length === 0) return plannerItems;
+    const seen = new Set(plannerItems.map(i => `${i.course_id ?? i.context_id}|${i.plannable_id}`));
+    const extra = visible.filter(i => !seen.has(`${i.course_id ?? i.context_id}|${i.plannable_id}`));
+    return extra.length ? plannerItems.concat(extra) : plannerItems;
+}
+
+// Grading rows change on their own (a submission gets graded elsewhere), so they take
+// part in the change signature that decides whether consumers re-render.
+function plannerConsumersFingerprint(items, grading, courseIds) {
+    const base = plannerFingerprint(items);
+    if (!Array.isArray(grading)) return base;
+    const gradingPart = filterPlannerItemsByActiveCourses(grading, courseIds)
+        .map(i => `${i.plannable_id}:${i.needs_grading_count}:${i.plannable_date || ""}`)
+        .sort()
+        .join(",");
+    return base + "|g:" + gradingPart;
+}
+
 // ===================== Active-enrollment filter =====================
 // The planner API excludes concluded *courses* but not items whose enrollment
 // concluded (common at term boundaries), so filter by active enrollment ids.
@@ -11646,14 +12096,19 @@ async function readPlannerCache() {
     return null;
 }
 
-function writePlannerCache(items, lastFullRefresh, activeCourseIds, minRefreshedAt = 0) {
+function writePlannerCache(items, lastFullRefresh, activeCourseIds, minRefreshedAt = 0, grading = undefined) {
     try {
         // Cross-tab guard: never overwrite a cache newer than our snapshot.
         chrome.storage.local.get(PLANNER_CACHE_KEY, result => {
             try {
                 const current = result && result[PLANNER_CACHE_KEY];
                 if (current && ((current.refreshedAt || 0) > minRefreshedAt)) return;
-                const p = chrome.storage.local.set({ [PLANNER_CACHE_KEY]: { items, lastFullRefresh, activeCourseIds, refreshedAt: Date.now() } });
+                // undefined keeps whatever grading snapshot is already stored; null means
+                // "the grading fetch failed", which makes the next load retry it.
+                const nextGrading = grading === undefined
+                    ? (current ? current.grading : null)
+                    : grading;
+                const p = chrome.storage.local.set({ [PLANNER_CACHE_KEY]: { items, lastFullRefresh, activeCourseIds, grading: nextGrading, refreshedAt: Date.now() } });
                 if (p && typeof p.catch === "function") p.catch(() => {});
             } catch (e) { /* cache write failure is non-fatal */ }
         });
@@ -11726,25 +12181,34 @@ function plannerFingerprint(items) {
 }
 
 // Cache first; on first run a single bounded (1-year) fetch is on the critical
-// path. Items are always limited to the active courses.
+// path. Planner items are always limited to the active courses, then combined with
+// the grading queue (teacher/TA work that only exists in Canvas' "to do" endpoint).
 async function loadPlannerItems() {
     const cache = await readPlannerCache();
     if (cache) {
         schedulePlannerRefresh(cache);
-        return filterPlannerItemsByActiveCourses(cache.items, cache.activeCourseIds);
+        const plannerItems = filterPlannerItemsByActiveCourses(cache.items, cache.activeCourseIds);
+        if (Array.isArray(cache.grading)) return combineGradingItems(plannerItems, cache.grading, cache.activeCourseIds);
+        // Caches written before grading support carry no grading array: fetch it once
+        // here so a TA/teacher sees their queue right after upgrading, not hours later.
+        const grading = await fetchGradingTodoItems();
+        if (grading === null) return plannerItems;
+        writePlannerCache(cache.items, cache.lastFullRefresh, cache.activeCourseIds ?? null, cache.refreshedAt || 0, grading);
+        return combineGradingItems(plannerItems, grading, cache.activeCourseIds);
     }
-    // First run: fetch the lookback and the enrollment list in parallel, then
-    // cache. A failed fetch caches nothing, so the next load retries.
-    const [items, courseIds] = await Promise.all([
+    // First run: fetch the lookback, the grading queue and the enrollment list in
+    // parallel, then cache. A failed fetch caches nothing, so the next load retries.
+    const [items, grading, courseIds] = await Promise.all([
         fetchPlannerItemsSince(plannerDateDaysAgo(PLANNER_LOOKBACK_DAYS)),
+        fetchGradingTodoItems(),
         fetchActiveCourseIds(),
     ]);
     if (items === null) return [];
     const filtered = filterPlannerItemsByActiveCourses(
         sortAndTrimPlannerItems(items), courseIds
     );
-    writePlannerCache(filtered, Date.now(), courseIds ? [...courseIds] : null);
-    return filtered;
+    writePlannerCache(filtered, Date.now(), courseIds ? [...courseIds] : null, 0, grading);
+    return combineGradingItems(filtered, grading, courseIds);
 }
 
 // Recent-window refresh on every load, a full lookback walk at most weekly, and
@@ -11759,12 +12223,20 @@ function schedulePlannerRefresh(cache) {
         if (plannerRefreshRunning) return;
         plannerRefreshRunning = true;
         try {
-            const before = plannerFingerprint(
-                filterPlannerItemsByActiveCourses(cache.items, cache.activeCourseIds)
+            const before = plannerConsumersFingerprint(
+                filterPlannerItemsByActiveCourses(cache.items, cache.activeCourseIds),
+                cache.grading,
+                cache.activeCourseIds
             );
             const courseIds = await fetchActiveCourseIds();
             const active = courseIds ?? (cache.activeCourseIds ?? null);
             const idsToStore = courseIds ? [...courseIds] : (cache.activeCourseIds ?? null);
+            // Grading rows come from a different endpoint: a failed fetch keeps the last
+            // known queue instead of dropping it (null = retry on the next pass).
+            const fetchedGrading = await fetchGradingTodoItems();
+            const grading = fetchedGrading === null
+                ? (Array.isArray(cache.grading) ? cache.grading : null)
+                : fetchedGrading;
             let merged;
             if (fullRefreshDue) {
                 const fetched = await fetchPlannerItemsSince(plannerDateDaysAgo(PLANNER_LOOKBACK_DAYS));
@@ -11774,7 +12246,7 @@ function schedulePlannerRefresh(cache) {
                     sortAndTrimPlannerItems(fetched),
                     active
                 );
-                writePlannerCache(merged, Date.now(), idsToStore, cache.refreshedAt || 0);
+                writePlannerCache(merged, Date.now(), idsToStore, cache.refreshedAt || 0, grading);
             } else {
                 const windowStart = plannerDateDaysAgo(PLANNER_WINDOW_DAYS);
                 const fetched = await fetchPlannerItemsSince(windowStart);
@@ -11786,9 +12258,11 @@ function schedulePlannerRefresh(cache) {
                     mergePlannerItems(cache.items, fetched, Date.parse(windowStart + "T00:00:00")),
                     active
                 );
-                writePlannerCache(merged, cache.lastFullRefresh, idsToStore, cache.refreshedAt || 0);
+                writePlannerCache(merged, cache.lastFullRefresh, idsToStore, cache.refreshedAt || 0, grading);
             }
-            if (plannerFingerprint(merged) !== before) refreshPlannerConsumers(merged);
+            if (plannerConsumersFingerprint(merged, grading, active) !== before) {
+                refreshPlannerConsumers(combineGradingItems(merged, grading, active));
+            }
         } catch (e) {
             console.warn("planner refresh failed", e);
         } finally {

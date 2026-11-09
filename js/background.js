@@ -140,7 +140,6 @@ chrome.runtime.onInstalled.addListener(function () {
             "gpa_calc_cumulative": false,
             "gpa_calc_weighted": true,
             "gpa_calc_show_on_hover": false,
-            "browser_show_likes": false,
             "custom_styles": "",
             "imageSize": 100,
             "cardRoundness": 5,
@@ -275,7 +274,9 @@ async function getNasaBackground() {
                 title: nasaPlainText(data.title),
                 date: data.date || dateStr,
                 copyright: nasaPlainText(data.copyright || data.credit),
-                explanation: nasaPlainText(data.explanation)
+                // The feed prefixes the body with "Explanation:" (inside a <strong>);
+                // that label is noise in the overlay, so drop it here once.
+                explanation: nasaPlainText(data.explanation).replace(/^\s*explanation\s*:\s*/i, "")
             };
             // one write, so the overlay never sees an image without its metadata
             await chrome.storage.local.set({ [cacheKey]: result, [metadataKey]: meta });

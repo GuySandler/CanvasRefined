@@ -218,7 +218,12 @@
 .cr-fmt:active {background:var(--bcbackground-1,rgba(0,0,0,.12));}
 .cr-fmt code {font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;}
 .cr-fmt-sep {width:1px;height:18px;align-self:center;background:var(--bcborders,#c7cdd1);margin:0 3px;}
-.canvasrefined-notes-surface {position:relative;background:var(--bcbackground-1,#fff);}
+/* Dashboard notes are a bounded box (--cr-notes-max) whose content scrolls, so a long
+   note can't stretch the widget row or the card grid. */
+.canvasrefined-dashboard-notes {display:flex;flex-direction:column;min-height:140px;max-height:var(--cr-notes-max,none);}
+.canvasrefined-notes-surface {position:relative;background:var(--bcbackground-1,#fff);display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden;}
+.canvasrefined-dashboard-notes .canvasrefined-notes-rendered,
+.canvasrefined-dashboard-notes .canvasrefined-notes-editor {flex:1 1 auto;min-height:0;overflow:auto;}
 .canvasrefined-notes-rendered {box-sizing:border-box;width:100%;min-height:140px;padding:12px 16px;font-size:14px;line-height:1.5;color:var(--bctext-0,var(--ic-brand-font-color-dark-lightened-30,#2d3b45));overflow-wrap:break-word;cursor:text;outline:none;border-radius:0 0 4px 4px;}
 .canvasrefined-notes-rendered:empty::before {content:"Click to add a note…";color:var(--bctext-2,#9aa3ab);font-style:italic;}
 .canvasrefined-notes-rendered > :first-child {margin-top:0;}
@@ -790,3 +795,17 @@ input.cr-gpa-input[type="text"]:focus-visible {outline:none !important;box-shado
 #doc_preview {
     height: 80% !important;
 }
+
+/* ---------- Overlay chrome: NASA info + admire background ---------- */
+/* Fixed so it is always reachable, but right/bottom are set from the #content box, so the
+   buttons sit in the content area instead of over the right sidebar. */
+#canvasrefined-overlay-host {position:fixed;right:24px;bottom:24px;z-index:9999;display:flex;align-items:flex-end;gap:10px;}
+#canvasrefined-admire-btn {display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:rgba(30,30,30,0.85);border:1px solid rgba(255,255,255,0.15);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4);transition:transform .15s ease,background .15s ease,border-color .15s ease;}
+#canvasrefined-admire-btn:hover {transform:scale(1.06);background:rgba(50,50,50,0.9);}
+#canvasrefined-admire-btn:active {transform:scale(.96);}
+#canvasrefined-admire-btn:focus-visible {outline:2px solid #56caf0;outline-offset:2px;}
+#canvasrefined-admire-btn.is-active {border-color:rgba(86,202,240,0.6);}
+/* Admire background: fade the whole Canvas UI out, keep the wallpaper and the buttons. */
+html.cr-admire-mode {overflow:hidden !important;}
+.cr-admire-fade {transition:opacity .3s ease !important;}
+.cr-admire-hidden {opacity:0 !important;pointer-events:none !important;}
