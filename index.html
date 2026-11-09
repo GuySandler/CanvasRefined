@@ -3,9 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Canvas Refined — Even more feature packed extension for Canvas</title>
-<meta name="description" content="Canvas Refined is a free and open source, fully local extension that supercharges your Canvas experience. Dark mode, themes, GPA calculator, better todo list and much more.">
-<link rel="icon" type="image/png" href="icon/icon-32.png">
+<title>Canvas Refined — Free Canvas LMS extension, dark mode &amp; grades</title>
+<meta name="description" content="Free, open source Canvas LMS extension: fully customizable dark mode, community themes, GPA calculator, grade analytics, better todo list and global search.">
+<link rel="canonical" href="https://guysandler.github.io/CanvasRefined/">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="theme-color" content="#101012">
+<meta name="application-name" content="Canvas Refined">
+<meta name="author" content="Guy Sandler">
+
+<!-- Open Graph / social previews -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Canvas Refined">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://guysandler.github.io/CanvasRefined/">
+<meta property="og:title" content="Canvas Refined — Free Canvas LMS extension, dark mode &amp; grades">
+<meta property="og:description" content="Free, open source Canvas LMS extension: fully customizable dark mode, community themes, GPA calculator, grade analytics, better todo list and global search.">
+<meta property="og:image" content="https://guysandler.github.io/CanvasRefined/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Canvas Refined — free Canvas LMS extension for dark mode, themes and grade tools">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Canvas Refined — Free Canvas LMS extension, dark mode &amp; grades">
+<meta name="twitter:description" content="Free, open source Canvas LMS extension: dark mode, community themes, GPA calculator, grade analytics, better todo list and global search.">
+<meta name="twitter:image" content="https://guysandler.github.io/CanvasRefined/og-image.jpg">
+<meta name="twitter:image:alt" content="Canvas Refined — free Canvas LMS extension for dark mode, themes and grade tools">
+
+<link rel="icon" type="image/png" sizes="32x32" href="icon/icon-32.png">
+<link rel="apple-touch-icon" href="icon/icon-128.png">
+<link rel="preload" as="image" href="icon/NEWtitle.png" fetchpriority="high">
 <style>
   :root {
     --bg: #101012;
@@ -45,7 +71,7 @@
   }
   nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
   .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; }
-  .nav-logo img { height: 30px; }
+  .nav-logo img { height: 30px; width: auto; }
   .nav-links { display: flex; gap: 22px; font-size: .95rem; align-items: center; }
   .nav-links a { text-decoration: none; color: var(--muted); transition: color .15s; display: inline-flex; align-items: center; gap: 6px; }
   .nav-links a:hover { color: var(--text); }
@@ -65,7 +91,7 @@
       radial-gradient(ellipse 50% 45% at 80% 20%, rgba(255,71,173,.12), transparent),
       radial-gradient(ellipse 50% 45% at 20% 20%, rgba(255,82,0,.12), transparent);
   }
-  header .logo { width: 300px; max-width: 85%; margin-bottom: 10px; }
+  header .logo { width: 300px; max-width: 85%; height: auto; margin-bottom: 10px; }
   header h1 {
     font-size: clamp(1.6rem, 4vw, 2.4rem);
     font-weight: 700;
@@ -263,6 +289,26 @@
   .row-label { display: flex; flex-direction: column; }
   .row-label small { color: var(--muted); font-weight: 400; font-size: .78rem; }
 
+  /* ---------- FAQ ---------- */
+  .faq { display: grid; gap: 12px; }
+  .faq details {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 22px;
+    transition: border-color .15s;
+  }
+  .faq details[open] { border-color: #3f3f4b; }
+  .faq summary {
+    cursor: pointer; font-weight: 600; font-size: 1.02rem;
+    list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; color: var(--muted); font-size: 1.35rem; line-height: 1; flex-shrink: 0; }
+  .faq details[open] summary::after { content: "\2212"; }
+  .faq summary:focus-visible { outline: 2px solid var(--accent-3); outline-offset: 5px; border-radius: 6px; }
+  .faq p { color: var(--muted); font-size: .95rem; margin-top: 12px; }
+  .faq p a { color: var(--accent-3); text-decoration: none; }
+  .faq p a:hover { text-decoration: underline; }
+
   /* ---------- Disclaimer ---------- */
   #disclaimer { padding: 28px 24px; }
   #disclaimer p { max-width: 720px; margin: 0 auto; color: var(--muted); font-size: .8rem; line-height: 1.6; text-align: center; }
@@ -276,11 +322,16 @@
     font-size: .88rem;
   }
   footer .foot-links { display: flex; gap: 20px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+  footer .foot-note { max-width: 620px; margin: 10px auto 0; font-size: .82rem; opacity: .8; }
   footer a { color: var(--muted); text-decoration: none; }
   footer a:hover { color: var(--text); }
 
   @media (max-width: 760px) {
-    .nav-links a span { display: none; }
+    /* keep the labels for assistive tech even though the icons carry the nav */
+    .nav-links a span {
+      position: absolute; width: 1px; height: 1px; overflow: hidden;
+      clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+    }
     .car-btn { display: none; }
     .feat { grid-template-columns: 1fr; gap: 20px; }
     .feat.flip .feat-text { order: 1; }
@@ -288,6 +339,160 @@
     header { padding: 60px 20px 50px; }
   }
 </style>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://guysandler.github.io/CanvasRefined/#website",
+      "url": "https://guysandler.github.io/CanvasRefined/",
+      "name": "Canvas Refined",
+      "description": "Free, open source Canvas LMS extension with dark mode, community themes, GPA calculator, grade analytics and a better todo list.",
+      "inLanguage": "en",
+      "publisher": { "@id": "https://guysandler.github.io/CanvasRefined/#publisher" }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://guysandler.github.io/CanvasRefined/#app",
+      "name": "Canvas Refined",
+      "applicationCategory": "BrowserApplication",
+      "applicationSubCategory": "Canvas LMS customization extension",
+      "operatingSystem": "Chrome, Chromium, Microsoft Edge, Brave, Opera, Firefox",
+      "browserRequirements": "Requires Chrome or Firefox desktop",
+      "url": "https://guysandler.github.io/CanvasRefined/",
+      "description": "Canvas Refined is a free and open source, fully local browser extension that supercharges Canvas LMS with fully customizable dark mode, community themes, a GPA calculator, grade history and analytics, a better todo list and a refined dashboard.",
+      "image": "https://guysandler.github.io/CanvasRefined/og-image.jpg",
+      "screenshot": "https://guysandler.github.io/CanvasRefined/images/canvas.webp",
+      "softwareVersion": "7.2.0",
+      "isAccessibleForFree": true,
+      "license": "https://opensource.org/licenses/MIT",
+      "downloadUrl": "https://chromewebstore.google.com/detail/canvas-refined/ihienfbdfdamhmhhiokjnjmpjgbenedg",
+      "installUrl": "https://addons.mozilla.org/en-US/firefox/addon/canvas-refined/",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "bestRating": "5",
+        "worstRating": "1",
+        "ratingCount": "28",
+        "reviewCount": "28"
+      },
+      "review": [
+        {
+          "@type": "Review",
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5" },
+          "author": { "@type": "Person", "name": "Josh Nelson" },
+          "reviewBody": "Thank you so much for making this! It's a lifesaver after BetterCanvas got gutted."
+        },
+        {
+          "@type": "Review",
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5" },
+          "author": { "@type": "Person", "name": "VR" },
+          "reviewBody": "So much better than 'BetterCanvas,' and doesn't force you to use AI or paid services."
+        },
+        {
+          "@type": "Review",
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5" },
+          "author": { "@type": "Person", "name": "Kristina Nguyen" },
+          "reviewBody": "SO MUCH BETTER THAN BETTERCAMPUS. All I want is to customize my cards and it does exactly that, and it's not complicated."
+        },
+        {
+          "@type": "Review",
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5" },
+          "author": { "@type": "Person", "name": "FunniFox" },
+          "reviewBody": "The perfect replacement for BetterCanvas after it became the much worse BetterCampus. Has everything BetterCanvas had plus more!"
+        }
+      ],
+      "featureList": [
+        "Fully customizable dark mode",
+        "Community themes you can edit for free",
+        "Better todo list with custom timeframes",
+        "GPA calculator with high school and college presets",
+        "Grade history, analytics and what-if grades",
+        "Custom backgrounds, fonts and card styles",
+        "Global search across all courses",
+        "Fully local: no account, no tracking, no server"
+      ],
+      "sameAs": [
+        "https://github.com/GuySandler/CanvasRefined/",
+        "https://chromewebstore.google.com/detail/canvas-refined/ihienfbdfdamhmhhiokjnjmpjgbenedg",
+        "https://addons.mozilla.org/en-US/firefox/addon/canvas-refined/"
+      ],
+      "publisher": { "@id": "https://guysandler.github.io/CanvasRefined/#publisher" }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://guysandler.github.io/CanvasRefined/#publisher",
+      "name": "Canvas Refined",
+      "url": "https://guysandler.github.io/CanvasRefined/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://guysandler.github.io/CanvasRefined/icon/icon-128.png",
+        "width": 128,
+        "height": 128
+      },
+      "sameAs": [
+        "https://github.com/GuySandler/CanvasRefined/",
+        "https://discord.com/invite/GjFh4JA3wh"
+      ],
+      "email": "sandlerguy5@gmail.com"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://guysandler.github.io/CanvasRefined/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is Canvas Refined a replacement for BetterCanvas, BetterCampus or Super Canvas?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It works as a drop-in replacement with all the great features and more. It is also compatible with existing BetterCanvas themes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Canvas Refined send my data anywhere?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Everything runs locally in your browser: your courses, grades, tasks and theme settings never leave your device, and the extension has no analytics, tracking pixels or servers."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which browsers can I install Canvas Refined on?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is published on the Chrome Web Store (which also covers Chromium browsers such as Microsoft Edge, Brave, Opera and Vivaldi) and on Firefox Add-ons."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it work with my school's Canvas site?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Canvas Refined works on Canvas LMS, so it runs on school-hosted instances such as yourschool.instructure.com as well as self-hosted Canvas domains. If a school-managed device blocks browser extensions you may need to install it on a personal device or browser profile."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does this work for Brightspace, Blackboard or Google Classroom?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No, Canvas Refined only works on Canvas LMS. If anyone wants to port it to other platforms, you are welcome to!"
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
 </head>
 <body>
 
@@ -298,7 +503,7 @@
 <nav>
   <div class="wrap">
     <a class="nav-logo" href="#top">
-      <img src="icon/icon-48.png" alt="Canvas Refined logo">
+      <img src="icon/icon-48.png" width="48" height="48" alt="Canvas Refined logo">
       Canvas Refined
     </a>
     <div class="nav-links">
@@ -307,6 +512,7 @@
       <a href="#reviews"><span>Reviews</span></a>
       <a href="#support"><span>Support</span></a>
       <a href="#compare"><span>Comparison</span></a>
+      <a href="#faq"><span>FAQ</span></a>
       <a href="https://github.com/GuySandler/CanvasRefined/" target="_blank" rel="noopener" title="GitHub">
         <svg class="icon-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.06-1.86 3.75-3.64 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.995 7.995 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
         <span>GitHub</span>
@@ -319,10 +525,12 @@
   </div>
 </nav>
 
+<main id="main">
+
 <header id="top">
-  <img class="logo" src="icon/NEWtitle.png" alt="Canvas Refined">
+  <img class="logo" src="icon/NEWtitle.png" width="469" height="50" fetchpriority="high" decoding="async" alt="Canvas Refined">
   <h1>The <span class="grad">even more feature packed</span> extension for Canvas</h1>
-  <p class="tagline">Dark mode, themes, a better todo list, GPA calculator, grade history and much more</p>
+  <p class="tagline">A free extension for Canvas LMS: dark mode, themes, a better todo list, GPA calculator, grade history and much more</p>
   <div class="foss">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
     Free &amp; open source (FOSS) | MIT licensed
@@ -345,7 +553,7 @@
 
 <section id="features">
   <div class="wrap">
-    <h2>Key Features</h2>
+    <h2>Key features for Canvas LMS</h2>
     <div class="feat">
       <div class="feat-text">
         <div class="icon">
@@ -355,7 +563,7 @@
         <p>Fully customizable dark mode. You can choose from many user-made themes or fine-tune every aspect yourself. You can even edit other people's themes for free.</p>
       </div>
       <div class="feat-img">
-        <img src="images/themes.webp" width="665" height="683" alt="Theme browser showing dozens of community-made Canvas themes">
+        <img src="images/themes.webp" width="665" height="683" decoding="async" alt="Canvas dark mode theme browser showing dozens of community-made Canvas themes">
       </div>
     </div>
 
@@ -368,7 +576,7 @@
         <p>Keep track of everything you need to do. Assignments, due dates and your own tasks in one clean interactive list.</p>
       </div>
       <div class="feat-img">
-        <img src="images/todolist.webp" loading="lazy" width="354" height="1037" alt="Todo list with a progress ring and upcoming assignments sorted by due date">
+        <img src="images/todolist.webp" loading="lazy" decoding="async" width="354" height="1037" alt="Canvas todo list with a progress ring and upcoming assignments sorted by due date">
       </div>
     </div>
 
@@ -381,7 +589,7 @@
         <p>See your GPA at a glance, with presets for both high school and college grading scales. No more guessing what your grades add up to.</p>
       </div>
       <div class="feat-img">
-        <img src="images/gpa.webp" loading="lazy" width="378" height="348" alt="GPA calculator widget showing current and weighted GPA">
+        <img src="images/gpa.webp" loading="lazy" decoding="async" width="378" height="348" alt="GPA calculator widget for Canvas showing current and weighted GPA">
       </div>
     </div>
 
@@ -394,7 +602,7 @@
         <p>Watch how your grades change over time and dig into the details. Use Imagine-If grades to see exactly what that next assignment would do to your grade, even if it was not added by your teacher.</p>
       </div>
       <div class="feat-img">
-        <img src="images/analytics.webp" loading="lazy" width="1342" height="639" alt="Grade analytics panel with score distribution chart and grade-over-time graph">
+        <img src="images/analytics.webp" loading="lazy" decoding="async" width="1342" height="639" alt="Grade analytics panel with score distribution chart and grade-over-time graph">
       </div>
     </div>
 
@@ -407,7 +615,7 @@
         <p>Custom backgrounds, dashboard notes with markdown, custom card styles, custom fonts, a better sidebar and global search across all your courses.</p>
       </div>
       <div class="feat-img">
-        <img src="images/canvas.webp" loading="lazy" width="1800" height="931" alt="Refined Canvas dashboard with custom background, GPA widget, card grades and the tasks sidebar">
+        <img src="images/canvas.webp" loading="lazy" decoding="async" width="1800" height="931" alt="Refined Canvas LMS dashboard with custom background, GPA widget, card grades and the tasks sidebar">
       </div>
     </div>
   </div>
@@ -672,8 +880,38 @@
   </div>
 </section>
 
+<section id="faq">
+  <div class="wrap">
+    <h2>Frequently asked questions</h2>
+    <div class="faq">
+      <details>
+        <summary>Is Canvas Refined a replacement for BetterCanvas, BetterCampus or Super Canvas?</summary>
+        <p>It works as a drop-in replacement with all the great features and more. It is also compatible with existing BetterCanvas themes.</p>
+      </details>
+      <details>
+        <summary>Does Canvas Refined send my data anywhere?</summary>
+        <p>No. Everything runs locally in your browser: your courses, grades, tasks and theme settings never leave your device, and the extension has no analytics, tracking pixels or servers.</p>
+      </details>
+      <details>
+        <summary>Which browsers can I install Canvas Refined on?</summary>
+        <p>It is published on the <a href="https://chromewebstore.google.com/detail/canvas-refined/ihienfbdfdamhmhhiokjnjmpjgbenedg" target="_blank" rel="noopener">Chrome Web Store</a> (which also covers Chromium browsers such as Microsoft Edge, Brave, Opera and Vivaldi) and on <a href="https://addons.mozilla.org/en-US/firefox/addon/canvas-refined/" target="_blank" rel="noopener">Firefox Add-ons</a>.</p>
+      </details>
+      <details>
+        <summary>Does it work with my school's Canvas site?</summary>
+        <p>Canvas Refined works on Canvas LMS, so it runs on school-hosted instances such as <em>yourschool.instructure.com</em> as well as self-hosted Canvas domains. If a school-managed device blocks browser extensions you may need to install it on a personal device or browser profile.</p>
+      </details>
+      <details>
+        <summary>Does this work for Brightspace, Blackboard or Google Classroom?</summary>
+        <p>No, Canvas Refined only works on Canvas LMS. If anyone wants to port it to other platforms, you are welcome to!</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+</main>
+
 <section id="disclaimer">
-  <p><strong>Disclaimer:</strong> Canvas Refined is an independent, open source project and is not affiliated with, endorsed by, sponsored by, or in any way officially connected to Instructure, Canvas, or BetterCampus. All product names, logos, and brands are the property of their respective owners.</p>
+  <p><strong>Disclaimer:</strong> Canvas Refined is an independent, open source project and is not affiliated with, endorsed by, sponsored by, or in any way officially connected to Instructure, Canvas, BetterCanvas, BetterCampus or Super Canvas. All product names, logos, and brands are the property of their respective owners.</p>
 </section>
 
 <footer>
@@ -684,6 +922,7 @@
     <a href="https://github.com/GuySandler/CanvasRefined/" target="_blank" rel="noopener">GitHub</a>
   </div>
   <div>Canvas Refined - free, forever, for everyone.</div>
+  <div class="foot-note">An independent open source extension for Canvas LMS: dark mode, community themes, GPA calculator, grade analytics, a better todo list and global search.</div>
 </footer>
 
 <script>

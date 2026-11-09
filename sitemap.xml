@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://guysandler.github.io/CanvasRefined/</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://guysandler.github.io/CanvasRefined/og-image.jpg</image:loc>
+      <image:title>Canvas Refined — free Canvas LMS extension</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://guysandler.github.io/CanvasRefined/images/canvas.webp</image:loc>
+      <image:title>Refined Canvas LMS dashboard with dark mode and GPA widget</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://guysandler.github.io/CanvasRefined/images/themes.webp</image:loc>
+      <image:title>Community-made Canvas themes browser</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://guysandler.github.io/CanvasRefined/images/todolist.webp</image:loc>
+      <image:title>Canvas todo list with progress ring</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://guysandler.github.io/CanvasRefined/images/gpa.webp</image:loc>
+      <image:title>GPA calculator widget for Canvas</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://guysandler.github.io/CanvasRefined/images/analytics.webp</image:loc>
+      <image:title>Canvas grade analytics and grade-over-time graph</image:title>
+    </image:image>
+  </url>
+</urlset>
