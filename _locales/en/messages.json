@@ -44,6 +44,30 @@
     "anim_controls": {
         "message": "Buttons and inputs"
     },
+    "anim_card_zoom": {
+        "message": "Card image zoom"
+    },
+    "anim_heatmap_in": {
+        "message": "Heatmap fade-in"
+    },
+    "anim_popups": {
+        "message": "Popups"
+    },
+    "anim_popup_in": {
+        "message": "Popups slide in"
+    },
+    "anim_press": {
+        "message": "Press feedback"
+    },
+    "anim_sidebar_icon": {
+        "message": "Sidebar icon tilt"
+    },
+    "anim_widgets": {
+        "message": "Widgets"
+    },
+    "anim_credits": {
+        "message": "Animation credits"
+    },
     "anim_entrance": {
         "message": "Fade-in entrance"
     },

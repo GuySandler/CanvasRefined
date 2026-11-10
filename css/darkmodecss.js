@@ -1769,4 +1769,118 @@ html.cr-anim-rainbow-buttons .better-sidebar-btn:hover {
 }
 /* #endregion */
 
+/* #region Card image zoom (html.cr-anim-card-zoom) */
+/* Uses the standalone scale property so it multiplies with the Image size setting,
+   which writes transform: scale() on the same element. Cards clip their own overflow. */
+html.cr-anim-card-zoom .ic-DashboardCard__header_image,
+html.cr-anim-card-zoom .ic-DashboardCard__header_hero {
+    transition: scale 0.3s ease-out;
+}
+html.cr-anim-card-zoom .ic-DashboardCard:hover .ic-DashboardCard__header_image,
+html.cr-anim-card-zoom .ic-DashboardCard:hover .ic-DashboardCard__header_hero {
+    scale: 1.06;
+}
+/* #endregion */
+
+
+/* #region Sidebar icon tilt (html.cr-anim-sidebar-icon) */
+/*
+Rotate the svg that draws each row, never a wrapper: Canvas nests
+<span.menu-item-icon-container><span.ic-icon-svg><svg>, and matching a wrapper plus its
+child rotated one icon twice around two origins, which is what looked broken.
+
+Better Sidebar mode hides #menu entirely and renders its own buttons, so those are
+covered too - that is the sidebar most people look at. Icon-font rows get
+display: inline-block, because rotate does nothing on a plain inline element.
+*/
+html.cr-anim-sidebar-icon :is(#menu a, .list-view a, .better-sidebar-btn, #better-sidebar-container a) svg {
+    transition: rotate 0.15s ease-out;
+    transform-origin: center;
+}
+html.cr-anim-sidebar-icon :is(#menu a, .list-view a, .better-sidebar-btn, #better-sidebar-container a):hover svg {
+    rotate: 15deg;
+}
+/* Icon fonts only. The :not() pair matters: .menu-item-icon-container also contains
+   "icon" in its class, and matching it as well double-rotated the same icon (and forcing
+   display on that wrapper disturbed Canvas' own nav layout). */
+html.cr-anim-sidebar-icon :is(#menu a, .list-view a) > :is(i, span)[class*="icon"]:not(.menu-item-icon-container):not(:has(svg)) {
+    display: inline-block;
+    transition: rotate 0.15s ease-out;
+    transform-origin: center;
+}
+html.cr-anim-sidebar-icon :is(#menu a, .list-view a):hover > :is(i, span)[class*="icon"]:not(.menu-item-icon-container):not(:has(svg)) {
+    rotate: 15deg;
+}
+/* #endregion */
+
+
+/* #region Press feedback (html.cr-anim-press) */
+/* scale only - the lift and the rainbow both own transform on these elements. */
+html.cr-anim-press button:enabled,
+html.cr-anim-press .better-sidebar-btn,
+html.cr-anim-press #better-todo-filterbuttongroup > :nth-child(-n+3) {
+    transition: scale 0.08s ease-out;
+}
+html.cr-anim-press button:enabled:active,
+html.cr-anim-press .better-sidebar-btn:active,
+html.cr-anim-press #better-todo-filterbuttongroup > :nth-child(-n+3):active {
+    scale: 0.96;
+}
+/* #endregion */
+
+
+/* #region Heatmap fade-in (html.cr-anim-heatmap-in) */
+/* Opacity only: the heatmap widget is deliberately overflow: visible, so a transform
+   here would spill out of the card. The stagger walks the grid by column position. */
+@keyframes cr-hm-fade {
+    from {opacity: 0;}
+}
+html.cr-anim-heatmap-in .canvasrefined-heatmap .cr-hm-cell {
+    animation: cr-hm-fade 0.35s ease-out backwards;
+    animation-delay: calc(var(--cr-hm-i, 0) * 12ms);
+}
+html.cr-anim-heatmap-in .canvasrefined-heatmap .cr-hm-cell:nth-child(7n + 1) {--cr-hm-i: 0;}
+html.cr-anim-heatmap-in .canvasrefined-heatmap .cr-hm-cell:nth-child(7n + 2) {--cr-hm-i: 1;}
+html.cr-anim-heatmap-in .canvasrefined-heatmap .cr-hm-cell:nth-child(7n + 3) {--cr-hm-i: 2;}
+html.cr-anim-heatmap-in .canvasrefined-heatmap .cr-hm-cell:nth-child(7n + 4) {--cr-hm-i: 3;}
+html.cr-anim-heatmap-in .canvasrefined-heatmap .cr-hm-cell:nth-child(7n + 5) {--cr-hm-i: 4;}
+html.cr-anim-heatmap-in .canvasrefined-heatmap .cr-hm-cell:nth-child(7n + 6) {--cr-hm-i: 5;}
+html.cr-anim-heatmap-in .canvasrefined-heatmap .cr-hm-cell:nth-child(7n + 0) {--cr-hm-i: 6;}
+/* #endregion */
+
+
+/* #region Popups slide in (html.cr-anim-popup-in) */
+/*
+The extension's own popups: the item hover preview and the global search card. Panels that
+already animate themselves are left alone - the reminder stack gets
+animation: .4s ease slide and #canvasrefined-domain-prompt gets canvasrefined-pop from
+css/content.css, and overriding those needs !important, which then fights their keyframes.
+
+translate keeps the slide out of layout; the preview is position: fixed.
+*/
+@keyframes cr-popup-in {
+    from {
+        opacity: 0;
+        translate: 0 10px;
+    }
+}
+@keyframes cr-popup-in-center {
+    from {
+        opacity: 0;
+        scale: 0.97;
+        translate: 0 8px;
+    }
+}
+html.cr-anim-popup-in #canvasrefined-todo-preview,
+html.cr-anim-popup-in .canvasrefined-hover-preview {
+    animation: cr-popup-in 0.18s ease-out;
+}
+/* Global search: the modal builds its own backdrop fade (canvasrefined-gs-fade), so the
+   animation goes on the card inside it instead of replacing that. Both are created on
+   open and removed on close, so this plays once per open. */
+html.cr-anim-popup-in .canvasrefined-gs-card {
+    animation: cr-popup-in-center 0.2s cubic-bezier(.2, .8, .3, 1);
+}
+/* #endregion */
+
 `;

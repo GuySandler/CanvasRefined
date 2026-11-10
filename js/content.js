@@ -892,6 +892,11 @@ const ANIMATION_CLASSES = {
     cr_anim_list_hover: "cr-anim-list-hover",
     cr_anim_control_lift: "cr-anim-control-lift",
     cr_anim_rainbow_buttons: "cr-anim-rainbow-buttons",
+    cr_anim_card_zoom: "cr-anim-card-zoom",
+    cr_anim_sidebar_icon: "cr-anim-sidebar-icon",
+    cr_anim_press: "cr-anim-press",
+    cr_anim_heatmap_in: "cr-anim-heatmap-in",
+    cr_anim_popup_in: "cr-anim-popup-in",
 };
 
 /*

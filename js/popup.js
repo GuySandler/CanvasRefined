@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'quick_links', 'heatmap', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'notes_suppressor', 'grade_analytics', 'hide_personal_details', 'hide_sidebar', 'cr_anim_entrance', 'cr_anim_card_hover', 'cr_anim_list_hover', 'cr_anim_control_lift', 'cr_anim_rainbow_buttons'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'quick_links', 'heatmap', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'notes_suppressor', 'grade_analytics', 'hide_personal_details', 'hide_sidebar', 'cr_anim_entrance', 'cr_anim_card_hover', 'cr_anim_list_hover', 'cr_anim_control_lift', 'cr_anim_rainbow_buttons', 'cr_anim_card_zoom', 'cr_anim_sidebar_icon', 'cr_anim_press', 'cr_anim_heatmap_in', 'cr_anim_popup_in'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
 	"hide_course_images",
@@ -224,7 +224,7 @@ const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_he
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview", "todo_sections_persist", "todo_hide_filter_notice"];
 // Animations tab: motion is visual, so it travels with themes.
-const exportAnimations = ["cr_anim_entrance", "cr_anim_card_hover", "cr_anim_list_hover", "cr_anim_control_lift", "cr_anim_rainbow_buttons"];
+const exportAnimations = ["cr_anim_entrance", "cr_anim_card_hover", "cr_anim_list_hover", "cr_anim_control_lift", "cr_anim_rainbow_buttons", "cr_anim_card_zoom", "cr_anim_sidebar_icon", "cr_anim_press", "cr_anim_heatmap_in", "cr_anim_popup_in"];
 
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover", "gpa_calc_align"];
 // Widgets tab: every dashboard widget's layout (toggles, positions, heights, row
@@ -400,6 +400,11 @@ const defaultOptions = {
         "cr_anim_list_hover": false,
         "cr_anim_control_lift": false,
         "cr_anim_rainbow_buttons": false,
+        "cr_anim_card_zoom": false,
+        "cr_anim_sidebar_icon": false,
+        "cr_anim_press": false,
+        "cr_anim_heatmap_in": false,
+        "cr_anim_popup_in": false,
         "grade_analytics_zones": false,
         "quiz_safe_mode": false,
         "notes_suppressor": true,
