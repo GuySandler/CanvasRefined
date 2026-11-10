@@ -1508,3 +1508,265 @@ input[type="checkbox"]:is([name="turnitin_pledge"], [name="vericite_pledge"]) {
     border-radius: 6px !important;
 }
 `;
+
+/*
+Animations (Animations tab). Injected by injectAnimationsCss() in js/content.js.
+
+This lives in a JS file rather than being declared in manifest.json on purpose:
+manifest content_scripts changes only take effect after the extension is reloaded,
+while content script JS is read from disk on every injection - so editing this
+payload takes effect on a page refresh. Every rule is gated behind an html.cr-anim-*
+class that applyAnimationSettings() sets from the popup toggles, so the block is
+inert until a toggle is switched on. Keep selectors prefixed exactly like this.
+*/
+const ANIMATIONS_CSS = `
+
+
+/* #region Fade-in entrance (html.cr-anim-entrance) */
+/*
+The ripple is a *transition*, not an animation.
+
+Canvas (and this extension) reparent nodes while the grid settles, and re-inserting a
+node restarts a CSS animation from its first frame - which is what made the page blink
+in-out-in-in-out right after it appeared. A transition has no first frame to rewind to:
+a reparented node simply lands on its final value, so no amount of re-rendering can
+make it blink.
+
+Timeline (driven by applyAnimationSettings() / revealEntrance() in js/content.js):
+  .cr-anim-entrance-prep   the held start state (invisible + offset), no transition
+  .cr-anim-entrance        the tween back to normal, staggered by --child-of-5
+
+Structure holds still: fading or translating the page shell drags a custom wallpaper
+around (background-attachment: fixed resolves against a transformed ancestor) and makes
+every backdrop-filter panel re-sample its backdrop. Contents move, the shell does not.
+This list must stay identical in the two rules below.
+*/
+html:is(.cr-anim-entrance-prep, .cr-anim-entrance) *:nth-child(5n + 0) {--child-of-5: 0 / 5;}
+html:is(.cr-anim-entrance-prep, .cr-anim-entrance) *:nth-child(5n + 1) {--child-of-5: 1 / 5;}
+html:is(.cr-anim-entrance-prep, .cr-anim-entrance) *:nth-child(5n + 2) {--child-of-5: 2 / 5;}
+html:is(.cr-anim-entrance-prep, .cr-anim-entrance) *:nth-child(5n + 3) {--child-of-5: 3 / 5;}
+html:is(.cr-anim-entrance-prep, .cr-anim-entrance) *:nth-child(5n + 4) {--child-of-5: 4 / 5;}
+
+html.cr-anim-entrance-prep *:not(
+    body, /* fading/translating body drags a custom wallpaper with it */
+    #wrapper,
+    #application,
+    #main,
+    #content,
+    #content-wrapper,
+    #not_right_side,
+    #dashboard,
+    #dashboard_header_container,
+    #right-side,
+    #right-side-wrapper,
+    #left-side,
+    #left-side-wrapper,
+    #menu,
+    #better-sidebar-container,
+    #canvasrefined-overlay-host
+) {
+    opacity: 0 !important;
+    /* Vertical only, and upward: a horizontal offset (or the old rotate) widened the
+       document and popped a horizontal scrollbar, and clipping the root does not stop
+       that in Chrome. Offsets above the fold never add scrollable overflow. */
+    transform: translateY(calc(-8px - 8px * var(--child-of-5)));
+    /* the held state must not tween in */
+    transition: none !important;
+}
+
+html.cr-anim-entrance *:not(
+    .ic-DashboardCard > *, /* don't fight the card hover flip */
+    span[dir = "ltr"], /* dashboard card context menu */
+    .css-a9o3ew-toggleDetails__content, /* don't overwrite the discussions animation */
+    button, /* buttons have their own hover animations */
+    body, /* fading/translating body drags a custom wallpaper with it */
+    #wrapper,
+    #application,
+    #main,
+    #content,
+    #content-wrapper,
+    #not_right_side,
+    #dashboard,
+    #dashboard_header_container,
+    #right-side,
+    #right-side-wrapper,
+    #left-side,
+    #left-side-wrapper,
+    #menu,
+    #better-sidebar-container,
+    #canvasrefined-overlay-host
+) {
+    transition: opacity calc(0.5s + 0.2s * var(--child-of-5)) ease-out,
+                transform calc(0.5s + 0.2s * var(--child-of-5)) ease-out;
+    transition-delay: calc(0.25s * var(--child-of-5));
+}
+/* #endregion */
+
+
+/* #region Dashboard Card Hover Flip Up Animation (html.cr-anim-card-hover) */
+@keyframes spin-y {
+    to {transform: rotateY(360deg);}
+}
+html.cr-anim-card-hover .ic-DashboardCard {
+    transition: transform 0.3s cubic-bezier(.55,.06,.68,.19);
+}
+/* .no-touch div increases selector specificity to override box shadow */
+html.cr-anim-card-hover .no-touch div .ic-DashboardCard:hover {
+    box-shadow: none !important;
+    transition: transform 0.5s ease-in-out;
+    transform: perspective(500px) rotateY(-5deg) scale(105%);
+}
+/* No ::after overlay here on purpose. It used to paint a full-card, inset-glow box that
+   was itself spinning on the Y axis, which read as a stray background wash over the
+   whole card (bright in dark mode, a dark vignette in light mode) on top of the flip. */
+html.cr-anim-card-hover .ic-DashboardCard:hover > * {
+    animation: spin-y 0.5s ease;
+}
+/* (Mostly) Override overflow:hidden when Card Grid is used without Flexible grid enabled.
+   Layout fix, not an animation - stays on regardless of the toggles. */
+.ic-DashboardCard__box__container {
+    overflow-y: visible !important;
+    overflow-x: clip !important;
+}
+/* #endregion */
+
+
+/* #region Todo Hover Animation (html.cr-anim-list-hover) */
+/* The slide uses the standalone translate property, not transform: the lift/scale
+   effects below write transform, and the two compose (translate -> rotate -> scale ->
+   transform) instead of one silently replacing the other. */
+html.cr-anim-list-hover .todo-group-list > * {
+    transition: translate 0.1s ease, box-shadow 0.1s ease;
+}
+html.cr-anim-list-hover .todo-group-list > *:hover {
+    box-shadow: 0px 0px 10px #000000a0;
+    translate: -5px 0;
+}
+/* #endregion */
+
+
+/* #region Recent Feedback Hover Animation (html.cr-anim-list-hover) */
+html.cr-anim-list-hover .right-side-list .event {
+    transition: translate 0.1s ease, background-color 0.1s ease;
+}
+html.cr-anim-list-hover .right-side-list .event:hover {
+    background-color: #00000030;
+    translate: -5px 0;
+}
+/* #endregion */
+
+
+/* #region Sidebar Hover Animation (html.cr-anim-list-hover) */
+html.cr-anim-list-hover #menu a,
+html.cr-anim-list-hover .list-view a,
+html.cr-anim-list-hover .better-sidebar-btn {
+    transition: translate 0.1s ease, background-color 0.1s ease;
+}
+html.cr-anim-list-hover #menu a:hover,
+html.cr-anim-list-hover .list-view a:hover,
+html.cr-anim-list-hover .better-sidebar-btn:hover {
+    background-color: #00000030;
+    translate: 5px 0;
+}
+/* #endregion */
+
+
+/* #region Miscellaneous Input Hover Animations (html.cr-anim-control-lift) */
+html.cr-anim-control-lift textarea,
+html.cr-anim-control-lift select,
+html.cr-anim-control-lift input:enabled:read-write,
+html.cr-anim-control-lift span.canvasrefined-assignment-dueat,
+html.cr-anim-control-lift a:not(
+    #menu *,
+    #right-side *,
+    #left-side *,
+    #better-sidebar-container *),
+html.cr-anim-control-lift #better-todo-filterbuttongroup > :nth-child(-n+3) {
+    /* translate/background-color belong to the list-hover region on the elements that
+       both regions can match, so keep them transitioned here as well. */
+    transition: transform 0.1s ease,
+                translate 0.1s ease,
+                background-color 0.1s ease,
+                box-shadow 0.1s ease;
+}
+html.cr-anim-control-lift textarea:hover,
+html.cr-anim-control-lift select:hover,
+html.cr-anim-control-lift input:enabled:read-write:hover,
+html.cr-anim-control-lift input[type="text"]:enabled:read-write:focus,
+html.cr-anim-control-lift span.canvasrefined-assignment-dueat:hover,
+html.cr-anim-control-lift a:not(
+    #menu *,
+    #right-side *,
+    #left-side *,
+    #better-sidebar-container *):hover,
+html.cr-anim-control-lift #better-todo-filterbuttongroup > :nth-child(-n+3):hover {
+    transform: translateY(-2px) scale(101%);
+    box-shadow: 0px 2px 4px #00000080 !important;
+}
+/* Move inlined hyperlinks as well, trying not to let them shift too much*/
+html.cr-anim-control-lift a:not(
+    #menu *,
+    #right-side *,
+    #left-side *,
+    #better-sidebar-container *,
+    .fc-event /* Calendar events */
+):hover {
+    display: inline-block;
+    vertical-align: middle;
+}
+/* #endregion */
+
+
+/* #region Rainbow Shadow Animations (html.cr-anim-rainbow-buttons) */
+@keyframes rainbow-shadow {
+    00.00% {box-shadow: calc(cos(01 * 140deg) * 00px) calc(sin(01 * 140deg) * 00px) 10px #ff0000ff,   calc(cos(12 * 140deg) * 10px) calc(sin(12 * 140deg) * 10px) 10px #ff800080;}
+    08.32% {box-shadow: calc(cos(01 * 140deg) * 10px) calc(sin(01 * 140deg) * 10px) 10px #ff000080,   calc(cos(12 * 140deg) * 20px) calc(sin(12 * 140deg) * 20px) 10px #ff800000;}
+    08.33% {box-shadow: calc(cos(01 * 140deg) * 10px) calc(sin(01 * 140deg) * 10px) 10px #ff000080,   calc(cos(02 * 140deg) * 00px) calc(sin(02 * 140deg) * 00px) 10px #ffff00ff;}
+    16.66% {box-shadow: calc(cos(01 * 140deg) * 20px) calc(sin(01 * 140deg) * 20px) 10px #ff000000,   calc(cos(02 * 140deg) * 10px) calc(sin(02 * 140deg) * 10px) 10px #ffff0080;}
+
+    16.67% {box-shadow: calc(cos(03 * 140deg) * 00px) calc(sin(03 * 140deg) * 00px) 10px #ff8000ff,   calc(cos(02 * 140deg) * 10px) calc(sin(02 * 140deg) * 10px) 10px #ffff0080;}
+    24.99% {box-shadow: calc(cos(03 * 140deg) * 10px) calc(sin(03 * 140deg) * 10px) 10px #ff800080,   calc(cos(02 * 140deg) * 20px) calc(sin(02 * 140deg) * 20px) 10px #ffff0000;}
+    25.00% {box-shadow: calc(cos(03 * 140deg) * 10px) calc(sin(03 * 140deg) * 10px) 10px #ff800080,   calc(cos(04 * 140deg) * 00px) calc(sin(04 * 140deg) * 00px) 10px #00ff00ff;}
+    33.32% {box-shadow: calc(cos(03 * 140deg) * 20px) calc(sin(03 * 140deg) * 20px) 10px #ff800000,   calc(cos(04 * 140deg) * 10px) calc(sin(04 * 140deg) * 10px) 10px #00ff0080;}
+
+    33.33% {box-shadow: calc(cos(05 * 140deg) * 00px) calc(sin(05 * 140deg) * 00px) 10px #ffff00ff,   calc(cos(04 * 140deg) * 10px) calc(sin(04 * 140deg) * 10px) 10px #00ff0080;}
+    41.66% {box-shadow: calc(cos(05 * 140deg) * 10px) calc(sin(05 * 140deg) * 10px) 10px #ffff0080,   calc(cos(04 * 140deg) * 20px) calc(sin(04 * 140deg) * 20px) 10px #00ff0000;}
+    41.67% {box-shadow: calc(cos(05 * 140deg) * 10px) calc(sin(05 * 140deg) * 10px) 10px #ffff0080,   calc(cos(06 * 140deg) * 00px) calc(sin(06 * 140deg) * 00px) 10px #0000ffff;}
+    49.99% {box-shadow: calc(cos(05 * 140deg) * 20px) calc(sin(05 * 140deg) * 20px) 10px #ffff0000,   calc(cos(06 * 140deg) * 10px) calc(sin(06 * 140deg) * 10px) 10px #0000ff80;}
+
+    50.00% {box-shadow: calc(cos(07 * 140deg) * 00px) calc(sin(07 * 140deg) * 00px) 10px #00ff00ff,   calc(cos(06 * 140deg) * 10px) calc(sin(06 * 140deg) * 10px) 10px #0000ff80;}
+    58.32% {box-shadow: calc(cos(07 * 140deg) * 10px) calc(sin(07 * 140deg) * 10px) 10px #00ff0080,   calc(cos(06 * 140deg) * 20px) calc(sin(06 * 140deg) * 20px) 10px #0000ff00;}
+    58.33% {box-shadow: calc(cos(07 * 140deg) * 10px) calc(sin(07 * 140deg) * 10px) 10px #00ff0080,   calc(cos(08 * 140deg) * 00px) calc(sin(08 * 140deg) * 00px) 10px #8000ffff;}
+    66.66% {box-shadow: calc(cos(07 * 140deg) * 20px) calc(sin(07 * 140deg) * 20px) 10px #00ff0000,   calc(cos(08 * 140deg) * 10px) calc(sin(08 * 140deg) * 10px) 10px #8000ff80;}
+
+    66.67% {box-shadow: calc(cos(09 * 140deg) * 00px) calc(sin(09 * 140deg) * 00px) 10px #0000ffff,   calc(cos(08 * 140deg) * 10px) calc(sin(08 * 140deg) * 10px) 10px #8000ff80;}
+    74.99% {box-shadow: calc(cos(09 * 140deg) * 10px) calc(sin(09 * 140deg) * 10px) 10px #0000ff80,   calc(cos(08 * 140deg) * 20px) calc(sin(08 * 140deg) * 20px) 10px #8000ff00;}
+    75.00% {box-shadow: calc(cos(09 * 140deg) * 10px) calc(sin(09 * 140deg) * 10px) 10px #0000ff80,   calc(cos(10 * 140deg) * 00px) calc(sin(10 * 140deg) * 00px) 10px #ff0000ff;}
+    83.32% {box-shadow: calc(cos(09 * 140deg) * 20px) calc(sin(09 * 140deg) * 20px) 10px #0000ff00,   calc(cos(10 * 140deg) * 10px) calc(sin(10 * 140deg) * 10px) 10px #ff000080;}
+
+    83.33% {box-shadow: calc(cos(11 * 140deg) * 00px) calc(sin(11 * 140deg) * 00px) 10px #8000ffff,   calc(cos(10 * 140deg) * 10px) calc(sin(10 * 140deg) * 10px) 10px #ff000080;}
+    91.66% {box-shadow: calc(cos(11 * 140deg) * 10px) calc(sin(11 * 140deg) * 10px) 10px #8000ff80,   calc(cos(10 * 140deg) * 20px) calc(sin(10 * 140deg) * 20px) 10px #ff000000;}
+    91.67% {box-shadow: calc(cos(11 * 140deg) * 10px) calc(sin(11 * 140deg) * 10px) 10px #8000ff80,   calc(cos(12 * 140deg) * 00px) calc(sin(12 * 140deg) * 00px) 10px #ff8000ff;}
+    100.0% {box-shadow: calc(cos(11 * 140deg) * 20px) calc(sin(11 * 140deg) * 20px) 10px #8000ff00,   calc(cos(12 * 140deg) * 10px) calc(sin(12 * 140deg) * 10px) 10px #ff800080;}
+}
+/* Sidebar entries are anchors, not buttons, so the old :hover list never reached them -
+   they only lit up on :focus, i.e. while you held the click. They are listed here now. */
+html.cr-anim-rainbow-buttons button:enabled,
+html.cr-anim-rainbow-buttons #menu a,
+html.cr-anim-rainbow-buttons .list-view a,
+html.cr-anim-rainbow-buttons .better-sidebar-btn {
+    /* Lists every property the other hover regions animate on these same elements, so
+       switching this on cannot make the sidebar slide snap instead of easing. */
+    transition: transform 0.1s ease, translate 0.1s ease, background-color 0.1s ease;
+}
+html.cr-anim-rainbow-buttons button:enabled:hover,
+html.cr-anim-rainbow-buttons a:focus,
+html.cr-anim-rainbow-buttons #menu a:hover,
+html.cr-anim-rainbow-buttons .list-view a:hover,
+html.cr-anim-rainbow-buttons .better-sidebar-btn:hover {
+    transform: translateY(-2px) scale(101%);
+    animation: rainbow-shadow 1.5s infinite linear;
+}
+/* #endregion */
+
+`;

@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'quick_links', 'heatmap', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'notes_suppressor', 'grade_analytics', 'hide_personal_details', 'hide_sidebar'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'quick_links', 'heatmap', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'notes_suppressor', 'grade_analytics', 'hide_personal_details', 'hide_sidebar', 'cr_anim_entrance', 'cr_anim_card_hover', 'cr_anim_list_hover', 'cr_anim_control_lift', 'cr_anim_rainbow_buttons'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
 	"hide_course_images",
@@ -223,6 +223,9 @@ const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "ima
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "hide_sidebar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview", "todo_sections_persist", "todo_hide_filter_notice"];
+// Animations tab: motion is visual, so it travels with themes.
+const exportAnimations = ["cr_anim_entrance", "cr_anim_card_hover", "cr_anim_list_hover", "cr_anim_control_lift", "cr_anim_rainbow_buttons"];
+
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover", "gpa_calc_align"];
 // Widgets tab: every dashboard widget's layout (toggles, positions, heights, row
 // heights, order, timer presets, quick link sizing). Personal data (quick link items,
@@ -243,7 +246,7 @@ const exportWidgets = [
 ];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "customBackgroundColor", "customBackgroundColorTransparent", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles": every visual toggle, minus GPA/schedule/productivity.
-const exportToggles = ["dark_mode", "quiz_safe_mode", "notes_suppressor", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
+const exportToggles = ["dark_mode", "quiz_safe_mode", "notes_suppressor", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo, exportAnimations);
 const fontsDropdownStateKey = "fonts_dropdown_open";
 
 const apiurl = "none";
@@ -390,6 +393,13 @@ const defaultOptions = {
         "hide_sequence_footer": false,
         "hide_navbar": false,
         "hide_sidebar": false,
+        // Animations tab: each one gates a region of canvasAnimations.css (see
+        // applyAnimationSettings in js/content.js). Off until the user opts in.
+        "cr_anim_entrance": false,
+        "cr_anim_card_hover": false,
+        "cr_anim_list_hover": false,
+        "cr_anim_control_lift": false,
+        "cr_anim_rainbow_buttons": false,
         "grade_analytics_zones": false,
         "quiz_safe_mode": false,
         "notes_suppressor": true,
@@ -1624,7 +1634,7 @@ function setupHeatmapExcludedCourses(initial) {
     if (!control) return;
 
     // Only the courses still on the dashboard, labelled the way the user knows them
-    // (custom name, then the Canvas nickname) — same list as the Cards tab.
+    // (custom name, then the Canvas nickname) - same list as the Cards tab.
     const renderList = (cards) => {
         const entries = Object.entries(cards || {})
             .filter(([, card]) => card && card.hidden !== true && card.hide !== true)
@@ -2084,7 +2094,7 @@ function initUpdateBox() {
 
 async function setup() {
     await initLanguageSelector();
-    await initCanvasRefinedThemeFilter();
+    initCanvasRefinedThemeFilter();
     initUpdateBox();
     const menu = {
 		switches: syncedSwitches,
@@ -2156,6 +2166,7 @@ async function setup() {
 				setup: displayErrors,
 				tab: ".report-issue-container",
 			},
+			"animations-btn": { setup: null, tab: ".animations-container" },
 			"updates-btn": { setup: null, tab: ".updates-container" },
 		},
 		special: [
@@ -2643,7 +2654,7 @@ async function setup() {
                 clearAlert();
                 return host;
             }
-        } catch (e) { /* not a full URL — may still be a bare hostname */ }
+        } catch (e) { /* not a full URL - may still be a bare hostname */ }
         const host = trimmed.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
         if (host && /^[a-z0-9][a-z0-9.-]*$/i.test(host)) {
             clearAlert();
@@ -2717,7 +2728,7 @@ async function setup() {
         const output = document.querySelector("#export-output");
         const btn = document.querySelector("#export-copy");
         const text = output.value;
-        if (!text) { displayAlert(true, getMsg("nothing_to_copy") || "Nothing to copy — select what to export first."); return; }
+        if (!text) { displayAlert(true, getMsg("nothing_to_copy") || "Nothing to copy - select what to export first."); return; }
         const flash = () => { const old = btn.textContent; btn.textContent = getMsg("copied") || "Copied!"; setTimeout(() => { btn.textContent = old; }, 1200); };
         try {
             await navigator.clipboard.writeText(text);
@@ -3050,8 +3061,14 @@ const colorValues = {
     "gray": 14,
 }
 
+// Entries must be objects: a stray empty slot in themes.js used to be materialised by
+// shuffle() into an `undefined` element, which crashed the theme list on open.
+function isThemeEntry(theme) {
+    return !!theme && typeof theme === "object";
+}
+
 function themeSortFn(method) {
-    let themes = getTheme("all");
+    let themes = (getTheme("all") || []).filter(isThemeEntry);
     switch (method) {
         case "New":
             return themes.reverse();
@@ -3185,32 +3202,35 @@ function saveCurrentTheme() {
 }
 
 
-// "Canvas Refined themes" checkbox: only show the themes built for this fork (they use
-// card styles, widgets, todo options... that the original theme format never carried).
-// Themes newer than this filter opt in with `"canvasRefined": true`.
+// "Canvas Refined themes" checkbox: narrows the browser down to the themes built for
+// this fork (they use card styles, widgets, todo options... the original theme format
+// never carried). Themes opt in with `"canvasRefined": true`.
+// It is a view filter only: always off when the popup opens, never saved, and the
+// flagged themes are part of the normal list whenever it is unchecked.
 let crThemesOnly = false;
 
 function filterThemeList(list) {
-    return crThemesOnly ? list.filter(theme => theme.canvasRefined === true) : list;
+    const safe = (Array.isArray(list) ? list : []).filter(isThemeEntry);
+    return crThemesOnly ? safe.filter(theme => theme.canvasRefined === true) : safe;
 }
 
-// Reads the persisted filter state and wires the checkbox.
-async function initCanvasRefinedThemeFilter() {
+// Wires the checkbox. Nothing is persisted: every popup open starts with the full list.
+function initCanvasRefinedThemeFilter() {
     const checkbox = document.getElementById("cr_themes_only");
-    try {
-        const stored = await chrome.storage.sync.get("cr_themes_only");
-        crThemesOnly = stored && stored["cr_themes_only"] === true;
-    } catch (e) {
-        crThemesOnly = false;
-    }
+    crThemesOnly = false;
     if (!checkbox) return;
-    checkbox.checked = crThemesOnly;
+    checkbox.checked = false;
     checkbox.addEventListener("change", () => {
         crThemesOnly = checkbox.checked;
         current_page_num = 1;
-        chrome.storage.sync.set({ "cr_themes_only": crThemesOnly });
         displayThemeList(0);
     });
+    // Older builds stored this setting; drop the now-unused key.
+    try {
+        chrome.storage.sync.get("cr_themes_only", stored => {
+            if (stored && stored["cr_themes_only"] !== undefined) chrome.storage.sync.remove("cr_themes_only");
+        });
+    } catch (e) { /* storage unavailable */ }
 }
 
 function displayThemeList(direction = 0) {
@@ -3348,7 +3368,7 @@ function themeCardImageMap(cards) {
 }
 
 // Snapshot taken immediately before a theme is applied so "Revert theme changes" can
-// put every value the theme changes back — including the card images and card colors,
+// put every value the theme changes back - including the card images and card colors,
 // which used to survive a revert.
 async function captureThemeSnapshot() {
     const [sync, local] = await Promise.all([
@@ -3390,7 +3410,7 @@ function queueThemeWork(work) {
     return themeApplyChain;
 }
 
-// Snapshot, then apply — always in that order, one theme at a time.
+// Snapshot, then apply - always in that order, one theme at a time.
 function applyThemeWithSnapshot(theme) {
     return queueThemeWork(async () => {
         await rememberThemeSnapshot();
@@ -3504,7 +3524,7 @@ async function revertThemeChanges(opts = {}) {
         previous = local && local["previous_theme"];
     } catch (e) { /* storage unavailable */ }
     if (!previous || typeof previous !== "object") {
-        if (!silent) displayAlert(true, getMsg("theme_revert_empty", "There is nothing to revert yet — apply a theme first."));
+        if (!silent) displayAlert(true, getMsg("theme_revert_empty", "There is nothing to revert yet - apply a theme first."));
         return false;
     }
     const ok = await importTheme(previous);
@@ -3547,7 +3567,7 @@ function parseImportedTheme(raw) {
     try {
         parsed = JSON.parse(text);
     } catch (e) {
-        return { error: getMsg("import_invalid_json", "That is not valid JSON — paste the whole export and try again.") };
+        return { error: getMsg("import_invalid_json", "That is not valid JSON - paste the whole export and try again.") };
     }
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
         return { error: getMsg("import_not_theme", "That does not look like a theme export.") };
@@ -3599,7 +3619,7 @@ function setupThemeImport() {
             }
             // The paste is consumed by the import.
             input.value = "";
-            setStatus(getMsg("import_done", "Theme imported — press Revert to undo it."), "good");
+            setStatus(getMsg("import_done", "Theme imported - press Revert to undo it."), "good");
         } finally {
             applyBtn.disabled = false;
         }
@@ -3610,9 +3630,9 @@ function setupThemeImport() {
             const reverted = await queueThemeWork(() => revertThemeChanges({ silent: true }));
             if (reverted) {
                 input.value = "";
-                setStatus(getMsg("import_reverted", "Import reverted — your previous settings are back."), "good");
+                setStatus(getMsg("import_reverted", "Import reverted - your previous settings are back."), "good");
             } else {
-                setStatus(getMsg("theme_revert_empty", "There is nothing to revert yet — apply a theme first."), "bad");
+                setStatus(getMsg("theme_revert_empty", "There is nothing to revert yet - apply a theme first."), "bad");
             }
         });
     }

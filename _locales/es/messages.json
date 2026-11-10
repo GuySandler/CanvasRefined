@@ -21,7 +21,7 @@
         "message": "Mostrar siempre el número de me gusta"
     },
     "assignment_avg": {
-        "message": "— prom. {{AVG}}% en {{COUNT}} tarea(s):"
+        "message": "- prom. {{AVG}}% en {{COUNT}} tarea(s):"
     },
     "assignment_due_in": {
         "message": "Tarea que vence en {{TIME}}"
@@ -570,7 +570,7 @@
         "message": "tareas"
     },
     "final_avg": {
-        "message": "— prom. {{AVG}}% ..."
+        "message": "- prom. {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "Esperando datos de calificaciones…"
@@ -645,7 +645,7 @@
         "message": "Aún no hay tareas calificadas"
     },
     "ga_not_counted": {
-        "message": "— no cuenta —"
+        "message": "- no cuenta -"
     },
     "ga_out_of_reach": {
         "message": "Fuera de alcance"
@@ -783,7 +783,7 @@
         "message": "Actual"
     },
     "gpa_dashboard_notes_aria": {
-        "message": "Notas del panel — haz clic para editar"
+        "message": "Notas del panel - haz clic para editar"
     },
     "gpa_edit_calc": {
         "message": "Editar calculadora"
@@ -1134,7 +1134,7 @@
         "message": "Lista de tareas"
     },
     "nothing_to_copy": {
-        "message": "Nada que copiar — selecciona primero lo que quieres exportar."
+        "message": "Nada que copiar - selecciona primero lo que quieres exportar."
     },
     "old_label": {
         "message": "Antiguo"
@@ -1335,7 +1335,7 @@
         "message": "Desactiva la mayoría de las funciones de Canvas Refined en las páginas de cuestionarios para que tengas la experiencia predeterminada de Canvas."
     },
     "quiz_safe_title": {
-        "message": "Canvas Refined — Modo seguro para cuestionarios"
+        "message": "Canvas Refined - Modo seguro para cuestionarios"
     },
     "radio_gradient": {
         "message": "Degradado"

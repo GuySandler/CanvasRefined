@@ -21,7 +21,7 @@
         "message": "Likes-Anzahl immer anzeigen"
     },
     "assignment_avg": {
-        "message": "— Durchschn. {{AVG}}% über {{COUNT}} Aufgabe(n):"
+        "message": "- Durchschn. {{AVG}}% über {{COUNT}} Aufgabe(n):"
     },
     "assignment_due_in": {
         "message": "Aufgabe fällig in {{TIME}}"
@@ -570,7 +570,7 @@
         "message": "Aufgaben"
     },
     "final_avg": {
-        "message": "— Durchschn. {{AVG}}% ..."
+        "message": "- Durchschn. {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "Warte auf Notendaten…"
@@ -645,7 +645,7 @@
         "message": "Noch keine benoteten Aufgaben"
     },
     "ga_not_counted": {
-        "message": "— zählt nicht —"
+        "message": "- zählt nicht -"
     },
     "ga_out_of_reach": {
         "message": "Nicht erreichbar"
@@ -1335,7 +1335,7 @@
         "message": "Deaktiviert die meisten Canvas-Refined-Funktionen auf Quizseiten, damit du das Standard-Canvas-Quiz-Erlebnis erhältst"
     },
     "quiz_safe_title": {
-        "message": "Canvas Refined — Quiz-Sicherheitsmodus"
+        "message": "Canvas Refined - Quiz-Sicherheitsmodus"
     },
     "radio_gradient": {
         "message": "Verlauf"
@@ -1596,7 +1596,7 @@
         "message": "Dein Theme einreichen"
     },
     "submitted_return_title": {
-        "message": "Bei Canvas eingereicht — ein Klick verschiebt es (lokal) zurück zu den Aufgaben"
+        "message": "Bei Canvas eingereicht - ein Klick verschiebt es (lokal) zurück zu den Aufgaben"
     },
     "tab_icons": {
         "message": "Farbcodierte Registerkartensymbole"

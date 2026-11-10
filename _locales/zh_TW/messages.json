@@ -21,7 +21,7 @@
         "message": "永遠顯示按讚數"
     },
     "assignment_avg": {
-        "message": "— 平均 {{AVG}}%，共 {{COUNT}} 份作業："
+        "message": "- 平均 {{AVG}}%，共 {{COUNT}} 份作業："
     },
     "assignment_due_in": {
         "message": "作業將於 {{TIME}} 後到期"
@@ -570,7 +570,7 @@
         "message": "份作業"
     },
     "final_avg": {
-        "message": "— 平均 {{AVG}}% ..."
+        "message": "- 平均 {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "正在等待成績資料…"
@@ -645,7 +645,7 @@
         "message": "尚無已評分作業"
     },
     "ga_not_counted": {
-        "message": "— 不計入 —"
+        "message": "- 不計入 -"
     },
     "ga_out_of_reach": {
         "message": "無法達成"
@@ -783,7 +783,7 @@
         "message": "目前"
     },
     "gpa_dashboard_notes_aria": {
-        "message": "儀表板備註——點擊以編輯"
+        "message": "儀表板備註--點擊以編輯"
     },
     "gpa_edit_calc": {
         "message": "編輯計算器"
@@ -879,7 +879,7 @@
         "message": " （包含 {{NAMES}}）"
     },
     "grid_warning": {
-        "message": "你的格線可容納 {{TOTAL}} 張卡片{{TOTAL_S}}，但你目前有 {{ACTIVE}} 張卡片{{ACTIVE_S}}{{GPA_NOTE}}——部分卡片可能會被裁切。"
+        "message": "你的格線可容納 {{TOTAL}} 張卡片{{TOTAL_S}}，但你目前有 {{ACTIVE}} 張卡片{{ACTIVE_S}}{{GPA_NOTE}}--部分卡片可能會被裁切。"
     },
     "group_graded": {
         "message": "已評分"
@@ -1134,7 +1134,7 @@
         "message": "待辦清單"
     },
     "nothing_to_copy": {
-        "message": "沒有可複製的內容——請先選擇要匯出的項目。"
+        "message": "沒有可複製的內容--請先選擇要匯出的項目。"
     },
     "old_label": {
         "message": "舊"
@@ -1335,7 +1335,7 @@
         "message": "在測驗頁面關閉大多數 Canvas Refined 功能，讓你獲得預設的 Canvas 測驗體驗"
     },
     "quiz_safe_title": {
-        "message": "Canvas Refined — 測驗安全模式"
+        "message": "Canvas Refined - 測驗安全模式"
     },
     "radio_gradient": {
         "message": "漸層"
@@ -1596,7 +1596,7 @@
         "message": "提交你的主題"
     },
     "submitted_return_title": {
-        "message": "已提交至 Canvas — 點擊可將其移回待辦事項（僅限本機）"
+        "message": "已提交至 Canvas - 點擊可將其移回待辦事項（僅限本機）"
     },
     "tab_icons": {
         "message": "颜色编码选项卡图标"

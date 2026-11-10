@@ -21,7 +21,7 @@
         "message": "Toujours afficher le nombre de mentions J'aime"
     },
     "assignment_avg": {
-        "message": "— moy. {{AVG}}% sur {{COUNT}} devoir(s) :"
+        "message": "- moy. {{AVG}}% sur {{COUNT}} devoir(s) :"
     },
     "assignment_due_in": {
         "message": "Devoir à rendre dans {{TIME}}"
@@ -570,7 +570,7 @@
         "message": "devoirs"
     },
     "final_avg": {
-        "message": "— moy. {{AVG}}% ..."
+        "message": "- moy. {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "En attente des données de notes…"
@@ -645,7 +645,7 @@
         "message": "Aucun devoir noté pour l'instant"
     },
     "ga_not_counted": {
-        "message": "— non pris en compte —"
+        "message": "- non pris en compte -"
     },
     "ga_out_of_reach": {
         "message": "Hors de portée"
@@ -783,7 +783,7 @@
         "message": "Actuel"
     },
     "gpa_dashboard_notes_aria": {
-        "message": "Notes du tableau de bord — cliquez pour modifier"
+        "message": "Notes du tableau de bord - cliquez pour modifier"
     },
     "gpa_edit_calc": {
         "message": "Modifier le calculateur"
@@ -879,7 +879,7 @@
         "message": " (y compris {{NAMES}})"
     },
     "grid_warning": {
-        "message": "Votre grille contient {{TOTAL}} carte{{TOTAL_S}} mais vous avez {{ACTIVE}} carte{{ACTIVE_S}}{{GPA_NOTE}} — certaines cartes peuvent être coupées."
+        "message": "Votre grille contient {{TOTAL}} carte{{TOTAL_S}} mais vous avez {{ACTIVE}} carte{{ACTIVE_S}}{{GPA_NOTE}} - certaines cartes peuvent être coupées."
     },
     "group_graded": {
         "message": "Noté"
@@ -1134,7 +1134,7 @@
         "message": "Liste de tâches"
     },
     "nothing_to_copy": {
-        "message": "Rien à copier — sélectionnez d'abord ce que vous voulez exporter."
+        "message": "Rien à copier - sélectionnez d'abord ce que vous voulez exporter."
     },
     "old_label": {
         "message": "Ancien"
@@ -1158,7 +1158,7 @@
         "message": "Cliquez sur cette icône de puzzle en haut à droite"
     },
     "options_contact": {
-        "message": "Mon e-mail est {{EMAIL}} si vous avez des problèmes ou des suggestions — vos retours sont les bienvenus !"
+        "message": "Mon e-mail est {{EMAIL}} si vous avez des problèmes ou des suggestions - vos retours sont les bienvenus !"
     },
     "options_how_to_access": {
         "message": "Comment accéder à ce menu plus tard :"
@@ -1335,7 +1335,7 @@
         "message": "Désactive la plupart des fonctionnalités de Canvas Refined sur les pages de quiz afin de retrouver l'expérience de quiz Canvas par défaut"
     },
     "quiz_safe_title": {
-        "message": "Canvas Refined — Mode quiz sécurisé"
+        "message": "Canvas Refined - Mode quiz sécurisé"
     },
     "radio_gradient": {
         "message": "Dégradé"
@@ -1596,7 +1596,7 @@
         "message": "Soumettre votre thème"
     },
     "submitted_return_title": {
-        "message": "Rendu sur Canvas — cliquer le renvoie dans les tâches (localement)"
+        "message": "Rendu sur Canvas - cliquer le renvoie dans les tâches (localement)"
     },
     "tab_icons": {
         "message": "Icônes d'onglets à code couleur"

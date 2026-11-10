@@ -21,7 +21,7 @@
         "message": "Mostrar sempre o número de gostos"
     },
     "assignment_avg": {
-        "message": "— média {{AVG}}% em {{COUNT}} trabalho(s):"
+        "message": "- média {{AVG}}% em {{COUNT}} trabalho(s):"
     },
     "assignment_due_in": {
         "message": "Trabalho é entregue daqui a {{TIME}}"
@@ -570,7 +570,7 @@
         "message": "trabalhos"
     },
     "final_avg": {
-        "message": "— média {{AVG}}% ..."
+        "message": "- média {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "A aguardar dados das notas…"
@@ -645,7 +645,7 @@
         "message": "Ainda não há trabalhos avaliados"
     },
     "ga_not_counted": {
-        "message": "— não contabilizado —"
+        "message": "- não contabilizado -"
     },
     "ga_out_of_reach": {
         "message": "Fora de alcance"
@@ -783,7 +783,7 @@
         "message": "Atual"
     },
     "gpa_dashboard_notes_aria": {
-        "message": "Notas do painel — clica para editar"
+        "message": "Notas do painel - clica para editar"
     },
     "gpa_edit_calc": {
         "message": "Editar calculadora"
@@ -1134,7 +1134,7 @@
         "message": "Lista de tarefas"
     },
     "nothing_to_copy": {
-        "message": "Nada para copiar — seleciona primeiro o que queres exportar."
+        "message": "Nada para copiar - seleciona primeiro o que queres exportar."
     },
     "old_label": {
         "message": "Antigo"
@@ -1158,7 +1158,7 @@
         "message": "Clica neste ícone de puzzle no canto superior direito"
     },
     "options_contact": {
-        "message": "O meu email é {{EMAIL}} se tiveres problemas ou sugestões — todo o feedback é bem-vindo!"
+        "message": "O meu email é {{EMAIL}} se tiveres problemas ou sugestões - todo o feedback é bem-vindo!"
     },
     "options_how_to_access": {
         "message": "Como aceder a este menu mais tarde:"
@@ -1335,7 +1335,7 @@
         "message": "Desativa a maioria das funcionalidades do Canvas Refined nas páginas de testes para manteres a experiência padrão do Canvas."
     },
     "quiz_safe_title": {
-        "message": "Canvas Refined — Modo de segurança para testes"
+        "message": "Canvas Refined - Modo de segurança para testes"
     },
     "radio_gradient": {
         "message": "Gradiente"
@@ -1596,7 +1596,7 @@
         "message": "Submete o teu tema"
     },
     "submitted_return_title": {
-        "message": "Submetido no Canvas — clicar devolve-o às Tarefas (localmente)"
+        "message": "Submetido no Canvas - clicar devolve-o às Tarefas (localmente)"
     },
     "tab_icons": {
         "message": "Ícones de guia codificados por cores"

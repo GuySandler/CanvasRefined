@@ -32,6 +32,36 @@
     "align_right": {
         "message": "Right"
     },
+    "anim_card_hover": {
+        "message": "Card hover flip"
+    },
+    "anim_cards": {
+        "message": "Course cards"
+    },
+    "anim_control_lift": {
+        "message": "Input lift"
+    },
+    "anim_controls": {
+        "message": "Buttons and inputs"
+    },
+    "anim_entrance": {
+        "message": "Fade-in entrance"
+    },
+    "anim_list_hover": {
+        "message": "Sidebar slide"
+    },
+    "anim_lists": {
+        "message": "Lists and sidebar"
+    },
+    "anim_page_load": {
+        "message": "Page load"
+    },
+    "anim_rainbow_buttons": {
+        "message": "Rainbow buttons"
+    },
+    "animations": {
+        "message": "Animations"
+    },
     "assignment_avg": {
         "message": "— avg {{AVG}}% over {{COUNT}} assignment(s):"
     },

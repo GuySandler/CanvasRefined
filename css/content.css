@@ -568,7 +568,7 @@
 .cr-gpa-field:focus-within {border-color:var(--cr-gpa-accent,var(--ic-brand-primary,#0374b5));box-shadow:0 0 0 2px color-mix(in srgb, var(--cr-gpa-accent,var(--ic-brand-primary,#0374b5)) 22%, transparent);}
 /* The wrapper draws the only border. Canvas' dark-mode sheet styles input[type=text]
    with !important border/background/radius, which at (0,1,1) out-specifies a plain
-   .cr-gpa-input rule (0,1,0) and painted a second border inside the field — so we match
+   .cr-gpa-input rule (0,1,0) and painted a second border inside the field - so we match
    its attribute selector to win outright. */
 .cr-gpa-input {width:100%;min-width:0;appearance:none;-webkit-appearance:none;background:transparent;color:inherit;height:100%;padding:0;font:inherit;font-size:13px;text-align:right;box-sizing:border-box;}
 input.cr-gpa-input[type="text"] {border:0 !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;appearance:none !important;-webkit-appearance:none !important;/* Canvas' own input[type=text] rules (padding ~11px, margins) out-specify a bare
@@ -755,7 +755,7 @@ input.cr-gpa-input[type="text"]:focus-visible {outline:none !important;box-shado
 /* Heatmap (all classes): grade/submission calendar with in-card tabs */
 .canvasrefined-heatmap .cr-widget-head {gap:8px;}
 .canvasrefined-heatmap .cr-widget-title {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* Hover tooltips are allowed to spill past the card, so this widget never clips —
+/* Hover tooltips are allowed to spill past the card, so this widget never clips -
    and it lifts above neighbouring cards while one is showing. */
 .canvasrefined-heatmap {overflow:visible;}
 .canvasrefined-heatmap.cr-hm-tip-open {position:relative;z-index:6;}

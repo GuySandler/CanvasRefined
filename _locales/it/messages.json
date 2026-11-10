@@ -21,7 +21,7 @@
         "message": "Mostra sempre il numero di Mi piace"
     },
     "assignment_avg": {
-        "message": "— media {{AVG}}% su {{COUNT}} compito/i:"
+        "message": "- media {{AVG}}% su {{COUNT}} compito/i:"
     },
     "assignment_due_in": {
         "message": "Compito in scadenza tra {{TIME}}"
@@ -570,7 +570,7 @@
         "message": "compiti"
     },
     "final_avg": {
-        "message": "— media {{AVG}}% ..."
+        "message": "- media {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "In attesa dei dati sui voti…"
@@ -645,7 +645,7 @@
         "message": "Nessuna consegna valutata"
     },
     "ga_not_counted": {
-        "message": "— non conteggiata —"
+        "message": "- non conteggiata -"
     },
     "ga_out_of_reach": {
         "message": "Fuori portata"
@@ -783,7 +783,7 @@
         "message": "Attuale"
     },
     "gpa_dashboard_notes_aria": {
-        "message": "Note della dashboard — fai clic per modificare"
+        "message": "Note della dashboard - fai clic per modificare"
     },
     "gpa_edit_calc": {
         "message": "Modifica calcolatore"
@@ -1134,7 +1134,7 @@
         "message": "Elenco attività"
     },
     "nothing_to_copy": {
-        "message": "Niente da copiare — seleziona prima cosa esportare."
+        "message": "Niente da copiare - seleziona prima cosa esportare."
     },
     "old_label": {
         "message": "Vecchio"
@@ -1335,7 +1335,7 @@
         "message": "Disattiva la maggior parte delle funzioni di Canvas Refined nelle pagine dei quiz, così ottieni l'esperienza quiz predefinita di Canvas"
     },
     "quiz_safe_title": {
-        "message": "Canvas Refined — Modalità quiz sicura"
+        "message": "Canvas Refined - Modalità quiz sicura"
     },
     "radio_gradient": {
         "message": "Sfumatura"
@@ -1596,7 +1596,7 @@
         "message": "Invia il tuo tema"
     },
     "submitted_return_title": {
-        "message": "Consegnata a Canvas — facendo clic torna in Attività (solo localmente)"
+        "message": "Consegnata a Canvas - facendo clic torna in Attività (solo localmente)"
     },
     "tab_icons": {
         "message": "Icone delle schede codificate a colori"

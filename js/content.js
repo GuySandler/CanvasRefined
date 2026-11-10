@@ -756,7 +756,7 @@ function removeNasaInfoOverlay() {
 
 // ===================== Admire background =====================
 // A button that fades the whole Canvas UI away, leaving the wallpaper, this button and
-// the NASA info panel — a "just look at my background" view.
+// the NASA info panel - a "just look at my background" view.
 let admireOverlayEl = null;
 let admireActive = false;
 let admireHiddenEls = [];
@@ -878,6 +878,166 @@ let assignmentsDue = [];
 let todoRenderGen = 0;
 let cardRenderGen = 0;
 let options = {};
+
+/*
+Animation toggles (popup -> Animations tab).
+
+ANIMATIONS_CSS (css/darkmodecss.js) is injected on every page but every region in it
+is gated behind one of these classes on <html>, so switching a toggle is a class swap
+instead of re-injecting a stylesheet. All of them are off by default.
+*/
+const ANIMATION_CLASSES = {
+    cr_anim_entrance: "cr-anim-entrance",
+    cr_anim_card_hover: "cr-anim-card-hover",
+    cr_anim_list_hover: "cr-anim-list-hover",
+    cr_anim_control_lift: "cr-anim-control-lift",
+    cr_anim_rainbow_buttons: "cr-anim-rainbow-buttons",
+};
+
+/*
+Entrance is a one-shot load effect, not a plain class toggle.
+
+Canvas builds the dashboard from several async requests and this extension re-renders
+parts of it (cards, widgets, todo list) right after, which used to replay the entrance
+two or three times. Two things keep it to exactly one pass:
+
+ 1. cr-anim-entrance-prep holds the start state (invisible + offset, see ANIMATIONS_CSS)
+    while the page loads.
+ 2. Once the DOM has been still for ENTRANCE_QUIET_MS (or ENTRANCE_MAX_WAIT_MS at the
+    latest, so a busy page can never stay hidden), the classes swap in the same tick,
+    which runs the ripple *transition* - one pass for the finished page. The class comes
+    off again afterwards, and because the ripple is a transition rather than an
+    animation, reparenting a node mid-flight can't rewind it into a blink.
+*/
+const ENTRANCE_PREP_CLASS = "cr-anim-entrance-prep";
+const ENTRANCE_CLASS = "cr-anim-entrance";
+const ENTRANCE_QUIET_MS = 250; // reveal once the DOM has been still this long
+const ENTRANCE_MAX_WAIT_MS = 2200; // hard cap on how long the page stays invisible
+const ENTRANCE_RIPPLE_MS = 900; // longest tween is 0.5s + 0.2s * (4/5) + 0.25s * (4/5) delay
+
+let lastEntranceOn = null;
+const entranceState = {
+    prepared: false,
+    played: false,
+    observer: null,
+    quietTimer: null,
+    maxTimer: null,
+    rippleTimer: null,
+};
+
+function clearEntranceTimers() {
+    clearTimeout(entranceState.quietTimer);
+    clearTimeout(entranceState.maxTimer);
+    clearTimeout(entranceState.rippleTimer);
+    entranceState.quietTimer = null;
+    entranceState.maxTimer = null;
+    entranceState.rippleTimer = null;
+    if (entranceState.observer) {
+        entranceState.observer.disconnect();
+        entranceState.observer = null;
+    }
+}
+
+function beginEntranceOnce() {
+    if (entranceState.prepared || entranceState.played) return;
+    const root = document.documentElement;
+    if (!root) return;
+    entranceState.prepared = true;
+    root.classList.add(ENTRANCE_PREP_CLASS);
+    // Armed before anything else can throw: the page must never stay invisible.
+    entranceState.maxTimer = setTimeout(revealEntrance, ENTRANCE_MAX_WAIT_MS);
+    const armQuietTimer = () => {
+        clearTimeout(entranceState.quietTimer);
+        entranceState.quietTimer = setTimeout(revealEntrance, ENTRANCE_QUIET_MS);
+    };
+    try {
+        entranceState.observer = new MutationObserver(armQuietTimer);
+        entranceState.observer.observe(document.documentElement, { childList: true, subtree: true });
+        armQuietTimer();
+    } catch (e) {
+        revealEntrance();
+    }
+}
+
+// Reveal the finished page with a single ripple (class swap in one tick), then drop the
+// tween class again so later renders are static.
+function revealEntrance() {
+    if (!entranceState.prepared) return;
+    entranceState.prepared = false;
+    clearEntranceTimers();
+    const root = document.documentElement;
+    root.classList.remove(ENTRANCE_PREP_CLASS);
+    // The setting can change while the page is still being built.
+    if (options.cr_anim_entrance !== true) return;
+    entranceState.played = true;
+    root.classList.add(ENTRANCE_CLASS);
+    entranceState.rippleTimer = setTimeout(() => {
+        root.classList.remove(ENTRANCE_CLASS);
+        entranceState.rippleTimer = null;
+    }, ENTRANCE_RIPPLE_MS);
+}
+
+function stopEntrance() {
+    clearEntranceTimers();
+    entranceState.prepared = false;
+    entranceState.played = false;
+    document.documentElement.classList.remove(ENTRANCE_PREP_CLASS, ENTRANCE_CLASS);
+}
+
+function applyAnimationSettings() {
+    const root = document.documentElement;
+    const enabled = [];
+    Object.entries(ANIMATION_CLASSES).forEach(([key, className]) => {
+        if (key === "cr_anim_entrance") return; // handled below
+        const on = options[key] === true;
+        root.classList.toggle(className, on);
+        if (on) enabled.push(className);
+    });
+
+    // The entrance plays once per page load, so it has its own arm/reveal flow.
+    const entranceOn = options.cr_anim_entrance === true;
+    if (entranceOn !== lastEntranceOn) {
+        lastEntranceOn = entranceOn;
+        if (!entranceOn) {
+            stopEntrance();
+        } else {
+            // Re-arm so switching the toggle on plays it; on a normal page load this is
+            // the first call and runs the entrance.
+            entranceState.played = false;
+            beginEntranceOnce();
+        }
+    }
+    let entranceWaiting = false;
+    if (entranceOn) {
+        if (entranceState.prepared) entranceWaiting = true;
+        else if (entranceState.played) enabled.push(ENTRANCE_CLASS);
+    }
+
+    // One line per page so "nothing happens" is easy to diagnose: if the stylesheet is
+    // missing this logs a warning, and if the toggles are off it says so.
+    console.log("[Canvas Refined] animations:", enabled.length ? enabled.join(", ") : "all off");
+    if (entranceWaiting) console.log("[Canvas Refined] entrance: holding the page until it settles, then one ripple");
+}
+
+/*
+Inject the animations stylesheet (ANIMATIONS_CSS in css/darkmodecss.js).
+
+Done from JS instead of declaring the CSS in manifest.json: a manifest change only
+lands after the extension is reloaded, so with this the stylesheet is always present
+and each toggle is a class swap on <html>. The CSS is inert without those classes.
+*/
+function injectAnimationsCss() {
+    if (document.getElementById("canvasrefined-animations")) return;
+    if (typeof ANIMATIONS_CSS !== "string" || !ANIMATIONS_CSS) {
+        console.warn("[Canvas Refined] animations stylesheet missing (css/darkmodecss.js)");
+        return;
+    }
+    const style = document.createElement("style");
+    style.id = "canvasrefined-animations";
+    style.textContent = ANIMATIONS_CSS;
+    (document.head || document.documentElement).appendChild(style);
+}
+
 let timeCheck = null;
 let reminderCheck = null;
 let plannerRefreshRunning = false;
@@ -1010,13 +1170,21 @@ function showExampleReminder() {
 }
 
 
+// The animations stylesheet is inert until a toggle adds a class to <html>, so it goes
+// in on every matching page rather than waiting for Canvas detection.
+try {
+    injectAnimationsCss();
+} catch (e) {
+    console.warn("[Canvas Refined] could not inject animations stylesheet", e);
+}
+
 // Canvas detection: empty list auto-adds the first canvas, otherwise ask once per domain.
 isDomainCanvasPage();
 
 // Saved entries are whatever the user/prompt put in storage ("school.instructure.com",
 // "https://school.instructure.com", "https://school.instructure.com/", ...). Matching
 // used to be a raw substring test, so a stored URL with a scheme or trailing slash
-// never matched the origin — the extension looked like it wasn't detecting the site.
+// never matched the origin - the extension looked like it wasn't detecting the site.
 // Compare hostnames instead, and let a parent domain cover its subdomains.
 function normalizeDomain(value) {
     return String(value || "")
@@ -1106,7 +1274,7 @@ async function detectCanvasPage() {
             if (Array.isArray(courses)) {
                 // A JSON array is Canvas' own API shape. With zero courses the
                 // account simply has no active enrollments (observer/parent, new
-                // term) — those used to be missed because the check required items.
+                // term) - those used to be missed because the check required items.
                 if (score > 0) return { isCanvas: true, courses };
                 // Empty-handed before the DOM exists: not enough information yet.
                 if (!domReady) continue;
@@ -1291,6 +1459,7 @@ function startExtension() {
         watchProfileLogoutPageButton();
         watchGradeAnalytics();
         setupPersonalDetailsHiding();
+        applyAnimationSettings();
 
         setupQuizSafeModeBanner();
 
@@ -1330,6 +1499,8 @@ function applyOptionsChanges(changes) {
         rewrite[key] = changes[key].newValue;
     });
     options = { ...options, ...rewrite };
+
+    if (Object.keys(ANIMATION_CLASSES).some(key => key in rewrite)) applyAnimationSettings();
 
 
     Object.keys(changes).forEach(key => {
@@ -1438,7 +1609,7 @@ function applyOptionsChanges(changes) {
 				});
 				// The notes cap depends on whether the row has a fixed height.
 				document.querySelectorAll(".canvasrefined-dashboard-notes").forEach(el => applyDashboardNotesHeight(el));
-				// The row height is the heatmap's height budget — refit its calendar.
+				// The row height is the heatmap's height budget - refit its calendar.
 				crHeatmapRenderAll();
 				break;
 			case "dashboard_grades":
@@ -1818,7 +1989,7 @@ async function applyCustomBackground() {
     const cardBlur = Math.max(0, Math.min(30, Number(options.card_blur ?? 8)));
     const cardTransparent = 100 - cardOpacity;
     // Solid colour: one flat fill, no image rules. The transparency opt-in is not
-    // about the colour — it decides whether the page's surfaces turn see-through over
+    // about the colour - it decides whether the page's surfaces turn see-through over
     // it (the glass treatment an image background always gets).
     const solid = activeBackground.color || "";
     const surfaceTransparent = solid
@@ -4704,7 +4875,7 @@ function populateAssignments(iscompleted = false) {
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${dueLabel}${scoreBadge}</span>
 				</div>
 				${editButtonSvg}
-				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'"${(iscompleted && wasSubmitted) ? ` title="${getMsg("submitted_return_title", "Submitted to Canvas — clicking sends it back to Tasks (locally)")}"` : ""}>
+				<svg class="better-todo-assignment-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'"${(iscompleted && wasSubmitted) ? ` title="${getMsg("submitted_return_title", "Submitted to Canvas - clicking sends it back to Tasks (locally)")}"` : ""}>
 					<g id="SVGRepo_bgCarrier" stroke-width="0"></g>
 					<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
 					<g id="SVGRepo_iconCarrier"> <g id="Interface / Checkbox_Check">
@@ -4836,7 +5007,7 @@ function populateAnnouncements() {
 	});
 }
 
-// One fullscreen canvas per burst instead of DOM particles — keeps "crazy" volumes smooth.
+// One fullscreen canvas per burst instead of DOM particles - keeps "crazy" volumes smooth.
 function celebrationCanvas() {
     const canvas = document.createElement('canvas');
     canvas.style.cssText = 'position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:2147483647;';
@@ -6486,7 +6657,7 @@ async function changeColorPreset(colors) {
     colorChanges = [];
 
     // sort cards
-    // (display order — see getPaletteCards; no re-sorting here so palette
+    // (display order - see getPaletteCards; no re-sorting here so palette
     // colors apply from the first course on screen to the last)
     const { cards: sortedCards, apiColors } = await getPaletteCards();
 
@@ -6825,7 +6996,7 @@ function runiframeChecker() {
 Hide personal details (screenshot privacy mode)
 */
 
-// stable fake course per real course — same name on cards, todo list and feedback
+// stable fake course per real course - same name on cards, todo list and feedback
 const FAKE_COURSES = [
     { name: "Algebra II", teacher: "Martinez" },
     { name: "AP Biology", teacher: "Nguyen" },
@@ -6856,7 +7027,7 @@ const FAKE_FEEDBACK_COMMENTS = [
     "Great improvement!", "Strong submission.", "Excellent detail.",
 ];
 
-// FNV-1a — deterministic, dependency-free
+// FNV-1a - deterministic, dependency-free
 function anonHash(str) {
     let h = 2166136261;
     const s = String(str);
@@ -7019,7 +7190,7 @@ function buildFakeTodoItems() {
             courseId = pick.id;
             color = pick.color || ANON_FAKE_COLORS[anonSeededHash(String(courseId)) % ANON_FAKE_COLORS.length];
         } else {
-            // No colored dashboard cards available — fall back to anonymous
+            // No colored dashboard cards available - fall back to anonymous
             // courses with a neutral palette.
             courseId = "anonfake-" + i;
             color = ANON_FAKE_COLORS[anonSeededHash(String(courseId)) % ANON_FAKE_COLORS.length];
@@ -8505,7 +8676,7 @@ function dashboardNotesHtml() { return `
         <button type="button" class="cr-fmt" data-action="codeblock" title="${getMsg("notes_codeblock", "Code block")}">&#96;&#96;&#96;</button>
     </div>
     <div class="canvasrefined-notes-surface">
-        <div class="canvasrefined-notes-rendered" tabindex="0" aria-label="${chrome.i18n.getMessage("todo_click_to_edit") || "Dashboard notes — click to edit"}" title="${chrome.i18n.getMessage("todo_click_to_edit") || "Click to edit"}"></div>
+        <div class="canvasrefined-notes-rendered" tabindex="0" aria-label="${chrome.i18n.getMessage("todo_click_to_edit") || "Dashboard notes - click to edit"}" title="${chrome.i18n.getMessage("todo_click_to_edit") || "Click to edit"}"></div>
         <textarea class="canvasrefined-notes-editor" placeholder="${chrome.i18n.getMessage("todo_type_away") || "Type away!"}" spellcheck="false"></textarea>
     </div>
 `; }
@@ -9123,7 +9294,7 @@ function crQuoteObserver() {
 }
 
 // Fixed-height mode only. With auto height the widget's height comes from the
-// content itself, so a fit would feed its own height back in — keep the original
+// content itself, so a fit would feed its own height back in - keep the original
 // width-driven sizing instead. Read the heights the layout code actually applied
 // (crApplyCardHeight for in-cards, applyWidgetRowLayout for Top/Bottom rows).
 function crQuoteFitEnabled(el) {
@@ -9485,7 +9656,7 @@ function crHeatmapCellStyle(cell, data) {
 
 // Cell size that makes the seven weekday rows use the card's free height. Cells
 // grow into surplus space, and only shrink when the card's height is actually fixed
-// (a set widget/row height) — in a content-sized card the free height follows the
+// (a set widget/row height) - in a content-sized card the free height follows the
 // grid, so shrinking would ratchet the map smaller on every pass.
 function crHeatmapDefiniteHeight(el) {
     if (el.style && el.style.height) return true;
@@ -9519,11 +9690,11 @@ function crHeatmapShowTip(tip, e, cell) {
     const rows = [];
     let head = "";
     if (crHeatmapTab === "subs") {
-        head = `<b>${date}</b> — ${replaceCountPlaceholder(getMsg("cr_hm_tip_subs", "{{COUNT}} submitted"), cell.count)}`;
+        head = `<b>${date}</b> - ${replaceCountPlaceholder(getMsg("cr_hm_tip_subs", "{{COUNT}} submitted"), cell.count)}`;
         // One row per class, most submissions first.
         const byCourse = new Map();
         for (const s of cell.subs) {
-            const key = s.course || "—";
+            const key = s.course || "-";
             byCourse.set(key, (byCourse.get(key) || 0) + 1);
         }
         const entries = [...byCourse.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
@@ -9532,7 +9703,7 @@ function crHeatmapShowTip(tip, e, cell) {
         });
         if (entries.length > CR_HM_TIP_ROWS) rows.push(`<div class="cr-hm-tip-row">+${entries.length - CR_HM_TIP_ROWS}</div>`);
     } else {
-        head = `<b>${date}</b> — ${getMsg("ga_heatmap_avg", "avg")} <b style="color:${gaHeatmapColor(cell.avg)};">${cell.avg.toFixed(2)}%</b>`;
+        head = `<b>${date}</b> - ${getMsg("ga_heatmap_avg", "avg")} <b style="color:${gaHeatmapColor(cell.avg)};">${cell.avg.toFixed(2)}%</b>`;
         cell.gradeItems.slice(0, CR_HM_TIP_ROWS).forEach(g => {
             rows.push(`<div class="cr-hm-tip-row cr-hm-tip-count"><span>${gaEscHtml(g.title)}${g.course ? `<span class="cr-hm-tip-course">${gaEscHtml(g.course)}</span>` : ""}</span><b style="color:${gaHeatmapColor(g.pct)};">${g.pct.toFixed(1)}%</b></div>`);
         });
@@ -10385,7 +10556,7 @@ function applyAestheticChanges() {
         if (options.cardRoundness !== undefined && options.cardRoundness !== 5) style.textContent += `.ic-DashboardCard {border-radius: ${options.cardRoundness}px!important;}`;
         // widgets default to 4px, cards to 5px: follow the setting instead of the stock value
         if (Number.isFinite(cardRoundness) && cardRoundness !== 5) style.textContent += `${widgetFace} {border-radius: ${cardRoundness}px!important;}`;
-        // the hero overlay sits on top of the photo, so both need the radius — rounding
+        // the hero overlay sits on top of the photo, so both need the radius - rounding
         // one alone leaves the other's square corners showing
         if (options.imageRoundness !== undefined && options.imageRoundness !== 0) style.textContent += `.ic-DashboardCard__header_image, .ic-DashboardCard__header_hero {border-radius: ${options.imageRoundness}px!important;}`;
         if (options.cardSpacing !== undefined && options.cardSpacing !== 0) style.textContent += `.ic-DashboardCard {margin-right: ${options.cardSpacing / 2}px!important; margin-bottom: ${options.cardSpacing / 2}px!important;}`;
@@ -10426,10 +10597,10 @@ than the chosen column count sits flush-left while the rows above are full.
 Pure CSS can't center a partial row, so we offset the first cell of the last
 partial row with grid-column-start.
 
-The grid runs on double sub-columns (each cell spans 2 — see
+The grid runs on double sub-columns (each cell spans 2 - see
 applyAestheticChanges), which is what makes this possible at all: with 3
 cards under a 4-card row the leftover space is one column, and centering
-needs a HALF-column shift — impossible on plain column lines. On sub-columns
+needs a HALF-column shift - impossible on plain column lines. On sub-columns
 the shift is a whole sub-column (half a card + half a gap), so every
 remainder can be centered exactly.
 
@@ -10457,7 +10628,7 @@ function centerUnevenGridRows() {
     const cols = grid.cols;
     const visible = items.filter(el => getComputedStyle(el).display !== "none");
     const count = visible.length;
-    // overflow past the template is clipped and the last visible row is full — nothing to center
+    // overflow past the template is clipped and the last visible row is full - nothing to center
     const gpaExpanded = options.gpa_calc === true && (() => {
         const expanded = container.querySelector(":scope > .canvasrefined-gpa");
         return !!expanded && getComputedStyle(expanded).display !== "none";
@@ -10517,7 +10688,7 @@ function injectQuizSafeModeBanner(safeModeOn) {
 
         makeElement("div", banner, {
             className: "canvasrefined-quiz-safe-title",
-            textContent: chrome.i18n.getMessage("quiz_safe_title") || "Canvas Refined — Quiz Safe Mode",
+            textContent: chrome.i18n.getMessage("quiz_safe_title") || "Canvas Refined - Quiz Safe Mode",
         });
 
         makeElement("p", banner, {
@@ -11100,8 +11271,8 @@ function gsLoadFromCache(courses) {
     }
 }
 
-// One request with retry. Canvas throttles with 429 — or 403 "Rate Limit Exceeded"
-// — and costs are per token, so a burst of 60 courses would otherwise lose courses.
+// One request with retry. Canvas throttles with 429 - or 403 "Rate Limit Exceeded"
+// - and costs are per token, so a burst of 60 courses would otherwise lose courses.
 async function gsFetchOnce(url, attempt) {
     const gate = gsRateLimitedUntil - Date.now();
     if (gate > 0) await gsSleep(Math.min(gate, 4000));
@@ -11175,7 +11346,7 @@ async function gsFetchCourseList() {
             const end = new Date(endAt).getTime();
             if (!isNaN(end) && end < now) continue;
         }
-        // Canvas can repeat a course (multi-role, cross-listed) — dedupe by id.
+        // Canvas can repeat a course (multi-role, cross-listed) - dedupe by id.
         const id = String(course.id);
         if (seen.has(id)) continue;
         seen.add(id);
@@ -11755,7 +11926,7 @@ function escapeGlobalSearchAttr(s) {
 }
 
 // Fuzzy (subsequence) match: every query character appears in the text, in order,
-// gaps allowed — "alg2hw" finds "Algebra 2 Homework 5". Word starts and runs of
+// gaps allowed - "alg2hw" finds "Algebra 2 Homework 5". Word starts and runs of
 // adjacent characters score best, skipped characters cost, so tighter matches win.
 // Returns -1 when the text does not contain the query as a subsequence.
 const GS_FUZZY_MIN_LEN = 3;
@@ -11935,7 +12106,7 @@ const PLANNER_CACHE_KEY = "planner_cache_v1";
 const PLANNER_LOOKBACK_DAYS = 365;   // max history fetched from Canvas
 const PLANNER_WINDOW_DAYS = 14;     // per-load "what changed" refresh window
 const PLANNER_FULL_REFRESH_DAYS = 7; // min time between full lookback walks
-// 50 pages × 100 items — a safety net against a malformed next link.
+// 50 pages × 100 items - a safety net against a malformed next link.
 const PLANNER_MAX_PAGES = 50;
 
 function plannerDateDaysAgo(days) {
@@ -12116,7 +12287,7 @@ function writePlannerCache(items, lastFullRefresh, activeCourseIds, minRefreshed
 }
 
 // Pages through /api/v1/planner/items from `startDate`. Returns null when the
-// fetch failed — callers must treat null as "unknown", never as "no items".
+// fetch failed - callers must treat null as "unknown", never as "no items".
 async function fetchPlannerItemsSince(startDate) {
     const allItems = [];
     let url = `${domain}/api/v1/planner/items?start_date=${startDate}&per_page=100`;
@@ -12461,7 +12632,7 @@ function syncGradeAnalyticsUI() {
     if (!gradeAnalyticsActive()) return;
     const panel = ensureGradeAnalyticsPanel();
     if (!panel) return;
-    // Canvas re-renders can wipe the overwritten Total — reapply it.
+    // Canvas re-renders can wipe the overwritten Total - reapply it.
     if (gaImagineIf) {
         gaRenderImagineIf();
         gaApplyImagineTotal();
@@ -12510,7 +12681,7 @@ function ensureGradeAnalyticsPanel() {
     let panel = document.getElementById("canvasrefined-grade-analytics");
     const anchor = document.getElementById("print-grades-container");
     if (panel && panel.isConnected) {
-        // Canvas re-renders can move the anchor — keep the panel right after it.
+        // Canvas re-renders can move the anchor - keep the panel right after it.
         if (anchor && panel.previousElementSibling !== anchor) {
             anchor.insertAdjacentElement("afterend", panel);
         }
@@ -12820,7 +12991,7 @@ function computeGradeAnalyticsFromPage(table) {
                 weighted += (g.score / g.pts) * w;
                 fullWeight += w;
             }
-            // Only zero-weighted groups have work — fall back to points.
+            // Only zero-weighted groups have work - fall back to points.
             grade = fullWeight > 0 ? (fullWeight < 100 ? (weighted / fullWeight) * 100 : weighted) : pointsGrade();
         } else {
             grade = pointsGrade();
@@ -12925,7 +13096,7 @@ function gaSetTab(tab) {
         btn.style.borderBottomColor = active ? "#2563eb" : "transparent";
     });
     if (tab === "overview") {
-        // The canvases were zero-size while the tab was hidden — redraw.
+        // The canvases were zero-size while the tab was hidden - redraw.
         if (gaOpen && gaData) renderGradeAnalytics();
     } else if (tab === "heatmap") {
         renderGaHeatmap();
@@ -13083,8 +13254,8 @@ function gaBuildHeatmapData() {
 function gaHeatmapShowTip(tip, e, cell, avg) {
     const d = cell.date;
     const rows = cell.items.map(p =>
-        `<div style="margin-top:2px;color:var(--bctext-1);">${gaEscHtml(p.title)} — <b style="color:${gaHeatmapColor(p.pct)};">${p.pct.toFixed(2)}%</b></div>`).join("");
-    tip.innerHTML = `<b>${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</b> — ${getMsg("ga_heatmap_avg", "avg")} <b style="color:${gaHeatmapColor(avg)};">${avg.toFixed(2)}%</b><div style="margin-top:4px;font-size:11px;color:var(--bctext-1);">${replaceCountPlaceholder(getMsg("ga_heatmap_assignments", "{{COUNT}} assignment(s):"), cell.items.length)}</div>${rows}`;
+        `<div style="margin-top:2px;color:var(--bctext-1);">${gaEscHtml(p.title)} - <b style="color:${gaHeatmapColor(p.pct)};">${p.pct.toFixed(2)}%</b></div>`).join("");
+    tip.innerHTML = `<b>${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</b> - ${getMsg("ga_heatmap_avg", "avg")} <b style="color:${gaHeatmapColor(avg)};">${avg.toFixed(2)}%</b><div style="margin-top:4px;font-size:11px;color:var(--bctext-1);">${replaceCountPlaceholder(getMsg("ga_heatmap_assignments", "{{COUNT}} assignment(s):"), cell.items.length)}</div>${rows}`;
     tip.style.display = "block";
     const host = tip.offsetParent || tip.parentNode;
     const hostRect = host.getBoundingClientRect();
@@ -13540,7 +13711,7 @@ function gaComputeImagineTotal() {
 // the real grade.
 function gaImagineTotalHtml(pct) {
     const letter = gaLetterFor(pct);
-    const pctText = pct == null || !isFinite(pct) ? "—" : pct.toFixed(2) + "%";
+    const pctText = pct == null || !isFinite(pct) ? "-" : pct.toFixed(2) + "%";
     return `<span style="display:inline-flex;align-items:center;gap:6px;">`
         + `<span style="background:#7c3aed;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:1px 6px;border-radius:999px;text-transform:uppercase;white-space:nowrap;">${getMsg("imagine_if_badge", "Imagine-If")}</span>`
         + `<span style="font-weight:700;color:#7c3aed;">${pctText}</span>`
@@ -13599,7 +13770,7 @@ const GA_IF_TD_BTN = GA_IF_TD_INPUT + "cursor:pointer;white-space:nowrap;";
 function gaIfSelectHtml(gid) {
     const groups = gaScenario ? gaScenario.groups.filter(g => !g.deleted) : [];
     return `<select data-ga-if-groupsel title="${getMsg("ga_title_group_select", "Imagine-If assignment group")}" style="${GA_IF_TD_SEL}">`
-        + `<option value="">${getMsg("ga_not_counted", "— not counted —")}</option>`
+        + `<option value="">${getMsg("ga_not_counted", "- not counted -")}</option>`
         + groups.map(g => `<option value="${gaEscHtml(g.gid)}"${String(gid) === String(g.gid) ? " selected" : ""}>${gaEscHtml(g.name)}</option>`).join("")
         + `</select>`;
 }
@@ -13610,7 +13781,7 @@ function gaIfRefreshSelects(table) {
         if (document.activeElement === sel) continue;
         const cur = sel.value;
         const groups = gaScenario ? gaScenario.groups.filter(g => !g.deleted) : [];
-        sel.innerHTML = `<option value="">${getMsg("ga_not_counted", "— not counted —")}</option>`
+        sel.innerHTML = `<option value="">${getMsg("ga_not_counted", "- not counted -")}</option>`
             + groups.map(g => `<option value="${gaEscHtml(g.gid)}"${String(cur) === String(g.gid) ? " selected" : ""}>${gaEscHtml(g.name)}</option>`).join("");
         sel.value = groups.some(g => String(g.gid) === cur) ? cur : "";
     }
@@ -13637,9 +13808,9 @@ function gaIfBuildAssignmentControls(tr, a) {
     const edit = document.createElement("span");
     edit.className = "canvasrefined-ga-if-edit";
     edit.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
-    edit.innerHTML = `<input data-ga-if-score type="number" step="any" placeholder="—" value="${a.score == null ? "" : a.score}" title="${getMsg("ga_title_score", "Imagine-If score (numerator); blank = not counted")}" style="${GA_IF_TD_NUM}">`
+    edit.innerHTML = `<input data-ga-if-score type="number" step="any" placeholder="-" value="${a.score == null ? "" : a.score}" title="${getMsg("ga_title_score", "Imagine-If score (numerator); blank = not counted")}" style="${GA_IF_TD_NUM}">`
         + ` <span style="color:var(--bctext-1);">/</span> `
-        + `<input data-ga-if-pts type="number" step="any" min="0" placeholder="—" value="${a.points == null ? "" : a.points}" title="${getMsg("ga_title_points", "Imagine-If points possible (denominator)")}" style="${GA_IF_TD_NUM}">`;
+        + `<input data-ga-if-pts type="number" step="any" min="0" placeholder="-" value="${a.points == null ? "" : a.points}" title="${getMsg("ga_title_points", "Imagine-If points possible (denominator)")}" style="${GA_IF_TD_NUM}">`;
     (scoreTd.querySelector(".score_holder") || scoreTd).appendChild(edit);
     const th = tr.querySelector("th.title");
     const ctx = th?.querySelector("div.context");
@@ -13696,7 +13867,7 @@ function gaIfMakeGroupRow(g) {
     tr.innerHTML = `
         <th class="title" scope="row"><input data-ga-if-gname type="text" value="${gaEscHtml(g.name)}" title="${getMsg("ga_title_group_name", "Group name")}" style="${GA_IF_TD_INPUT}width:100%;max-width:260px;"></th>
         <td class="due"></td><td class="submitted"></td><td class="status"></td>
-        <td class="assignment_score"><div class="score_holder" style="position:relative;"><span class="tooltip"><span class="grade">—</span></span></div></td>
+        <td class="assignment_score"><div class="score_holder" style="position:relative;"><span class="tooltip"><span class="grade">-</span></span></div></td>
         <td class="asset_processors_cell"></td><td class="details"></td><td></td>`;
     for (const cell of tr.cells) {
         cell.style.setProperty("border-top", "1px solid var(--bctext-1,#e2e2e2)", "important");
@@ -13765,7 +13936,7 @@ function gaIfUpdateGroupPcts() {
         if (!gradeEl) continue;
         if (gradeEl.dataset.gaIfOrig == null) gradeEl.dataset.gaIfOrig = gradeEl.textContent;
         const s = stats.get(String(tr.dataset.gaIfGid));
-        const txt = s && s.pts > 0 ? ((s.score / s.pts) * 100).toFixed(2).replace(/\.?0+$/, "") + "%" : "—";
+        const txt = s && s.pts > 0 ? ((s.score / s.pts) * 100).toFixed(2).replace(/\.?0+$/, "") + "%" : "-";
         if (gradeEl.textContent !== txt) gradeEl.textContent = txt;
     }
 }
@@ -13901,7 +14072,7 @@ function gaRenderImagineIf(force) {
             continue;
         }
         if (!tr) {
-            if (!a._new) continue; // the page row vanished — nothing to edit
+            if (!a._new) continue; // the page row vanished - nothing to edit
             tr = gaIfMakeAssignmentRow(a);
             gaIfInsertAssignmentRow(table, tr);
         }

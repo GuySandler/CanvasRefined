@@ -1,0 +1,44 @@
+/* Canvas Refined - leftovers from the animations work that are NOT animations.
+ *
+ * Not injected on purpose: the animation stylesheet (ANIMATIONS_CSS in
+ * css/darkmodecss.js) goes into every page, so these two regions would go live
+ * with it. They are dark theme overrides and a static dashboard footer, which
+ * belong with the dark mode work (js/content.js / css/content.css), not with the
+ * Animations tab toggles.
+ * Move them over deliberately, ideally one rule at a time, since content.js
+ * already injects its own .css-* overrides that these may fight with.
+ */
+
+
+/* Dashboard cat */
+#dashboard::after {
+  content: "";
+  background: url("https://raw.githubusercontent.com/catppuccin/catppuccin/main/assets/footers/gray0_ctp_on_line.svg?sanitize=true");
+  display: block;
+  position: relative;
+  width: 600px;
+  height: 75px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 50px;
+}
+
+
+
+
+/* Various dark theme fixes */
+.css-1n94jrf-view, /* Discussion and Announcement top bar */
+.css-r2wx27-toggleDetails__details, /* Discussions - You currently have no discussions with closed comments */
+.css-1ta5ds2-baseButton__content, /* Various buttons such as Discussion - View Split Screen */
+.css-19nkh2g-view-alert, /* Discussion - You must post before seeing replies. */
+.css-2mip9c-view-alert, /* Assignment submission - Submission will count for everyone in the group */
+.css-h7zoqr-baseButton__content, /* Assignment - Text Entry - word count */
+.css-m1wv9g-modal *, /* Assignment - Text Entry - word count modal */
+.css-l8xqng-view--inlineBlock-inlineListItem, /* Announcement Teacher | Author */
+.student-group-header, /* People Groups - Expanded headers*/
+svg /* All SVG icons */
+{ background: none !important; color: var(--bctext-0) !important; }
+.css-m1wv9g-modal { background-color: var(--bcbackground-0); }
+pre, pre *, code, code * { font-family: Monaco, Menlo, Consolas, "Courier New", monospace !important; } /* Monospace code */
+code[class*="language-"], pre[class*="language-"] { text-shadow: none !important; } /* Remove code text shadow */
+.language-css .token.string, .style .token.string, .token.entity, .token.operator, .token.url { background: none !important; } /* Backgrounds on some code tokens */

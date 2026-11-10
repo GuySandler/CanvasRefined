@@ -72,6 +72,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><path d="M17.5 14.0002L17.5 21.0004"></path><path d="M21.0001 17.5001L14 17.5001"></path></svg>
                     <span data-i18n="widgets">Widgets</span>
                 </button>
+                <button id="animations-btn" class="big-button tab-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11H12a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V12a1 1 0 0 0-1-1z"></path><path d="M12 2H3a1 1 0 0 0-1 1v9"></path><path d="M17 7H7v10"></path></svg>
+                    <span data-i18n="animations">Animations</span>
+                </button>
                 <button id="report-issue-btn" class="big-button tab-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 9v4"></path><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"></path><path d="M12 16h.01"></path></svg>
                     <span data-i18n="report_issue">Report issue</span>
@@ -609,7 +613,7 @@
             <div class="theme-header">
                 <div style="display:flex;gap:6px;align-items:center">
                     <h3 class="header-small" style="margin:0" data-i18n="user_made_themes">User made themes</h3>
-                    <label class="cr-themes-toggle" title="Show only the themes that use Canvas Refined features">
+                    <label class="cr-themes-toggle" title="Only show the Canvas Refined themes (this view only, not saved)">
                         <input type="checkbox" id="cr_themes_only">
                         <span data-i18n="canvas_refined_themes">Canvas Refined themes</span>
                     </label>
@@ -1631,6 +1635,70 @@
             </div>
         </div>
 
+    </div>
+
+    <div class="animations-container tab" style="display:none">
+        <div class="tab-header">
+            <div>
+                <h2 style="margin-top: 0" data-i18n="animations">Animations</h2>
+            </div>
+            <button class="big-button back-btn" data-i18n="back">Back</button>
+        </div>
+        <!-- Animation toggles, grouped by what they animate. Each one maps to a
+             class on <html> that gates a region of canvasAnimations.css, applied by
+             applyAnimationSettings() in js/content.js. All off by default. -->
+        <div class="option-container">
+            <h3 class="header-small" data-i18n="anim_page_load">Page load</h3>
+            <div class="option" id="cr_anim_entrance">
+                <input type="radio" id="off" name="cr_anim_entrance">
+                <input type="radio" id="on" name="cr_anim_entrance">
+                <div class="slider">
+                    <div class="sliderknob"></div>
+                    <div class="sliderbg"></div>
+                </div><span class="option-name" data-i18n="anim_entrance">Fade-in entrance</span>
+            </div>
+        </div>
+        <div class="option-container">
+            <h3 class="header-small" data-i18n="anim_cards">Course cards</h3>
+            <div class="option" id="cr_anim_card_hover">
+                <input type="radio" id="off" name="cr_anim_card_hover">
+                <input type="radio" id="on" name="cr_anim_card_hover">
+                <div class="slider">
+                    <div class="sliderknob"></div>
+                    <div class="sliderbg"></div>
+                </div><span class="option-name" data-i18n="anim_card_hover">Card hover flip</span>
+            </div>
+        </div>
+        <div class="option-container">
+            <h3 class="header-small" data-i18n="anim_lists">Lists and sidebar</h3>
+            <div class="option" id="cr_anim_list_hover">
+                <input type="radio" id="off" name="cr_anim_list_hover">
+                <input type="radio" id="on" name="cr_anim_list_hover">
+                <div class="slider">
+                    <div class="sliderknob"></div>
+                    <div class="sliderbg"></div>
+                </div><span class="option-name" data-i18n="anim_list_hover">Sidebar slide</span>
+            </div>
+        </div>
+        <div class="option-container">
+            <h3 class="header-small" data-i18n="anim_controls">Buttons and inputs</h3>
+            <div class="option" id="cr_anim_control_lift">
+                <input type="radio" id="off" name="cr_anim_control_lift">
+                <input type="radio" id="on" name="cr_anim_control_lift">
+                <div class="slider">
+                    <div class="sliderknob"></div>
+                    <div class="sliderbg"></div>
+                </div><span class="option-name" data-i18n="anim_control_lift">Input lift</span>
+            </div>
+            <div class="option" id="cr_anim_rainbow_buttons" style="margin-top:10px;">
+                <input type="radio" id="off" name="cr_anim_rainbow_buttons">
+                <input type="radio" id="on" name="cr_anim_rainbow_buttons">
+                <div class="slider">
+                    <div class="sliderknob"></div>
+                    <div class="sliderbg"></div>
+                </div><span class="option-name" data-i18n="anim_rainbow_buttons">Rainbow buttons</span>
+            </div>
+        </div>
     </div>
 
     <div class="report-issue-container tab">

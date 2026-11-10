@@ -21,7 +21,7 @@
         "message": "Visa alltid antal gillningar"
     },
     "assignment_avg": {
-        "message": "— snitt {{AVG}}% över {{COUNT}} uppgift(er):"
+        "message": "- snitt {{AVG}}% över {{COUNT}} uppgift(er):"
     },
     "assignment_due_in": {
         "message": "Uppgift förfaller om {{TIME}}"
@@ -570,7 +570,7 @@
         "message": "uppgifter"
     },
     "final_avg": {
-        "message": "— snitt {{AVG}}% ..."
+        "message": "- snitt {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "Väntar på betygsdata…"
@@ -645,7 +645,7 @@
         "message": "Inga betygsatta uppgifter ännu"
     },
     "ga_not_counted": {
-        "message": "— räknas inte —"
+        "message": "- räknas inte -"
     },
     "ga_out_of_reach": {
         "message": "Utom räckhåll"
@@ -1596,7 +1596,7 @@
         "message": "Skicka in ditt tema"
     },
     "submitted_return_title": {
-        "message": "Inlämnad i Canvas — klicka för att skicka tillbaka den till Uppgifter (lokalt)"
+        "message": "Inlämnad i Canvas - klicka för att skicka tillbaka den till Uppgifter (lokalt)"
     },
     "tab_icons": {
         "message": "Färgkodade flikikoner"
