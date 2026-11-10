@@ -62,6 +62,9 @@
     "anim_sidebar_icon": {
         "message": "Sidebar icon tilt"
     },
+    "anim_stagger": {
+        "message": "Stagger fade-in"
+    },
     "anim_widgets": {
         "message": "Widgets"
     },

@@ -1541,11 +1541,11 @@ around (background-attachment: fixed resolves against a transformed ancestor) an
 every backdrop-filter panel re-sample its backdrop. Contents move, the shell does not.
 This list must stay identical in the two rules below.
 */
-html:is(.cr-anim-entrance-prep, .cr-anim-entrance) *:nth-child(5n + 0) {--child-of-5: 0 / 5;}
-html:is(.cr-anim-entrance-prep, .cr-anim-entrance) *:nth-child(5n + 1) {--child-of-5: 1 / 5;}
-html:is(.cr-anim-entrance-prep, .cr-anim-entrance) *:nth-child(5n + 2) {--child-of-5: 2 / 5;}
-html:is(.cr-anim-entrance-prep, .cr-anim-entrance) *:nth-child(5n + 3) {--child-of-5: 3 / 5;}
-html:is(.cr-anim-entrance-prep, .cr-anim-entrance) *:nth-child(5n + 4) {--child-of-5: 4 / 5;}
+html:is(.cr-anim-entrance-prep, .cr-anim-entrance, .cr-anim-stagger) *:nth-child(5n + 0) {--child-of-5: 0 / 5;}
+html:is(.cr-anim-entrance-prep, .cr-anim-entrance, .cr-anim-stagger) *:nth-child(5n + 1) {--child-of-5: 1 / 5;}
+html:is(.cr-anim-entrance-prep, .cr-anim-entrance, .cr-anim-stagger) *:nth-child(5n + 2) {--child-of-5: 2 / 5;}
+html:is(.cr-anim-entrance-prep, .cr-anim-entrance, .cr-anim-stagger) *:nth-child(5n + 3) {--child-of-5: 3 / 5;}
+html:is(.cr-anim-entrance-prep, .cr-anim-entrance, .cr-anim-stagger) *:nth-child(5n + 4) {--child-of-5: 4 / 5;}
 
 html.cr-anim-entrance-prep *:not(
     body, /* fading/translating body drags a custom wallpaper with it */
@@ -1568,8 +1568,10 @@ html.cr-anim-entrance-prep *:not(
     opacity: 0 !important;
     /* Vertical only, and upward: a horizontal offset (or the old rotate) widened the
        document and popped a horizontal scrollbar, and clipping the root does not stop
-       that in Chrome. Offsets above the fold never add scrollable overflow. */
-    transform: translateY(calc(-8px - 8px * var(--child-of-5)));
+       that in Chrome. Offsets above the fold never add scrollable overflow.
+       48px to 74px above the final spot (the --child-of-5 phase varies it, which is what
+       gives the drop its depth); shared by the fade-in entrance and the stagger. */
+    transform: translateY(calc(-48px - 32px * var(--child-of-5)));
     /* the held state must not tween in */
     transition: none !important;
 }
@@ -1599,6 +1601,48 @@ html.cr-anim-entrance *:not(
     transition: opacity calc(0.5s + 0.2s * var(--child-of-5)) ease-out,
                 transform calc(0.5s + 0.2s * var(--child-of-5)) ease-out;
     transition-delay: calc(0.25s * var(--child-of-5));
+}
+/* #endregion */
+
+/* #region Stagger fade-in (html.cr-anim-stagger) */
+/*
+Same one-shot pre-roll and the same drop-in motion as the fade-in entrance -
+js/content.js holds the page with .cr-anim-entrance-prep while it loads, then swaps in
+.cr-anim-stagger instead of .cr-anim-entrance. The two toggles are mutually exclusive
+(js/popup.js enforces it), because they are the same effect with two releases.
+
+The difference is the timing: applyStaggerDelays() writes --cr-stagger-delay on each
+sidebar link, widget, course card and todo row so they cascade in that order, while
+everything else still drops in on the small per-element ripple from --child-of-5.
+
+Shell exclusion list must stay identical to the two entrance rules above: fading the shell
+moves a custom wallpaper (background-attachment: fixed resolves against a transformed
+ancestor) and re-samples every backdrop-filter panel.
+*/
+html.cr-anim-stagger *:not(
+    body, /* fading/translating body drags a custom wallpaper with it */
+    #wrapper,
+    #application,
+    #main,
+    #content,
+    #content-wrapper,
+    #not_right_side,
+    #dashboard,
+    #dashboard_header_container,
+    #right-side,
+    #right-side-wrapper,
+    #left-side,
+    #left-side-wrapper,
+    #menu,
+    #better-sidebar-container,
+    #canvasrefined-overlay-host
+) {
+    /* transform, not translate: the pre-roll offsets each element with
+       transform: translateY(...), so transitioning transform is what makes them drop in
+       instead of just fading. Same property the fade-in entrance animates. */
+    transition: opacity 0.5s ease-out,
+                transform 0.9s cubic-bezier(.2, .8, .3, 1);
+    transition-delay: var(--cr-stagger-delay, calc(0.18s * var(--child-of-5)));
 }
 /* #endregion */
 
@@ -1851,10 +1895,11 @@ html.cr-anim-heatmap-in .canvasrefined-heatmap .cr-hm-cell:nth-child(7n + 0) {--
 
 /* #region Popups slide in (html.cr-anim-popup-in) */
 /*
-The extension's own popups: the item hover preview and the global search card. Panels that
-already animate themselves are left alone - the reminder stack gets
-animation: .4s ease slide and #canvasrefined-domain-prompt gets canvasrefined-pop from
-css/content.css, and overriding those needs !important, which then fights their keyframes.
+The extension's own popups: the item hover preview, the global search card and the GPA
+calculator window. Panels that already animate themselves are left alone - the reminder
+stack gets animation: .4s ease slide and #canvasrefined-domain-prompt gets
+canvasrefined-pop from css/content.css, and overriding those needs !important, which then
+fights their keyframes.
 
 translate keeps the slide out of layout; the preview is position: fixed.
 */
@@ -1875,10 +1920,12 @@ html.cr-anim-popup-in #canvasrefined-todo-preview,
 html.cr-anim-popup-in .canvasrefined-hover-preview {
     animation: cr-popup-in 0.18s ease-out;
 }
-/* Global search: the modal builds its own backdrop fade (canvasrefined-gs-fade), so the
-   animation goes on the card inside it instead of replacing that. Both are created on
-   open and removed on close, so this plays once per open. */
-html.cr-anim-popup-in .canvasrefined-gs-card {
+/* Full-window panels: animate the card inside the backdrop, never the backdrop itself
+   (the search overlay fades its own in with canvasrefined-gs-fade, and the GPA backdrop
+   carries the blur). Both modals are created on open and removed on close, so this plays
+   exactly once per open. */
+html.cr-anim-popup-in .canvasrefined-gs-card,
+html.cr-anim-popup-in .cr-gpa-modal {
     animation: cr-popup-in-center 0.2s cubic-bezier(.2, .8, .3, 1);
 }
 /* #endregion */

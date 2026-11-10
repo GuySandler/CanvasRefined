@@ -618,25 +618,59 @@ function bindOverlayHostListeners() {
     window.addEventListener("resize", scheduleOverlayHostPosition, { passive: true });
     // Capture: Canvas scrolls inner containers, not only the page.
     window.addEventListener("scroll", scheduleOverlayHostPosition, { passive: true, capture: true });
+    // Late loads (images, fonts, bfcache restores) move the content's bottom edge too.
+    window.addEventListener("load", scheduleOverlayHostPosition, { passive: true });
+    window.addEventListener("pageshow", scheduleOverlayHostPosition, { passive: true });
+    document.addEventListener("DOMContentLoaded", scheduleOverlayHostPosition, { passive: true });
 }
 
 // Re-position whenever the content column changes size (sidebar toggles, widgets, SPA
 // navigation). Re-observes when Canvas swaps the content element out.
 let overlayHostResizeObserver = null;
 let overlayHostObservedEl = null;
+// Canvas builds the dashboard in stages (skeletons -> cards -> widgets), and the tallest
+// child can appear without the column's own box changing. Without this the first
+// measurement stuck, leaving the button too high until something forced a re-measure
+// (e.g. scrolling).
+let overlayHostMutationObserver = null;
+let overlayHostMutatedEl = null;
 function watchOverlayHostLayout() {
-    if (typeof ResizeObserver !== "function") return;
     const content = getContentMainEl();
     if (!content) return;
-    if (overlayHostResizeObserver && overlayHostObservedEl === content) return;
-    if (overlayHostResizeObserver) {
-        try { overlayHostResizeObserver.disconnect(); } catch (e) { /* ignore */ }
+    if (typeof ResizeObserver === "function" && overlayHostObservedEl !== content) {
+        if (overlayHostResizeObserver) {
+            try { overlayHostResizeObserver.disconnect(); } catch (e) { /* ignore */ }
+        }
+        overlayHostResizeObserver = new ResizeObserver(() => scheduleOverlayHostPosition());
+        try {
+            overlayHostResizeObserver.observe(content);
+            overlayHostObservedEl = content;
+        } catch (e) { /* not observable */ }
     }
-    overlayHostResizeObserver = new ResizeObserver(() => scheduleOverlayHostPosition());
-    try {
-        overlayHostResizeObserver.observe(content);
-        overlayHostObservedEl = content;
-    } catch (e) { /* not observable */ }
+    if (typeof MutationObserver === "function" && overlayHostMutatedEl !== content) {
+        if (overlayHostMutationObserver) {
+            try { overlayHostMutationObserver.disconnect(); } catch (e) { /* ignore */ }
+        }
+        // rAF-throttled, so a busy dashboard still costs one measurement per frame.
+        overlayHostMutationObserver = new MutationObserver(() => scheduleOverlayHostPosition());
+        try {
+            overlayHostMutationObserver.observe(content, { childList: true, subtree: true });
+            overlayHostMutatedEl = content;
+        } catch (e) { /* not observable */ }
+    }
+}
+
+// The first frames can still be a skeleton: re-measure a few times after mount.
+const OVERLAY_HOST_REMEASURE_DELAYS = [80, 300, 900, 2000, 4000];
+function remeasureOverlayHostAfterMount() {
+    scheduleOverlayHostPosition();
+    OVERLAY_HOST_REMEASURE_DELAYS.forEach(ms => {
+        setTimeout(() => {
+            scheduleOverlayHostPosition();
+            // Canvas may have replaced the content element in the meantime.
+            watchOverlayHostLayout();
+        }, ms);
+    });
 }
 
 function crOverlayHost() {
@@ -652,6 +686,7 @@ function crOverlayHost() {
     positionOverlayHost();
     watchOverlayHostLayout();
     bindOverlayHostListeners();
+    remeasureOverlayHostAfterMount();
     return host;
 }
 
@@ -897,6 +932,7 @@ const ANIMATION_CLASSES = {
     cr_anim_press: "cr-anim-press",
     cr_anim_heatmap_in: "cr-anim-heatmap-in",
     cr_anim_popup_in: "cr-anim-popup-in",
+    cr_anim_stagger: "cr-anim-stagger",
 };
 
 /*
@@ -916,9 +952,30 @@ two or three times. Two things keep it to exactly one pass:
 */
 const ENTRANCE_PREP_CLASS = "cr-anim-entrance-prep";
 const ENTRANCE_CLASS = "cr-anim-entrance";
+const STAGGER_CLASS = "cr-anim-stagger";
+const STAGGER_DELAY_VAR = "--cr-stagger-delay";
+// Tail after the last delay: the transition itself plus a margin.
+const STAGGER_TAIL_MS = 1050;
 const ENTRANCE_QUIET_MS = 250; // reveal once the DOM has been still this long
 const ENTRANCE_MAX_WAIT_MS = 2200; // hard cap on how long the page stays invisible
 const ENTRANCE_RIPPLE_MS = 900; // longest tween is 0.5s + 0.2s * (4/5) + 0.25s * (4/5) delay
+
+/*
+Groups of the stagger fade-in. All of them start together and cascade internally: js
+writes --cr-stagger-delay per element (ANIMATIONS_CSS reads it), so the sidebar, cards,
+widgets and todo rows drop in at the same time, independent of each other.
+
+Each group has a time budget ("span") instead of a per-item delay that gets clamped: the
+step is spread evenly inside the budget, so the 20th todo row still arrives after the 19th
+rather than piling onto a cap. Elements in no group take the small per-element ripple from
+--child-of-5 in CSS.
+*/
+const STAGGER_GROUPS = [
+    { sel: "#menu a, .list-view a, .better-sidebar-btn", step: 50, span: 900 },
+    { sel: ".canvasrefined-widget-card, .canvasrefined-gpa-card, .canvasrefined-dashboard-notes", step: 90, span: 1000 },
+    { sel: ".ic-DashboardCard", step: 150, span: 1600 },
+    { sel: ".todo-group-list > *", step: 80, span: 1400 },
+];
 
 let lastEntranceOn = null;
 const entranceState = {
@@ -928,7 +985,39 @@ const entranceState = {
     quietTimer: null,
     maxTimer: null,
     rippleTimer: null,
+    staggerTouched: [],
 };
+
+// Which load-in effect should run: the staggered one wins when both toggles are on.
+function entranceMode() {
+    if (options.cr_anim_stagger === true) return "stagger";
+    if (options.cr_anim_entrance === true) return "entrance";
+    return null;
+}
+
+function clearStaggerDelays() {
+    entranceState.staggerTouched.forEach(el => el.style.removeProperty(STAGGER_DELAY_VAR));
+    entranceState.staggerTouched = [];
+}
+
+// Writes the per-element delays (all groups starting at the same time) and returns how
+// long the slowest group takes, so the reveal class is held long enough.
+function applyStaggerDelays() {
+    let longest = 0;
+    STAGGER_GROUPS.forEach(group => {
+        const els = Array.from(document.querySelectorAll(group.sel));
+        // Spread the items evenly across the group's budget: a long todo list gets a
+        // smaller step so it still finishes in time, but no two items share a delay.
+        const step = els.length > 1 ? Math.min(group.step, group.span / (els.length - 1)) : 0;
+        els.forEach((el, i) => {
+            const delay = Math.round(i * step);
+            el.style.setProperty(STAGGER_DELAY_VAR, delay + "ms");
+            entranceState.staggerTouched.push(el);
+            if (delay > longest) longest = delay;
+        });
+    });
+    return longest;
+}
 
 function clearEntranceTimers() {
     clearTimeout(entranceState.quietTimer);
@@ -973,34 +1062,40 @@ function revealEntrance() {
     const root = document.documentElement;
     root.classList.remove(ENTRANCE_PREP_CLASS);
     // The setting can change while the page is still being built.
-    if (options.cr_anim_entrance !== true) return;
+    const mode = entranceMode();
+    if (!mode) return;
     entranceState.played = true;
-    root.classList.add(ENTRANCE_CLASS);
+    let holdMs = ENTRANCE_RIPPLE_MS;
+    if (mode === "stagger") holdMs = applyStaggerDelays() + STAGGER_TAIL_MS;
+    root.classList.add(mode === "stagger" ? STAGGER_CLASS : ENTRANCE_CLASS);
     entranceState.rippleTimer = setTimeout(() => {
-        root.classList.remove(ENTRANCE_CLASS);
+        root.classList.remove(ENTRANCE_CLASS, STAGGER_CLASS);
+        clearStaggerDelays();
         entranceState.rippleTimer = null;
-    }, ENTRANCE_RIPPLE_MS);
+    }, holdMs);
 }
 
 function stopEntrance() {
     clearEntranceTimers();
     entranceState.prepared = false;
     entranceState.played = false;
-    document.documentElement.classList.remove(ENTRANCE_PREP_CLASS, ENTRANCE_CLASS);
+    clearStaggerDelays();
+    document.documentElement.classList.remove(ENTRANCE_PREP_CLASS, ENTRANCE_CLASS, STAGGER_CLASS);
 }
 
 function applyAnimationSettings() {
     const root = document.documentElement;
     const enabled = [];
     Object.entries(ANIMATION_CLASSES).forEach(([key, className]) => {
-        if (key === "cr_anim_entrance") return; // handled below
+        if (key === "cr_anim_entrance" || key === "cr_anim_stagger") return; // handled below
         const on = options[key] === true;
         root.classList.toggle(className, on);
         if (on) enabled.push(className);
     });
 
-    // The entrance plays once per page load, so it has its own arm/reveal flow.
-    const entranceOn = options.cr_anim_entrance === true;
+    // Both load-in effects play once per page load, so they share an arm/reveal flow.
+    const mode = entranceMode();
+    const entranceOn = mode !== null;
     if (entranceOn !== lastEntranceOn) {
         lastEntranceOn = entranceOn;
         if (!entranceOn) {
@@ -1014,8 +1109,9 @@ function applyAnimationSettings() {
     }
     let entranceWaiting = false;
     if (entranceOn) {
+        const activeClass = mode === "stagger" ? STAGGER_CLASS : ENTRANCE_CLASS;
         if (entranceState.prepared) entranceWaiting = true;
-        else if (entranceState.played) enabled.push(ENTRANCE_CLASS);
+        else if (entranceState.played) enabled.push(activeClass);
     }
 
     // One line per page so "nothing happens" is easy to diagnose: if the stylesheet is

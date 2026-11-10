@@ -121,6 +121,7 @@ chrome.runtime.onInstalled.addListener(function () {
             "cr_anim_press": false,
             "cr_anim_heatmap_in": false,
             "cr_anim_popup_in": false,
+            "cr_anim_stagger": false,
             "quiz_safe_mode": false,
             "dark_mode_fix": [],
             "assignment_states": {},
