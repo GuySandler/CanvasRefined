@@ -21,7 +21,7 @@
         "message": "いいね数を常に表示"
     },
     "assignment_avg": {
-        "message": "— {{COUNT}} 件の課題の平均 {{AVG}}%:"
+        "message": "- {{COUNT}} 件の課題の平均 {{AVG}}%:"
     },
     "assignment_due_in": {
         "message": "課題の期限まで {{TIME}}"
@@ -570,7 +570,7 @@
         "message": "課題"
     },
     "final_avg": {
-        "message": "— 平均 {{AVG}}% ..."
+        "message": "- 平均 {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "成績データを待っています…"
@@ -645,7 +645,7 @@
         "message": "評価済みの課題はまだありません"
     },
     "ga_not_counted": {
-        "message": "— 集計しない —"
+        "message": "- 集計しない -"
     },
     "ga_out_of_reach": {
         "message": "達成不可能"
@@ -783,7 +783,7 @@
         "message": "現在"
     },
     "gpa_dashboard_notes_aria": {
-        "message": "ダッシュボードのメモ — クリックして編集"
+        "message": "ダッシュボードのメモ - クリックして編集"
     },
     "gpa_edit_calc": {
         "message": "計算機を編集"
@@ -1134,7 +1134,7 @@
         "message": "タスクリスト"
     },
     "nothing_to_copy": {
-        "message": "コピーするものがありません — 先にエクスポートする項目を選択してください。"
+        "message": "コピーするものがありません - 先にエクスポートする項目を選択してください。"
     },
     "old_label": {
         "message": "旧"
@@ -1335,7 +1335,7 @@
         "message": "クイズページでCanvas Refinedのほとんどの機能をオフにし、標準のCanvasクイズ体験を提供します"
     },
     "quiz_safe_title": {
-        "message": "Canvas Refined — クイズセーフモード"
+        "message": "Canvas Refined - クイズセーフモード"
     },
     "radio_gradient": {
         "message": "グラデーション"
@@ -1596,7 +1596,7 @@
         "message": "テーマを投稿"
     },
     "submitted_return_title": {
-        "message": "Canvasに提出済み — クリックするとタスクに戻します（ローカルのみ）"
+        "message": "Canvasに提出済み - クリックするとタスクに戻します（ローカルのみ）"
     },
     "tab_icons": {
         "message": "色分けされたタブアイコン"

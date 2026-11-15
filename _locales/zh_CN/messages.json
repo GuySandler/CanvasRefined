@@ -21,7 +21,7 @@
         "message": "始终显示点赞数"
     },
     "assignment_avg": {
-        "message": "— 平均 {{AVG}}%，共 {{COUNT}} 项作业："
+        "message": "- 平均 {{AVG}}%，共 {{COUNT}} 项作业："
     },
     "assignment_due_in": {
         "message": "作业将在 {{TIME}} 后到期"
@@ -570,7 +570,7 @@
         "message": "项作业"
     },
     "final_avg": {
-        "message": "— 平均 {{AVG}}% ..."
+        "message": "- 平均 {{AVG}}% ..."
     },
     "final_waiting": {
         "message": "正在等待成绩数据…"
@@ -645,7 +645,7 @@
         "message": "暂无已评分作业"
     },
     "ga_not_counted": {
-        "message": "— 不计入 —"
+        "message": "- 不计入 -"
     },
     "ga_out_of_reach": {
         "message": "无法达到"
@@ -783,7 +783,7 @@
         "message": "当前"
     },
     "gpa_dashboard_notes_aria": {
-        "message": "仪表板备注 — 点击编辑"
+        "message": "仪表板备注 - 点击编辑"
     },
     "gpa_edit_calc": {
         "message": "编辑计算器"
@@ -1134,7 +1134,7 @@
         "message": "任务列表"
     },
     "nothing_to_copy": {
-        "message": "没有可复制的内容 — 请先选择要导出的内容。"
+        "message": "没有可复制的内容 - 请先选择要导出的内容。"
     },
     "old_label": {
         "message": "旧"
@@ -1335,7 +1335,7 @@
         "message": "在测验页面关闭大多数 Canvas Refined 功能，让你获得默认的 Canvas 测验体验"
     },
     "quiz_safe_title": {
-        "message": "Canvas Refined — 测验安全模式"
+        "message": "Canvas Refined - 测验安全模式"
     },
     "radio_gradient": {
         "message": "渐变"
@@ -1596,7 +1596,7 @@
         "message": "提交你的主题"
     },
     "submitted_return_title": {
-        "message": "已提交至 Canvas — 点击会将其送回任务（仅本地）"
+        "message": "已提交至 Canvas - 点击会将其送回任务（仅本地）"
     },
     "tab_icons": {
         "message": "颜色编码选项卡图标"

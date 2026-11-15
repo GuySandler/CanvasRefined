@@ -1,4 +1,4 @@
-const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'quick_links', 'heatmap', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'notes_suppressor', 'grade_analytics', 'hide_personal_details', 'hide_sidebar'];
+const syncedSwitches = ['remind', 'tab_icons', 'dark_mode', 'remlogo', 'full_width', 'auto_dark', 'assignments_due', 'gpa_calc', 'gradient_cards', 'disable_color_overlay', 'dashboard_grades', 'dashboard_notes', 'focus_timer', 'breathing', 'daily_quotes', 'quick_links', 'heatmap', 'better_todo', 'todo_celebrations_enabled', 'better_sidebar', 'condensed_cards', 'hide_new_canvas', 'hide_sequence_footer', 'center_cards', 'quiz_safe_mode', 'global_search', 'notes_suppressor', 'grade_analytics', 'hide_personal_details', 'hide_sidebar', 'cr_anim_entrance', 'cr_anim_card_hover', 'cr_anim_list_hover', 'cr_anim_control_lift', 'cr_anim_rainbow_buttons', 'cr_anim_card_zoom', 'cr_anim_sidebar_icon', 'cr_anim_press', 'cr_anim_heatmap_in', 'cr_anim_popup_in', 'cr_anim_stagger'];
 const syncedSubOptions = [
 	"grade_analytics_zones",
 	"hide_course_images",
@@ -223,6 +223,9 @@ const exportCardStyles = ["customCardStyles", "imageSize", "cardRoundness", "ima
 const exportLayout = ["full_width", "center_cards", "condensed_cards", "equal_height_cards", "remlogo", "hide_new_canvas", "hide_navbar", "hide_sidebar", "tab_icons"];
 const exportSidebar = ["better_sidebar", "sidebar_scale"];
 const exportTodo = ["better_todo", "todo_hide_feedback", "todo_hide_read", "todo_full_height", "todo_celebrations_enabled", "todo_celebrations", "todo_celebration_amount", "todo_progress_rings", "todo_timeframe", "todo_timeframe_custom_past", "todo_timeframe_custom_future", "todo_hr24", "todo_separate_scrollbar", "todo_alternate_colors", "todo_ignore_card_colors", "todo_remove_icons", "todo_show_scores", "hover_preview", "todo_sections_persist", "todo_hide_filter_notice"];
+// Animations tab: motion is visual, so it travels with themes.
+const exportAnimations = ["cr_anim_entrance", "cr_anim_card_hover", "cr_anim_list_hover", "cr_anim_control_lift", "cr_anim_rainbow_buttons", "cr_anim_card_zoom", "cr_anim_sidebar_icon", "cr_anim_press", "cr_anim_heatmap_in", "cr_anim_popup_in", "cr_anim_stagger"];
+
 const exportGpa = ["gpa_calc", "gpa_calc_prepend", "gpa_calc_cumulative", "gpa_calc_weighted", "gpa_calc_show_on_hover", "gpa_calc_align"];
 // Widgets tab: every dashboard widget's layout (toggles, positions, heights, row
 // heights, order, timer presets, quick link sizing). Personal data (quick link items,
@@ -243,7 +246,7 @@ const exportWidgets = [
 ];
 const exportBackground = ["customBackgroundLink", "customBackgroundScale", "customBackgroundDaily", "customBackgroundNasaDaily", "customBackgroundColor", "customBackgroundColorTransparent", "fitImageToScreen", "card_transparency", "bg_opacity", "sidebar_opacity", "bg_blur", "sidebar_blur", "card_opacity", "card_blur"];
 // Master "On/off toggles": every visual toggle, minus GPA/schedule/productivity.
-const exportToggles = ["dark_mode", "quiz_safe_mode", "notes_suppressor", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo);
+const exportToggles = ["dark_mode", "quiz_safe_mode", "notes_suppressor", "grade_analytics", "grade_analytics_zones"].concat(exportCardColorToggles, exportLayout, exportSidebar, exportTodo, exportAnimations);
 const fontsDropdownStateKey = "fonts_dropdown_open";
 
 const apiurl = "none";
@@ -390,6 +393,19 @@ const defaultOptions = {
         "hide_sequence_footer": false,
         "hide_navbar": false,
         "hide_sidebar": false,
+        // Animations tab: each one gates a region of canvasAnimations.css (see
+        // applyAnimationSettings in js/content.js). Off until the user opts in.
+        "cr_anim_entrance": false,
+        "cr_anim_card_hover": false,
+        "cr_anim_list_hover": false,
+        "cr_anim_control_lift": false,
+        "cr_anim_rainbow_buttons": false,
+        "cr_anim_card_zoom": false,
+        "cr_anim_sidebar_icon": false,
+        "cr_anim_press": false,
+        "cr_anim_heatmap_in": false,
+        "cr_anim_popup_in": false,
+        "cr_anim_stagger": false,
         "grade_analytics_zones": false,
         "quiz_safe_mode": false,
         "notes_suppressor": true,
@@ -898,7 +914,15 @@ function setupDashboardMethod(initial) {
     el.checked = initial === true ? true : false;
 
     el.addEventListener("change", (e) => {
-        chrome.storage.sync.set({ "custom_cards": {}, "custom_cards_2": {}, "custom_cards_3": {}, "card_method_dashboard": e.target.checked });
+        // Only the discovery method changes. This handler used to clear
+        // custom_cards/custom_cards_2/custom_cards_3, which wiped custom names, codes,
+        // images, links and GPA data every time the checkbox was toggled.
+        chrome.storage.sync.set({ "card_method_dashboard": e.target.checked })
+            // Ask Canvas to re-scan its cards (merges into the existing entries) and
+            // refresh the list so newly discovered cards show up right away.
+            .then(() => sendFromPopup("getCards", { card_method_dashboard: e.target.checked }))
+            .then(() => displayAdvancedCards())
+            .catch(() => displayAdvancedCards());
     });
 }
 
@@ -1616,7 +1640,7 @@ function setupHeatmapExcludedCourses(initial) {
     if (!control) return;
 
     // Only the courses still on the dashboard, labelled the way the user knows them
-    // (custom name, then the Canvas nickname) — same list as the Cards tab.
+    // (custom name, then the Canvas nickname) - same list as the Cards tab.
     const renderList = (cards) => {
         const entries = Object.entries(cards || {})
             .filter(([, card]) => card && card.hidden !== true && card.hide !== true)
@@ -1693,6 +1717,20 @@ function setupWidgetTimeInput(prefix, initial) {
     });
 }
 
+// The two load-in effects are the same animation with two releases, so they can never be
+// on together: switching one on switches the other off (UI and storage).
+const ANIMATION_EXCLUSIVE = { cr_anim_entrance: "cr_anim_stagger", cr_anim_stagger: "cr_anim_entrance" };
+
+function setAnimationSwitch(option, value) {
+    const el = document.getElementById(option);
+    if (!el) return;
+    el.querySelector("#on").checked = value;
+    el.querySelector("#off").checked = !value;
+    el.querySelector("#on").classList.toggle("checked", value);
+    el.querySelector("#off").classList.toggle("checked", !value);
+    chrome.storage.sync.set({ [option]: value });
+}
+
 function toggleSubOptionsVisibility(option, isOn) {
     const togglesWithSubOptions = ["dashboard_notes", "gpa_calc", "focus_timer", "breathing", "daily_quotes", "quick_links", "heatmap", "assignments_due", "better_todo", "auto_dark", "grade_analytics", "hide_personal_details"];
     if (!togglesWithSubOptions.includes(option)) return;
@@ -1722,7 +1760,7 @@ function setupFeatureSearch(menu) {
     });
 
     function shouldSkip(el) {
-        if (el.closest('#submit-popup, #browser-settings-popup, #opt-in, #card-edit-menu')) return true;
+        if (el.closest('#submit-popup, #opt-in, #card-edit-menu')) return true;
         let node = el;
         while (node && node !== document.body) {
             if (node.classList && node.classList.contains('option-container') && node.style.display === 'none') return true;
@@ -2076,12 +2114,12 @@ function initUpdateBox() {
 
 async function setup() {
     await initLanguageSelector();
+    initCanvasRefinedThemeFilter();
     initUpdateBox();
     const menu = {
 		switches: syncedSwitches,
 		checkboxes: [
 			"hide_navbar",
-			"browser_show_likes",
 			"gpa_calc_weighted",
 			"gpa_calc_cumulative",
 			"gpa_calc_show_on_hover",
@@ -2148,6 +2186,7 @@ async function setup() {
 				setup: displayErrors,
 				tab: ".report-issue-container",
 			},
+			"animations-btn": { setup: null, tab: ".animations-container" },
 			"updates-btn": { setup: null, tab: ".updates-container" },
 		},
 		special: [
@@ -2405,6 +2444,9 @@ async function setup() {
                 optionSwitch.querySelector("#on").classList.toggle("checked");
                 optionSwitch.querySelector("#off").classList.toggle("checked");
                 chrome.storage.sync.set({ [option]: status });
+                if (status === true && ANIMATION_EXCLUSIVE[option]) {
+                    setAnimationSwitch(ANIMATION_EXCLUSIVE[option], false);
+                }
                 if (option === "auto_dark") {
                     toggleDarkModeDisable(status);
                 }
@@ -2635,7 +2677,7 @@ async function setup() {
                 clearAlert();
                 return host;
             }
-        } catch (e) { /* not a full URL — may still be a bare hostname */ }
+        } catch (e) { /* not a full URL - may still be a bare hostname */ }
         const host = trimmed.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
         if (host && /^[a-z0-9][a-z0-9.-]*$/i.test(host)) {
             clearAlert();
@@ -2703,16 +2745,13 @@ async function setup() {
         rows[rows.length - 1].focus();
     });
 
-    document.querySelector("#import-input").addEventListener("input", (e) => {
-        const obj = JSON.parse(e.target.value);
-        importTheme(obj);
-    });
+    setupThemeImport();
 
     document.querySelector("#export-copy").addEventListener("click", async () => {
         const output = document.querySelector("#export-output");
         const btn = document.querySelector("#export-copy");
         const text = output.value;
-        if (!text) { displayAlert(true, getMsg("nothing_to_copy") || "Nothing to copy — select what to export first."); return; }
+        if (!text) { displayAlert(true, getMsg("nothing_to_copy") || "Nothing to copy - select what to export first."); return; }
         const flash = () => { const old = btn.textContent; btn.textContent = getMsg("copied") || "Copied!"; setTimeout(() => { btn.textContent = old; }, 1200); };
         try {
             await navigator.clipboard.writeText(text);
@@ -2793,11 +2832,8 @@ async function setup() {
     });
 
     document.querySelector("#theme-revert").addEventListener("click", () => {
-        chrome.storage.local.get("previous_theme", local => {
-            if (local["previous_theme"] !== null) {
-                importTheme(local["previous_theme"]);
-            }
-        });
+        // Same queue as theme applications so a pending apply can't land after the revert.
+        queueThemeWork(() => revertThemeChanges());
     });
 
     document.querySelector("#alert").addEventListener("click", clearAlert);
@@ -2874,17 +2910,10 @@ async function setup() {
         }, 10);
         }
     });
-    document.getElementById("theme-search").addEventListener("change", async (e) => {
+    document.getElementById("theme-search").addEventListener("input", (e) => {
         searchFor = e.target.value;
-        console.log(searchFor);
-        let themesToShow = [];
-        for (let i = 0; i < themes.length; i++) {
-            if (themes[i].title.toLowerCase().includes(searchFor.toLowerCase())) {
-                themesToShow.push(themes[i]);
-            }
-        }
-        console.log(themesToShow);
-        displayThemeSearchList(themesToShow);
+        current_page_num = 1;
+        displayThemeList(0);
     });
 
     document.getElementById("save-theme").addEventListener("click", saveCurrentTheme);
@@ -2923,15 +2952,6 @@ async function setup() {
         btn.addEventListener("click", (e) => {
             themeSort(e.target.textContent);
         });
-    });
-
-    document.getElementById("browser-settings-btn").addEventListener("click", () => {
-        document.getElementById("browser-settings-popup").classList.add("open");
-    });
-
-    document.getElementById("close-settings-btn").addEventListener("click", () => {
-        displayThemeList(0);
-        document.getElementById("browser-settings-popup").classList.remove("open");
     });
 
 
@@ -3006,14 +3026,18 @@ async function getExport(storage, options) {
     let final = {};
     for (const option of options) {
         switch (option) {
-            case "custom_cards":
+            case "custom_cards": {
+                // Cards are optional (fresh profile, cleared cards storage): reading them
+                // used to throw and abort the whole export. "none" means "no custom image".
+                const cards = storage["custom_cards"] || {};
                 let arr = [];
-                Object.keys(storage["custom_cards"]).forEach(key => {
-                    const img = storage["custom_cards"][key].img;
-                    if (img && img !== "none" && img.trim() !== "") arr.push(img);
+                Object.keys(cards).forEach(key => {
+                    const img = cards[key] && cards[key].img;
+                    if (img && img !== "none" && String(img).trim() !== "") arr.push(img);
                 });
                 final["custom_cards"] = arr;
                 break;
+            }
             case "card_colors":
                 final["card_colors"] = [];
                 try {
@@ -3060,8 +3084,14 @@ const colorValues = {
     "gray": 14,
 }
 
+// Entries must be objects: a stray empty slot in themes.js used to be materialised by
+// shuffle() into an `undefined` element, which crashed the theme list on open.
+function isThemeEntry(theme) {
+    return !!theme && typeof theme === "object";
+}
+
 function themeSortFn(method) {
-    let themes = getTheme("all");
+    let themes = (getTheme("all") || []).filter(isThemeEntry);
     switch (method) {
         case "New":
             return themes.reverse();
@@ -3195,10 +3225,42 @@ function saveCurrentTheme() {
 }
 
 
+// "Canvas Refined themes" checkbox: narrows the browser down to the themes built for
+// this fork (they use card styles, widgets, todo options... the original theme format
+// never carried). Themes opt in with `"canvasRefined": true`.
+// It is a view filter only: always off when the popup opens, never saved, and the
+// flagged themes are part of the normal list whenever it is unchecked.
+let crThemesOnly = false;
+
+function filterThemeList(list) {
+    const safe = (Array.isArray(list) ? list : []).filter(isThemeEntry);
+    return crThemesOnly ? safe.filter(theme => theme.canvasRefined === true) : safe;
+}
+
+// Wires the checkbox. Nothing is persisted: every popup open starts with the full list.
+function initCanvasRefinedThemeFilter() {
+    const checkbox = document.getElementById("cr_themes_only");
+    crThemesOnly = false;
+    if (!checkbox) return;
+    checkbox.checked = false;
+    checkbox.addEventListener("change", () => {
+        crThemesOnly = checkbox.checked;
+        current_page_num = 1;
+        displayThemeList(0);
+    });
+    // Older builds stored this setting; drop the now-unused key.
+    try {
+        chrome.storage.sync.get("cr_themes_only", stored => {
+            if (stored && stored["cr_themes_only"] !== undefined) chrome.storage.sync.remove("cr_themes_only");
+        });
+    } catch (e) { /* storage unavailable */ }
+}
+
 function displayThemeList(direction = 0) {
-    let themesToShow = allThemes;
+    let themesToShow = filterThemeList(allThemes);
     if (searchFor) {
-        themesToShow = allThemes.filter(theme => theme.title.toLowerCase().includes(searchFor.toLowerCase()));
+        const needle = searchFor.toLowerCase();
+        themesToShow = themesToShow.filter(theme => theme.title.toLowerCase().includes(needle));
     }
     displayThemeSearchList(themesToShow, direction);
 }
@@ -3207,11 +3269,20 @@ function displayThemeList(direction = 0) {
 function displayThemeSearchList(themesToShow, pageDir = 0) {
     document.getElementById("theme-current-sort").textContent = current_sort;
     const perPage = 24;
-    const maxPage = Math.ceil(themesToShow.length / perPage);
+    const maxPage = Math.max(1, Math.ceil(themesToShow.length / perPage));
     if (pageDir == -1 && current_page_num > 1) current_page_num--;
     if (pageDir == 1 && current_page_num < maxPage) current_page_num++;
+    // Filtering down to fewer pages must not leave the pager on an empty page.
+    if (current_page_num > maxPage) current_page_num = maxPage;
     let container = document.getElementById("premade-themes");
     container.textContent = "";
+    if (themesToShow.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "theme-list-empty";
+        empty.textContent = getMsg("no_themes_found", "No themes match this filter.");
+        container.appendChild(empty);
+        return;
+    }
     let start = (current_page_num - 1) * perPage, end = start + perPage;
     themesToShow.forEach((theme, index) => {
             if (index < start || index >= end) return;
@@ -3222,17 +3293,9 @@ function displayThemeSearchList(themesToShow, pageDir = 0) {
             makeElement("p", themeBtn, {"className": "theme-button-title", "textContent":  split[0] });
             makeElement("p", themeBtn, {"className": "theme-button-creator", "textContent": split[1] });
             themeBtn.addEventListener("click", () => {
-                const allOptions = syncedSwitches.concat(syncedSubOptions).concat(["dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles", "widget_order"]);
-                chrome.storage.sync.get(allOptions, sync => {
-                    chrome.storage.local.get(["previous_theme", "custom_styles"], async local => {
-                        if (local["previous_theme"] === null) {
-                            if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
-                            let previous = await getExport(sync, allOptions);
-                            chrome.storage.local.set({ "previous_theme": previous });
-                        }
-                        importTheme(theme.exports);
-                    });
-                });
+                // Snapshot first: "Revert theme changes" puts every value the theme is
+                // about to touch back (colors, card images, font, layout toggles...).
+                applyThemeWithSnapshot(theme.exports);
             });
         }
     )
@@ -3285,7 +3348,7 @@ function displaySavedThemes() {
             let remove = makeElement("div", btn, { "className": "theme-button-remove", "textContent": "x" });
             btn.style.backgroundImage = `linear-gradient(rgba(0, 0, 0, 0.44), rgba(0, 0, 0, 0.44)), url(${local["saved_themes"][key]["custom_cards"]?.[0] || ""})`;
             btn.addEventListener("click", () => {
-                importTheme(local["saved_themes"][key]);
+                applyThemeWithSnapshot(local["saved_themes"][key]);
             });
             remove.addEventListener("click", () => {
                 chrome.storage.local.get("saved_themes", local => {
@@ -3308,57 +3371,300 @@ function getTheme(name) {
     return {};
 }
 
-function importTheme(theme) {
+// ======================= Theme apply / snapshot / revert =======================
+// Everything a theme may touch. custom_cards/card_colors/custom_styles are read from
+// their own storage areas, see getExport.
+const THEME_SNAPSHOT_KEYS = syncedSwitches.concat(syncedSubOptions).concat([
+    "dark_preset", "custom_cards", "custom_font", "gpa_calc_bounds", "card_colors", "custom_styles", "widget_order"
+]);
+// v2 snapshots also carry the exact per-course card images and the cached course
+// colors, which a flat export cannot express (see applyThemeCardImages).
+const THEME_SNAPSHOT_VERSION = 2;
+// Card images as they were before the theme: { courseId: imageUrl } ("" = none).
+function themeCardImageMap(cards) {
+    const map = {};
+    Object.keys(cards || {}).forEach(id => {
+        const img = cards[id] && cards[id].img;
+        map[id] = img && img !== "none" ? img : "";
+    });
+    return map;
+}
+
+// Snapshot taken immediately before a theme is applied so "Revert theme changes" can
+// put every value the theme changes back - including the card images and card colors,
+// which used to survive a revert.
+async function captureThemeSnapshot() {
+    const [sync, local] = await Promise.all([
+        chrome.storage.sync.get(THEME_SNAPSHOT_KEYS.concat(["custom_cards_3"])),
+        chrome.storage.local.get(["custom_styles"])
+    ]);
+    if (local["custom_styles"] !== undefined) sync["custom_styles"] = local["custom_styles"];
+    const snapshot = await getExport(sync, THEME_SNAPSHOT_KEYS);
+    // getExport flattens cards into an image list (and drops empty ones), so keep the
+    // per-course mapping too: that is the only way to restore which card had which image.
+    snapshot["custom_cards"] = themeCardImageMap(sync["custom_cards"]);
+    // Colors as the extension cached them; restores the todo list / rings even when no
+    // Canvas tab is open to apply the palette.
+    snapshot["__cardColors"] = sync["custom_cards_3"] || null;
+    snapshot["__snapshotVersion"] = THEME_SNAPSHOT_VERSION;
+    return snapshot;
+}
+
+async function rememberThemeSnapshot() {
     try {
-        let keys = Object.keys(theme);
-        let final = {};
-        let localFinal = null;
-        chrome.storage.sync.get("custom_cards", sync => {
-            keys.forEach(key => {
-                switch (key) {
-                    case "dark_preset":
-                        changeToPresetCSS(null, theme["dark_preset"]);
-                        break;
-                    case "card_colors":
-                        sendFromPopup("setcolors", theme["card_colors"]);
-                        break;
-                    case "custom_cards": {
-                        // Legacy "none" placeholder meant "no custom card images"; writing it
-                        // literally would hide the card images.
-                        const themeImgs = (theme["custom_cards"] || []).filter(u => u && u !== "none" && u.trim() !== "");
-                        if (theme["custom_cards"].length > 0) {
-                            let pos = 0;
-                            Object.keys(sync["custom_cards"]).forEach(key => {
-                                sync["custom_cards"][key].img = themeImgs.length ? themeImgs[pos] : "";
-                                pos = (pos === themeImgs.length - 1) ? 0 : pos + 1;
-                            });
-                            final["custom_cards"] = sync["custom_cards"];
-                        }
-                        break;
-                    }
-                    case "todo_confetti":
-                        final["todo_celebrations"] = theme["todo_confetti"] === false ? [] : ["confetti"];
-                        break;
-                    default:
-                        final[key] = theme[key];
-                        break;
-                }
-            });
-            if (Object.prototype.hasOwnProperty.call(final, "custom_styles")) {
-                localFinal = { "custom_styles": final["custom_styles"] };
-                delete final["custom_styles"];
-            }
-            chrome.storage.sync.set(final);
-            if (localFinal) chrome.storage.local.set(localFinal);
-        });
+        const snapshot = await captureThemeSnapshot();
+        await chrome.storage.local.set({ "previous_theme": snapshot });
     } catch (e) {
-        console.log(e);
+        console.log("could not snapshot theme state", e);
+    }
+}
+
+async function clearThemeSnapshot() {
+    try { await chrome.storage.local.set({ "previous_theme": null }); } catch (e) { /* ignore */ }
+}
+
+// Serializes theme work: a rapid double-click used to snapshot a half-applied theme,
+// which made "Revert" restore the wrong state.
+let themeApplyChain = Promise.resolve();
+function queueThemeWork(work) {
+    themeApplyChain = themeApplyChain
+        .then(() => work())
+        .catch(e => console.log("theme change failed", e));
+    return themeApplyChain;
+}
+
+// Snapshot, then apply - always in that order, one theme at a time.
+function applyThemeWithSnapshot(theme) {
+    return queueThemeWork(async () => {
+        await rememberThemeSnapshot();
+        await importTheme(theme);
+    });
+}
+
+// Applies a theme (premade themes, saved themes, imported JSON and the revert snapshot
+// all land here). Resolves once the storage writes are issued.
+async function importTheme(theme) {
+    if (!theme || typeof theme !== "object") return false;
+    try {
+        const sync = await chrome.storage.sync.get(["custom_cards", "custom_cards_3"]);
+        const final = {};
+        let localFinal = null;
+        if (theme["__cardColors"] && typeof theme["__cardColors"] === "object") {
+            // Only a snapshot has this: restore the cached colors and repaint Canvas below.
+            final["custom_cards_3"] = theme["__cardColors"];
+        }
+        Object.keys(theme).forEach(key => {
+            switch (key) {
+                case "__snapshotVersion":
+                case "__cardColors":
+                    break;
+                case "dark_preset":
+                    changeToPresetCSS(null, theme["dark_preset"]);
+                    break;
+                case "card_colors":
+                    if (Array.isArray(theme["card_colors"]) && theme["card_colors"].length > 0) {
+                        sendFromPopup("setcolors", theme["card_colors"]);
+                    }
+                    break;
+                case "custom_cards": {
+                    const cards = applyThemeCardImages(sync["custom_cards"], theme["custom_cards"]);
+                    if (cards) final["custom_cards"] = cards;
+                    break;
+                }
+                case "todo_confetti":
+                    final["todo_celebrations"] = theme["todo_confetti"] === false ? [] : ["confetti"];
+                    break;
+                case "custom_styles":
+                    // Lives in storage.local: sync's 8KB per-item quota drops long stylesheets.
+                    if (theme[key] !== undefined) localFinal = { "custom_styles": theme[key] };
+                    break;
+                default:
+                    // Only settings the extension actually knows; an import must not create
+                    // arbitrary storage keys.
+                    if (theme[key] !== undefined && knownThemeKeys().has(key)) final[key] = theme[key];
+                    break;
+            }
+        });
+        // Undefined values are rejected (or silently dropped) by some browsers' storage.set.
+        Object.keys(final).forEach(key => { if (final[key] === undefined) delete final[key]; });
+        await chrome.storage.sync.set(final);
+        if (localFinal) await chrome.storage.local.set(localFinal);
+        return true;
+    } catch (e) {
+        console.log("could not apply theme", e);
+        return false;
+    }
+}
+
+// Card images for every card in `cards`:
+//  - object { courseId: url }  → exact restore (theme snapshots)
+//  - array  [url, url, ...]    → spread over the cards, as premade themes expect
+// An explicitly empty list clears the images, which is what a revert needs when the
+// user had no custom card images before the theme.
+// Returns null when nothing should be written.
+function applyThemeCardImages(cards, themeCards) {
+    const current = cards || {};
+    const ids = Object.keys(current);
+    if (ids.length === 0) return null;
+    const isMap = themeCards && typeof themeCards === "object" && !Array.isArray(themeCards);
+    let imgs = [];
+    let exact = false;
+    if (isMap) {
+        exact = true;
+    } else if (Array.isArray(themeCards)) {
+        // Legacy "none" placeholder meant "no custom card images"; writing it literally
+        // would hide the card images.
+        imgs = themeCards.filter(u => u && u !== "none" && String(u).trim() !== "");
+    } else {
+        return null;
+    }
+    const next = { ...current };
+    if (exact) {
+        ids.forEach(id => {
+            const value = themeCards[id];
+            // A card that did not exist when the snapshot was taken keeps its image.
+            if (value === undefined) return;
+            next[id] = { ...next[id], img: value };
+        });
+    } else {
+        // An empty image list is only meaningful as "remove the theme's images", so it
+        // clears everything; a theme without a custom_cards key never reaches here.
+        ids.forEach((id, pos) => {
+            next[id] = { ...next[id], img: imgs.length ? imgs[pos % imgs.length] : "" };
+        });
+    }
+    return next;
+}
+
+// "Revert theme changes": puts back the state captured right before the last applied
+// theme, then forgets it so a second click cannot undo older manual tweaks.
+// silent: report through the import box's status line instead of the global alert.
+async function revertThemeChanges(opts = {}) {
+    const silent = opts.silent === true;
+    let previous = null;
+    try {
+        const local = await chrome.storage.local.get("previous_theme");
+        previous = local && local["previous_theme"];
+    } catch (e) { /* storage unavailable */ }
+    if (!previous || typeof previous !== "object") {
+        if (!silent) displayAlert(true, getMsg("theme_revert_empty", "There is nothing to revert yet - apply a theme first."));
+        return false;
+    }
+    const ok = await importTheme(previous);
+    if (!ok) {
+        if (!silent) displayAlert(true, getMsg("theme_revert_failed", "Could not revert the theme changes."));
+        return false;
+    }
+    await clearThemeSnapshot();
+    if (!silent) displayAlert(false, getMsg("theme_reverted", "Theme changes reverted!"));
+    return true;
+}
+
+// ======================= Import box (Import / Revert buttons) =======================
+// Pasting used to import on every keystroke. Now a paste just sits in the box until
+// "Import" overwrites the current settings with the ones the theme carries (and clears
+// the text); "Revert" puts the pre-import settings back.
+const THEME_IGNORED_KEYS = ["__snapshotVersion", "__cardColors"];
+
+// Keys an export/theme may legitimately contain. Anything else is ignored, so a stray
+// paste cannot litter sync storage with arbitrary keys.
+let knownThemeKeySet = null;
+function knownThemeKeys() {
+    if (knownThemeKeySet) return knownThemeKeySet;
+    const set = new Set(THEME_SNAPSHOT_KEYS);
+    [exportDarkSchedule, exportCardColorToggles, exportCardStyles, exportLayout, exportSidebar,
+     exportTodo, exportGpa, exportWidgets, exportBackground].forEach(list => {
+        (list || []).forEach(key => set.add(key));
+    });
+    Object.keys((defaultOptions && defaultOptions.sync) || {}).forEach(key => set.add(key));
+    THEME_IGNORED_KEYS.forEach(key => set.delete(key));
+    knownThemeKeySet = set;
+    return set;
+}
+
+// Parses the pasted text. Returns { theme } or { error } (a user-facing message).
+function parseImportedTheme(raw) {
+    const text = String(raw || "").trim();
+    if (!text) return { error: getMsg("import_empty", "Paste an exported theme first.") };
+    let parsed;
+    try {
+        parsed = JSON.parse(text);
+    } catch (e) {
+        return { error: getMsg("import_invalid_json", "That is not valid JSON - paste the whole export and try again.") };
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return { error: getMsg("import_not_theme", "That does not look like a theme export.") };
+    }
+    // A theme-browser entry ({ title, exports: {...} }) is accepted as well.
+    const theme = (parsed.exports && typeof parsed.exports === "object" && !Array.isArray(parsed.exports))
+        ? parsed.exports
+        : parsed;
+    const keys = Object.keys(theme).filter(key => THEME_IGNORED_KEYS.indexOf(key) === -1);
+    if (!keys.length) return { error: getMsg("import_no_settings", "That export does not contain any settings.") };
+    const known = knownThemeKeys();
+    if (!keys.some(key => known.has(key))) {
+        return { error: getMsg("import_not_theme", "That does not look like a theme export.") };
+    }
+    return { theme };
+}
+
+function setupThemeImport() {
+    const input = document.querySelector("#import-input");
+    const applyBtn = document.querySelector("#import-apply");
+    const revertBtn = document.querySelector("#import-revert");
+    const status = document.querySelector("#import-status");
+    if (!input || !applyBtn || applyBtn.dataset.crWired === "true") return;
+    applyBtn.dataset.crWired = "true";
+    const setStatus = (text, kind) => {
+        if (!status) return;
+        status.textContent = text || "";
+        status.classList.toggle("bad", kind === "bad");
+        status.classList.toggle("good", kind === "good");
+    };
+
+    applyBtn.addEventListener("click", async () => {
+        const parsed = parseImportedTheme(input.value);
+        if (parsed.error) {
+            setStatus(parsed.error, "bad");
+            input.focus();
+            return;
+        }
+        applyBtn.disabled = true;
+        setStatus(getMsg("import_working", "Importing…"));
+        try {
+            const ok = await queueThemeWork(async () => {
+                await rememberThemeSnapshot();
+                return importTheme(parsed.theme);
+            });
+            if (!ok) {
+                setStatus(getMsg("import_failed", "Could not apply that theme."), "bad");
+                return;
+            }
+            // The paste is consumed by the import.
+            input.value = "";
+            setStatus(getMsg("import_done", "Theme imported - press Revert to undo it."), "good");
+        } finally {
+            applyBtn.disabled = false;
+        }
+    });
+
+    if (revertBtn) {
+        revertBtn.addEventListener("click", async () => {
+            const reverted = await queueThemeWork(() => revertThemeChanges({ silent: true }));
+            if (reverted) {
+                input.value = "";
+                setStatus(getMsg("import_reverted", "Import reverted - your previous settings are back."), "good");
+            } else {
+                setStatus(getMsg("theme_revert_empty", "There is nothing to revert yet - apply a theme first."), "bad");
+            }
+        });
     }
 }
 
 function updateCards(key, value) {
     chrome.storage.sync.get(["custom_cards"], result => {
-        chrome.storage.sync.set({ "custom_cards": { ...result["custom_cards"], [key]: { ...result["custom_cards"][key], ...value } } }, () => {
+        const cards = result["custom_cards"] || {};
+        chrome.storage.sync.set({ "custom_cards": { ...cards, [key]: { ...(cards[key] || {}), ...value } } }, () => {
             if (chrome.runtime.lastError) {
                 displayAlert(true, getMsg("storage_limit_error", "The data you're entering is exceeding the storage limit, so it won't save. Try using shorter links, and make sure to press \"copy image address\" and not \"copy image\" for links."));
             }
@@ -3419,26 +3725,14 @@ function displayAlert(bad, msg) {
     }, 15000);
 }
 
-function setCustomImage(key, val) {
-    if (val !== "" && val !== "none") {
-        let test = new Image();
-        test.onerror = () => {
-            displayAlert(true, getMsg("image_link_error", "It seems that the image link you provided isn't working. Make sure to right click on any images you want to use and select \"copy image address\" to get the correct link."));
-            updateCards(key, { "img": val });
-        }
-        test.onload = clearAlert;
-        test.src = val;
-    }
-    updateCards(key, { "img": val });
-}
-
 async function displayAdvancedCards() {
-    // Syncs only on fresh install or when a stored card lacks fullName.
+    // Syncs only on fresh install or when a stored card lacks the real course text
+    // (fullName/origName/origCode), so a cleared custom name can fall back to it.
     const needsSync = await new Promise(resolve => {
         chrome.storage.sync.get("custom_cards", s => {
             const c = s.custom_cards || {};
             const ids = Object.keys(c);
-            resolve(!ids.length || ids.some(id => !c[id].fullName));
+            resolve(!ids.length || ids.some(id => !c[id].fullName || !c[id].origName || !c[id].origCode));
         });
     });
     if (needsSync) await sendFromPopup("getCards");
@@ -3620,6 +3914,17 @@ function updateImagePreview() {
 	}
 }
 
+// Warn about a broken image link without touching the rest of the card's settings.
+function checkCardImageLink(url) {
+	if (!url || url === "none") return;
+	const test = new Image();
+	test.onerror = () => {
+		displayAlert(true, getMsg("image_link_error", "It seems that the image link you provided isn't working. Make sure to right click on any images you want to use and select \"copy image address\" to get the correct link."));
+	};
+	test.onload = clearAlert;
+	test.src = url;
+}
+
 function saveCardChanges(courseId) {
 	const nameInput = document.getElementById("card-name-input");
 	const codeInput = document.getElementById("card-code-input");
@@ -3627,20 +3932,20 @@ function saveCardChanges(courseId) {
 	const hideInput = document.getElementById("card-hide-input");
 	const todoHiddenInput = document.getElementById("card-todo-hidden-input");
 
-	const updates = {
+	const imageValue = (imageInput?.value || "").trim();
+
+	// One write for every field. Name/code used to be dropped whenever an image URL was
+	// typed (the image branch skipped updateCards entirely), so titles and codes never
+	// saved from this menu.
+	updateCards(courseId, {
 		name: nameInput.value,
 		code: codeInput.value,
-		img: imageInput.value,
+		img: imageValue,
 		hidden: hideInput.checked,
 		hide: hideInput.checked,
 		hide_todo: todoHiddenInput.checked,
-	};
-
-	if (imageInput.value !== "" && imageInput.value !== "none") {
-		setCustomImage(courseId, imageInput.value);
-	} else {
-		updateCards(courseId, updates);
-	}
+	});
+	checkCardImageLink(imageValue);
 
 	displayAlert(false, getMsg("card_settings_saved", "Card settings saved successfully!"));
 
