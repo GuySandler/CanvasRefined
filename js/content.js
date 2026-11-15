@@ -67,6 +67,13 @@ function fillPlaceholders(msg, values) {
     ));
 }
 
+// The overlay buttons are dashboard-only; Canvas renders the next page after the URL
+// changes, so re-check once now and again after the DOM settles.
+function scheduleOverlayButtonsSync() {
+    syncOverlayButtons();
+    [300, 1200].forEach(ms => setTimeout(syncOverlayButtons, ms));
+}
+
 // Canvas' New UI navigates via pushState; without this hook current_page goes stale.
 function setupNavigationListener() {
     const update = () => {
@@ -81,6 +88,7 @@ function setupNavigationListener() {
         watchProfileLogoutPageButton();
         watchGradeAnalytics();
         updateTodoSidebarVisibility();
+        scheduleOverlayButtonsSync();
     };
     for (const method of ["pushState", "replaceState"]) {
         const orig = history[method];
@@ -884,6 +892,22 @@ function removeAdmireOverlay() {
         admireOverlayEl = null;
     }
     pruneOverlayHost();
+}
+
+// Both overlay buttons belong to the dashboard only: anywhere else they are removed
+// (leaving the dashboard also drops out of admire mode).
+// hasActiveBackground mirrors applyCustomBackground's last result.
+let hasActiveBackground = false;
+function syncOverlayButtons() {
+    if (!isDashboardPage()) {
+        removeNasaInfoOverlay();
+        removeAdmireOverlay();
+        return;
+    }
+    if (options.customBackgroundNasaDaily === true) createNasaInfoOverlay();
+    else removeNasaInfoOverlay();
+    if (hasActiveBackground) createAdmireOverlay();
+    else removeAdmireOverlay();
 }
 
 function getSidebarStateMode(mode = getSidebarLayoutMode()) {
@@ -1897,11 +1921,7 @@ function applyOptionsChanges(changes) {
                 break;
             case "customBackgroundNasaDaily":
                 applyCustomBackground();
-                if (options.customBackgroundNasaDaily === true) {
-                    createNasaInfoOverlay();
-                } else {
-                    removeNasaInfoOverlay();
-                }
+                syncOverlayButtons();
                 break;
             case "fitImageToScreen":
                 applyCustomBackground();
@@ -2067,11 +2087,14 @@ async function applyCustomBackground() {
     if (!activeBackground) {
         if (style.isConnected) style.remove();
         // Nothing to admire any more.
-        removeAdmireOverlay();
+        hasActiveBackground = false;
+        syncOverlayButtons();
         return;
     }
-    // Only worth showing while a wallpaper/colour is actually behind the UI.
-    createAdmireOverlay();
+    // Only worth showing while a wallpaper/colour is actually behind the UI, and only
+    // on the dashboard (syncOverlayButtons decides).
+    hasActiveBackground = true;
+    syncOverlayButtons();
 
     const backgroundScale = Number(activeBackground.scale) || 100;
     const backgroundUrl = JSON.stringify(activeBackground.url);
@@ -2514,6 +2537,9 @@ function checkDashboardReady() {
                 dashboardReadyTimer = null;
 
                 syncDashboardLoadingState();
+                // The dashboard (re)rendered: show the overlay buttons again after an SPA
+                // navigation, and drop them when this is not a dashboard after all.
+                syncOverlayButtons();
                 const c = document.querySelector("#DashboardCard_Container");
                 if (c) {
                     let cards = document.querySelectorAll(".ic-DashboardCard");
@@ -2543,7 +2569,6 @@ function checkDashboardReady() {
                         setupGPACalc();
                         loadAllSimpleWidgets();
                         showUpdateMsg();
-                        createNasaInfoOverlay();
                     }
                 }
 
