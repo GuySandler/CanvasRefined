@@ -1277,7 +1277,7 @@ function updateReminders() {
             if (due < now) return;
             if (due > now + fiveDays * 2) return;
             // { due, title, href, hideCount }; hideCount -1 = has a submission.
-            list.push({ "d": due, "t": item.plannable.title, "h": domain + item.html_url, "c": item?.submissions?.submitted || false ? -1 : 0 });
+            list.push({ "d": due, "t": item.plannable.title, "h": canvasUrl(item.html_url), "c": item?.submissions?.submitted || false ? -1 : 0 });
         });
         insertReminders(list);
     });
@@ -3806,6 +3806,19 @@ function normalizeTaskLink(link) {
     return domain + (link.startsWith("/") ? link : "/" + link);
 }
 
+// Canvas is inconsistent about html_url: planner items hand back a path
+// ("/courses/1/assignments/2") while the grading todo endpoint hands back a full URL
+// ("https://host/courses/1/gradebook/speed_grader?assignment_id=2"). Prefixing the
+// domain unconditionally turned those into "https://hosthttps://host/courses/...".
+// Anchors that may hold either shape go through this instead of `domain + html_url`.
+function canvasUrl(url) {
+    const h = String(url == null ? "" : url).trim();
+    if (!h) return "";
+    if (/^[a-z][a-z0-9+.-]*:/i.test(h)) return h; // already absolute (http:, https:, mailto:)
+    if (h.startsWith("//")) return "https:" + h;
+    return domain + (h.startsWith("/") ? h : "/" + h);
+}
+
 function customTaskHref(item) {
     const id = getCustomTaskLinkId(item);
     const links = getCustomTaskLinks();
@@ -4964,7 +4977,7 @@ function populateAssignments(iscompleted = false) {
         const isCustomTask = item.plannable_type == "planner_note" || item.planner_override?.custom === true;
         // Submitted to Canvas: the Completed tab shows it whatever the checkmark says.
         const wasSubmitted = item.submissions?.submitted === true;
-        const taskHref = isCustomTask ? customTaskHref(item) : (item.anonFake === true ? "#" : domain + item.html_url);
+        const taskHref = isCustomTask ? customTaskHref(item) : (item.anonFake === true ? "#" : canvasUrl(item.html_url));
         const editButtonSvg = isCustomTask
             ? `<svg class="better-todo-assignment-edit" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:18px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="${getMsg("edit_custom_task", "Edit this custom task")}"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="var(--bctext-0)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`
             : "";
@@ -5111,7 +5124,7 @@ function populateAnnouncements() {
 			<div style="width:calc(100% - 40px);height:80%;display:flex;flex-direction:column;gap:5px;padding-left:2px;box-sizing:border-box;overflow:hidden;position:relative;">
 				<div style="display:flex;flex-direction:column;gap:3px;">
 					<span style="color:${classNameColor};font-size:12px;margin-top:-2px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;padding-right:22px;">${anonCourseNameForItem(item)}</span>
-					<a href="${domain + item.html_url}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${anonTitleForItem(item)}</a>
+					<a href="${canvasUrl(item.html_url)}" style="color:inherit;text-decoration:none;font-weight:bold;text-overflow:ellipsis;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-5px;">${anonTitleForItem(item)}</a>
 					<span style="color:var(--bctext-0);font-size:12px;margin-top:-5px;">${convertToDueDate(item.plannable_date)}</span>
 				</div>
 				<svg class="better-todo-announcement-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px;height:15px;position:absolute;top:0px;right:5px;opacity:0.3;transition:all .3s ease;cursor:pointer;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.3'" title="${getMsg("mark_as_seen", "Mark as seen")}">
