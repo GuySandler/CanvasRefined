@@ -2791,6 +2791,33 @@ function getCardsFromDashboard() {
     });
 }
 
+// Cards saved before large IDs were parsed exactly are keyed by the rounded number
+// (e.g. "44070000000085860" for course 44070000000085857). Move them to the exact key
+// so custom names, colors and links survive instead of being pruned.
+// Only a key that maps to exactly one course, isn't itself a real course ID and belongs
+// to this Canvas host is moved, and an existing exact entry is never overwritten.
+function migrateRoundedCardKeys(courses, cards, cards_2, cards_3) {
+    const liveIds = new Set(courses.map(course => String(course && course.id)));
+    const exactIds = courses
+        .map(course => course && course.id)
+        .filter(id => typeof id === "string" && !Number.isSafeInteger(Number(id)));
+    let moved = false;
+    Object.keys(cards).forEach(oldKey => {
+        if (liveIds.has(oldKey) || Number.isSafeInteger(Number(oldKey))) return;
+        if (cards_3[oldKey] && cards_3[oldKey].url && cards_3[oldKey].url !== domain) return;
+        const matches = exactIds.filter(id => Number(id) === Number(oldKey));
+        if (matches.length !== 1) return;
+        const id = matches[0];
+        [cards, cards_2, cards_3].forEach(store => {
+            if (store[oldKey] === undefined) return;
+            if (store[id] === undefined) store[id] = store[oldKey];
+            delete store[oldKey];
+        });
+        moved = true;
+    });
+    return moved;
+}
+
 async function getCards(api = null) {
     let dashboard_cards = api ? api : await getData(`${domain}/api/v1/courses?${/*enrollment_state=active&*/""}per_page=100`);
     await new Promise(resolve => {
@@ -2809,6 +2836,7 @@ async function getCards(api = null) {
             dashboard_cards.sort((a, b) => (b?.enrollment_term_id || 0) - (a?.enrollment_term_id || 0));
         }
         try {
+            if (migrateRoundedCardKeys(dashboard_cards, cards, cards_2, cards_3)) newCards = true;
             dashboard_cards.forEach(card => {
                 if (!card.course_code || count >= (options["card_limit"] || 25)) { skipped++; return; }
                 let id = card.id;
@@ -2856,7 +2884,7 @@ async function getCards(api = null) {
                         found = true;
                     } else {
                         dashboard_cards.forEach(card => {
-                            if (parseInt(key) === card.id) found = true;
+                            if (String(key) === String(card.id)) found = true;
                         });
                     }
 
@@ -3712,7 +3740,8 @@ function buildPlannerNotePayload(form) {
         title,
         details,
         link,
-        courseId: courseIdRaw ? parseInt(courseIdRaw) : null,
+        // Keep the ID as a string: large Canvas IDs don't survive parseInt.
+        courseId: courseIdRaw ? String(courseIdRaw).trim() : null,
         // Canvas prefers local timestamp strings over UTC ISO for planner notes.
         todoDate: `${dateValue}T${timeValue}:00`,
     };
@@ -3776,7 +3805,7 @@ async function createCanvasPlannerNote(payload) {
         try {
             const errData = await response.json();
             if (errData?.errors?.length) {
-                lastError = errData.errors.join(" ");
+                lastError = (formatCanvasErrors(errData.errors) || lastError);
             } else if (errData?.message) {
                 lastError = errData.message;
             }
@@ -3787,8 +3816,28 @@ async function createCanvasPlannerNote(payload) {
     throw new Error(lastError || getMsg("canvas_rejected_create", "Canvas rejected task creation."));
 }
 
+// Canvas sends errors as [{ message }] (sometimes plain strings); joining the
+// objects directly showed "[object Object]" instead of the reason.
+function formatCanvasErrors(errors) {
+    if (typeof errors === "string") return errors;
+    if (!Array.isArray(errors)) return "";
+    return errors
+        .map(e => {
+            if (typeof e === "string") return e;
+            if (e && typeof e.message === "string") return e.message;
+            return "";
+        })
+        .filter(Boolean)
+        .join(" ");
+}
+
 /* Custom task links: Canvas planner notes have no link field, so store a
    user link in sync storage keyed by the note id. */
+function getCustomTaskLink(links, noteId) {
+    if (noteId == null) return "";
+    return links[String(noteId)] || "";
+}
+
 function getCustomTaskLinks() {
     return (options && options.custom_task_links) || {};
 }
@@ -3822,8 +3871,9 @@ function canvasUrl(url) {
 function customTaskHref(item) {
     const id = getCustomTaskLinkId(item);
     const links = getCustomTaskLinks();
-    if (id != null && links[String(id)]) {
-        return normalizeTaskLink(links[String(id)]);
+    const savedLink = getCustomTaskLink(links, id);
+    if (savedLink) {
+        return normalizeTaskLink(savedLink);
     }
     const courseId = item?.course_id || item?.plannable?.course_id || item?.context_id;
     if (courseId) return `${domain}/courses/${courseId}`;
@@ -3905,7 +3955,7 @@ async function updateCanvasPlannerNote(id, payload) {
         try {
             const errData = await response.json();
             if (errData?.errors?.length) {
-                lastError = errData.errors.join(" ");
+                lastError = (formatCanvasErrors(errData.errors) || lastError);
             } else if (errData?.message) {
                 lastError = errData.message;
             }
@@ -3935,7 +3985,7 @@ async function deleteCanvasPlannerNote(id) {
     let lastError = getMsg("canvas_rejected_delete", "Canvas rejected task deletion.");
     try {
         const errData = await response.json();
-        if (errData?.errors?.length) lastError = errData.errors.join(" ");
+        if (errData?.errors?.length) lastError = (formatCanvasErrors(errData.errors) || lastError);
         else if (errData?.message) lastError = errData.message;
     } catch (_) { /* ignore */ }
     throw new Error(lastError);
@@ -4191,7 +4241,7 @@ function openTaskForEdit(item) {
         menu.querySelector("#better-todo-new-task-time").value = formatTimeForInput(dateObj);
     }
     const links = getCustomTaskLinks();
-    menu.querySelector("#better-todo-new-task-link").value = (noteId != null && links[String(noteId)]) || "";
+    menu.querySelector("#better-todo-new-task-link").value = getCustomTaskLink(links, noteId);
 
     menu.dataset.editingId = noteId != null ? String(noteId) : "";
     const del = menu.querySelector("#better-todo-add-task-delete");
@@ -12241,7 +12291,10 @@ function getAssignments() {
 // ===================== Planner items (cached) =====================
 // Cached in chrome.storage.local: instant load, a 14-day refresh window per page
 // load, and a full 1-year lookback at most weekly while the tab is idle.
-const PLANNER_CACHE_KEY = "planner_cache_v1";
+// v2: IDs above Number.MAX_SAFE_INTEGER are now kept as exact strings; v1 rows may
+// hold rounded course/note IDs, so they are dropped and refetched.
+const PLANNER_CACHE_KEY = "planner_cache_v2";
+const LEGACY_PLANNER_CACHE_KEYS = ["planner_cache_v1"];
 const PLANNER_LOOKBACK_DAYS = 365;   // max history fetched from Canvas
 const PLANNER_WINDOW_DAYS = 14;     // per-load "what changed" refresh window
 const PLANNER_FULL_REFRESH_DAYS = 7; // min time between full lookback walks
@@ -12398,6 +12451,7 @@ function filterPlannerItemsByActiveCourses(items, courseIds) {
 }
 
 async function readPlannerCache() {
+    try { Promise.resolve(chrome.storage.local.remove(LEGACY_PLANNER_CACHE_KEYS)).catch(() => {}); } catch (e) { /* nothing stored */ }
     try {
         const result = await chrome.storage.local.get(PLANNER_CACHE_KEY);
         const cache = result && result[PLANNER_CACHE_KEY];
@@ -14280,12 +14334,53 @@ function makeElement(element, location, options, prepend = false) {
 // page would. Chrome has no `content` global, so this is a no-op there.
 function pageFetch(url, init) {
     const opts = { credentials: "include", cache: "no-store", ...init };
+    let request = null;
     try {
         if (typeof content !== "undefined" && content && typeof content.fetch === "function") {
-            return content.fetch(url, opts);
+            request = content.fetch(url, opts);
         }
     } catch (_) { /* fall through to the normal fetch */ }
-    return fetch(url, opts);
+    if (!request) request = fetch(url, opts);
+    return isCanvasApiUrl(url) ? request.then(useExactCanvasIds) : request;
+}
+
+// Some Canvas instances use sharded global IDs (e.g. 44070000000085857) that are larger
+// than Number.MAX_SAFE_INTEGER, so response.json() silently rounds them and requests
+// built from them hit the wrong course or note. For Canvas API responses, parse those
+// integers as strings instead. Every other value parses exactly as before.
+function isCanvasApiUrl(url) {
+    try {
+        return new URL(String(url), location.href).pathname.startsWith("/api/v1/");
+    } catch (_) {
+        return false;
+    }
+}
+
+// A plain wrapper rather than patching the Response: on Firefox it is an Xray-wrapped
+// page object, so overriding json() on it isn't reliable.
+function useExactCanvasIds(response) {
+    return {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        url: response.url,
+        redirected: response.redirected,
+        text: () => response.text(),
+        json: () => response.text().then(parseJsonKeepingLargeInts),
+    };
+}
+
+function parseJsonKeepingLargeInts(text) {
+    if (!/\d{16}/.test(text)) return JSON.parse(text);
+    // Walk string literals and number tokens; only bare integers that can't be
+    // represented exactly are quoted. Digits inside strings are left alone.
+    const safeText = text.replace(/"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g, token => {
+        if (token[0] === '"') return token;
+        if (/^-?\d+$/.test(token) && !Number.isSafeInteger(Number(token))) return '"' + token + '"';
+        return token;
+    });
+    return JSON.parse(safeText);
 }
 
 async function getData(url) {
